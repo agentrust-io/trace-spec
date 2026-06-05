@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from agentrust_trace import TrustRecord
 
@@ -35,26 +36,26 @@ def test_intel_tdx_fields() -> None:
 def test_extra_fields_rejected() -> None:
     data = _load("intel-tdx.json")
     data["unknown_field"] = "should fail"
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
 
 
 def test_missing_required_field_rejected() -> None:
     data = _load("intel-tdx.json")
     del data["cnf"]
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
 
 
 def test_bad_digest_rejected() -> None:
     data = _load("intel-tdx.json")
     data["runtime"]["measurement"] = "not-a-digest"
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
 
 
 def test_bad_platform_rejected() -> None:
     data = _load("intel-tdx.json")
     data["runtime"]["platform"] = "unknown-cloud"
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)

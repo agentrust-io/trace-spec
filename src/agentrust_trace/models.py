@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,9 +14,9 @@ class ModelInfo(BaseModel):
 
     provider: str
     model_id: str
-    version: Optional[str] = None
-    weights_digest: Optional[DigestStr] = None
-    aibom_uri: Optional[str] = None
+    version: str | None = None
+    weights_digest: DigestStr | None = None
+    aibom_uri: str | None = None
 
 
 class RuntimeInfo(BaseModel):
@@ -33,9 +33,9 @@ class RuntimeInfo(BaseModel):
         "tpm2",
     ]
     measurement: DigestStr
-    rim_uri: Optional[str] = None
-    nonce: Optional[str] = None
-    firmware_version: Optional[str] = None
+    rim_uri: str | None = None
+    nonce: str | None = None
+    firmware_version: str | None = None
 
 
 class PolicyInfo(BaseModel):
@@ -43,25 +43,25 @@ class PolicyInfo(BaseModel):
 
     bundle_hash: DigestStr
     enforcement_mode: Literal["enforce", "advisory", "silent"]
-    version: Optional[str] = None
-    policy_uri: Optional[str] = None
+    version: str | None = None
+    policy_uri: str | None = None
 
 
 class ToolTranscript(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     hash: DigestStr
-    call_count: Optional[Annotated[int, Field(ge=0)]] = None
-    transcript_uri: Optional[str] = None
+    call_count: Annotated[int, Field(ge=0)] | None = None
+    transcript_uri: str | None = None
 
 
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     slsa_level: Annotated[int, Field(ge=1, le=3)]
-    builder: Optional[str] = None
+    builder: str | None = None
     digest: DigestStr
-    provenance_uri: Optional[str] = None
+    provenance_uri: str | None = None
 
 
 class Appraisal(BaseModel):
@@ -69,8 +69,8 @@ class Appraisal(BaseModel):
 
     status: Literal["affirming", "warning", "contraindicated", "none"]
     verifier: str
-    policy_ref: Optional[str] = None
-    timestamp: Optional[int] = None
+    policy_ref: str | None = None
+    timestamp: int | None = None
 
 
 class JWK(BaseModel):
@@ -78,10 +78,10 @@ class JWK(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     kty: str
-    crv: Optional[str] = None
-    x: Optional[str] = None
-    y: Optional[str] = None
-    kid: Optional[str] = None
+    crv: str | None = None
+    x: str | None = None
+    y: str | None = None
+    kid: str | None = None
 
 
 class ConfirmationKey(BaseModel):
@@ -102,7 +102,7 @@ class TrustRecord(BaseModel):
     runtime: RuntimeInfo
     policy: PolicyInfo
     data_class: str
-    tool_transcript: Optional[ToolTranscript] = None
+    tool_transcript: ToolTranscript | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: str

@@ -11,7 +11,7 @@ from agentrust_trace.models import (
     ToolTranscript,
     TrustRecord,
 )
-from agentrust_trace.validate import SCHEMA, iter_errors, validate_json
+from agentrust_trace.validate import iter_errors, SCHEMA, validate_json
 
 __version__ = "0.1.0"
 
