@@ -1,44 +1,85 @@
 # TRACE — Trust Runtime Attestation and Compliance Evidence
 
-An open specification for hardware-attested AI agent governance claims. TRACE defines the format, anchoring protocol, and verification API for cryptographically provable evidence that an AI agent ran under a specific policy, in a specific hardware environment, producing a tamper-evident audit chain.
+An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools — bound into a single signed artifact rooted in silicon attestation.
 
-## What a TRACE Claim Is
+## What a TRACE Trust Record Is
 
 ```json
 {
-  "spec_version": "0.1",
-  "claim_id": "trace-2026-06-23T09:15:42Z-f2a8d1",
-  "producer": "cmcp-gateway/0.1.0",
-  "policy_bundle_hash": "sha256:a3f8d2...",
-  "enforcement_mode": "enforce",
-  "audit_chain_root": "sha256:c9e4b1...",
-  "trust_score": 847,
-  "tee_public_key": "ecdsa-p256:MEkwEw...",
-  "hardware_sig": "base64:MEQCIHx...",
-  "tee_platform": "sev-snp",
-  "timestamp": "2026-06-23T09:15:42Z"
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676142,
+  "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "version": "20251001",
+    "weights_digest": "sha256:a3f8d2c1..."
+  },
+  "runtime": {
+    "platform": "amd-sev-snp",
+    "measurement": "sha384:c9e4b1d2e3f4...",
+    "rim_uri": "https://kdsintf.amd.com/vcek/v1/..."
+  },
+  "policy": {
+    "bundle_hash": "sha256:b2c3d4e5...",
+    "enforcement_mode": "enforce",
+    "version": "1.2.0"
+  },
+  "data_class": "confidential",
+  "tool_transcript": {
+    "hash": "sha256:d4e5f6a7...",
+    "call_count": 3
+  },
+  "build_provenance": {
+    "slsa_level": 2,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator",
+    "digest": "sha256:e5f6a7b8..."
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://trust-authority.example.org",
+    "policy_ref": "https://trust-authority.example.org/policy/agent-v1"
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
+  "cnf": {
+    "jwk": {"kty": "EC", "crv": "P-256", "x": "MEkwEw...", "y": "..."}
+  }
 }
 ```
+
+The record is a single EAT envelope (RFC 9711). Each field is independently verifiable. No callback to the issuer is required.
 
 ## Specification
 
 - [`spec/trace-v0.1.md`](spec/trace-v0.1.md) — full specification
 - [`schema/trace-claim.json`](schema/trace-claim.json) — JSON Schema
-- [`examples/`](examples/) — example claims from each hardware provider
+- [`examples/`](examples/) — example Trust Records for Intel TDX, AMD SEV-SNP, and NVIDIA H100
 
-## Standards
+## Standards composition
 
-TRACE is being submitted to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation. Submission target: July 2026.
+TRACE profiles existing standards rather than replacing them:
 
-The Certificate Transparency analogy: Opaque authors the standard and operates the reference registry. Any governance tool can produce TRACE claims. Any auditor can verify them independently.
+| Primitive | Role in TRACE |
+|---|---|
+| RATS / EAT (RFC 9711) | Wire envelope and claim model |
+| SLSA Provenance v1.0 | Build-time provenance (`build_provenance`) |
+| SPIFFE SVID | Workload identity (`subject`) |
+| SCITT | Append-only transparency anchoring (`transparency`) |
+| EAR (draft-ietf-rats-ar4si) | Verifier appraisal output (`appraisal`) |
+| MCP / A2A | Agent tool-call transcript surface (`tool_transcript`) |
+| AIBOM (SPDX 3.0 / CycloneDX 1.7) | Model component inventory (`model`) |
+
+## Reference implementation
+
+[agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) — Confidential MCP Gateway. Hardware-attested policy enforcement at the MCP tool-call boundary on Intel TDX, AMD SEV-SNP, and NVIDIA H100/Blackwell.
 
 ## Registry
 
-A public append-only Merkle registry of TRACE claim anchors is mirrored at [agentrust-io/trace-registry](https://github.com/agentrust-io/trace-registry).
+A public append-only Merkle registry of TRACE Trust Record anchors: [agentrust-io/trace-registry](https://github.com/agentrust-io/trace-registry).
 
 ## Status
 
-Private. Spec v0.1 publishing at CC Summit June 23, 2026.
+Draft v0.1 — publishing at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
 
 ## License
 

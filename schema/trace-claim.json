@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentrust.io/schema/trace-v0.1.json",
+  "title": "TRACE Trust Record",
+  "description": "A TRACE v0.1 Trust Record — hardware-attested governance evidence for an AI agent execution.",
+  "type": "object",
+  "required": [
+    "eat_profile",
+    "iat",
+    "subject",
+    "model",
+    "runtime",
+    "policy",
+    "data_class",
+    "build_provenance",
+    "appraisal",
+    "transparency",
+    "cnf"
+  ],
+  "properties": {
+    "eat_profile": {
+      "type": "string",
+      "const": "tag:agentrust.io,2026:trace-v0.1",
+      "description": "EAT profile URI identifying this as a TRACE v0.1 Trust Record."
+    },
+    "iat": {
+      "type": "integer",
+      "description": "Issued-at time as Unix epoch seconds.",
+      "minimum": 1700000000
+    },
+    "subject": {
+      "type": "string",
+      "description": "Workload identity as a SPIFFE SVID URI.",
+      "pattern": "^spiffe://"
+    },
+    "model": {
+      "type": "object",
+      "description": "Model identity and provenance.",
+      "required": ["provider", "model_id"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Model provider (e.g. 'anthropic', 'openai', 'meta')."
+        },
+        "model_id": {
+          "type": "string",
+          "description": "Model identifier as used by the provider."
+        },
+        "version": {
+          "type": "string",
+          "description": "Model version or snapshot identifier."
+        },
+        "weights_digest": {
+          "type": "string",
+          "description": "SHA-256 or SHA-384 digest of the model weights. Required for local/confidential-inference deployments.",
+          "pattern": "^sha(256|384):[0-9a-f]+"
+        },
+        "aibom_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to SPDX 3.0 AI Profile or CycloneDX 1.7 ML-BOM for this model."
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "description": "TEE measurement chain binding the workload to hardware.",
+      "required": ["platform", "measurement"],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "intel-tdx",
+            "amd-sev-snp",
+            "nvidia-h100",
+            "nvidia-blackwell",
+            "aws-nitro",
+            "arm-cca",
+            "google-confidential-space",
+            "tpm2"
+          ],
+          "description": "Hardware platform providing the root of trust."
+        },
+        "measurement": {
+          "type": "string",
+          "description": "Hardware measurement of the workload (e.g. TDX MRTD, SEV measurement, TPM PCR composite).",
+          "pattern": "^sha(256|384):[0-9a-f]+"
+        },
+        "rim_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to the vendor-published Reference Integrity Manifest for this measurement."
+        },
+        "nonce": {
+          "type": "string",
+          "description": "Freshness nonce binding the attestation report to this record (base64url, no padding)."
+        },
+        "firmware_version": {
+          "type": "string",
+          "description": "Firmware or microcode version included in the measurement."
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "description": "Policy bundle sealed to the TEE measurement.",
+      "required": ["bundle_hash", "enforcement_mode"],
+      "properties": {
+        "bundle_hash": {
+          "type": "string",
+          "description": "SHA-256 or SHA-384 digest of the policy bundle in force at execution time.",
+          "pattern": "^sha(256|384):[0-9a-f]+"
+        },
+        "enforcement_mode": {
+          "type": "string",
+          "enum": ["enforce", "advisory", "silent"],
+          "description": "How policy decisions were applied: enforce (block on deny), advisory (log only), silent (no logging)."
+        },
+        "version": {
+          "type": "string",
+          "description": "Policy bundle version (semantic versioning recommended)."
+        },
+        "policy_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to the policy bundle for verification."
+        }
+      },
+      "additionalProperties": false
+    },
+    "data_class": {
+      "type": "string",
+      "description": "Highest-sensitivity data classification of inputs and outputs processed during this execution.",
+      "examples": ["public", "internal", "confidential", "restricted", "top-secret"]
+    },
+    "tool_transcript": {
+      "type": "object",
+      "description": "Bound hash of the MCP/A2A tool-call transcript. OPTIONAL for Phase 1 records; REQUIRED for Phase 2+.",
+      "required": ["hash"],
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "SHA-256 or SHA-384 digest of the full tool-call transcript, bound into the EAT envelope.",
+          "pattern": "^sha(256|384):[0-9a-f]+"
+        },
+        "call_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of tool calls in this session."
+        },
+        "transcript_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to the full transcript on the transparency log."
+        }
+      },
+      "additionalProperties": false
+    },
+    "build_provenance": {
+      "type": "object",
+      "description": "SLSA provenance for the workload (agent code + container image).",
+      "required": ["slsa_level", "digest"],
+      "properties": {
+        "slsa_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "SLSA Build Level achieved. Level 2 minimum for TRACE conformance; Level 3 for production mark."
+        },
+        "builder": {
+          "type": "string",
+          "description": "SLSA builder URI."
+        },
+        "digest": {
+          "type": "string",
+          "description": "SHA-256 or SHA-384 digest of the container image or workload binary.",
+          "pattern": "^sha(256|384):[0-9a-f]+"
+        },
+        "provenance_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to the SLSA provenance attestation on a Sigstore/Rekor or compatible log."
+        }
+      },
+      "additionalProperties": false
+    },
+    "appraisal": {
+      "type": "object",
+      "description": "Verifier's EAR appraisal of the evidence (draft-ietf-rats-ar4si).",
+      "required": ["status", "verifier"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["affirming", "warning", "contraindicated", "none"],
+          "description": "EAR appraisal status."
+        },
+        "verifier": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI identifying the verifier that produced this appraisal."
+        },
+        "policy_ref": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to the appraisal policy used."
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Unix epoch seconds when the appraisal was produced."
+        }
+      },
+      "additionalProperties": false
+    },
+    "transparency": {
+      "type": "string",
+      "format": "uri",
+      "description": "SCITT receipt URI. The Trust Record is the Signed Statement; this URI resolves to the inclusion proof (Receipt) on the transparency log."
+    },
+    "cnf": {
+      "type": "object",
+      "description": "Confirmation key (RFC 8747) — binds the Trust Record to the TEE-held signing key.",
+      "required": ["jwk"],
+      "properties": {
+        "jwk": {
+          "type": "object",
+          "description": "JWK (RFC 7517) representing the TEE-sealed public key.",
+          "required": ["kty"],
+          "properties": {
+            "kty": {"type": "string"},
+            "crv": {"type": "string"},
+            "x":   {"type": "string"},
+            "y":   {"type": "string"},
+            "kid": {"type": "string"}
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

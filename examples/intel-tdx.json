@@ -1,0 +1,54 @@
+{
+  "_comment": "TRACE v0.1 Trust Record — Intel TDX example. Truncated digests shown with '...' suffix.",
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676200,
+  "subject": "spiffe://trust.example.org/agent/document-processor/staging",
+  "model": {
+    "provider": "meta",
+    "model_id": "llama-3.3-70b-instruct",
+    "version": "3.3",
+    "weights_digest": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2...",
+    "aibom_uri": "https://registry.agentrust.io/aibom/llama-3.3-70b-20260101"
+  },
+  "runtime": {
+    "platform": "intel-tdx",
+    "measurement": "sha384:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5...",
+    "rim_uri": "https://api.trustedservices.intel.com/sgx/certification/v4/rootcacrl",
+    "firmware_version": "2.0.3",
+    "nonce": "dGRYLXdvcmtsb2FkLW5vbmNl"
+  },
+  "policy": {
+    "bundle_hash": "sha256:c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3...",
+    "enforcement_mode": "enforce",
+    "version": "2.0.1",
+    "policy_uri": "https://registry.agentrust.io/policy/document-v2.0.1"
+  },
+  "data_class": "internal",
+  "tool_transcript": {
+    "hash": "sha256:f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6...",
+    "call_count": 7,
+    "transcript_uri": "https://registry.agentrust.io/transcript/tdx-2026-06-23T09:16:40Z"
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+    "digest": "sha256:b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8...",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/..."
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://api.trustedservices.intel.com",
+    "policy_ref": "https://api.trustedservices.intel.com/policy/tdx-agent-v1",
+    "timestamp": 1750676203
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:16:40Z-a9b0c1",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-384",
+      "x": "TDXd2VyaWZpY2F0aW9uS2V5...",
+      "y": "UmVmZXJlbmNlTWVhc3VyZW1l...",
+      "kid": "tdx-workload-key-2026-06-23"
+    }
+  }
+}
