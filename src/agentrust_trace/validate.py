@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 import jsonschema
 
@@ -11,7 +11,7 @@ import jsonschema
 @lru_cache(maxsize=1)
 def _schema() -> dict[str, Any]:
     ref = importlib.resources.files("agentrust_trace") / "schema" / "trace-v0.1.json"
-    return json.loads(ref.read_text(encoding="utf-8"))  # type: ignore[arg-type]
+    return cast(dict[str, Any], json.loads(ref.read_text(encoding="utf-8")))
 
 
 @lru_cache(maxsize=1)
