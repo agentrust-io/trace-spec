@@ -12,8 +12,8 @@ from agentrust_trace.models import (
     TrustRecord,
 )
 from agentrust_trace.validate import (
-    SCHEMA,
     iter_errors,
+    SCHEMA,
     validate_json,
 )
 
