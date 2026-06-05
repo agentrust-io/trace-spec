@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerabilities
+    url: https://github.com/agentrust-io/trace-spec/blob/main/SECURITY.md
+    about: Do not open public issues for security vulnerabilities. See SECURITY.md for the reporting process.
+  - name: Vendor platform annex interest
+    url: https://github.com/agentrust-io/trace-spec/issues/new?labels=vendor-annex&template=spec_change.md
+    about: Interested in co-authoring a platform mapping annex? Open an issue with the vendor-annex label.

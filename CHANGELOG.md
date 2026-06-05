@@ -1,0 +1,44 @@
+# Changelog
+
+All notable changes to the TRACE specification will be documented here.
+
+Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.MINOR.PATCH`:
+- **MAJOR**: breaking changes to wire format or required Trust Record fields
+- **MINOR**: new optional fields, new platform profiles, new conformance levels
+- **PATCH**: editorial fixes, clarifications, non-normative additions
+
+---
+
+## [0.1.0] — 2026-06-23
+
+Initial public draft. Announced at Confidential Computing Summit, San Francisco.
+
+### Specification
+
+- Trust Record logical schema (§3.1): `subject`, `model`, `runtime`, `policy`, `data_class`, `tool_transcript`, `build_provenance`, `appraisal`, `transparency`, `cnf`
+- Wire format (§3.2): EAT/JWT and CBOR-COSE envelopes; profile URI `tag:agentrust.io,2026:trace-v0.1`
+- Signing and key management (§3.2.1): ES256/ES384/EdDSA; four-layer key hierarchy; hash agility; revocation
+- Verification protocol (§3.3): five-step offline verification, no issuer callback
+- Standards composition (§4): RATS/EAT, SLSA, SPIFFE, SCITT, EAR, MCP, A2A, AIBOM, C2PA
+- Hardware roots (§4.2): NVIDIA H100/Blackwell, Intel TDX, AMD SEV-SNP, Azure MAA, GCP Confidential Space, AWS Nitro
+- Reference implementation (§5): cMCP Phase 1–3 roadmap
+
+### Schema
+
+- `schema/trace-claim.json`: JSON Schema (draft/2020-12) for Trust Record validation
+
+### Examples
+
+- `examples/amd-sev-snp.json`: AMD SEV-SNP Trust Record
+- `examples/intel-tdx.json`: Intel TDX Trust Record
+- `examples/nvidia-h100.json`: NVIDIA H100 Confidential Computing Trust Record
+
+### Open questions
+
+Seven open questions requiring founding-member input before v0.2 are documented in §7 of the spec.
+
+---
+
+## Upcoming
+
+See [ROADMAP.md](ROADMAP.md) for planned changes in v0.2 and v1.0.
