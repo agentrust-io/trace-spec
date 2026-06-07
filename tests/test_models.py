@@ -59,3 +59,45 @@ def test_bad_platform_rejected() -> None:
     data["runtime"]["platform"] = "unknown-cloud"
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+# CRYPTO-008 / CRYPTO-009: DigestStr regex enforcement
+
+def test_digest_uppercase_rejected() -> None:
+    """CRYPTO-008: uppercase hex must be rejected (sha256: is lowercase-only)."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["measurement"] = "sha256:" + "A" * 64
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_digest_sha256_too_short_rejected() -> None:
+    """CRYPTO-008/009: sha256 digest shorter than 64 chars must be rejected."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["measurement"] = "sha256:" + "a" * 63
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_digest_sha256_exact_length_accepted() -> None:
+    """sha256 digest with exactly 64 lowercase hex chars must be accepted."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["measurement"] = "sha256:" + "a" * 64
+    record = TrustRecord.model_validate(data)
+    assert record.runtime.measurement == "sha256:" + "a" * 64
+
+
+def test_digest_sha384_exact_length_accepted() -> None:
+    """sha384 digest with exactly 96 lowercase hex chars must be accepted."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["measurement"] = "sha384:" + "b" * 96
+    record = TrustRecord.model_validate(data)
+    assert record.runtime.measurement == "sha384:" + "b" * 96
+
+
+def test_digest_sha512_rejected() -> None:
+    """CRYPTO-009: unsupported algorithm sha512 must be rejected."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["measurement"] = "sha512:" + "a" * 128
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)

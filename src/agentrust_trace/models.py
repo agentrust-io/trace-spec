@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-_DIGEST_RE = r"^sha(256|384):[0-9a-f]+"
+_DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
