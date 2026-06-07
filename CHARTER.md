@@ -1,7 +1,9 @@
 # Technical Charter — TRACE
 
 **Proposed hosting**: CoSAI (Coalition for Secure AI) for the technical workstream; Linux Foundation entity hosting the Model Context Protocol for specification, IP, trademark, and conformance mark.  
-**Status**: Pre-acceptance draft — effective upon host organization acceptance.  
+**Status**: Pre-acceptance draft — effective upon host organization acceptance.
+
+> **Note for external contributors:** This charter is a working draft and has not yet been accepted by a host organization. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
 **Version**: 0.1 (aligned with spec v0.1)
 
 ---
