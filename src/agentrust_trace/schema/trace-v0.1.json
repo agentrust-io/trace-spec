@@ -53,7 +53,7 @@
         "weights_digest": {
           "type": "string",
           "description": "SHA-256 or SHA-384 digest of the model weights. Required for local/confidential-inference deployments.",
-          "pattern": "^sha(256|384):[0-9a-f]+"
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
         },
         "aibom_uri": {
           "type": "string",
@@ -85,7 +85,7 @@
         "measurement": {
           "type": "string",
           "description": "Hardware measurement of the workload (e.g. TDX MRTD, SEV measurement, TPM PCR composite).",
-          "pattern": "^sha(256|384):[0-9a-f]+"
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
         },
         "rim_uri": {
           "type": "string",
@@ -111,7 +111,7 @@
         "bundle_hash": {
           "type": "string",
           "description": "SHA-256 or SHA-384 digest of the policy bundle in force at execution time.",
-          "pattern": "^sha(256|384):[0-9a-f]+"
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
         },
         "enforcement_mode": {
           "type": "string",
@@ -143,7 +143,7 @@
         "hash": {
           "type": "string",
           "description": "SHA-256 or SHA-384 digest of the full tool-call transcript, bound into the EAT envelope.",
-          "pattern": "^sha(256|384):[0-9a-f]+"
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
         },
         "call_count": {
           "type": "integer",
@@ -176,7 +176,7 @@
         "digest": {
           "type": "string",
           "description": "SHA-256 or SHA-384 digest of the container image or workload binary.",
-          "pattern": "^sha(256|384):[0-9a-f]+"
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
         },
         "provenance_uri": {
           "type": "string",
