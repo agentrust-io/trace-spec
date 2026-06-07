@@ -14,7 +14,7 @@ Vulnerabilities in the reference implementation (cMCP) should be reported at [ag
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities by email to: **security@opaque.co**
+Report vulnerabilities via [GitHub Security Advisories](https://github.com/agentrust-io/trace-spec/security/advisories/new). Do not use public issues.
 
 Include:
 - A description of the vulnerability and the affected spec section or schema path
