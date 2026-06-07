@@ -9,7 +9,7 @@
 | Reference implementation | [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) — Confidential MCP |
 | License | CC BY 4.0 |
 
-> **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: aaron@opaque.co or open an issue on this repository.
+> **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
 ---
 
@@ -270,7 +270,7 @@ TRACE will publish vendor-co-authored claim-mapping annexes — one per silicon-
 
 ## 5. Reference Implementation: Confidential MCP (cMCP)
 
-OPAQUE's reference build at the MCP tool-call boundary.
+the reference implementation at the MCP tool-call boundary.
 
 | Phase | What ships | TRACE fields | Timeline |
 |---|---|---|---|
