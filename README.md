@@ -2,9 +2,23 @@
   <img src="docs/assets/icon.svg" width="96" height="96" alt="TRACE"/>
 </p>
 
-# TRACE — Trust Runtime Attestation and Compliance Evidence
+# TRACE: Trust Runtime Attestation and Compliance Evidence
 
-An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools — bound into a single signed artifact rooted in silicon attestation.
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
+[![AAIF](https://img.shields.io/badge/Targeting-AAIF_%2F_Linux_Foundation-6366f1)](https://agenticai.foundation)
+[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.1.md)
+
+> **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026. May have breaking changes before v1.0.
+
+<p align="center">
+  <a href="spec/trace-v0.1.md">Specification</a> &nbsp;|&nbsp;
+  <a href="schema/trace-claim.json">Schema</a> &nbsp;|&nbsp;
+  <a href="examples/">Examples</a> &nbsp;|&nbsp;
+  <a href="https://github.com/agentrust-io/trace-registry">Registry</a> &nbsp;|&nbsp;
+  <a href="https://github.com/agentrust-io/cmcp">Reference Impl</a>
+</p>
+
+An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, bound into a single signed artifact rooted in silicon attestation.
 
 ## What a TRACE Trust Record Is
 
@@ -53,11 +67,21 @@ An open specification for hardware-attested AI agent governance records. TRACE d
 
 The record is a single EAT envelope (RFC 9711). Each field is independently verifiable. No callback to the issuer is required.
 
+### Supported platforms
+
+| Platform | v0.1 | v0.2 (planned) | Notes |
+|---|---|---|---|
+| `intel-tdx` | Yes | Yes | |
+| `amd-sev-snp` | Yes | Yes | |
+| `nvidia-h100` | Yes | Yes | |
+| `gpu-cc` | No | Planned | Generic GPU confidential compute |
+| `opaque` | Yes | Yes | Explicit opt-in; contact maintainers |
+
 ## Specification
 
-- [`spec/trace-v0.1.md`](spec/trace-v0.1.md) — full specification
-- [`schema/trace-claim.json`](schema/trace-claim.json) — JSON Schema
-- [`examples/`](examples/) — example Trust Records for Intel TDX, AMD SEV-SNP, and NVIDIA H100
+- [`spec/trace-v0.1.md`](spec/trace-v0.1.md) -- full specification
+- [`schema/trace-claim.json`](schema/trace-claim.json) -- JSON Schema
+- [`examples/`](examples/) -- example Trust Records for Intel TDX, AMD SEV-SNP, and NVIDIA H100
 
 ## Standards composition
 
@@ -75,7 +99,7 @@ TRACE profiles existing standards rather than replacing them:
 
 ## Reference implementation
 
-[agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) — Confidential MCP Gateway. Hardware-attested policy enforcement at the MCP tool-call boundary on Intel TDX, AMD SEV-SNP, and NVIDIA H100/Blackwell.
+[agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) -- Confidential MCP Gateway. Hardware-attested policy enforcement at the MCP tool-call boundary on Intel TDX, AMD SEV-SNP, and NVIDIA H100/Blackwell.
 
 ## Registry
 
@@ -83,7 +107,7 @@ A public append-only Merkle registry of TRACE Trust Record anchors: [agentrust-i
 
 ## Status
 
-Draft v0.1 — publishing at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
+Draft v0.1. Publishing at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
 
 ## License
 
