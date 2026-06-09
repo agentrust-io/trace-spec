@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="docs/assets/icon.svg" width="96" height="96" alt="TRACE"/>
 </p>
 
@@ -99,7 +99,7 @@ TRACE profiles existing standards rather than replacing them:
 
 ## Reference implementation
 
-[agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) -- Confidential MCP Gateway. Hardware-attested policy enforcement at the MCP tool-call boundary on Intel TDX, AMD SEV-SNP, and NVIDIA H100/Blackwell.
+[agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) -- Confidential MCP Runtime. Hardware-attested policy enforcement at the MCP tool-call boundary on Intel TDX, AMD SEV-SNP, and NVIDIA H100/Blackwell.
 
 ## Registry
 
