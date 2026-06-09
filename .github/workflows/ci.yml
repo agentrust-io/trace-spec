@@ -5,6 +5,9 @@ on:
     branches: ["main", "feat/**", "fix/**"]
   pull_request:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
