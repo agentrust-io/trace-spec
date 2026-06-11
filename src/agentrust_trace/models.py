@@ -31,6 +31,10 @@ class RuntimeInfo(BaseModel):
         "arm-cca",
         "google-confidential-space",
         "tpm2",
+        # Development / non-attested mode. Distinct from tpm2 so a dev-mode
+        # record can never be mistaken for hardware-backed evidence by a
+        # consumer that only inspects runtime.platform.
+        "software-only",
     ]
     measurement: DigestStr
     rim_uri: str | None = None
