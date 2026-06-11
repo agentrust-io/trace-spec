@@ -78,9 +78,10 @@
             "aws-nitro",
             "arm-cca",
             "google-confidential-space",
-            "tpm2"
+            "tpm2",
+            "software-only"
           ],
-          "description": "Hardware platform providing the root of trust."
+          "description": "Hardware platform providing the root of trust. software-only marks development-mode records with no hardware backing; they must never be treated as attested evidence."
         },
         "measurement": {
           "type": "string",
