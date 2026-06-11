@@ -1,5 +1,4 @@
 {
-  "_comment": "TRACE v0.1 Trust Record — AMD SEV-SNP example.",
   "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",

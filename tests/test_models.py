@@ -12,9 +12,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 
 def _load(name: str) -> dict:
-    data = json.loads((EXAMPLES_DIR / name).read_text())
-    data.pop("_comment", None)  # examples carry a human note; not part of the schema
-    return data
+    # Examples must validate exactly as published: no preprocessing.
+    return json.loads((EXAMPLES_DIR / name).read_text())
 
 
 @pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
@@ -101,3 +100,32 @@ def test_digest_sha512_rejected() -> None:
     data["runtime"]["measurement"] = "sha512:" + "a" * 128
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+# cnf.jwk key material enforcement
+
+
+def test_okp_jwk_without_key_material_rejected() -> None:
+    """An OKP confirmation key with no crv/x carries no key material and binds nothing."""
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "OKP"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_ec_jwk_without_y_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "EC", "crv": "P-256", "x": "dGVzdA"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_okp_jwk_with_key_material_accepted() -> None:
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.cnf.jwk.x is not None

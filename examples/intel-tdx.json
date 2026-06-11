@@ -1,5 +1,4 @@
 {
-  "_comment": "TRACE v0.1 Trust Record — Intel TDX example.",
   "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
   "iat": 1750676200,
   "subject": "spiffe://trust.example.org/agent/document-processor/staging",

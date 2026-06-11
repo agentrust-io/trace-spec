@@ -225,7 +225,7 @@
       "properties": {
         "jwk": {
           "type": "object",
-          "description": "JWK (RFC 7517) representing the TEE-sealed public key.",
+          "description": "JWK (RFC 7517) representing the TEE-sealed public key. Keys must carry actual key material: OKP keys require crv and x; EC keys require crv, x, and y.",
           "required": ["kty"],
           "properties": {
             "kty": {"type": "string"},
@@ -233,7 +233,23 @@
             "x":   {"type": "string"},
             "y":   {"type": "string"},
             "kid": {"type": "string"}
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": ["kty"],
+                "properties": {"kty": {"const": "OKP"}}
+              },
+              "then": {"required": ["crv", "x"]}
+            },
+            {
+              "if": {
+                "required": ["kty"],
+                "properties": {"kty": {"const": "EC"}}
+              },
+              "then": {"required": ["crv", "x", "y"]}
+            }
+          ]
         }
       },
       "additionalProperties": false
