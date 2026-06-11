@@ -11,9 +11,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 
 def _load(name: str) -> dict:
-    data = json.loads((EXAMPLES_DIR / name).read_text())
-    data.pop("_comment", None)
-    return data
+    # Examples must validate exactly as published: no preprocessing.
+    return json.loads((EXAMPLES_DIR / name).read_text())
 
 
 @pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
@@ -42,3 +41,37 @@ def test_missing_required_field_fails() -> None:
 def test_schema_is_dict() -> None:
     assert isinstance(SCHEMA, dict)
     assert SCHEMA.get("title") == "TRACE Trust Record"
+
+
+def test_comment_key_fails() -> None:
+    """additionalProperties is false: a _comment key must be rejected, including in examples."""
+    data = _load("intel-tdx.json")
+    data["_comment"] = "human note"
+    errors = iter_errors(data)
+    assert errors
+
+
+def test_okp_jwk_without_key_material_fails() -> None:
+    """cnf.jwk must carry key material: OKP requires crv and x."""
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "OKP"}
+    errors = iter_errors(data)
+    assert errors
+
+
+def test_ec_jwk_without_y_fails() -> None:
+    """cnf.jwk must carry key material: EC requires crv, x, and y."""
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "EC", "crv": "P-256", "x": "dGVzdA"}
+    errors = iter_errors(data)
+    assert errors
+
+
+def test_okp_jwk_with_key_material_passes() -> None:
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    }
+    assert iter_errors(data) == []

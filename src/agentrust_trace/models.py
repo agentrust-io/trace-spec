@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 
@@ -82,6 +82,18 @@ class JWK(BaseModel):
     x: str | None = None
     y: str | None = None
     kid: str | None = None
+
+    @model_validator(mode="after")
+    def _require_key_material(self) -> JWK:
+        """A confirmation key without key material binds nothing (RFC 7518 §6)."""
+        required_by_kty = {"OKP": ("crv", "x"), "EC": ("crv", "x", "y")}
+        required = required_by_kty.get(self.kty, ())
+        missing = [name for name in required if getattr(self, name) is None]
+        if missing:
+            raise ValueError(
+                f"jwk with kty={self.kty!r} must carry key material: missing {', '.join(missing)}"
+            )
+        return self
 
 
 class ConfirmationKey(BaseModel):
