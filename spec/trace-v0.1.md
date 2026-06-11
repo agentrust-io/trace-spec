@@ -44,7 +44,7 @@ The wall is not technical capability — it is evidence. AI builders today produ
 
 The result: every regulated AI deployment re-litigates trust at every host boundary. Each cloud, each model provider, each agent framework ships its own evidence shape. Auditors cannot compare. Verifiers cannot federate. Workloads cannot move.
 
-The EU AI Act enforces tamper-evident logging for high-risk AI in August 2026. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
+The EU AI Act mandates tamper-evident logging for high-risk AI (Article 12); under the current provisional timeline those obligations apply from around December 2027. Frameworks already in force — DORA for financial entities, HIPAA for healthcare — carry equivalent audit-trail requirements today. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
 
 ---
 
