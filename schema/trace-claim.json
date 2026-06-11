@@ -253,6 +253,11 @@
         }
       },
       "additionalProperties": false
+    },
+    "signature": {
+      "type": "string",
+      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema.",
+      "pattern": "^[A-Za-z0-9_-]+$"
     }
   },
   "additionalProperties": false

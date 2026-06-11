@@ -115,6 +115,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `cnf` | Confirmation key — binds record to TEE-held signing key | EAT `cnf` claim (RFC 8747) |
 | `eat_profile` | Profile URI identifying this as a TRACE v0.1 record | EAT profile claim |
 | `iat` | Issued-at timestamp (Unix epoch) | EAT standard claim |
+| `signature` | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON |
 
 Each field is independently verifiable. Sub-records (e.g., per-tool-call transcripts) compose under one root envelope.
 
@@ -183,15 +184,30 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 - **Revocation:** silicon-root revocation is consumed from existing vendor channels. Workload-level keys SHOULD rotate at TEE-image boundaries. Verifiers MUST consult current revocation status at verification time.
 - **Hash agility:** SHA-256 minimum; SHA-384 required for FIPS-aligned profiles. Algorithm signaled in the EAT envelope per RFC 9711 §6.
 
+#### 3.2.2 Mandatory signature and freshness binding
+
+**Signature binding.** Every TRACE Trust Record MUST be cryptographically bound by a signature over its canonical JSON form, made by the key in `cnf`. Canonicalization is RFC 8785 (JCS) unless the profile declares a different canonicalization. The signature MAY be either:
+
+- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
+- **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
+
+Each profile MUST declare which binding form it uses. A record with no verifiable signature binding is not a Trust Record: verifiers MUST reject it. Schema validity alone confers no trust.
+
+**Freshness.** Records MUST carry `iat`. Verifiers MUST enforce a maximum record age: a record whose `iat` is older than the maximum age MUST be rejected. The default maximum age is 24 hours; a deployment profile MAY specify a different value. Verifiers SHOULD additionally support challenge-nonce binding for online verification: the verifier supplies a nonce, the issuer echoes it in `runtime.nonce`, and the verifier checks the echo. When a challenge nonce was issued, a record that omits or mismatches it MUST be rejected.
+
+**Conformance alignment.** The TRACE conformance suite (trace-tests) already enforces both rules: records without a verifiable signature fail at conformance level 1 and above, and the default 24-hour max-age is enforced.
+
 ### 3.3 Verification
 
 Any party — browser, CLI, in-cluster verifier, third-party auditor — verifies:
 
-1. Signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).
-2. Runtime measurements match published Reference Integrity Manifests (RIMs).
-3. Policy hash matches the policy bundle the verifier expects.
-4. SCITT receipt resolves on the named transparency log.
-5. SLSA provenance resolves to a trusted builder.
+1. The record's signature binding (section 3.2.2) verifies against the key in `cnf`, BEFORE any other field is trusted. A record with no verifiable binding MUST be rejected.
+2. The record is fresh: `iat` is within the maximum age (default 24 hours unless the deployment profile specifies otherwise). If the verifier issued a challenge nonce, `runtime.nonce` echoes it.
+3. Signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).
+4. Runtime measurements match published Reference Integrity Manifests (RIMs).
+5. Policy hash matches the policy bundle the verifier expects.
+6. SCITT receipt resolves on the named transparency log.
+7. SLSA provenance resolves to a trusted builder.
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
