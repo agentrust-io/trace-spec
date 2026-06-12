@@ -106,7 +106,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `subject` | Workload identity (agent, tool, model invocation) | SPIFFE SVID |
 | `model` | Model identity, weights digest, version | EAT claim + AIBOM reference |
 | `runtime` | TEE measurement chain (firmware → kernel → image → workload) | RATS Evidence + vendor RIM |
-| `policy` | Bound policy set hash + enforcement mode | Policy artifact hash sealed to TEE measurement |
+| `policy` | Bound policy set hash + enforcement mode. `enforcement_mode` MUST default to `enforce`; a deployment MUST explicitly configure `silent` mode. | Policy artifact hash sealed to TEE measurement |
 | `data_class` | Classification of inputs and outputs | Classification label bound to per-call execution |
 | `tool_transcript` | MCP / A2A tool calls invoked, parameters classified, responses filtered | MCP / A2A protocol transcripts bound to TEE measurement |
 | `build_provenance` | How the running code and model were built | SLSA Provenance v1.0 |
@@ -265,7 +265,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
 
-- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim.
+- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
 - **`data_class` claim.** Data classification schemes are established (DLP labels, NIST SP 800-60, sensitivity tags). TRACE adds: a classification label is attached to inputs and outputs at the per-call layer and recorded in the Trust Record alongside the runtime evidence.
 - **`tool_transcript` claim.** MCP and A2A transcripts exist at the protocol layer. TRACE adds cryptographic binding of the transcript hash into the EAT envelope and per-call parameter classification.
 - **AI-agent execution profile.** A profile registry that pins the claim set, evidence requirements, and verification rules for AI-agent workloads specifically.

@@ -117,7 +117,8 @@
         "enforcement_mode": {
           "type": "string",
           "enum": ["enforce", "advisory", "silent"],
-          "description": "How policy decisions were applied: enforce (block on deny), advisory (log only), silent (no logging)."
+          "default": "enforce",
+          "description": "How policy decisions were applied: enforce (block on deny), advisory (log and allow), silent (allow and suppress operational logs; the audit chain still records every would-have-denied decision). Gateways MUST default to enforce. A deployment MUST explicitly configure silent mode; it MUST NOT be the default."
         },
         "version": {
           "type": "string",
