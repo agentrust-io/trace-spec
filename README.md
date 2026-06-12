@@ -7,6 +7,7 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 [![AAIF](https://img.shields.io/badge/Targeting-AAIF_%2F_Linux_Foundation-6366f1)](https://agenticai.foundation)
 [![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.1.md)
+[![Discord](https://dcbadge.limes.pink/api/server/9JWNpH7E?style=flat)](https://discord.gg/9JWNpH7E)
 
 > **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026. May have breaking changes before v1.0.
 
@@ -108,6 +109,10 @@ A public append-only Merkle registry of TRACE Trust Record anchors: [agentrust-i
 ## Status
 
 Draft v0.1. Publishing at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
+
+## Community
+
+Questions, feedback, integration help: [Discord](https://discord.gg/9JWNpH7E).
 
 ## License
 
