@@ -1,0 +1,125 @@
+site_name: TRACE
+site_description: Trust Runtime Attestation and Compliance Evidence — open attestation standard for agentic AI governance
+site_url: https://agentrust-io.github.io/trace-spec
+repo_url: https://github.com/agentrust-io/trace-spec
+repo_name: agentrust-io/trace-spec
+edit_uri: edit/main/
+docs_dir: .
+exclude_docs: |
+  .github/
+  node_modules/
+  src/
+  tests/
+  schema/
+  examples/
+  LICENSE
+  NOTICE
+  ANTITRUST.md
+  ADOPTERS.md
+  MAINTAINERS.md
+  SECURITY.md
+  CHARTER.md
+  CODE_OF_CONDUCT.md
+  pyproject.toml
+
+theme:
+  name: material
+  logo: docs/assets/icon.svg
+  favicon: docs/assets/icon.svg
+  palette:
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+    - header.autohide
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Inter, system-ui, -apple-system, sans-serif
+    code: JetBrains Mono, Cascadia Code, monospace
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/agentrust-io/trace-spec
+  generator: false
+
+extra_css:
+  - docs/stylesheets/extra.css
+
+nav:
+  - Home: README.md
+  - Specification: spec/trace-v0.1.md
+  - Crosswalks:
+      - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
+  - Project:
+      - Limitations: LIMITATIONS.md
+      - Changelog: CHANGELOG.md
+      - Contributing: CONTRIBUTING.md
+      - Governance: GOVERNANCE.md
+      - Roadmap: ROADMAP.md
