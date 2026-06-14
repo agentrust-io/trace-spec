@@ -1,0 +1,21 @@
+TRACE
+Copyright 2026 AgentTrust Authors
+
+This product includes software developed by the AgentTrust project
+(https://github.com/agentrust-io/trace-spec).
+
+---
+
+Third-party components used by the Python SDK:
+
+pydantic
+  License: MIT
+  https://github.com/pydantic/pydantic
+
+jsonschema
+  License: MIT
+  https://github.com/python-jsonschema/jsonschema
+
+jcs (dev dependency — RFC 8785 canonical JSON)
+  License: MIT
+  https://github.com/nicowillis/jcs
