@@ -26,6 +26,7 @@ exclude_docs: |
 
 theme:
   name: material
+  font: false
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
   palette:
