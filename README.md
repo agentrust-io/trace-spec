@@ -6,7 +6,8 @@
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 [![AAIF](https://img.shields.io/badge/Targeting-AAIF_%2F_Linux_Foundation-6366f1)](https://agenticai.foundation)
-[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.1.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.2-0ea5e9)](spec/trace-v0.1.md)
+[![PyPI](https://img.shields.io/pypi/v/agentrust-trace)](https://pypi.org/project/agentrust-trace/)
 [![Discord](https://dcbadge.limes.pink/api/server/9JWNpH7E?style=flat)](https://discord.gg/9JWNpH7E)
 
 > **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026. May have breaking changes before v1.0.
@@ -27,7 +28,7 @@ An open specification for hardware-attested AI agent governance records. TRACE d
 {
   "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
   "iat": 1750676142,
-  "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
+  "subject": "spiffe://trust.example.org/agent/payments-processor/prod",  // or "did:mesh:spiffe://..."
   "model": {
     "provider": "anthropic",
     "model_id": "claude-sonnet-4-6",
@@ -92,7 +93,7 @@ TRACE profiles existing standards rather than replacing them:
 |---|---|
 | RATS / EAT (RFC 9711) | Wire envelope and claim model |
 | SLSA Provenance v1.0 | Build-time provenance (`build_provenance`) |
-| SPIFFE SVID | Workload identity (`subject`) |
+| SPIFFE SVID / DID URI | Workload identity (`subject`) |
 | SCITT | Append-only transparency anchoring (`transparency`) |
 | EAR (draft-ietf-rats-ar4si) | Verifier appraisal output (`appraisal`) |
 | MCP / A2A | Agent tool-call transcript surface (`tool_transcript`) |
@@ -106,9 +107,23 @@ TRACE profiles existing standards rather than replacing them:
 
 A public append-only Merkle registry of TRACE Trust Record anchors: [agentrust-io/trace-registry](https://github.com/agentrust-io/trace-registry).
 
+## Install
+
+```bash
+pip install agentrust-trace
+```
+
+```python
+from agentrust_trace import TrustRecord, sign_record, load_signing_key
+
+key = load_signing_key()  # reads TRACE_PRIVATE_KEY_PEM or generates ephemeral
+record = sign_record(payload, key)
+TrustRecord.model_validate(record)  # validate before writing
+```
+
 ## Status
 
-Draft v0.1. Publishing at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
+v0.2. `subject` now accepts DID URIs (`did:`) in addition to SPIFFE SVIDs. `slsa_level: 0` supported for software-only deployments. Published at Confidential Computing Summit, San Francisco, June 23 2026. Targeting submission to the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) under the Linux Foundation.
 
 ## Community
 

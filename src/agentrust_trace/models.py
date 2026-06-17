@@ -62,7 +62,7 @@ class ToolTranscript(BaseModel):
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    slsa_level: Annotated[int, Field(ge=1, le=3)]
+    slsa_level: Annotated[int, Field(ge=0, le=3)]
     builder: str | None = None
     digest: DigestStr
     provenance_uri: str | None = None

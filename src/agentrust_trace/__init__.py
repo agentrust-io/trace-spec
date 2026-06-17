@@ -1,4 +1,4 @@
-"""agentrust-trace — TRACE v0.1 Trust Record models and validation."""
+"""agentrust-trace — TRACE Trust Record models, validation, and signing."""
 
 from agentrust_trace.models import (
     Appraisal,
@@ -10,6 +10,13 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
     TrustRecord,
+)
+from agentrust_trace.sign import (
+    generate_key,
+    key_to_jwk,
+    load_key,
+    load_signing_key,
+    sign_record,
 )
 from agentrust_trace.validate import (
     iter_errors,
@@ -33,4 +40,9 @@ __all__ = [
     "SCHEMA",
     "iter_errors",
     "validate_json",
+    "generate_key",
+    "key_to_jwk",
+    "load_key",
+    "load_signing_key",
+    "sign_record",
 ]

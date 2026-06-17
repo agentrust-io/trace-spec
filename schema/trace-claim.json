@@ -167,9 +167,9 @@
       "properties": {
         "slsa_level": {
           "type": "integer",
-          "minimum": 1,
+          "minimum": 0,
           "maximum": 3,
-          "description": "SLSA Build Level achieved. Level 2 minimum for TRACE conformance; Level 3 for production mark."
+          "description": "SLSA Build Level achieved. Level 0 = software-only (development/staging); Level 2 minimum for TRACE conformance; Level 3 for production mark."
         },
         "builder": {
           "type": "string",
