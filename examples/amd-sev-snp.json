@@ -1,0 +1,52 @@
+{
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676142,
+  "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "version": "20251001",
+    "aibom_uri": "https://registry.agentrust.io/aibom/claude-sonnet-4-6-20251001"
+  },
+  "runtime": {
+    "platform": "amd-sev-snp",
+    "measurement": "sha384:c9e4b1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/cert_chain",
+    "firmware_version": "1.53.0",
+    "nonce": "ZRVkXG1wbVJhY2tSZWNvcmQ"
+  },
+  "policy": {
+    "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+    "enforcement_mode": "enforce",
+    "version": "1.2.0",
+    "policy_uri": "https://registry.agentrust.io/policy/payments-v1.2.0"
+  },
+  "data_class": "confidential",
+  "tool_transcript": {
+    "hash": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+    "call_count": 3,
+    "transcript_uri": "https://registry.agentrust.io/transcript/amd-2026-06-23T09:15:42Z"
+  },
+  "build_provenance": {
+    "slsa_level": 2,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+    "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/def456"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://trust-authority.example.org",
+    "policy_ref": "https://trust-authority.example.org/policy/sev-snp-agent-v1",
+    "timestamp": 1750676145
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "MEkwEwYHKoZIzj0CAQY",
+      "y": "GHkVPyQs9bXm2A",
+      "kid": "sev-snp-workload-key-2026-06-23"
+    }
+  }
+}

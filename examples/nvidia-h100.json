@@ -1,0 +1,53 @@
+{
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676300,
+  "subject": "spiffe://trust.example.org/agent/image-analysis/prod",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-opus-4-8",
+    "version": "20260601",
+    "weights_digest": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+    "aibom_uri": "https://registry.agentrust.io/aibom/claude-opus-4-8-20260601"
+  },
+  "runtime": {
+    "platform": "nvidia-h100",
+    "measurement": "sha384:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9",
+    "rim_uri": "https://nras.nvidia.com/v1/attestation/rim/h100",
+    "firmware_version": "535.183.06",
+    "nonce": "bnZpZGlhLWgxMDAtbm9uY2U"
+  },
+  "policy": {
+    "bundle_hash": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    "enforcement_mode": "enforce",
+    "version": "1.0.0",
+    "policy_uri": "https://registry.agentrust.io/policy/image-analysis-v1.0.0"
+  },
+  "data_class": "restricted",
+  "tool_transcript": {
+    "hash": "sha256:a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8",
+    "call_count": 1,
+    "transcript_uri": "https://registry.agentrust.io/transcript/h100-2026-06-23T09:18:20Z"
+  },
+  "build_provenance": {
+    "slsa_level": 2,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+    "digest": "sha256:c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/ghi789"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://nras.nvidia.com",
+    "policy_ref": "https://nras.nvidia.com/policy/h100-cc-agent-v1",
+    "timestamp": 1750676304
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:18:20Z-b2c3d4",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "SDEwMENvbmZpZGVudGlhbA",
+      "y": "Q29tcHV0aW5nS2V5Rm9yVA",
+      "kid": "h100-cc-workload-key-2026-06-23"
+    }
+  }
+}
