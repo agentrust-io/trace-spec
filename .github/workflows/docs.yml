@@ -74,7 +74,7 @@ jobs:
 
           # Generate build-specific mkdocs config
           with open('mkdocs.yml', encoding='utf-8') as f:
-              config = yaml.safe_load(f)
+              config = yaml.full_load(f)
 
           config['docs_dir'] = BUILD
           config['site_dir'] = '/tmp/trace-spec-site'
