@@ -2,14 +2,16 @@
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#f5f3ff"/>
-      <stop offset="100%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#ede9fe"/>
     </linearGradient>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#7c3aed"/>
-      <stop offset="100%" stop-color="#0ea5e9"/>
+      <stop offset="0%" stop-color="#5BD2BE"/>
+      <stop offset="50%" stop-color="#8251EE"/>
+      <stop offset="100%" stop-color="#C661F7"/>
     </linearGradient>
   </defs>
   <rect width="400" height="400" fill="url(#bg)"/>
+  <!-- Shield -->
   <path d="M200,58 L326,112 L326,224 C326,298 268,340 200,360 C132,340 74,298 74,224 L74,112 Z"
         fill="url(#brand)" opacity="0.10" stroke="url(#brand)" stroke-width="3.5" stroke-linejoin="round"/>
   <!-- Eye outline -->

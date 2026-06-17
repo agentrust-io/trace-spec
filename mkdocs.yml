@@ -26,6 +26,7 @@ exclude_docs: |
 
 theme:
   name: material
+  font: false
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
   custom_dir: docs/overrides
@@ -128,8 +129,6 @@ extra:
     - icon: fontawesome/brands/discord
       link: https://discord.gg/9JWNpH7E
       name: Join the Discord
-  version:
-    provider: mike
   generator: false
   analytics:
     feedback:
@@ -138,13 +137,11 @@ extra:
         - icon: material/emoticon-happy-outline
           name: This page was helpful
           data: 1
-          note: >-
-            Thanks for your feedback!
+          note: Thanks for your feedback!
         - icon: material/emoticon-sad-outline
           name: This page could be improved
           data: 0
-          note: >-
-            Thanks for your feedback — open an issue to let us know.
+          note: Thanks for your feedback — open an issue to let us know.
 
 extra_css:
   - docs/stylesheets/extra.css

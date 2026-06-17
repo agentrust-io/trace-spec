@@ -26,6 +26,10 @@ concurrency:
   group: docs-deploy
   cancel-in-progress: false
 
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Build and deploy docs
@@ -51,5 +55,30 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Assemble docs build directory
+        run: |
+          BUILD=.docs_build
+          mkdir -p $BUILD
+
+          # Copy docs/ subtree (preserves paths: docs/crosswalks/, docs/integration/, etc.)
+          if [ -d docs ]; then cp -r docs $BUILD/docs; fi
+
+          # Copy spec/ and examples/
+          if [ -d spec ]; then cp -r spec $BUILD/spec; fi
+          if [ -d examples ]; then cp -r examples $BUILD/examples; fi
+
+          # Root-level files referenced in nav
+          for fname in README.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md ROADMAP.md LIMITATIONS.md CNAME; do
+            if [ -f "$fname" ]; then cp "$fname" "$BUILD/$fname"; fi
+          done
+
+          echo "Build dir contains $(find $BUILD -type f | wc -l) files"
+
+      - name: Generate build config
+        run: |
+          # Avoid yaml.safe_load / !!python/name: tag issues — just text-substitute docs_dir
+          sed 's|^docs_dir: \.$|docs_dir: .docs_build|' mkdocs.yml > .mkdocs_build.yml
+          echo "Build config written to .mkdocs_build.yml"
+
       - name: Build and deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean --verbose
+        run: mkdocs gh-deploy --force --clean --config-file .mkdocs_build.yml
