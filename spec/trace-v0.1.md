@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.1 — Draft |
+| Version | 0.2 — Draft |
 | Status | RFC — Request for Comments |
 | Authors | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
 | Target announcement | Confidential Computing Summit, San Francisco — 23 June 2026 |
@@ -103,7 +103,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 
 | Field | Description | Source primitive |
 |---|---|---|
-| `subject` | Workload identity (agent, tool, model invocation) | SPIFFE SVID |
+| `subject` | Workload identity (agent, tool, model invocation) | SPIFFE SVID or DID URI |
 | `model` | Model identity, weights digest, version | EAT claim + AIBOM reference |
 | `runtime` | TEE measurement chain (firmware → kernel → image → workload) | RATS Evidence + vendor RIM |
 | `policy` | Bound policy set hash + enforcement mode. `enforcement_mode` MUST default to `enforce`; a deployment MUST explicitly configure `silent` mode. | Policy artifact hash sealed to TEE measurement |

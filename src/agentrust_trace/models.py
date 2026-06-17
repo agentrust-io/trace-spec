@@ -62,7 +62,7 @@ class ToolTranscript(BaseModel):
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    slsa_level: Annotated[int, Field(ge=1, le=3)]
+    slsa_level: Annotated[int, Field(ge=0, le=3)]
     builder: str | None = None
     digest: DigestStr
     provenance_uri: str | None = None
@@ -113,7 +113,7 @@ class TrustRecord(BaseModel):
 
     eat_profile: Literal["tag:agentrust.io,2026:trace-v0.1"]
     iat: Annotated[int, Field(ge=1700000000)]
-    subject: Annotated[str, Field(pattern=r"^spiffe://")]
+    subject: Annotated[str, Field(pattern=r"^(spiffe://|did:)")]
     model: ModelInfo
     runtime: RuntimeInfo
     policy: PolicyInfo

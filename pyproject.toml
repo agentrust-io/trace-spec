@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentrust-trace"
-version = "0.1.1"
+version = "0.2.0"
 description = "TRACE v0.1 — hardware-attested governance records for AI agents"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0",
     "jsonschema>=4.20",
+    "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]
