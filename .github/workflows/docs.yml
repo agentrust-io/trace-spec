@@ -19,8 +19,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: docs-deploy
@@ -51,5 +49,48 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Assemble docs build directory
+        run: |
+          python3 << 'PYEOF'
+          import os, shutil, yaml
+
+          BUILD = '.docs_build'
+          os.makedirs(BUILD, exist_ok=True)
+
+          # Copy docs/ (keeps paths like docs/crosswalks/..., docs/integration/..., etc.)
+          if os.path.exists('docs'):
+              shutil.copytree('docs', os.path.join(BUILD, 'docs'), dirs_exist_ok=True)
+
+          # Copy spec/ and examples/ (keeps paths like spec/trace-v0.1.md)
+          for d in ['spec', 'examples', 'assets', 'crosswalks']:
+              if os.path.exists(d):
+                  shutil.copytree(d, os.path.join(BUILD, d), dirs_exist_ok=True)
+
+          # Root-level markdown files (nav references them by name)
+          for fname in ['README.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
+                        'GOVERNANCE.md', 'ROADMAP.md', 'LIMITATIONS.md', 'CNAME']:
+              if os.path.exists(fname):
+                  shutil.copy(fname, os.path.join(BUILD, fname))
+
+          # Generate build-specific mkdocs config
+          with open('mkdocs.yml', encoding='utf-8') as f:
+              config = yaml.safe_load(f)
+
+          config['docs_dir'] = BUILD
+          config['site_dir'] = '/tmp/trace-spec-site'
+          config.pop('exclude_docs', None)   # build dir is already clean
+          config.pop('custom_dir', None)      # remove theme custom_dir from nested theme
+
+          # Fix theme custom_dir if present
+          if isinstance(config.get('theme'), dict):
+              config['theme'].pop('custom_dir', None)
+
+          with open('.mkdocs_build.yml', 'w', encoding='utf-8') as f:
+              yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+          print(f'Build directory: {BUILD}')
+          print(f'Files: {sum(len(fs) for _, _, fs in os.walk(BUILD))}')
+          PYEOF
+
       - name: Build and deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean --verbose
+        run: mkdocs gh-deploy --force --clean --config-file .mkdocs_build.yml
