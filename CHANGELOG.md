@@ -14,6 +14,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 ### Specification
 
 - Optional agent-identity binding (§3.1.1): a new OPTIONAL `agent` block carries the signed Agent Manifest identity bound to the runtime session, distinct from `subject`. When present it MUST carry `agent_id` and `manifest_id`; `binding` is optional and informational only (verifiers MUST NOT base trust on it; initial values `svid-matched`, `manifest-presented`, `operator-asserted`). `manifest_id` is format-agnostic (byte-equal comparison). Adds an optional offline agent-identity cross-check to the verification protocol (§3.3); the catalog half is deferred as a future extension (§7). `subject == agent.agent_id` is permitted. Backward compatible. (#33)
+- External execution evidence verification guidance (§3.3.1): describes how a verifier treats a controller-signed receipt attached to a cMCP audit entry (cMCP #301). Optional, issuer-anchored verification over the RFC 8785 (JCS) canonical receipt; `linked_call_id` resolved against the exported audit bundle; `evidence_hash` treated as an opaque issuer-defined digest committed by the signature; failure reported separately from the Trust Record verdict. No wire-format change; stays within the §2.4 scope boundary. (#34)
 
 ### Schema
 

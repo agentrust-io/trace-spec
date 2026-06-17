@@ -252,6 +252,23 @@ A verifier that cannot complete every applicable step MUST treat the cross-check
 
 This is a defense-in-depth layer: it confirms the agent the operator approved is the agent that acted, without a callback to the gateway. A present-but-uncheckable `agent` block (no manifest supplied) is unverified, not invalid: it does not affect the validity of the gateway-produced record. A record with no `agent` block is verified exactly as before.
 
+#### 3.3.1 External execution evidence (OPTIONAL)
+
+<!-- CHANGED: #34 — verification guidance for controller-signed receipts -->
+
+Some deployments attach **external execution evidence** to a cMCP audit entry: a receipt in which an independent authority (for example a safety controller for an embodied agent) signs an assertion about a specific call. The receipt fields (`issuer`, `issuer_key_id`, `signature`, `evidence_hash`, `evidence_type`, `linked_call_id`) and their formats are **defined normatively by the cMCP audit-entry schema, not by this document** (cMCP #301); §3.3.1 only describes how a TRACE verifier treats such a receipt. The receipt is distinct from `response_payload_hash`, which records what the gateway forwarded. It lives on the cMCP audit entry, inside the audit chain the Trust Record already commits to via `tool_transcript.hash`, so no Trust Record wire-format field changes.
+
+External execution evidence is out-of-band evidence signed by a non-gateway authority. It is only as trustworthy as the issuer key, whose trust is established out of band — a PKI / trust-anchor concern. A conforming verifier, **when supplied an issuer trust anchor**:
+
+1. Verifies the issuer `signature` over the canonical receipt. The canonical form is the receipt with the `signature` member removed, serialized with RFC 8785 (JCS) — the same canonicalization TRACE uses for the Trust Record (§3.2.2) — unless the cMCP profile declares otherwise. The signature MUST verify against the trusted key identified by `issuer_key_id`.
+2. Locates the bound call: the verifier obtains the exported audit bundle (cMCP `/audit/export`) for the audit chain committed by `tool_transcript.hash`, and confirms it contains exactly one entry whose `call_id` equals `linked_call_id`. The receipt is meaningful only with that bundle in hand; the Trust Record alone carries the chain tip and root, not the full chain.
+
+`evidence_hash` is an opaque digest **defined by the receipt schema and the issuer's `evidence_type`**; TRACE does not specify its pre-image and a TRACE verifier does not recompute it. The issuer `signature` (step 1) commits `evidence_hash`, so verifying the signature is what binds the digest; interpreting the underlying evidence artifact is out of TRACE's scope (§2.4).
+
+**Failure behavior.** Verifying external execution evidence is OPTIONAL and is reported as a result *separate from* the Trust Record verdict. If step 1 or step 2 fails, the verifier MUST mark the external evidence **invalid** (not merely unverified) but MUST NOT, on that basis alone, reject the gateway-produced Trust Record: the record's validity is established by the §3.3 protocol (steps 1–7), which is independent of any attached receipt. A present-but-unconfigured receipt (no issuer trust anchor supplied) is **unverified, not invalid**. A relying party MAY apply its own policy that escalates an invalid receipt to a record-level rejection, but TRACE does not require it.
+
+This stays within TRACE's permanent scope boundary (§2.4): TRACE binds evidence; it does not assert that a physical action occurred or that the action was functional-safety certified.
+
 ### 3.4 Scope
 
 TRACE governs any confidential workload — AI agent execution, regulated data processing, sovereign compute, secure multi-party computation. AI agents are the forcing function and the first reference profile, not the limit of the standard.
