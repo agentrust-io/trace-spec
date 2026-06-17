@@ -29,7 +29,6 @@ theme:
   font: false
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
-  custom_dir: docs/overrides
   palette:
     - scheme: slate
       primary: custom
