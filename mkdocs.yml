@@ -1,6 +1,6 @@
 site_name: TRACE
 site_description: Trust Runtime Attestation and Compliance Evidence — open attestation standard for agentic AI governance
-site_url: https://agentrust.io/trace
+site_url: https://trace.agentrust-io.com
 repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
 edit_uri: edit/main/
