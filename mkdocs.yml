@@ -1,17 +1,18 @@
 site_name: TRACE
 site_description: Trust Runtime Attestation and Compliance Evidence — open attestation standard for agentic AI governance
-site_url: https://agentrust-io.github.io/trace-spec
+site_url: https://agentrust.io/trace
 repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
 edit_uri: edit/main/
 docs_dir: .
+copyright: "© 2026 Opaque Systems — CC BY 4.0"
+
 exclude_docs: |
   .github/
   node_modules/
   src/
   tests/
   schema/
-  examples/
   LICENSE
   NOTICE
   ANTITRUST.md
@@ -21,11 +22,13 @@ exclude_docs: |
   CHARTER.md
   CODE_OF_CONDUCT.md
   pyproject.toml
+  CNAME
 
 theme:
   name: material
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
+  custom_dir: docs/overrides
   palette:
     - scheme: slate
       primary: custom
@@ -41,26 +44,30 @@ theme:
         name: Switch to dark mode
   features:
     - navigation.instant
+    - navigation.instant.progress
     - navigation.tracking
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
     - navigation.top
     - navigation.path
+    - navigation.footer
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
+    - content.code.annotate
     - content.tabs.link
+    - content.tooltips
     - toc.follow
-    - header.autohide
+    - announce.dismiss
   icon:
     repo: fontawesome/brands/github
-  font:
-    text: Inter, system-ui, -apple-system, sans-serif
-    code: JetBrains Mono, Cascadia Code, monospace
 
 plugins:
-  - search
+  - search:
+      lang: en
   - minify:
       minify_html: true
   - mkdocstrings:
@@ -92,29 +99,70 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.highlight:
       anchor_linenums: true
+      use_pygments: true
+      linenums_style: pymdownx-inline
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
   - attr_list
   - md_in_html
   - tables
+  - footnotes
   - toc:
       permalink: true
+      toc_depth: 3
 
 extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/agentrust-io/trace-spec
+      name: trace-spec on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/agentrust-trace/
+      name: agentrust-trace on PyPI
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/9JWNpH7E
+      name: Join the Discord
+  version:
+    provider: mike
   generator: false
+  analytics:
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback — open an issue to let us know.
 
 extra_css:
   - docs/stylesheets/extra.css
 
 nav:
   - Home: README.md
+  - Getting Started:
+      - Quickstart: docs/quickstart.md
+      - Verification: docs/verification.md
+      - Schema Reference: docs/schema.md
   - Specification: spec/trace-v0.1.md
+  - Integration:
+      - AGT: docs/integration/agt.md
+      - cMCP: docs/integration/cmcp.md
+  - Platforms:
+      - AMD SEV-SNP: docs/platforms/amd-sev-snp.md
+      - Intel TDX: docs/platforms/intel-tdx.md
+      - NVIDIA H100: docs/platforms/nvidia-h100.md
   - Crosswalks:
       - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
   - Project:
