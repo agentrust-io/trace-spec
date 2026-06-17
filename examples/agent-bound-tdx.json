@@ -1,0 +1,57 @@
+{
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676400,
+  "subject": "spiffe://cmcp.gateway/session/0197739a-8c00-7000-8000-000000000001",
+  "agent": {
+    "agent_id": "spiffe://factory.example/agent/material-movement/dev",
+    "manifest_id": "0197739a-8c00-7000-8000-000000000001",
+    "binding": "svid-matched"
+  },
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "version": "20251001",
+    "weights_digest": "sha256:9a129038d9a00aed0cf6a7ea059ca50a813449061ab87848cf1a13eafdf33b2c"
+  },
+  "runtime": {
+    "platform": "intel-tdx",
+    "measurement": "sha384:302165ab29dac9ee86adf8cf208ca21030ef10add5e41044be60f62e11331ef6387d9e5fe606974ac921cb9c9cbb4791",
+    "rim_uri": "https://api.trustedservices.intel.com/sgx/certification/v4/rootcacrl",
+    "firmware_version": "2.0.3",
+    "nonce": "dGRYLXdvcmtsb2FkLW5vbmNl"
+  },
+  "policy": {
+    "bundle_hash": "sha256:823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+    "enforcement_mode": "enforce",
+    "version": "1.2.0",
+    "policy_uri": "https://registry.agentrust.io/policy/material-movement-v1.2.0"
+  },
+  "data_class": "confidential",
+  "tool_transcript": {
+    "hash": "sha256:54e6289e14c7b0e7ad9acc2dfc4c1e3d027d0eef7f5c4c3fe7c292761d0e06a6",
+    "call_count": 3,
+    "transcript_uri": "https://registry.agentrust.io/transcript/agent-bound-2026-06-23T09:20:00Z"
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+    "digest": "sha256:6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/def456"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://api.trustedservices.intel.com",
+    "policy_ref": "https://api.trustedservices.intel.com/policy/tdx-agent-v1",
+    "timestamp": 1750676403
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:20:00Z-b0c1d2",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-384",
+      "x": "TDXd2VyaWZpY2F0aW9uS2V5",
+      "y": "UmVmZXJlbmNlTWVhc3VyZW1l",
+      "kid": "tdx-workload-key-2026-06-23"
+    }
+  }
+}

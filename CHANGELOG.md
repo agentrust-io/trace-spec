@@ -9,6 +9,22 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ---
 
+## [Unreleased]
+
+### Specification
+
+- Optional agent-identity binding (§3.1.1): a new OPTIONAL `agent` block carries the signed Agent Manifest identity bound to the runtime session, distinct from `subject`. When present it MUST carry `agent_id` and `manifest_id`; `binding` is optional and informational only (verifiers MUST NOT base trust on it; initial values `svid-matched`, `manifest-presented`, `operator-asserted`). `manifest_id` is format-agnostic (byte-equal comparison). Adds an optional offline agent-identity cross-check to the verification protocol (§3.3); the catalog half is deferred as a future extension (§7). `subject == agent.agent_id` is permitted. Backward compatible. (#33)
+
+### Schema
+
+- `schema/trace-claim.json`: optional `agent` object requiring `agent_id` + `manifest_id` when present.
+
+### Examples
+
+- `examples/agent-bound-tdx.json`: Trust Record carrying the `agent` block.
+
+---
+
 ## [0.1.0] — 2026-06-23
 
 Initial public draft. Announced at Confidential Computing Summit, San Francisco.

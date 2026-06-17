@@ -1,6 +1,7 @@
 """agentrust-trace — TRACE Trust Record models, validation, and signing."""
 
 from agentrust_trace.models import (
+    AgentIdentity,
     Appraisal,
     BuildProvenance,
     ConfirmationKey,
@@ -28,6 +29,7 @@ __version__ = "0.2.0"
 
 __all__ = [
     "__version__",
+    "AgentIdentity",
     "Appraisal",
     "BuildProvenance",
     "ConfirmationKey",

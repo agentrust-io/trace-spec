@@ -33,6 +33,29 @@
       "description": "Workload identity as a SPIFFE SVID URI or DID URI.",
       "pattern": "^(spiffe://|did:)"
     },
+    "agent": {
+      "type": "object",
+      "description": "OPTIONAL bound agent identity from a signed Agent Manifest, distinct from subject (the gateway session). Lets a verifier confirm offline that the approved agent is the agent that acted. When present it MUST carry agent_id and manifest_id. See spec section 3.1.1.",
+      "required": ["agent_id", "manifest_id"],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "Agent identity asserted by the signed Agent Manifest (SPIFFE SVID or DID URI).",
+          "pattern": "^(spiffe://|did:)"
+        },
+        "manifest_id": {
+          "type": "string",
+          "description": "Identifier of the Agent Manifest bound to this session. Format-agnostic (UUID, URI, or digest); compared by byte-equal string match.",
+          "minLength": 1
+        },
+        "binding": {
+          "type": "string",
+          "description": "OPTIONAL, informational only: how the gateway established the manifest-to-session binding. Verifiers MUST NOT make trust decisions on its value. Initial registered values: 'svid-matched', 'manifest-presented', 'operator-asserted'.",
+          "examples": ["svid-matched", "manifest-presented", "operator-asserted"]
+        }
+      },
+      "additionalProperties": false
+    },
     "model": {
       "type": "object",
       "description": "Model identity and provenance.",

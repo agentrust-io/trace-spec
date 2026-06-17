@@ -15,7 +15,10 @@ def _load(name: str) -> dict:
     return json.loads((EXAMPLES_DIR / name).read_text())
 
 
-@pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
+@pytest.mark.parametrize(
+    "filename",
+    ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json", "agent-bound-tdx.json"],
+)
 def test_examples_pass_json_schema(filename: str) -> None:
     validate_json(_load(filename))
 

@@ -9,6 +9,23 @@ _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
 
+class AgentIdentity(BaseModel):
+    """Bound agent identity from a signed Agent Manifest (spec §3.1.1).
+
+    Distinct from TrustRecord.subject (the gateway session). The whole block is
+    optional on the record, but when it is present it MUST carry both agent_id and
+    manifest_id: those two fields are the binding evidence, and a block with neither
+    is unverifiable. binding is informational only (verifiers MUST NOT base trust on
+    its value).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: Annotated[str, Field(pattern=r"^(spiffe://|did:)")]
+    manifest_id: Annotated[str, Field(min_length=1)]
+    binding: str | None = None
+
+
 class ModelInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -114,6 +131,7 @@ class TrustRecord(BaseModel):
     eat_profile: Literal["tag:agentrust.io,2026:trace-v0.1"]
     iat: Annotated[int, Field(ge=1700000000)]
     subject: Annotated[str, Field(pattern=r"^(spiffe://|did:)")]
+    agent: AgentIdentity | None = None
     model: ModelInfo
     runtime: RuntimeInfo
     policy: PolicyInfo

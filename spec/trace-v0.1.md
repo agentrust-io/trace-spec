@@ -104,6 +104,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | Field | Description | Source primitive |
 |---|---|---|
 | `subject` | Workload identity (agent, tool, model invocation) | SPIFFE SVID or DID URI |
+| `agent` | OPTIONAL. Bound agent identity (`agent_id`, `manifest_id`, `binding`) when the executing agent is governed by a signed Agent Manifest. Distinct from `subject`. See §3.1.1. | Agent Manifest `agent_id` bound to the runtime session |
 | `model` | Model identity, weights digest, version | EAT claim + AIBOM reference |
 | `runtime` | TEE measurement chain (firmware → kernel → image → workload) | RATS Evidence + vendor RIM |
 | `policy` | Bound policy set hash + enforcement mode. `enforcement_mode` MUST default to `enforce`; a deployment MUST explicitly configure `silent` mode. | Policy artifact hash sealed to TEE measurement |
@@ -118,6 +119,32 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `signature` | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON |
 
 Each field is independently verifiable. Sub-records (e.g., per-tool-call transcripts) compose under one root envelope.
+
+#### 3.1.1 Agent identity binding
+
+<!-- CHANGED: #33 — optional agent-identity block, distinct from subject -->
+
+`subject` identifies the workload that produced the record — for the cMCP reference implementation this is the gateway session SVID (e.g. `spiffe://cmcp.gateway/session/<uuid>`). A session SVID proves that an approved policy and catalog ran, but it does not by itself prove *which* agent ran: the agent the operator reviewed and approved (the signed Agent Manifest `agent_id`) may differ from the identity that actually acted.
+
+When the executing agent is governed by a signed Agent Manifest and the gateway binds that manifest to the runtime session, the Trust Record MAY carry an OPTIONAL `agent` block recording the bound identity so the binding is verifiable offline:
+
+```json
+"agent": {
+  "agent_id": "spiffe://factory.example/agent/material-movement/dev",
+  "manifest_id": "0197739a-8c00-7000-8000-000000000001",
+  "binding": "svid-matched"
+}
+```
+
+- `agent_id` — the agent identity asserted by the signed Agent Manifest (SPIFFE SVID or DID URI).
+- `manifest_id` — the identifier of the Agent Manifest bound to this session. This field is format-agnostic: it MAY be a UUID (the example is a UUIDv7), a URI, or a digest. Verifiers compare it by byte-equal string matching against the manifest's own identifier; they MUST NOT assume a particular structure.
+- `binding` — OPTIONAL. How the gateway established the manifest-to-session binding. This field is **informational and diagnostic only**: verifiers MUST NOT make a trust decision based on its value. The initial registered values are `svid-matched` (the manifest's bound SVID equals the session SVID's agent segment), `manifest-presented` (the session presented a signed manifest that the gateway verified), and `operator-asserted` (an operator asserted the binding out of band). Implementations MAY use other values; an unrecognized value MUST be treated as `binding` being absent. New values are registered by spec change (see §7).
+
+The `agent` block is OPTIONAL as a whole. A record without it remains valid; `subject` is unchanged and continues to identify the session. **When the `agent` block is present it MUST carry both `agent_id` and `manifest_id`** — these two fields are the binding evidence, and a block with neither is unverifiable noise. `binding` remains optional. The `agent` block is additive evidence that lets a third party verify the agent identity offline (§3.3); it never replaces `subject`.
+
+`subject` and `agent.agent_id` are conceptually distinct: `subject` is the session, `agent.agent_id` is the governed agent. In the cMCP reference design they always differ. The spec does **not** require them to differ, however — a deployment where the workload itself is the governed agent MAY set them equal. Equality carries no special meaning and a verifier MUST NOT reject a record solely because `subject == agent.agent_id`.
+
+**Canonical block vs. profile addenda.** The canonical `agent` block is intentionally the minimal *portable* identity: `agent_id`, `manifest_id`, and the informational `binding`. A profile MAY carry richer, implementation-specific binding evidence in its own addenda rather than in the canonical block — this keeps PKI and catalog concerns, which are profile- and deployment-specific, out of the vendor-neutral record. The cMCP reference profile does exactly this: alongside the canonical `agent` block it emits a `gateway.agent_identity` addendum carrying `authenticated_subject`, `issuer`, `issuer_key_id`, `policy_bundle_hash`, and `tool_catalog_hash` (cMCP #302). A TRACE verifier relies only on the canonical `agent` block for the cross-check below (§3.3); a cMCP-aware verifier MAY additionally consume the richer addendum. The canonical fields are the subset every TRACE verifier can rely on; profile addenda are additive and never required for a TRACE-level cross-check.
 
 ### 3.2 Wire format
 
@@ -210,6 +237,20 @@ Any party — browser, CLI, in-cluster verifier, third-party auditor — verifie
 7. SLSA provenance resolves to a trusted builder.
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
+
+<!-- CHANGED: #33 — optional offline agent-identity cross-check -->
+
+**Agent-identity cross-check (OPTIONAL).** When a record carries an `agent` block (§3.1.1) and the verifier holds the corresponding signed Agent Manifest out of band, the verifier MAY perform a self-checking cross-check:
+
+1. `agent.agent_id` equals the manifest `agent_id` (byte-equal string match).
+2. `agent.manifest_id` equals the manifest `manifest_id` (byte-equal string match).
+3. The policy hash the manifest binds equals `policy.bundle_hash` in this record.
+
+A verifier that cannot complete every applicable step MUST treat the cross-check as not performed (the `agent` block is unverified), not as a record failure (see below).
+
+> **Note (future extension):** a manifest may also bind a tool-catalog hash. The v0.1 Trust Record has no catalog-hash field, so the catalog half of this cross-check is **not implementable against v0.1 records** and is intentionally omitted here. Adding a catalog-hash claim and the matching cross-check step is tracked as a future extension (see §7 and cMCP #302).
+
+This is a defense-in-depth layer: it confirms the agent the operator approved is the agent that acted, without a callback to the gateway. A present-but-uncheckable `agent` block (no manifest supplied) is unverified, not invalid: it does not affect the validity of the gateway-produced record. A record with no `agent` block is verified exactly as before.
 
 ### 3.4 Scope
 
@@ -332,6 +373,8 @@ These need input before v0.2:
 5. **Privacy of the record.** Records may contain sensitive classifications. Standardize encrypted-claims envelope (JWE / COSE-Encrypt) from v1.0?
 6. **A2A profile timing.** Ship A2A as a peer profile to MCP in v1.0, or wait for A2A to stabilize?
 7. **Relationship to IETF AIIP.** Absorb, supersede, or coexist with draft-ritz-aiip?
+8. **`agent.binding` value registry.** §3.1.1 seeds three informational values (`svid-matched`, `manifest-presented`, `operator-asserted`). Where is the registry maintained, and should any value ever become trust-affecting rather than informational?
+9. **Catalog-hash claim.** The §3.3 agent-identity cross-check omits the tool-catalog half because v0.1 carries no catalog-hash field. Should v0.2 add a catalog-hash claim to the Trust Record (paired with the cMCP manifest binding, cMCP #302)?
 
 ---
 

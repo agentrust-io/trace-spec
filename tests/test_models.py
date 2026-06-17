@@ -16,7 +16,10 @@ def _load(name: str) -> dict:
     return json.loads((EXAMPLES_DIR / name).read_text())
 
 
-@pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
+@pytest.mark.parametrize(
+    "filename",
+    ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json", "agent-bound-tdx.json"],
+)
 def test_example_parses(filename: str) -> None:
     record = TrustRecord.model_validate(_load(filename))
     assert record.eat_profile == "tag:agentrust.io,2026:trace-v0.1"
@@ -124,6 +127,95 @@ def test_subject_rejects_http_scheme() -> None:
     data["subject"] = "https://example.org/agent"
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+# Optional agent-identity block (spec §3.1.1, issue #33)
+
+
+def test_agent_block_absent_is_valid() -> None:
+    """Records without an agent block remain valid (backward compatible)."""
+    record = TrustRecord.model_validate(_load("intel-tdx.json"))
+    assert record.agent is None
+
+
+def test_agent_block_present_parses() -> None:
+    data = _load("intel-tdx.json")
+    data["agent"] = {
+        "agent_id": "spiffe://factory.example/agent/material-movement/dev",
+        "manifest_id": "0197739a-8c00-7000-8000-000000000001",
+        "binding": "svid-matched",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.agent is not None
+    assert record.agent.agent_id.startswith("spiffe://")
+    assert record.agent.manifest_id == "0197739a-8c00-7000-8000-000000000001"
+    assert record.agent.binding == "svid-matched"
+
+
+def test_agent_id_rejects_http_scheme() -> None:
+    data = _load("intel-tdx.json")
+    data["agent"] = {"agent_id": "https://example.org/agent", "manifest_id": "abc"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_agent_block_extra_field_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["agent"] = {
+        "agent_id": "spiffe://factory.example/agent/x",
+        "manifest_id": "abc",
+        "unexpected": "x",
+    }
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_agent_block_requires_agent_id_and_manifest_id() -> None:
+    """A present agent block must carry both binding fields; partial is rejected (#33)."""
+    base = _load("intel-tdx.json")
+    partials = (
+        {},
+        {"binding": "svid-matched"},
+        {"agent_id": "spiffe://x/a"},
+        {"manifest_id": "abc"},
+    )
+    for partial in partials:
+        data = {**base, "agent": partial}
+        with pytest.raises(ValidationError):
+            TrustRecord.model_validate(data)
+
+
+def test_agent_id_may_equal_subject() -> None:
+    """The spec permits subject == agent.agent_id; it must not be rejected (#33)."""
+    data = _load("intel-tdx.json")
+    data["agent"] = {
+        "agent_id": data["subject"],
+        "manifest_id": "0197739a-8c00-7000-8000-000000000001",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.agent.agent_id == record.subject
+
+
+def test_agent_id_accepts_did_uri() -> None:
+    """agent_id accepts a DID URI, not only SPIFFE (#33)."""
+    data = _load("intel-tdx.json")
+    data["agent"] = {
+        "agent_id": "did:web:factory.example",
+        "manifest_id": "0197739a-8c00-7000-8000-000000000001",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.agent.agent_id.startswith("did:")
+
+
+def test_agent_block_binding_optional() -> None:
+    """binding is optional; agent_id + manifest_id alone is valid (#33)."""
+    data = _load("intel-tdx.json")
+    data["agent"] = {
+        "agent_id": "spiffe://factory.example/agent/x",
+        "manifest_id": "abc",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.agent.binding is None
 
 
 def test_okp_jwk_without_key_material_rejected() -> None:
