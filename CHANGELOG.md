@@ -39,6 +39,25 @@ Seven open questions requiring founding-member input before v0.2 are documented 
 
 ---
 
+## [0.2.0] — TBD
+
+### Specification
+
+- Extend `subject` field to accept DID URIs (any `did:` method) in addition to SPIFFE SVIDs.
+  Previously `^spiffe://` only; now `^(spiffe://|did:)`. Additive, backward-compatible.
+  DID-native runtimes (e.g. AGT `did:mesh:` identities) no longer require a parallel SPIFFE identity.
+  Closes: microsoft/agent-governance-toolkit ADR-0032, agentrust-io/trace-spec#35.
+
+### Schema
+
+- `schema/trace-claim.json`: `subject` pattern updated to `^(spiffe://|did:)`, description updated.
+
+### Reference Implementation
+
+- `TrustRecord.subject` pattern updated to `r"^(spiffe://|did:)"`.
+
+---
+
 ## Upcoming
 
 See [ROADMAP.md](ROADMAP.md) for planned changes in v0.2 and v1.0.

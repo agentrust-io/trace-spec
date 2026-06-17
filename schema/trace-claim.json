@@ -30,8 +30,8 @@
     },
     "subject": {
       "type": "string",
-      "description": "Workload identity as a SPIFFE SVID URI.",
-      "pattern": "^spiffe://"
+      "description": "Workload identity as a SPIFFE SVID URI or DID URI.",
+      "pattern": "^(spiffe://|did:)"
     },
     "model": {
       "type": "object",

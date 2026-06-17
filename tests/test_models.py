@@ -20,7 +20,7 @@ def _load(name: str) -> dict:
 def test_example_parses(filename: str) -> None:
     record = TrustRecord.model_validate(_load(filename))
     assert record.eat_profile == "tag:agentrust.io,2026:trace-v0.1"
-    assert record.subject.startswith("spiffe://")
+    assert record.subject.startswith(("spiffe://", "did:"))
 
 
 def test_intel_tdx_fields() -> None:
@@ -103,6 +103,27 @@ def test_digest_sha512_rejected() -> None:
 
 
 # cnf.jwk key material enforcement
+
+
+def test_subject_accepts_did_uri() -> None:
+    data = _load("intel-tdx.json")
+    data["subject"] = "did:key:z6MkhaXgBZDvotzL8oCYaXeFuJArwvX6mDMsKTJVjtN7R"
+    record = TrustRecord.model_validate(data)
+    assert record.subject.startswith("did:")
+
+
+def test_subject_accepts_did_web() -> None:
+    data = _load("intel-tdx.json")
+    data["subject"] = "did:web:example.org:agents:payments-processor"
+    record = TrustRecord.model_validate(data)
+    assert record.subject.startswith("did:")
+
+
+def test_subject_rejects_http_scheme() -> None:
+    data = _load("intel-tdx.json")
+    data["subject"] = "https://example.org/agent"
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
 
 
 def test_okp_jwk_without_key_material_rejected() -> None:
