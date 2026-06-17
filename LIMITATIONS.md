@@ -16,6 +16,9 @@ The `policy.bundle_hash` field attests that a specific policy was in force at ru
 **What happened inside the model**
 The call transcript records tool invocations, arguments, and responses that are observable at the gateway boundary. It does not record the model's internal chain-of-thought, intermediate reasoning, or context window contents. Reasoning that influences behavior without producing a tool call is not captured.
 
+**Physical execution or functional safety**
+TRACE can bind optional downstream evidence, such as a controller-signed receipt attached by a cMCP audit-chain profile. That proves only that a trusted external issuer signed the receipt for the bound call. It does not prove that a physical action occurred, completed successfully, or satisfied functional-safety standards.
+
 **Cross-boundary data propagation**
 The call graph summary uses temporal adjacency to approximate data flow between tool calls. It cannot definitively prove which specific data from one tool response influenced which subsequent call. The `provenance_disclaimer` field in every call graph summary is required for this reason.
 

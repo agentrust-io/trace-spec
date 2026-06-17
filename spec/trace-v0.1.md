@@ -90,6 +90,7 @@ TRACE does not protect against:
 - TEE side-channel attacks (cache, timing, speculative execution, power analysis).
 - Compromise or coercion of a silicon root vendor or transparency log operator.
 - Model behavior — prompt injection, jailbreaks, hallucination, alignment drift. TRACE proves what executed and which countermeasures were in force; it does not adjudicate whether the model's output was correct.
+- Physical execution or functional-safety compliance. A profile MAY bind evidence from an independent downstream authority, such as a safety controller, but TRACE does not itself prove that a physical action occurred, completed successfully, or satisfied any industrial safety standard.
 - Availability and denial-of-service.
 - UX-layer attacks against the human in the loop.
 
@@ -210,6 +211,40 @@ Any party — browser, CLI, in-cluster verifier, third-party auditor — verifie
 7. SLSA provenance resolves to a trusted builder.
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
+
+#### 3.3.1 External execution evidence
+
+Some profiles bind gateway-observed tool calls to evidence produced by an
+independent downstream authority. For example, the cMCP reference
+implementation can attach `external_execution_evidence` to an audit-chain entry
+when an independent safety controller signs a receipt for a specific MCP call.
+That receipt is distinct from the gateway-produced Trust Record and from
+`tool_transcript.hash`: the gateway commits to the audit chain, and the
+independent authority signs its own statement about one call.
+
+External execution evidence is OPTIONAL. A Trust Record without such evidence
+remains valid if the ordinary verification steps above succeed. A verifier that
+does not possess a trust anchor for the external issuer MUST treat a present
+receipt as unverified addenda, not as a Trust Record failure. A deployment
+profile MAY require a particular external issuer as an additional policy check,
+but that requirement is outside the core TRACE validity rule.
+
+When a verifier is configured with an external issuer trust anchor, it verifies:
+
+1. The receipt is bound to the intended audit entry, for example by checking
+   `linked_call_id` against the entry `call_id`.
+2. The issuer key identifier resolves to a trusted issuer public key under the
+   deployment's PKI or trust-anchor policy.
+3. The issuer signature verifies over the canonical receipt with the signature
+   field absent. Unless the profile declares otherwise, canonicalization is RFC
+   8785 (JCS).
+4. The receipt's `evidence_hash` and `evidence_type` satisfy the profile's
+   documented computation and registry for that evidence type.
+
+Verifying external execution evidence establishes only that the trusted
+external issuer signed the receipt bound to that call. It does not transform
+TRACE into proof of physical execution, successful completion, functional-safety
+certification, or regulatory compliance for the downstream system.
 
 ### 3.4 Scope
 

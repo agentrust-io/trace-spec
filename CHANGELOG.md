@@ -47,6 +47,11 @@ Seven open questions requiring founding-member input before v0.2 are documented 
   Previously `^spiffe://` only; now `^(spiffe://|did:)`. Additive, backward-compatible.
   DID-native runtimes (e.g. AGT `did:mesh:` identities) no longer require a parallel SPIFFE identity.
   Closes: microsoft/agent-governance-toolkit ADR-0032, agentrust-io/trace-spec#35.
+- Add verification guidance for optional external execution evidence bound by
+  profile-specific audit-chain entries. A verifier may check controller-signed
+  receipts when configured with the issuer trust anchor; otherwise the receipt
+  is unverified addenda and does not affect core Trust Record validity.
+  Closes: agentrust-io/trace-spec#34.
 
 ### Schema
 
