@@ -83,7 +83,6 @@ The record is a single EAT envelope (RFC 9711). Each field is independently veri
 | `amd-sev-snp` | Yes | Yes | |
 | `nvidia-h100` | Yes | Yes | |
 | `gpu-cc` | No | Planned | Generic GPU confidential compute |
-| `opaque` | Yes | Yes | Explicit opt-in; contact maintainers |
 
 ## Specification
 

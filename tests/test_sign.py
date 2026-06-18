@@ -1,7 +1,6 @@
 """Tests for agentrust_trace.sign."""
 
 import base64
-import json
 
 import pytest
 from cryptography.exceptions import InvalidSignature

@@ -113,7 +113,7 @@ class TrustRecord(BaseModel):
 
     eat_profile: Literal["tag:agentrust.io,2026:trace-v0.1"]
     iat: Annotated[int, Field(ge=1700000000)]
-    subject: Annotated[str, Field(pattern=r"^(spiffe://|did:)")]
+    subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
     model: ModelInfo
     runtime: RuntimeInfo
     policy: PolicyInfo
