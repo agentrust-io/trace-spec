@@ -1,23 +1,300 @@
-:root {
-  --md-primary-fg-color: #7c3aed;
-  --md-primary-fg-color--light: #a78bfa;
-  --md-primary-fg-color--dark: #5b21b6;
-  --md-accent-fg-color: #0ea5e9;
+/*
+ * TRACE spec — visual theme aligned with Agent Governance Toolkit (AGT)
+ * Primary brand: NextGen Purple (#8251EE), accent strip: teal→purple→violet
+ * Font stack: GitHub Primer system fonts (no Google Fonts)
+ */
+
+/* ==========================================================================
+   1. Color tokens
+   ========================================================================== */
+
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:              #8251EE;
+  --md-primary-fg-color--light:       #9B7AF2;
+  --md-primary-fg-color--dark:        #6A3FD9;
+  --md-accent-fg-color:               #8251EE;
+  --md-accent-fg-color--transparent:  rgba(130, 81, 238, 0.10);
+  --md-typeset-a-color:               #8251EE;
+
+  --md-default-bg-color:              #ffffff;
+  --md-default-bg-color--light:       #f6f8fa;
+
+  --trace-text:        #1f2328;
+  --trace-text-muted:  #59636e;
+  --trace-border:      #d1d9e0;
+  --trace-surface:     #f6f8fa;
+  --trace-code-bg:     #f6f8fa;
 }
 
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #818cf8;
-  --md-primary-fg-color--light: #a5b4fc;
-  --md-primary-fg-color--dark: #6366f1;
-  --md-accent-fg-color: #38bdf8;
-  --md-default-bg-color: #0f0a1e;
-  --md-default-bg-color--light: #1a1033;
-  --md-code-bg-color: #1e1533;
+  --md-primary-fg-color:              #9B7AF2;
+  --md-primary-fg-color--light:       #C661F7;
+  --md-primary-fg-color--dark:        #8251EE;
+  --md-accent-fg-color:               #5BD2BE;
+  --md-accent-fg-color--transparent:  rgba(91, 210, 190, 0.15);
+  --md-typeset-a-color:               #9B7AF2;
+
+  --md-default-bg-color:              #0d1117;
+  --md-default-bg-color--light:       #151b23;
+  --md-code-bg-color:                 #151b23;
+
+  --trace-text:        #f0f6fc;
+  --trace-text-muted:  #9198a1;
+  --trace-border:      #3d444d;
+  --trace-surface:     #151b23;
+  --trace-code-bg:     #151b23;
 }
 
-.md-header {
-  background: linear-gradient(135deg, #0d0a1f 0%, #071828 100%);
+
+/* ==========================================================================
+   2. Typography — GitHub Primer system font stack
+   ========================================================================== */
+
+:root {
+  --trace-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --trace-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 }
+
+body,
+.md-typeset,
+.md-header,
+.md-tabs,
+.md-nav,
+.md-footer {
+  font-family: var(--trace-font-sans);
+}
+
+.md-typeset code,
+.md-typeset pre,
+.md-typeset kbd,
+.md-code__content,
+.highlight pre {
+  font-family: var(--trace-font-mono);
+}
+
+.md-typeset {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--trace-text);
+}
+
+.md-typeset h1 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--trace-text);
+}
+
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: #ffffff;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  border-bottom: 1px solid var(--trace-border);
+  padding-bottom: 0.4rem;
+  margin-top: 2rem;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.5rem;
+}
+
+
+/* ==========================================================================
+   3. Header — plain canvas + 2px gradient accent strip (teal→purple→violet)
+   ========================================================================== */
+
+.md-header {
+  background-color: var(--md-default-bg-color);
+  color: var(--trace-text);
+  border-bottom: 1px solid var(--trace-border);
+  box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: var(--md-default-bg-color);
+  color: var(--trace-text);
+}
+
+/* Teal → Purple → Violet — same family as AGT's accent strip */
+.md-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #5BD2BE 0%, #8251EE 50%, #C661F7 100%);
+  z-index: 1;
+}
+
+.md-tabs {
+  background-color: var(--md-default-bg-color);
+  color: var(--trace-text);
+  border-bottom: 1px solid var(--trace-border);
+  box-shadow: none;
+  position: sticky;
+  top: 65px;
+  z-index: 3;
+}
+
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: var(--md-default-bg-color);
+  color: var(--trace-text);
+}
+
+.md-header__title,
+.md-header__topic,
+.md-header__button,
+.md-header__option {
+  color: var(--trace-text);
+}
+
+.md-search__input {
+  background-color: var(--trace-surface);
+  color: var(--trace-text);
+}
+
+.md-search__input::placeholder {
+  color: var(--trace-text-muted);
+}
+
+
+/* ==========================================================================
+   4. Navigation
+   ========================================================================== */
+
+.md-nav__title {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--trace-text-muted);
+}
+
+.md-nav__link--active {
+  font-weight: 600;
+  color: var(--md-primary-fg-color) !important;
+}
+
+.md-tabs__link--active {
+  font-weight: 600;
+  color: var(--md-primary-fg-color) !important;
+}
+
+
+/* ==========================================================================
+   5. Code blocks
+   ========================================================================== */
+
+.md-typeset pre > code,
+.md-typeset .highlight pre {
+  background-color: var(--trace-code-bg);
+  border: 1px solid var(--trace-border);
+  border-radius: 6px;
+}
+
+.md-typeset code:not(pre code) {
+  background-color: var(--trace-code-bg);
+  border: 1px solid var(--trace-border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  color: var(--md-primary-fg-color);
+}
+
+
+/* ==========================================================================
+   6. Tables — GitHub Primer style
+   ========================================================================== */
+
+.md-typeset table:not([class]) {
+  border-collapse: collapse;
+  width: 100%;
+  border: 1px solid var(--trace-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--trace-surface);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--trace-text);
+  border-bottom: 1px solid var(--trace-border);
+  padding: 0.5rem 0.75rem;
+}
+
+.md-typeset table:not([class]) td {
+  border-bottom: 1px solid var(--trace-border);
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ==========================================================================
+   7. Admonitions
+   ========================================================================== */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 6px;
+  border: 1px solid var(--trace-border);
+}
+
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--md-primary-fg-color);
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-color: #d29922;
+}
+
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-color: #da3633;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: #5BD2BE;
+}
+
+
+/* ==========================================================================
+   8. Footer
+   ========================================================================== */
+
+.md-footer {
+  background-color: var(--trace-surface);
+  border-top: 1px solid var(--trace-border);
+  color: var(--trace-text-muted);
+}
+
+.md-footer-meta {
+  background-color: var(--trace-surface);
+}
+
+
+/* ==========================================================================
+   9. Hero section
+   ========================================================================== */
 
 .md-hero__inner {
   padding-top: 2rem;
