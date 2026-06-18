@@ -16,7 +16,7 @@ def _schema() -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _validator() -> jsonschema.Draft202012Validator:
-    return jsonschema.Draft202012Validator(_schema())
+    return jsonschema.Draft202012Validator(_schema(), format_checker=jsonschema.FormatChecker())
 
 
 # Canonical schema exposed for downstream tooling that needs the raw dict.
