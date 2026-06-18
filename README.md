@@ -4,6 +4,12 @@
 
 # TRACE: Trust Runtime Attestation and Compliance Evidence
 
+<p align="center">
+  <a href="https://trace.agentrust-io.com">
+    <img src="https://img.shields.io/badge/%F0%9F%93%96_Full_Documentation-trace.agentrust--io.com-8251EE?style=for-the-badge&logoColor=white" alt="Full Documentation" height="40">
+  </a>
+</p>
+
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 [![AAIF](https://img.shields.io/badge/Targeting-AAIF_%2F_Linux_Foundation-6366f1)](https://agenticai.foundation)
 [![Spec](https://img.shields.io/badge/Spec-v0.2-0ea5e9)](spec/trace-v0.1.md)
