@@ -22,7 +22,6 @@ exclude_docs: |
   CHARTER.md
   CODE_OF_CONDUCT.md
   pyproject.toml
-  CNAME
 
 theme:
   name: material
