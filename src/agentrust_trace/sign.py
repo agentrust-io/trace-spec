@@ -78,3 +78,49 @@ def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any
     sig_bytes = key.sign(body)
     sig_b64 = base64.urlsafe_b64encode(sig_bytes).rstrip(b"=").decode()
     return {**payload, "signature": sig_b64}
+
+
+def verify_record(record: dict[str, Any], public_key_or_jwk: Any = None) -> None:
+    """Verify an Ed25519 signature on a signed TRACE Trust Record.
+
+    Raises InvalidSignature if the signature does not verify.
+    Raises ValueError if the record has no signature field or the key cannot
+    be decoded.
+
+    If public_key_or_jwk is None, the public key is taken from record["cnf"]["jwk"].
+    Pass an Ed25519PublicKey or a JWK dict to verify against an explicit key.
+    """
+    from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    sig_b64 = record.get("signature")
+    if not sig_b64:
+        raise ValueError("record has no 'signature' field")
+
+    # Decode signature
+    pad = 4 - len(sig_b64) % 4
+    sig_bytes = base64.urlsafe_b64decode(sig_b64 + "=" * (pad % 4))
+
+    # Resolve public key
+    if public_key_or_jwk is None:
+        jwk = record.get("cnf", {}).get("jwk", {})
+        if not jwk:
+            raise ValueError("record has no cnf.jwk and no public key was supplied")
+        public_key_or_jwk = jwk
+
+    if isinstance(public_key_or_jwk, dict):
+        jwk = public_key_or_jwk
+        x_b64 = jwk.get("x")
+        if not x_b64:
+            raise ValueError("JWK missing 'x' field")
+        pad = 4 - len(x_b64) % 4
+        x_bytes = base64.urlsafe_b64decode(x_b64 + "=" * (pad % 4))
+        pub = Ed25519PublicKey.from_public_bytes(x_bytes)
+    else:
+        pub = public_key_or_jwk
+
+    # Canonical bytes: record without "signature" key
+    record_no_sig = {k: v for k, v in record.items() if k != "signature"}
+    msg = _canonical_bytes(record_no_sig)
+
+    pub.verify(sig_bytes, msg)  # raises InvalidSignature on failure

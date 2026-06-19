@@ -44,8 +44,8 @@
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "MEkwEwYHKoZIzj0CAQY",
-      "y": "GHkVPyQs9bXm2A",
+      "x": "x9ZBJpokJFQ_oRZzbtzo1Pqqkexd7MqEqP8wsZWdr_c",
+      "y": "1Z0fdYWZI_aooZGNiqXl24SAoGmPK9e1F5-114jl8I0",
       "kid": "sev-snp-workload-key-2026-06-23"
     }
   }

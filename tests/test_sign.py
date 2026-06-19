@@ -6,7 +6,7 @@ import pytest
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from agentrust_trace import TrustRecord, generate_key, key_to_jwk, sign_record
+from agentrust_trace import TrustRecord, generate_key, key_to_jwk, sign_record, verify_record
 from agentrust_trace.sign import _canonical_bytes
 
 
@@ -40,7 +40,7 @@ def _minimal_record() -> dict:
             "status": "affirming",
             "verifier": "https://agt.example.org/verifier",
         },
-        "transparency": "",
+        "transparency": "https://rekor.sigstore.dev/api/v1/log/entries/example",
         "tool_transcript": {
             "hash": "sha256:" + "c" * 64,
             "call_count": 3,
@@ -118,3 +118,23 @@ def test_sign_record_spiffe_subject():
     signed = sign_record(record, key)
     validated = TrustRecord.model_validate(signed)
     assert validated.subject.startswith("spiffe://")
+
+
+def test_verify_record_passes_for_valid_signature():
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    verify_record(record)  # must not raise
+
+
+def test_verify_record_raises_for_tampered_record():
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    record["iat"] = record["iat"] + 1  # tamper
+    with pytest.raises(Exception):  # InvalidSignature
+        verify_record(record)
+
+
+def test_verify_record_raises_for_missing_signature():
+    record = dict(_minimal_record())
+    with pytest.raises(ValueError, match="no 'signature' field"):
+        verify_record(record)
