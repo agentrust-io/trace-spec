@@ -45,8 +45,8 @@
     "jwk": {
       "kty": "EC",
       "crv": "P-384",
-      "x": "TDXd2VyaWZpY2F0aW9uS2V5",
-      "y": "UmVmZXJlbmNlTWVhc3VyZW1l",
+      "x": "TDT3KJx-pab2b1lRzN8lMilbwQC4zn1RMrxakKVZn3eYLMw9ViDEHU98IanGQIRW",
+      "y": "q95ZCKsGi9ZtLnBZQHutas2UvfeCWi4vlie9PDfP3w7TXXl657d9FZ5at5c4j1Ry",
       "kid": "tdx-workload-key-2026-06-23"
     }
   }
