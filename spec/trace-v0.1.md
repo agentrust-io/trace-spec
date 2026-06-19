@@ -191,6 +191,18 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 - **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
+**Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
+
+1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles).
+2. Apply RFC 8785 JSON Canonicalization Scheme (JCS) to produce a deterministic byte sequence:
+   - Object keys are sorted in Unicode code-point order (ascending).
+   - No whitespace between tokens.
+   - Numbers are serialized in IEEE 754 double-precision format using the shortest decimal representation that round-trips.
+   - Strings are serialized as UTF-8; only the characters mandated by RFC 8259 §7 are escaped (U+0022, U+005C, and U+0000–U+001F).
+3. Encode the result as UTF-8 bytes. This byte sequence is the pre-image for the signature.
+
+Implementations MUST use an RFC 8785-conformant library. Using `json.dumps(sort_keys=True)` (Python) or equivalent ad-hoc sorting is insufficient: it diverges from RFC 8785 for non-ASCII strings and for IEEE 754 number serialization.
+
 Each profile MUST declare which binding form it uses. A record with no verifiable signature binding is not a Trust Record: verifiers MUST reject it. Schema validity alone confers no trust.
 
 **Freshness.** Records MUST carry `iat`. Verifiers MUST enforce a maximum record age: a record whose `iat` is older than the maximum age MUST be rejected. The default maximum age is 24 hours; a deployment profile MAY specify a different value. Verifiers SHOULD additionally support challenge-nonce binding for online verification: the verifier supplies a nonce, the issuer echoes it in `runtime.nonce`, and the verifier checks the echo. When a challenge nonce was issued, a record that omits or mismatches it MUST be rejected.
@@ -369,6 +381,9 @@ These need input before v0.2:
 - JWS (RFC 7515) — https://www.rfc-editor.org/rfc/rfc7515
 - JWE (RFC 7516) — https://www.rfc-editor.org/rfc/rfc7516
 - COSE (RFC 9052/9053) — https://www.rfc-editor.org/rfc/rfc9052
+- JWK / cnf claim (RFC 7517 / RFC 7800) — https://www.rfc-editor.org/rfc/rfc7517
+- JWK Thumbprint (RFC 7638) — https://www.rfc-editor.org/rfc/rfc7638
+- JSON Canonicalization Scheme / JCS (RFC 8785) — https://www.rfc-editor.org/rfc/rfc8785
 
 ### Foundation Specifications
 
