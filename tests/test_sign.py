@@ -130,7 +130,7 @@ def test_verify_record_raises_for_tampered_record():
     key = generate_key()
     record = sign_record(_minimal_record(), key)
     record["iat"] = record["iat"] + 1  # tamper
-    with pytest.raises(Exception):  # InvalidSignature
+    with pytest.raises(InvalidSignature):
         verify_record(record)
 
 
