@@ -45,8 +45,8 @@
     "jwk": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "SDEwMENvbmZpZGVudGlhbA",
-      "y": "Q29tcHV0aW5nS2V5Rm9yVA",
+      "x": "xlzGde-bJZPFE_HUCbtBQrl__mYdc0pDZfrVsxCQm7k",
+      "y": "3OrVWg4XZwTgi5oHutl2kHzTW8rhh6Q9NxdSydZoBqA",
       "kid": "h100-cc-workload-key-2026-06-23"
     }
   }

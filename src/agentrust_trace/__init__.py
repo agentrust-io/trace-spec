@@ -17,6 +17,7 @@ from agentrust_trace.sign import (
     load_key,
     load_signing_key,
     sign_record,
+    verify_record,
 )
 from agentrust_trace.validate import (
     iter_errors,
@@ -45,4 +46,5 @@ __all__ = [
     "load_key",
     "load_signing_key",
     "sign_record",
+    "verify_record",
 ]

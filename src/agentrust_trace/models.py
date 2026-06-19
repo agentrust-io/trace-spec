@@ -121,7 +121,7 @@ class TrustRecord(BaseModel):
     tool_transcript: ToolTranscript | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
-    transparency: str
+    transparency: Annotated[str, Field(min_length=1)]
     cnf: ConfirmationKey
     signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
