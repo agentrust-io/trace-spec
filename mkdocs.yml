@@ -148,8 +148,10 @@ nav:
   - Home: docs/index.md
   - Getting Started:
       - Quickstart: docs/quickstart.md
+      - Trust Levels: docs/trust-levels.md
       - Verification: docs/verification.md
       - Schema Reference: docs/schema.md
+      - Glossary: docs/glossary.md
   - Tutorials:
       - Sign your first trust record: docs/tutorials/signing-your-first-trust-record.md
       - Verify a trust record: docs/tutorials/verifying-a-trust-record.md
@@ -160,6 +162,7 @@ nav:
       - AGT: docs/integration/agt.md
       - cMCP: docs/integration/cmcp.md
   - Platforms:
+      - Overview: docs/platforms/index.md
       - AMD SEV-SNP: docs/platforms/amd-sev-snp.md
       - Intel TDX: docs/platforms/intel-tdx.md
       - NVIDIA H100: docs/platforms/nvidia-h100.md
@@ -172,6 +175,3 @@ nav:
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
       - Roadmap: ROADMAP.md
-
-extra_javascript:
-  - https://agentrust-io.com/supernav.js
