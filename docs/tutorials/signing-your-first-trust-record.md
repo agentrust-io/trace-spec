@@ -1,0 +1,190 @@
+# Sign Your First Trust Record
+
+Generate an Ed25519 signing key and produce a signed TRACE Trust Record that any verifier can check offline.
+
+## What you'll learn
+
+- How to generate a signing key and export its public JWK
+- Which fields a minimal valid TrustRecord requires
+- How `sign_record()` constructs the signature and embeds `cnf.jwk`
+- Why RFC 8785 JCS canonical form matters and how the library handles it
+- How to verify the signed record with `verify_record()`
+
+## Prerequisites
+
+```bash
+pip install agentrust-trace
+```
+
+---
+
+## Generate a Key
+
+`generate_key()` returns an `Ed25519PrivateKey` from the `cryptography` library. Keep the private key secret. Distribute only the public half.
+
+```python
+from agentrust_trace import generate_key, key_to_jwk
+
+key = generate_key()
+jwk = key_to_jwk(key)
+print(jwk)
+# {'kty': 'OKP', 'crv': 'Ed25519', 'x': '<base64url-encoded public key>'}
+```
+
+`key_to_jwk()` returns the public JWK dict in OKP format (RFC 8037). This is the value that will appear in `cnf.jwk` on every record you sign with this key.
+
+For production use, persist the private key and load it via the `TRACE_PRIVATE_KEY_PEM` environment variable:
+
+```python
+from agentrust_trace import load_signing_key
+
+# Reads TRACE_PRIVATE_KEY_PEM if set, otherwise generates an ephemeral key
+# (ephemeral keys emit a warning and cannot be re-verified after the process exits)
+key = load_signing_key()
+```
+
+---
+
+## Construct a Minimal TrustRecord
+
+Every TRACE Trust Record requires these top-level fields. There are no optional shortcuts for a conformant record.
+
+```python
+import time
+
+record = {
+    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "iat": int(time.time()),
+    "subject": "spiffe://trust.example.org/agent/my-agent",
+    "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6",
+        "version": "20251001",
+    },
+    "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:" + "0" * 64,
+    },
+    "policy": {
+        "bundle_hash": "sha256:b2c3d4e5f6a7b8c9" + "0" * 48,
+        "enforcement_mode": "enforce",
+    },
+    "data_class": "internal",
+    "build_provenance": {
+        "slsa_level": 1,
+        "digest": "sha256:e5f6a7b8c9d0e1f2" + "0" * 48,
+    },
+    "appraisal": {
+        "status": "none",
+        "verifier": "https://verifier.example.org",
+    },
+    "transparency": "https://registry.agentrust.io/claim/placeholder",
+}
+```
+
+A few constraints to keep in mind:
+
+- `subject` must be a SPIFFE URI (`spiffe://...`) or a DID URI (`did:...`).
+- `measurement` must be a `sha256:` or `sha384:` digest string. For `software-only` development records, all-zero digests are conventional.
+- `enforcement_mode` must be `"enforce"`, `"advisory"`, or `"silent"`. Omitting the field is not valid.
+- `appraisal.status` of `"none"` is correct for software-only Level 0 records. Use `"affirming"` for hardware-attested records.
+
+---
+
+## Sign the Record
+
+Pass the record dict and the private key to `sign_record()`. It returns a new dict with two additional fields: `cnf.jwk` (populated from the key) and `signature`.
+
+```python
+from agentrust_trace import sign_record
+
+signed = sign_record(record, key)
+
+print(signed["cnf"]["jwk"])   # {'kty': 'OKP', 'crv': 'Ed25519', 'x': '...'}
+print(signed["signature"])    # base64url string, no padding
+```
+
+The signature covers every field in the record except `signature` itself. `cnf.jwk` is included in the signed payload, which binds the public key to the record content.
+
+---
+
+## What the Signature Covers
+
+The library signs the canonical byte representation of the record with the `signature` field removed. Canonicalization follows RFC 8785 JSON Canonicalization Scheme (JCS):
+
+- Object keys sorted in Unicode code-point order (ascending)
+- No whitespace between tokens
+- Numbers serialized in IEEE 754 double-precision shortest form
+
+`json.dumps(record, sort_keys=True)` produces a different byte sequence than JCS for Unicode keys whose sort order differs between Python and Unicode code-point order. The library uses `_canonical_bytes()` internally, which calls `json.dumps(..., sort_keys=True, separators=(",", ":"), ensure_ascii=True)`. For plain ASCII keys this matches JCS. Records with non-ASCII keys require a dedicated JCS library; use ASCII-only field names to stay portable.
+
+The spec (section 3.2.2) requires JCS canonical form. Do not reimplement this by hand.
+
+---
+
+## Verify the Signed Record
+
+`verify_record()` extracts `cnf.jwk`, recomputes the canonical bytes, and checks the Ed25519 signature. It raises `cryptography.exceptions.InvalidSignature` if the record was tampered with, and returns `None` on success.
+
+```python
+from agentrust_trace import verify_record
+from cryptography.exceptions import InvalidSignature
+
+try:
+    verify_record(signed)
+    print("signature valid")
+except InvalidSignature:
+    print("tampered — do not trust this record")
+```
+
+To confirm that tampered records are rejected:
+
+```python
+import copy
+
+tampered = copy.deepcopy(signed)
+tampered["data_class"] = "public"  # change a field after signing
+
+try:
+    verify_record(tampered)
+except InvalidSignature:
+    print("correctly rejected")  # this branch runs
+```
+
+---
+
+## Validate the Schema
+
+Signature verification and schema validation are separate steps. A record can have a valid signature but still violate the JSON Schema (for example, a malformed digest string). Call `validate_json()` to check conformance:
+
+```python
+from agentrust_trace import validate_json
+import jsonschema
+
+try:
+    validate_json(signed)
+    print("schema valid")
+except jsonschema.ValidationError as e:
+    print(e.message)
+```
+
+For all violations at once instead of failing on the first:
+
+```python
+from agentrust_trace import iter_errors
+
+errors = iter_errors(signed)
+for e in errors:
+    print(e.message)
+```
+
+---
+
+## Summary
+
+You generated an Ed25519 key, built a minimal TRACE Trust Record, signed it with `sign_record()`, and verified it with `verify_record()`. The signature covers all fields except `signature` itself, canonicalized via RFC 8785 JCS. The `cnf.jwk` field embeds the public key so any verifier can check the record offline without a separate key distribution step.
+
+Next steps:
+
+- [Verify a trust record received from a third party](verifying-a-trust-record.md)
+- [Hardware attestation platforms](hardware-attestation-platforms.md)
