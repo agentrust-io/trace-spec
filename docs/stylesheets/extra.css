@@ -1,6 +1,6 @@
 /*
- * TRACE spec — visual theme aligned with Agent Governance Toolkit (AGT)
- * Primary brand: NextGen Purple (#8251EE), accent strip: teal→purple→violet
+ * TRACE spec — visual theme aligned with cmcp
+ * Primary brand: violet (#7c3aed), dark gradient header
  * Font stack: GitHub Primer system fonts (no Google Fonts)
  */
 
@@ -10,12 +10,12 @@
 
 :root,
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color:              #8251EE;
-  --md-primary-fg-color--light:       #9B7AF2;
-  --md-primary-fg-color--dark:        #6A3FD9;
-  --md-accent-fg-color:               #8251EE;
-  --md-accent-fg-color--transparent:  rgba(130, 81, 238, 0.10);
-  --md-typeset-a-color:               #8251EE;
+  --md-primary-fg-color:              #7c3aed;
+  --md-primary-fg-color--light:       #a78bfa;
+  --md-primary-fg-color--dark:        #5b21b6;
+  --md-accent-fg-color:               #0ea5e9;
+  --md-accent-fg-color--transparent:  rgba(14, 165, 233, 0.10);
+  --md-typeset-a-color:               #7c3aed;
 
   --md-default-bg-color:              #ffffff;
   --md-default-bg-color--light:       #f6f8fa;
@@ -28,22 +28,22 @@
 }
 
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:              #9B7AF2;
-  --md-primary-fg-color--light:       #C661F7;
-  --md-primary-fg-color--dark:        #8251EE;
-  --md-accent-fg-color:               #5BD2BE;
-  --md-accent-fg-color--transparent:  rgba(91, 210, 190, 0.15);
-  --md-typeset-a-color:               #9B7AF2;
+  --md-primary-fg-color:              #818cf8;
+  --md-primary-fg-color--light:       #a5b4fc;
+  --md-primary-fg-color--dark:        #6366f1;
+  --md-accent-fg-color:               #38bdf8;
+  --md-accent-fg-color--transparent:  rgba(56, 189, 248, 0.15);
+  --md-typeset-a-color:               #818cf8;
 
-  --md-default-bg-color:              #0d1117;
-  --md-default-bg-color--light:       #151b23;
-  --md-code-bg-color:                 #151b23;
+  --md-default-bg-color:              #0f0a1e;
+  --md-default-bg-color--light:       #1a1033;
+  --md-code-bg-color:                 #1e1533;
 
   --trace-text:        #f0f6fc;
   --trace-text-muted:  #9198a1;
-  --trace-border:      #3d444d;
-  --trace-surface:     #151b23;
-  --trace-code-bg:     #151b23;
+  --trace-border:      #3d2f5c;
+  --trace-surface:     #1a1033;
+  --trace-code-bg:     #1e1533;
 }
 
 
@@ -109,65 +109,11 @@ body,
 
 
 /* ==========================================================================
-   3. Header — plain canvas + 2px gradient accent strip (teal→purple→violet)
+   3. Header — dark gradient (matches cmcp)
    ========================================================================== */
 
 .md-header {
-  background-color: var(--md-default-bg-color);
-  color: var(--trace-text);
-  border-bottom: 1px solid var(--trace-border);
-  box-shadow: none;
-  position: sticky;
-  top: 0;
-  z-index: 4;
-}
-
-[data-md-color-scheme="slate"] .md-header {
-  background-color: var(--md-default-bg-color);
-  color: var(--trace-text);
-}
-
-/* Teal → Purple → Violet — same family as AGT's accent strip */
-.md-header::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #5BD2BE 0%, #8251EE 50%, #C661F7 100%);
-  z-index: 1;
-}
-
-.md-tabs {
-  background-color: var(--md-default-bg-color);
-  color: var(--trace-text);
-  border-bottom: 1px solid var(--trace-border);
-  box-shadow: none;
-  position: sticky;
-  top: 65px;
-  z-index: 3;
-}
-
-[data-md-color-scheme="slate"] .md-tabs {
-  background-color: var(--md-default-bg-color);
-  color: var(--trace-text);
-}
-
-.md-header__title,
-.md-header__topic,
-.md-header__button,
-.md-header__option {
-  color: var(--trace-text);
-}
-
-.md-search__input {
-  background-color: var(--trace-surface);
-  color: var(--trace-text);
-}
-
-.md-search__input::placeholder {
-  color: var(--trace-text-muted);
+  background: linear-gradient(135deg, #0d0a1f 0%, #071828 100%);
 }
 
 
@@ -273,7 +219,7 @@ body,
 
 .md-typeset .admonition.tip,
 .md-typeset details.tip {
-  border-color: #5BD2BE;
+  border-color: #0ea5e9;
 }
 
 
