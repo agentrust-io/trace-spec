@@ -136,3 +136,13 @@ trace:
 cMCP embeds AGT. The Cedar policy engine, SPIFFE identity, and Merkle audit chain are AGT. cMCP adds the TEE boundary, hardware key generation, and Level 2 TRACE emission.
 
 When cMCP emits a Level 2 record for a session, it supersedes any Level 0 record AGT might have emitted for the same session. The two records are linked by shared `subject` and `tool_transcript.hash`.
+
+## Related
+
+| What | Where |
+|------|-------|
+| Trust level guarantees | [Trust Levels](../trust-levels.md) |
+| Hardware attestation platforms | [Platforms overview](../platforms/index.md) |
+| Step-by-step cMCP integration tutorial | [Integrating with cMCP](../tutorials/integrating-with-cmcp.md) |
+| cMCP source and deployment | [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) |
+| AGT integration | [Integration: AGT](agt.md) |

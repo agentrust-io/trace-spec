@@ -51,6 +51,18 @@ The verifier:
 | Azure | DCesv5, ECesv5 (Intel TDX preview) |
 | On-premises | Intel Xeon Scalable 4th Gen (Sapphire Rapids) and newer |
 
+## On-premises deployment
+
+For on-premises Intel TDX (e.g., Supermicro SYS-121H with Xeon Scalable 4th Gen), the cMCP gateway runs as a TD and uses Intel's PCCS (Platform Certificate Caching Service) or the Intel Trust Authority for attestation verification. No cloud dependency is required — deploy PCCS locally to air-gap the attestation path. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
+
+```yaml
+# cmcp.yaml (on-premises TDX)
+attestation:
+  platform: intel-tdx
+  pccs_url: https://pccs.internal.example.org:8081  # your local PCCS
+  rim_cache: /var/cache/trace/rims
+```
+
 ## Example record
 
 See [`examples/intel-tdx.json`](https://github.com/agentrust-io/trace-spec/blob/main/examples/intel-tdx.json).
