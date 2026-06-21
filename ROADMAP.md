@@ -9,7 +9,7 @@ Announced at Confidential Computing Summit, San Francisco, June 23 2026.
 - Wire formats: EAT/JWT and CBOR-COSE
 - Hardware roots: NVIDIA H100/Blackwell, Intel TDX, AMD SEV-SNP, Azure MAA, GCP Confidential Space, AWS Nitro
 - JSON Schema and three hardware examples
-- Reference implementation: cMCP Phase 1 (runtime trust, no policy enforcement)
+- Reference implementation: cMCP Phase 1 (Cedar policy enforcement, TRACE Level 2 emission)
 
 **Not in v0.1:** MCP profile (normative), A2A profile, vendor platform annexes, OWASP/ATLAS cross-walks, encrypted claims envelope.
 

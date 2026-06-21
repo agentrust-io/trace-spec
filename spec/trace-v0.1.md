@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.2 — Draft |
+| Version | 0.1 — Draft |
 | Status | RFC — Request for Comments |
 | Authors | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
 | Target announcement | Confidential Computing Summit, San Francisco — 23 June 2026 |

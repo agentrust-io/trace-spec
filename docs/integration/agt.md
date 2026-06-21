@@ -1,6 +1,6 @@
 # Integration: AGT
 
-[AGT (Agent Governance Toolkit)](https://github.com/microsoft/agent-governance-toolkit) is the most widely adopted agent governance framework (4,200+ stars, 100+ contributors). It provides Cedar policy enforcement, SPIFFE/SVID identity, and Merkle-chained audit logs for any agent framework.
+[AGT (Agent Governance Toolkit)](https://github.com/microsoft/agent-governance-toolkit) is the most widely adopted agent governance framework (4,100+ stars, 100+ contributors). It provides Cedar policy enforcement, SPIFFE/SVID identity, and Merkle-chained audit logs for any agent framework.
 
 AGT emits TRACE v0.1 Trust Records via `TRACEAuditSink` — see [ADR 0032](https://github.com/microsoft/agent-governance-toolkit/blob/main/docs/adr/0032-agt-emits-trace-v01-trust-records.md) for the full design.
 
