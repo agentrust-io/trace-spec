@@ -150,6 +150,11 @@ nav:
       - Quickstart: docs/quickstart.md
       - Verification: docs/verification.md
       - Schema Reference: docs/schema.md
+  - Tutorials:
+      - Sign your first trust record: docs/tutorials/signing-your-first-trust-record.md
+      - Verify a trust record: docs/tutorials/verifying-a-trust-record.md
+      - Hardware attestation platforms: docs/tutorials/hardware-attestation-platforms.md
+      - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
   - Specification: spec/trace-v0.1.md
   - Integration:
       - AGT: docs/integration/agt.md
