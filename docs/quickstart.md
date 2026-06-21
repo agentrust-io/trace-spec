@@ -15,7 +15,58 @@ pip install agentrust-trace
 python -m agentrust_trace keygen --out trace-key.pem
 ```
 
+## Emit a Trust Record (standalone)
+
+Use `sign_record()` to produce a Level 0 record without AGT or any other framework:
+
+```python
+import time, json
+from agentrust_trace import generate_key, sign_record
+
+key = generate_key()
+
+record = {
+    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "iat": int(time.time()),
+    "subject": "spiffe://trust.example.org/agent/my-agent",
+    "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6",
+        "version": "20251001",
+    },
+    "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:" + "0" * 64,
+    },
+    "policy": {
+        "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7"
+                       "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+        "enforcement_mode": "enforce",
+    },
+    "data_class": "internal",
+    "build_provenance": {
+        "slsa_level": 1,
+        "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+                  "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    },
+    "appraisal": {
+        "status": "none",
+        "verifier": "https://verifier.example.org",
+    },
+    "transparency": "https://registry.agentrust.io/claim/placeholder",
+}
+
+signed = sign_record(record, key)
+
+with open("session.trace.json", "w") as f:
+    json.dump(signed, f, indent=2)
+```
+
+This produces a valid Level 0 record. For hardware-attested (Level 1+) records, use cMCP as the runtime — it handles TEE key generation and measurement automatically.
+
 ## Emit a Trust Record from AGT
+
+For agent frameworks using AGT, the `govern()` decorator emits records automatically:
 
 ```python
 from agentmesh.governance import govern, GovernanceConfig
