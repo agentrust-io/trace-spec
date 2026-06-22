@@ -43,10 +43,9 @@
   "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:16:40Z-tpm2-b0c1d2",
   "cnf": {
     "jwk": {
-      "kty": "EC",
-      "crv": "P-256",
-      "x": "f4OxZX_x51sR3pCsmUQjM_-iX894U3FGuCcQMFG5eWI",
-      "y": "bFHAgHvSiSASfHAhbHGpFGZVnaSqHL1vVXHnqBypNPk",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
       "kid": "tpm2-workload-key-2026-06-23"
     }
   }
