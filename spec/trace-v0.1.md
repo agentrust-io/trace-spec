@@ -320,7 +320,9 @@ the reference implementation at the MCP tool-call boundary.
 
 Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
 
-### 6.2 Invited founding members
+### 6.2 Target contributing organizations
+
+The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
 Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
