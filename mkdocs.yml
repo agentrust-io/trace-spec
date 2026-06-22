@@ -157,6 +157,8 @@ nav:
       - Verify a trust record: docs/tutorials/verifying-a-trust-record.md
       - Hardware attestation platforms: docs/tutorials/hardware-attestation-platforms.md
       - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
+      - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
+      - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
   - Specification: spec/trace-v0.1.md
   - Integration:
       - AGT: docs/integration/agt.md
