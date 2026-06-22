@@ -1,0 +1,52 @@
+{
+  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "iat": 1750676200,
+  "subject": "spiffe://trust.example.org/agent/document-processor/staging",
+  "model": {
+    "provider": "meta",
+    "model_id": "llama-3.3-70b-instruct",
+    "version": "3.3",
+    "weights_digest": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "aibom_uri": "https://registry.agentrust.io/aibom/llama-3.3-70b-20260101"
+  },
+  "runtime": {
+    "platform": "tpm2",
+    "measurement": "sha256:3b4c2a1f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b",
+    "rim_uri": "https://registry.agentrust.io/rim/tpm2-agent-v1",
+    "firmware_version": "7.85",
+    "nonce": "dHBtLXdvcmtsb2FkLW5vbmNl"
+  },
+  "policy": {
+    "bundle_hash": "sha256:7d4e2f1a8c3b9e6d0f5a2c7b4e1d8f3a6c9b2e5d0f7a4c1b8e3d6f9a2c5b8e1d",
+    "enforcement_mode": "enforce",
+    "version": "2.0.1",
+    "policy_uri": "https://registry.agentrust.io/policy/document-v2.0.1"
+  },
+  "data_class": "internal",
+  "tool_transcript": {
+    "hash": "sha256:2c5a8e1d4f7b0c3e6a9d2f5b8e1c4a7d0f3b6e9c2a5d8f1b4e7c0a3d6f9b2e5a",
+    "call_count": 7,
+    "transcript_uri": "https://registry.agentrust.io/transcript/tpm2-2026-06-23T09:16:40Z"
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+    "digest": "sha256:5e8b2d1a4f7c0e3b6a9d2f5c8e1b4a7d0f3c6e9b2a5d8f1c4e7b0a3d6f9c2e5b",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/tpm2example123"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://www.microsoft.com/pkiops/certs/tpm",
+    "policy_ref": "https://registry.agentrust.io/policy/tpm2-appraisal-v1",
+    "timestamp": 1750676203
+  },
+  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:16:40Z-tpm2-b0c1d2",
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "kid": "tpm2-workload-key-2026-06-23"
+    }
+  }
+}
