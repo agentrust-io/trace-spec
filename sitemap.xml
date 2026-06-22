@@ -77,6 +77,10 @@
          <lastmod>2026-06-22</lastmod>
     </url>
     <url>
+         <loc>https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/</loc>
+         <lastmod>2026-06-22</lastmod>
+    </url>
+    <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/</loc>
          <lastmod>2026-06-22</lastmod>
     </url>
@@ -90,6 +94,10 @@
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/verifying-a-trust-record/</loc>
+         <lastmod>2026-06-22</lastmod>
+    </url>
+    <url>
+         <loc>https://trace.agentrust-io.com/docs/tutorials/verifying-the-audit-chain/</loc>
          <lastmod>2026-06-22</lastmod>
     </url>
     <url>
