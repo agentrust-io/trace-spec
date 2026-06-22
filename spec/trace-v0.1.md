@@ -223,6 +223,24 @@ Any party — browser, CLI, in-cluster verifier, third-party auditor — verifie
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
+#### 3.3.1 External execution evidence (optional)
+
+Some deployments attach independent, out-of-band receipts to individual audit-chain entries — for example, a signed assertion from a safety controller confirming or rejecting an actuation request. The TRACE Trust Record commits the audit chain by hash; the receipts live inside that chain, not inside the Trust Record itself. This section defines how a verifier treats them.
+
+A receipt within an audit-chain entry is characterized by: an issuer identity (`issuer`), a key reference (`issuer_key_id`), a signature over the canonical receipt fields (`signature`), a content digest (`evidence_hash`), a type tag (`evidence_type`), and a binding to the corresponding tool call (`linked_call_id`).
+
+**Verification rule.** When a verifier is configured with a trusted public key for the named `issuer_key_id`:
+
+1. Compute the canonical form (RFC 8785 JCS) of the receipt fields excluding `signature`.
+2. Verify the `signature` against that canonical form using the configured issuer key.
+3. Assert that `linked_call_id` equals the `call_id` of the enclosing audit-chain entry.
+
+A verifier configured with the issuer key that fails any of these three checks MUST treat the audit entry as invalid and reject the Trust Record.
+
+**When the issuer key is not configured.** A receipt whose issuer key is unknown to the verifier is unverified, not invalid. The Trust Record's gateway-produced evidence (signature, audit-chain hash, policy hash, TEE measurement) is unaffected. Verifiers SHOULD surface an advisory status (e.g., `external_evidence_unverified`) rather than silently ignoring the receipt.
+
+**Trust boundary.** External execution evidence is only as trustworthy as the issuer key and the PKI behind it. TRACE binds the receipt into the audit chain — it does not certify that a physical action occurred, that it was executed safely, or that any functional-safety standard was met. Those claims belong to the issuer and its certification body, not to TRACE.
+
 ### 3.4 Scope
 
 TRACE governs any confidential workload — AI agent execution, regulated data processing, sovereign compute, secure multi-party computation. AI agents are the forcing function and the first reference profile, not the limit of the standard.
