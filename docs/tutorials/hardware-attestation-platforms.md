@@ -167,9 +167,17 @@ validate_json(record)
 verify_record(record)
 
 # Step 2 + 3: platform-specific — outside the scope of agentrust-trace
-# For cMCP-issued records, use cmcp-verify which handles the full chain:
-# from cmcp_verify import verify_trace_claim
-# verify_trace_claim(record)
+# For cMCP-issued records, use cmcp-verify which handles the full chain.
+# cmcp-verify operates on a RuntimeClaim (the cMCP envelope), not on a
+# flat TrustRecord, and requires the expected hashes to verify against:
+#
+# from cmcp_verify import verify_trace_claim, ApprovedHashes
+# approved = ApprovedHashes(
+#     policy_bundle_hash="sha256:<expected-cedar-policy-hash>",
+#     tool_catalog_hash="sha256:<expected-tool-catalog-hash>",
+# )
+# result = verify_trace_claim(claim_json, approved)
+# print(result.status.value)  # "verified" | "partially_verified" | "unverified"
 ```
 
 ---
