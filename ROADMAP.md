@@ -45,4 +45,4 @@ Driven by founding-member feedback and open questions from §7 of the spec.
 
 ## Influencing the roadmap
 
-Open a GitHub issue with the `spec` or `roadmap` label. Founding-member and vendor feedback from the CC Summit period (June–September 2026) has priority for v0.2 scope.
+Open a GitHub issue with the `spec` or `roadmap` label. Contributor and community feedback from the CC Summit period (June–September 2026) has priority for v0.2 scope.

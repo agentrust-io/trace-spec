@@ -35,7 +35,7 @@ Initial public draft. Announced at Confidential Computing Summit, San Francisco.
 
 ### Open questions
 
-Seven open questions requiring founding-member input before v0.2 are documented in §7 of the spec.
+Seven open questions requiring community input before v0.2 are documented in §7 of the spec.
 
 ---
 
