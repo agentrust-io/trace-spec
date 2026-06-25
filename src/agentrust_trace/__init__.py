@@ -1,5 +1,6 @@
 """agentrust-trace — TRACE Trust Record models, validation, and signing."""
 
+from agentrust_trace.adapters import AGTSessionResult, TraceAGTAdapter
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
@@ -29,6 +30,8 @@ __version__ = "0.2.0"
 
 __all__ = [
     "__version__",
+    "AGTSessionResult",
+    "TraceAGTAdapter",
     "Appraisal",
     "BuildProvenance",
     "ConfirmationKey",

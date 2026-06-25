@@ -26,7 +26,44 @@ AGT emits **Level 0 (software-only)** TRACE records. The record is signed with a
 pip install agentmesh agentrust-trace
 ```
 
-## Basic usage
+## Quick start: TraceAGTAdapter
+
+`TraceAGTAdapter` eliminates the ~50-line field-mapping boilerplate. Install:
+
+```bash
+pip install agentrust-trace
+```
+
+One-liner upgrade path for any AGT-governed session:
+
+```python
+from agentrust_trace.adapters import TraceAGTAdapter, AGTSessionResult
+from agentrust_trace import sign_record, generate_key
+
+adapter = TraceAGTAdapter(
+    model_provider="anthropic",
+    model_id="claude-sonnet-4-6",
+    model_version="20251001",
+    build_provenance_digest="sha256:e5f6a7b8...",
+    transparency="https://registry.agentrust.io/claim/...",
+)
+
+session = AGTSessionResult(
+    agent_did="spiffe://trust.example.org/agent/my-agent",
+    policy_bundle_bytes=Path("policy.cedar").read_bytes(),
+    audit_entries=govern_fn.get_audit_entries(),
+    merkle_chain_tip=govern_fn.chain_tip,
+)
+
+record = adapter.build_trust_record(session)
+signed = sign_record(record, generate_key())  # or load_signing_key() for production
+```
+
+→ Full walkthrough: [TraceAGTAdapter tutorial](../tutorials/agt-adapter.md)
+
+## Manual wiring (legacy)
+
+The following is the raw field-mapping approach — kept for reference. Prefer `TraceAGTAdapter` for new integrations.
 
 ```python
 from agentmesh.governance import govern, GovernanceConfig
