@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import time
 
 import pytest
 from pydantic import ValidationError
@@ -27,26 +26,26 @@ TRANSPARENCY = "https://registry.agentrust.io/claim/test-abc123"
 
 
 def _make_adapter(**overrides) -> TraceAGTAdapter:
-    defaults = dict(
-        model_provider="anthropic",
-        model_id="claude-sonnet-4-6",
-        model_version="20251001",
-        data_class="confidential",
-        build_provenance_slsa_level=2,
-        build_provenance_digest="sha256:" + "a" * 64,
-        transparency=TRANSPARENCY,
-    )
+    defaults = {
+        "model_provider": "anthropic",
+        "model_id": "claude-sonnet-4-6",
+        "model_version": "20251001",
+        "data_class": "confidential",
+        "build_provenance_slsa_level": 2,
+        "build_provenance_digest": "sha256:" + "a" * 64,
+        "transparency": TRANSPARENCY,
+    }
     defaults.update(overrides)
     return TraceAGTAdapter(**defaults)
 
 
 def _make_session(**overrides) -> AGTSessionResult:
-    defaults = dict(
-        agent_did=AGENT_DID,
-        policy_bundle_bytes=BUNDLE_BYTES,
-        audit_entries=AUDIT_ENTRIES,
-        merkle_chain_tip=CHAIN_TIP,
-    )
+    defaults = {
+        "agent_did": AGENT_DID,
+        "policy_bundle_bytes": BUNDLE_BYTES,
+        "audit_entries": AUDIT_ENTRIES,
+        "merkle_chain_tip": CHAIN_TIP,
+    }
     defaults.update(overrides)
     return AGTSessionResult(**defaults)
 

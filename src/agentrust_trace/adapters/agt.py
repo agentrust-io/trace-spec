@@ -15,13 +15,10 @@ from typing import Any
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
-    ConfirmationKey,
-    JWK,
     ModelInfo,
     PolicyInfo,
     RuntimeInfo,
     ToolTranscript,
-    TrustRecord,
 )
 
 
@@ -170,7 +167,13 @@ class TraceAGTAdapter:
             ).model_dump(exclude_none=True),
             "transparency": self._transparency,
             # cnf is populated by sign_record(); placeholder keeps schema valid
-            "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}},
+            "cnf": {
+                "jwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                },
+            },
         }
         return record
 
@@ -184,7 +187,9 @@ class TraceAGTAdapter:
 
     @staticmethod
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
-        canonical = json.dumps(audit_entries, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        canonical = json.dumps(
+            audit_entries, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        )
         return "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
 
     @staticmethod
