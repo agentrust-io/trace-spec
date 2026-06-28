@@ -98,7 +98,7 @@ class JWK(BaseModel):
             raise ValueError(
                 f"jwk with kty={self.kty!r} must carry key material: missing {', '.join(missing)}"
             )
-            extra = self.model_extra or {}
+            extra: dict[str, object] = self.model_extra or {}
         private = _JWK_PRIVATE_PARAMS & extra.keys()
         if private:
             raise ValueError(
