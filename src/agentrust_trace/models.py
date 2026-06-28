@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from typing import Annotated, Literal,cast
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -99,7 +99,7 @@ class JWK(BaseModel):
             raise ValueError(
                 f"jwk with kty={self.kty!r} must carry key material: missing {', '.join(missing)}"
             )
-            extra = cast(dict[str, object], self.model_extra or {})
+            extra = self.model_extra or {}  # type: ignore[has-type]
         private = _JWK_PRIVATE_PARAMS & extra.keys()
         if private:
             raise ValueError(
