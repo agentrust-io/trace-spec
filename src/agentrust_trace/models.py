@@ -104,8 +104,7 @@ class JWK(BaseModel):
             raise ValueError(
                 f"cnf.jwk must not contain private key parameters: {sorted(private)}"
             )
-        return self
-        
+        return self    
 
 
 class ConfirmationKey(BaseModel):
