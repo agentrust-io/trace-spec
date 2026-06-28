@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
 
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
@@ -97,7 +98,14 @@ class JWK(BaseModel):
             raise ValueError(
                 f"jwk with kty={self.kty!r} must carry key material: missing {', '.join(missing)}"
             )
+            extra = self.model_extra or {}
+        private = _JWK_PRIVATE_PARAMS & extra.keys()
+        if private:
+            raise ValueError(
+                f"cnf.jwk must not contain private key parameters: {sorted(private)}"
+            )
         return self
+        
 
 
 class ConfirmationKey(BaseModel):
