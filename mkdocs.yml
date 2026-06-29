@@ -5,7 +5,7 @@ repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
 edit_uri: edit/main/
 docs_dir: .
-copyright: "© 2026 Opaque Systems — CC BY 4.0"
+copyright: "© 2026 OPAQUE Systems — CC BY 4.0"
 
 exclude_docs: |
   .github/

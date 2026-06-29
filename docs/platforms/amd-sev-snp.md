@@ -58,7 +58,7 @@ agentrust-trace verify-hardware session.trace.json \
 
 ## On-premises deployment
 
-For on-premises SEV-SNP (e.g., Supermicro H13 with EPYC Genoa), Opaque ships the verifier with the platform — same cryptographic guarantees as cloud deployments, no cloud attestation service dependency. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
+For on-premises SEV-SNP (e.g., Supermicro H13 with EPYC Genoa), OPAQUE ships the verifier with the platform — same cryptographic guarantees as cloud deployments, no cloud attestation service dependency. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
 
 ## Example record
 
