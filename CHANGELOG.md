@@ -9,6 +9,19 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ---
 
+## [0.3.0] — 2026-06-30
+
+### Security
+
+- `verify_record` now requires an explicit trusted key. Self-verification from the embedded `cnf.jwk` is no longer the default; use `allow_embedded_key=True` to opt in.
+- Verification enforces freshness (`iat` / `max_age_seconds`, default 24h) and an optional `expected_nonce`. JWK `kty` / `crv` are validated.
+
+### Breaking
+
+- **BREAKING:** Canonicalization is now RFC 8785 (JCS). Trust records are NOT cross-verifiable with 0.2.0 (the prior `json.dumps` canonicalization was non-conformant).
+
+---
+
 ## [0.1.0] — 2026-06-23
 
 Initial public draft. Announced at Confidential Computing Summit, San Francisco.
