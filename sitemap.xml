@@ -2,114 +2,114 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://trace.agentrust-io.com/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/CHANGELOG/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/CONTRIBUTING/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/GOVERNANCE/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/LIMITATIONS/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/ROADMAP/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/glossary/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/quickstart/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/schema/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/trust-levels/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/verification/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/crosswalks/owasp-agentic-top-10/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/integration/agt/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/integration/cmcp/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/platforms/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/platforms/amd-sev-snp/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/platforms/intel-tdx/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/platforms/nvidia-h100/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/agt-adapter/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/integrating-with-cmcp/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/verifying-a-trust-record/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/docs/tutorials/verifying-the-audit-chain/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/examples/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/spec/trace-v0.1/</loc>
-         <lastmod>2026-06-29</lastmod>
+         <lastmod>2026-06-30</lastmod>
     </url>
 </urlset>
