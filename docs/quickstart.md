@@ -148,9 +148,11 @@ with open("session.trace.json") as f:
 # Schema check
 validate_json(signed_record)  # raises jsonschema.ValidationError if malformed
 
-# Signature check — uses the cnf.jwk embedded in the record
+# Signature check — verify against a pinned trusted key in production.
+# allow_embedded_key=True trusts the cnf.jwk in the record itself, which
+# only proves internal consistency, not that the record came from a trusted issuer.
 try:
-    verify_record(signed_record)
+    verify_record(signed_record, allow_embedded_key=True)
     print("Signature valid (Ed25519)")
     print(f"  subject:     {signed_record['subject']}")
     print(f"  policy:      {signed_record['policy']['bundle_hash'][:24]}... "

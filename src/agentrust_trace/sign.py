@@ -9,6 +9,7 @@ trace-tests TR-SIG at all conformance levels.
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import os
 import warnings
@@ -61,6 +62,21 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
     return json.dumps(d, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
+def _b64url_decode(value: str, *, field: str) -> bytes:
+    """Decode an unpadded base64url string, raising ValueError on malformed input.
+
+    Restores the padding the encoder stripped and surfaces ``binascii`` decode
+    failures as ``ValueError`` so callers see one consistent failure type.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a base64url string")
+    padded = value + "=" * (-len(value) % 4)
+    try:
+        return base64.urlsafe_b64decode(padded)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError(f"{field} is not valid base64url: {exc}") from exc
+
+
 def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
     """Return a copy of *record* with ``cnf.jwk`` populated and a ``signature`` field added.
 
@@ -80,44 +96,114 @@ def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any
     return {**payload, "signature": sig_b64}
 
 
-def verify_record(record: dict[str, Any], public_key_or_jwk: Any = None) -> None:
+def _pubkey_from_jwk(jwk: dict[str, Any]) -> Any:
+    """Reconstruct an Ed25519 public key from a JWK, rejecting other key types.
+
+    Asserts ``kty == "OKP"`` and ``crv == "Ed25519"`` before building the key so
+    that, for example, an EC key is never silently treated as Ed25519.
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    kty = jwk.get("kty")
+    crv = jwk.get("crv")
+    if kty != "OKP":
+        raise ValueError(f"unsupported JWK kty {kty!r}; expected 'OKP' for Ed25519")
+    if crv != "Ed25519":
+        raise ValueError(f"unsupported JWK crv {crv!r}; expected 'Ed25519'")
+
+    x_b64 = jwk.get("x")
+    if not x_b64:
+        raise ValueError("JWK missing 'x' field")
+    x_bytes = _b64url_decode(x_b64, field="JWK 'x'")
+    return Ed25519PublicKey.from_public_bytes(x_bytes)
+
+
+def verify_record(
+    record: dict[str, Any],
+    public_key_or_jwk: Any = None,
+    *,
+    allow_embedded_key: bool = False,
+    max_age_seconds: int | None = 86400,
+    expected_nonce: str | None = None,
+) -> None:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
-    Raises InvalidSignature if the signature does not verify.
-    Raises ValueError if the record has no signature field or the key cannot
-    be decoded.
+    A trusted key is REQUIRED. Pass an ``Ed25519PublicKey`` or a JWK dict via
+    *public_key_or_jwk* to verify against a key the caller already trusts.
 
-    If public_key_or_jwk is None, the public key is taken from record["cnf"]["jwk"].
-    Pass an Ed25519PublicKey or a JWK dict to verify against an explicit key.
+    Raises ``InvalidSignature`` if the signature does not verify, and ``ValueError``
+    for every other rejection (no signature, no trusted key, malformed input,
+    unsupported JWK type, stale record, or nonce mismatch). Returns ``None`` on
+    success. All checks fail closed.
+
+    Trust anchoring (fail closed):
+        Without a trusted key, the record cannot vouch for itself, so verification
+        is refused. Set ``allow_embedded_key=True`` to opt in to verifying against
+        ``record["cnf"]["jwk"]`` — this only proves internal consistency, not
+        authenticity, and emits a loud ``UserWarning``.
+
+    Freshness (fail closed):
+        ``max_age_seconds`` (default 86400 = 24h) bounds how old ``record["iat"]``
+        may be relative to now; pass ``None`` to disable the age check. If
+        ``expected_nonce`` is given, it is compared in constant time against
+        ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
+        ``ValueError``.
     """
+    import time
+    from hmac import compare_digest
+
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
     sig_b64 = record.get("signature")
     if not sig_b64:
         raise ValueError("record has no 'signature' field")
 
-    # Decode signature
-    pad = 4 - len(sig_b64) % 4
-    sig_bytes = base64.urlsafe_b64decode(sig_b64 + "=" * (pad % 4))
+    sig_bytes = _b64url_decode(sig_b64, field="signature")
 
-    # Resolve public key
+    # Resolve the trusted public key. A trusted key is required: a record cannot
+    # authenticate itself with the key it embeds.
     if public_key_or_jwk is None:
+        if not allow_embedded_key:
+            raise ValueError(
+                "verify_record requires a trusted key. Pass an Ed25519PublicKey or "
+                "JWK dict, or set allow_embedded_key=True to (insecurely) trust the "
+                "key embedded in record.cnf.jwk."
+            )
         jwk = record.get("cnf", {}).get("jwk", {})
         if not jwk:
             raise ValueError("record has no cnf.jwk and no public key was supplied")
+        warnings.warn(
+            "verify_record is trusting the key embedded in record.cnf.jwk "
+            "(allow_embedded_key=True). This proves the record is internally "
+            "consistent, NOT that it came from a trusted issuer. Verify against a "
+            "pinned trusted key in production.",
+            UserWarning,
+            stacklevel=2,
+        )
         public_key_or_jwk = jwk
 
     if isinstance(public_key_or_jwk, dict):
-        jwk = public_key_or_jwk
-        x_b64 = jwk.get("x")
-        if not x_b64:
-            raise ValueError("JWK missing 'x' field")
-        pad = 4 - len(x_b64) % 4
-        x_bytes = base64.urlsafe_b64decode(x_b64 + "=" * (pad % 4))
-        pub = Ed25519PublicKey.from_public_bytes(x_bytes)
+        pub = _pubkey_from_jwk(public_key_or_jwk)
     else:
         pub = public_key_or_jwk
+
+    # Freshness: bound the age of the record against its issued-at timestamp.
+    if max_age_seconds is not None:
+        iat = record.get("iat")
+        if not isinstance(iat, (int, float)) or isinstance(iat, bool):
+            raise ValueError("record has no valid integer 'iat' for freshness check")
+        age = time.time() - iat
+        if age > max_age_seconds:
+            raise ValueError(
+                f"record is stale: iat is {int(age)}s old, exceeds max_age_seconds="
+                f"{max_age_seconds}"
+            )
+
+    # Freshness: bind to a caller-supplied nonce when provided.
+    if expected_nonce is not None:
+        actual_nonce = record.get("runtime", {}).get("nonce")
+        if not isinstance(actual_nonce, str) or not compare_digest(actual_nonce, expected_nonce):
+            raise ValueError("record runtime.nonce does not match expected_nonce")
 
     # Canonical bytes: record without "signature" key
     record_no_sig = {k: v for k, v in record.items() if k != "signature"}
