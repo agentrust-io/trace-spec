@@ -150,3 +150,16 @@ def test_okp_jwk_with_key_material_accepted() -> None:
     }
     record = TrustRecord.model_validate(data)
     assert record.cnf.jwk.x is not None
+
+
+def test_jwk_with_private_key_material_rejected() -> None:
+    """A cnf.jwk is a public key; private params (d, p, q, ...) must be rejected (#70)."""
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",  # private scalar — must not be stored
+    }
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
