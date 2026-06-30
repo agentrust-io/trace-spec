@@ -112,11 +112,12 @@ The signature covers every field in the record except `signature` itself. `cnf.j
 
 The library signs the canonical byte representation of the record with the `signature` field removed. Canonicalization follows RFC 8785 JSON Canonicalization Scheme (JCS):
 
-- Object keys sorted in Unicode code-point order (ascending)
+- Object keys sorted in UTF-16 code-unit order (ascending)
 - No whitespace between tokens
-- Numbers serialized in IEEE 754 double-precision shortest form
+- Numbers serialized in IEEE 754 double-precision shortest round-trip form (RFC 8785 §3.2.2.3)
+- Strings emitted as raw UTF-8, escaping only the characters RFC 8259 §7 requires
 
-`json.dumps(record, sort_keys=True)` produces a different byte sequence than JCS for Unicode keys whose sort order differs between Python and Unicode code-point order. The library uses `_canonical_bytes()` internally, which calls `json.dumps(..., sort_keys=True, separators=(",", ":"), ensure_ascii=True)`. For plain ASCII keys this matches JCS. Records with non-ASCII keys require a dedicated JCS library; use ASCII-only field names to stay portable.
+`_canonical_bytes()` is implemented with the RFC 8785-conformant [`rfc8785`](https://pypi.org/project/rfc8785/) library. `json.dumps(record, sort_keys=True, ensure_ascii=True)` is **not** a substitute: it escapes non-ASCII characters as `\uXXXX`, zero-pads number exponents (`1e-07` vs JCS `1e-7`), and sorts by Unicode code point rather than UTF-16 code unit. Any of these would break cross-implementation verification and allow signature-preserving mutation, so the library is used in both signing and verification.
 
 The spec (section 3.2.2) requires JCS canonical form. Do not reimplement this by hand.
 

@@ -25,6 +25,7 @@ dependencies = [
     "pydantic>=2.0",
     "jsonschema>=4.20",
     "cryptography>=42.0",
+    "rfc8785>=0.1.2",
 ]
 
 [project.optional-dependencies]
