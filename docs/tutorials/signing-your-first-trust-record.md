@@ -124,14 +124,14 @@ The spec (section 3.2.2) requires JCS canonical form. Do not reimplement this by
 
 ## Verify the Signed Record
 
-`verify_record()` extracts `cnf.jwk`, recomputes the canonical bytes, and checks the Ed25519 signature. It raises `cryptography.exceptions.InvalidSignature` if the record was tampered with, and returns `None` on success.
+`verify_record()` requires a trusted key, recomputes the canonical bytes, and checks the Ed25519 signature. It raises `cryptography.exceptions.InvalidSignature` if the record was tampered with, and returns `None` on success. Pass the public JWK of the key you trust — here, the `jwk` from earlier in the tutorial.
 
 ```python
 from agentrust_trace import verify_record
 from cryptography.exceptions import InvalidSignature
 
 try:
-    verify_record(signed)
+    verify_record(signed, jwk)  # jwk is the public key you trust
     print("signature valid")
 except InvalidSignature:
     print("tampered — do not trust this record")
@@ -146,7 +146,7 @@ tampered = copy.deepcopy(signed)
 tampered["data_class"] = "public"  # change a field after signing
 
 try:
-    verify_record(tampered)
+    verify_record(tampered, jwk)
 except InvalidSignature:
     print("correctly rejected")  # this branch runs
 ```

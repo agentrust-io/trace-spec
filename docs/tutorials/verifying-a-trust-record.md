@@ -21,15 +21,16 @@ pip install agentrust-trace
 
 ## Understand What verify_record() Does
 
-When you call `verify_record(record)` without a second argument, the library:
+When you call `verify_record(record, trusted_key)` the library:
 
 1. Reads `record["signature"]` and base64url-decodes it to raw bytes
-2. Reads `record["cnf"]["jwk"]` and reconstructs an `Ed25519PublicKey` from the `x` field
-3. Rebuilds the canonical payload: all fields except `signature`, serialized with sorted keys and no whitespace
-4. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
-5. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on failure
+2. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
+3. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
+4. Rebuilds the canonical payload: all fields except `signature`, serialized with sorted keys and no whitespace
+5. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
+6. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection
 
-The public key is embedded in the record itself via `cnf.jwk`. This means any party can verify the record offline, without contacting the issuer.
+A trusted key is required. A record cannot authenticate itself with the key it embeds, so `verify_record` will not fall back to `cnf.jwk` unless you explicitly opt in with `allow_embedded_key=True` (which emits a `UserWarning`, since it proves only internal consistency, not authenticity).
 
 ```python
 import json
@@ -39,16 +40,17 @@ from cryptography.exceptions import InvalidSignature
 with open("session.trace.json") as f:
     record = json.load(f)
 
+# trusted_jwk obtained out-of-band (see "Verify Against a Pinned Public Key" below)
 try:
-    verify_record(record)
+    verify_record(record, trusted_jwk)
     print("signature valid")
 except InvalidSignature:
     print("signature invalid — record may have been tampered with")
 except ValueError as e:
-    print(f"record malformed: {e}")
+    print(f"verification failed: {e}")
 ```
 
-`ValueError` is raised when the record is missing a `signature` field or the `cnf.jwk` cannot be decoded. Treat both as verification failure.
+`ValueError` is raised when no trusted key is supplied, the record is missing a `signature` field, a key or signature cannot be decoded, the JWK type is not Ed25519, or the record is stale. Treat all of these as verification failure.
 
 ---
 
@@ -201,7 +203,7 @@ from agentrust_trace import verify_record, validate_json, iter_errors
 from cryptography.exceptions import InvalidSignature
 import jsonschema
 
-def verify_trust_record(path: str, trusted_jwk: dict | None = None) -> dict:
+def verify_trust_record(path: str, trusted_jwk: dict) -> dict:
     with open(path) as f:
         record = json.load(f)
 

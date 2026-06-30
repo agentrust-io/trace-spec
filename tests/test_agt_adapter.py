@@ -8,7 +8,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from agentrust_trace import TrustRecord, sign_record, generate_key, verify_record
+from agentrust_trace import TrustRecord, sign_record, generate_key, key_to_jwk, verify_record
 from agentrust_trace.adapters import AGTSessionResult, TraceAGTAdapter
 
 # ---------------------------------------------------------------------------
@@ -144,8 +144,8 @@ def test_sign_and_verify_round_trip() -> None:
     record = adapter.build_trust_record(session)
     key = generate_key()
     signed = sign_record(record, key)
-    # Must not raise
-    verify_record(signed)
+    # Must not raise — verify against the trusted signing key.
+    verify_record(signed, key_to_jwk(key))
     # Structural validation of signed record
     TrustRecord.model_validate(signed)
 
