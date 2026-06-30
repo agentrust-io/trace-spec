@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import base64
 import binascii
-import json
 import os
 import warnings
 from typing import Any
 
+import rfc8785
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -59,7 +59,18 @@ def key_to_jwk(key: Ed25519PrivateKey) -> dict[str, str]:
 
 
 def _canonical_bytes(d: dict[str, Any]) -> bytes:
-    return json.dumps(d, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    """Return the RFC 8785 (JCS) canonical UTF-8 byte sequence for *d*.
+
+    This is the signature pre-image mandated by spec/trace-v0.1.md §3.2.2. JCS
+    sorts object keys by UTF-16 code unit, serializes numbers per the
+    ECMAScript Number-to-String / RFC 8785 §3.2.2.3 shortest round-trip form,
+    escapes only the characters required by RFC 8259 §7, and emits non-ASCII
+    characters as raw UTF-8 (not ``\\uXXXX`` escapes). A plain
+    ``json.dumps(sort_keys=True)`` diverges from JCS for non-ASCII strings and
+    for IEEE 754 number formatting, which would break cross-implementation
+    verification, so a conformant library is used instead.
+    """
+    return rfc8785.dumps(d)
 
 
 def _b64url_decode(value: str, *, field: str) -> bytes:

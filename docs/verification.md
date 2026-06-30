@@ -12,13 +12,16 @@ A TRACE Trust Record is a signed JSON object. The `signature` field contains a b
 
 ```python
 import json, base64
+import rfc8785  # RFC 8785 (JCS) canonicalization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 record = json.load(open("session.trace.json"))
 sig_bytes = base64.urlsafe_b64decode(record["signature"] + "==")
-payload = {k: v for k, v in record.items() if k not in ("signature", "cnf")}
-payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+payload = {k: v for k, v in record.items() if k != "signature"}
+payload_bytes = rfc8785.dumps(payload)  # JCS canonical bytes, NOT json.dumps
 ```
+
+The pre-image is the RFC 8785 (JCS) canonical form of the record with `signature` removed. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
 
 ### Step 2 — Resolve the public key
 

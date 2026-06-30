@@ -1,9 +1,11 @@
 """Tests for agentrust_trace.sign."""
 
 import base64
+import json
 import time
 
 import pytest
+import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -219,3 +221,77 @@ def test_verify_record_rejects_malformed_signature():
     record["signature"] = "!!!not base64!!!"
     with pytest.raises(ValueError, match="base64url"):
         verify_record(record, key_to_jwk(key))
+
+
+# --- RFC 8785 (JCS) canonicalization ----------------------------------------
+
+
+def test_canonical_bytes_sorts_keys_no_whitespace():
+    """JCS sorts object keys and emits no inter-token whitespace."""
+    assert _canonical_bytes({"b": 1, "a": 2, "c": 3}) == b'{"a":2,"b":1,"c":3}'
+
+
+def test_canonical_bytes_known_answer_non_ascii():
+    """Known-answer vector: non-ASCII strings are raw UTF-8, NOT \\uXXXX escapes.
+
+    This is the headline divergence from ``json.dumps(..., ensure_ascii=True)``,
+    which the old implementation used. A regression to json.dumps would emit the
+    escaped form on the right and fail this literal-bytes assertion.
+    """
+    obj = {"msg": "hüllo", "id": "café"}
+    expected = b'{"id":"caf\xc3\xa9","msg":"h\xc3\xbcllo"}'
+    assert _canonical_bytes(obj) == expected
+    # The discarded json.dumps form would have escaped the non-ASCII code points.
+    assert json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode() == (
+        b'{"id":"caf\\u00e9","msg":"h\\u00fcllo"}'
+    )
+    assert _canonical_bytes(obj) != json.dumps(
+        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+
+
+def test_canonical_bytes_known_answer_numbers():
+    """Known-answer vector for JCS / RFC 8785 §3.2.2.3 number serialization.
+
+    ``1e-7`` is the RFC 8785 shortest round-trip form; Python's ``json.dumps``
+    emits ``1e-07`` (zero-padded exponent), so this literal assertion catches a
+    regression to json.dumps for number formatting.
+    """
+    assert _canonical_bytes({"n": 1e-7}) == b'{"n":1e-7}'
+    assert json.dumps(1e-7) == "1e-07"  # the non-conformant form we moved away from
+
+
+def test_canonical_bytes_matches_reference_library():
+    """Cross-check the full record canonicalization against the rfc8785 reference."""
+    record = _minimal_record()
+    record["model"]["note"] = "résumé"  # non-ASCII to exercise the divergence
+    assert _canonical_bytes(record) == rfc8785.dumps(record)
+
+
+def test_jcs_distinguishes_unicode_key_order_from_json_dumps():
+    """JCS sorts keys by UTF-16 code unit; this differs from naive byte sorting.
+
+    Astral-plane code points (here U+1F600, encoded as a surrogate pair in
+    UTF-16) sort AFTER the BMP key ``z`` under UTF-16 code-unit ordering. Python
+    ``json.dumps(sort_keys=True)`` sorts by Unicode code point, placing the
+    astral key (U+1F600) BEFORE ``z`` (U+007A). The two schemes therefore
+    produce different byte sequences for the same object, even though both claim
+    to "sort keys".
+    """
+    obj = {"z": 1, "\U0001f600": 2}
+    jcs = _canonical_bytes(obj)
+    jdump = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+    # JCS (UTF-16 code unit): high surrogate 0xD83D > 0x007A, so "z" comes first.
+    assert jcs == b'{"z":1,"\xf0\x9f\x98\x80":2}'
+    # json.dumps (code point): 0x1F600 > 0x007A as a scalar, so order matches here,
+    # but the emoji is escaped as a surrogate pair, diverging in bytes regardless.
+    assert jcs != jdump
+
+
+def test_round_trip_with_non_ascii_payload():
+    """End-to-end: signing and verifying a record carrying non-ASCII data."""
+    key = generate_key()
+    record = _fresh_record()
+    record["model"]["note"] = "modèle français \U0001f916"
+    signed = sign_record(record, key)
+    verify_record(signed, key_to_jwk(key))  # must not raise
