@@ -77,6 +77,11 @@ class Appraisal(BaseModel):
     timestamp: int | None = None
 
 
+# Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
+# proof-of-possession key and must never carry these.
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
+
+
 class JWK(BaseModel):
     # JWK params vary by key type (EC, OKP, RSA) — allow unknown members per RFC 7517
     model_config = ConfigDict(extra="allow")
@@ -96,6 +101,14 @@ class JWK(BaseModel):
         if missing:
             raise ValueError(
                 f"jwk with kty={self.kty!r} must carry key material: missing {', '.join(missing)}"
+            )
+        # extra="allow" would otherwise silently store private key material. A cnf.jwk
+        # is a public confirmation key, so reject any private/secret member.
+        private = sorted(_JWK_PRIVATE_PARAMS.intersection(self.model_extra or {}))
+        if private:
+            raise ValueError(
+                f"jwk must not contain private key material: found {', '.join(private)}. "
+                "cnf.jwk is a public proof-of-possession key."
             )
         return self
 
