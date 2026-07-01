@@ -9,6 +9,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- `delegation` (optional object): the A2A profile delegation-link block, carrying `parent_record_hash` (digest of the parent hop's Trust Record) and `credential_id` (the delegation credential this hop acted under). A chain of records linked this way forms an offline-verifiable delegation DAG. Backward-compatible: existing records without `delegation` remain valid. This is a MINOR (additive) change and the foundation of the forthcoming A2A profile; A2A is now stable at v1.x, clearing the prior blocker.
+
+---
+
 ## [0.3.0] — 2026-06-30
 
 ### Security

@@ -160,6 +160,24 @@
       },
       "additionalProperties": false
     },
+    "delegation": {
+      "type": "object",
+      "description": "A2A profile: links this record to the delegating hop's Trust Record. Present when this execution acted on delegated authority; absent on a root (non-delegated) execution. A chain of these forms an offline-verifiable delegation DAG.",
+      "required": ["parent_record_hash", "credential_id"],
+      "properties": {
+        "parent_record_hash": {
+          "type": "string",
+          "description": "SHA-256 or SHA-384 digest of the parent hop's Trust Record.",
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+        },
+        "credential_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the delegation credential this hop acted under."
+        }
+      },
+      "additionalProperties": false
+    },
     "build_provenance": {
       "type": "object",
       "description": "SLSA provenance for the workload (agent code + container image).",

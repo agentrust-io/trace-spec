@@ -75,3 +75,18 @@ def test_okp_jwk_with_key_material_passes() -> None:
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
     }
     assert iter_errors(data) == []
+
+
+def test_delegation_passes_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {
+        "parent_record_hash": "sha256:" + "a" * 64,
+        "credential_id": "cred-abc",
+    }
+    assert iter_errors(data) == []
+
+
+def test_delegation_bad_digest_fails_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {"parent_record_hash": "nope", "credential_id": "c"}
+    assert iter_errors(data)

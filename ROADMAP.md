@@ -18,7 +18,7 @@ Announced at Confidential Computing Summit, San Francisco, June 23 2026.
 Driven by founding-member feedback and open questions from §7 of the spec.
 
 - **MCP profile** — normative claim shape and binding rules for MCP tool-call transcripts (`tool_transcript`); proposed for upstream contribution to MCP spec governance
-- **A2A profile** — same, for Google Agent-to-Agent; pending A2A protocol stability
+- **A2A profile** — same, for Google Agent-to-Agent. The optional `delegation` link block (`parent_record_hash` + `credential_id`) has landed in the record as the foundation; A2A is now stable at v1.x, so the normative binding rules are the remaining work
 - **Vendor platform annexes** — co-authored informative claim-mapping docs for NVIDIA NRAS, Intel Trust Authority, AMD CoRIM, Azure MAA, GCP Confidential Space
 - **OWASP Agentic AI Top 10 cross-walk** — which TRACE claim evidences which control for each of the 10 ASIs
 - **MITRE ATLAS cross-walk** — TRACE claim coverage mapped to relevant ATLAS tactics
