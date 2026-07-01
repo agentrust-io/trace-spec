@@ -1,0 +1,28 @@
+# TRACE
+
+> Trust Runtime Attestation and Compliance Evidence — open attestation standard for agentic AI governance
+
+TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. A TRACE Trust Record binds what model ran, in which verified hardware environment, under which policy, on what data class, and which tools were invoked into a single signed artifact rooted in silicon attestation, then anchors it to a SCITT transparency ledger so a third party can verify it without trusting the operator. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite.
+
+## Getting started
+
+- [Home](https://trace.agentrust-io.com/docs/index.md)
+- [Quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md)
+- [Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)
+- [Verification](https://trace.agentrust-io.com/docs/verification/index.md)
+- [Glossary](https://trace.agentrust-io.com/docs/glossary/index.md)
+
+## Specification
+
+- [Specification](https://trace.agentrust-io.com/spec/trace-v0.1/index.md)
+- [Schema Reference](https://trace.agentrust-io.com/docs/schema/index.md)
+
+## Integration
+
+- [AGT](https://trace.agentrust-io.com/docs/integration/agt/index.md)
+- [cMCP](https://trace.agentrust-io.com/docs/integration/cmcp/index.md)
+
+## Platforms
+
+- [Overview](https://trace.agentrust-io.com/docs/platforms/index.md)
+
