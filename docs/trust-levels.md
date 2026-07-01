@@ -1,3 +1,7 @@
+---
+description: TRACE defines three trust levels, each adding a stronger guarantee about the origin and integrity of a trust record, from software signing to hardware attestation.
+---
+
 # Trust Levels
 
 TRACE defines three trust levels. Each level adds a stronger guarantee about the origin and integrity of the trust record. Higher levels require additional infrastructure but enable stronger relying-party policies.

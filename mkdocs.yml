@@ -9,6 +9,7 @@ copyright: "© 2026 OPAQUE Systems — CC BY 4.0"
 
 exclude_docs: |
   .github/
+  overrides/
   node_modules/
   src/
   tests/
@@ -25,6 +26,7 @@ exclude_docs: |
 
 theme:
   name: material
+  custom_dir: overrides
   font: false
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
@@ -67,6 +69,33 @@ theme:
 plugins:
   - search:
       lang: en
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >-
+        TRACE (Trust Runtime Attestation and Compliance Evidence) is an open
+        specification for hardware-attested AI agent governance records. A TRACE
+        Trust Record binds what model ran, in which verified hardware
+        environment, under which policy, on what data class, and which tools were
+        invoked into a single signed artifact rooted in silicon attestation, then
+        anchors it to a SCITT transparency ledger so a third party can verify it
+        without trusting the operator. It builds on RFC 9711 (CWT/EAT), RFC 9334
+        (RATS), and SCITT, and ships a Python library, agentrust-trace, with a
+        conformance suite.
+      sections:
+        Getting started:
+          - docs/index.md
+          - docs/quickstart.md
+          - docs/trust-levels.md
+          - docs/verification.md
+          - docs/glossary.md
+        Specification:
+          - spec/trace-v0.1.md
+          - docs/schema.md
+        Integration:
+          - docs/integration/agt.md
+          - docs/integration/cmcp.md
+        Platforms:
+          - docs/platforms/index.md
   - minify:
       minify_html: true
   - mkdocstrings:
