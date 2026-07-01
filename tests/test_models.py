@@ -163,3 +163,44 @@ def test_jwk_with_private_key_material_rejected() -> None:
     }
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+def test_delegation_block_parses() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {
+        "parent_record_hash": "sha256:" + "a" * 64,
+        "credential_id": "cred-abc",
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.delegation is not None
+    assert record.delegation.credential_id == "cred-abc"
+
+
+def test_record_without_delegation_is_valid() -> None:
+    record = TrustRecord.model_validate(_load("intel-tdx.json"))
+    assert record.delegation is None
+
+
+def test_delegation_bad_digest_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {"parent_record_hash": "not-a-digest", "credential_id": "c"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_delegation_empty_credential_id_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {"parent_record_hash": "sha256:" + "a" * 64, "credential_id": ""}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_delegation_extra_field_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["delegation"] = {
+        "parent_record_hash": "sha256:" + "a" * 64,
+        "credential_id": "c",
+        "foo": "bar",
+    }
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)

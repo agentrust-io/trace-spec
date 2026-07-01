@@ -59,6 +59,22 @@ class ToolTranscript(BaseModel):
     transcript_uri: str | None = None
 
 
+class Delegation(BaseModel):
+    """A2A profile: links this record to the record of the delegating hop.
+
+    Present when this execution acted on authority delegated by another agent.
+    ``parent_record_hash`` is the digest of the parent hop's Trust Record and
+    ``credential_id`` names the delegation credential this hop acted under, so a
+    chain of records forms an offline-verifiable delegation DAG. Absent on a
+    root (non-delegated) execution.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    parent_record_hash: DigestStr
+    credential_id: Annotated[str, Field(min_length=1)]
+
+
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -132,6 +148,7 @@ class TrustRecord(BaseModel):
     policy: PolicyInfo
     data_class: str
     tool_transcript: ToolTranscript | None = None
+    delegation: Delegation | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)]
