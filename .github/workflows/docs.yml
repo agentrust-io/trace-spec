@@ -6,6 +6,8 @@ on:
     paths:
       - "docs/**"
       - "spec/**"
+      - "overrides/**"
+      - "robots.txt"
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - "README.md"
@@ -58,7 +60,7 @@ jobs:
           if [ -d spec ]; then cp -r spec $BUILD/spec; fi
           if [ -d examples ]; then cp -r examples $BUILD/examples; fi
 
-          for fname in README.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md ROADMAP.md LIMITATIONS.md CNAME; do
+          for fname in README.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md ROADMAP.md LIMITATIONS.md CNAME robots.txt; do
             if [ -f "$fname" ]; then cp "$fname" "$BUILD/$fname"; fi
           done
 

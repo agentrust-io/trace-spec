@@ -1,0 +1,35 @@
+# TRACE specification docs (https://trace.agentrust-io.com)
+# Search engines and AI answer engines are welcome to crawl and cite these docs.
+
+User-agent: *
+Allow: /
+
+# Explicitly welcome major AI and answer-engine crawlers.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://trace.agentrust-io.com/sitemap.xml

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{#
+  SEO and AEO head additions for the TRACE docs.
+  Adds OpenGraph and Twitter card meta plus JSON-LD structured data
+  (Organization, WebSite, SoftwareApplication) so search engines and
+  AI answer engines can describe and cite the specification accurately.
+  Material already emits the canonical link when site_url is set, so it
+  is not repeated here.
+#}
+{% block extrahead %}
+  {{ super() }}
+
+  {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title and not page.is_homepage else config.site_name %}
+  {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
+  {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ page_title }}">
+  <meta property="og:description" content="{{ page_desc }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:image" content="https://trace.agentrust-io.com/docs/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="TRACE: an AgenTrust open standard">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page_title }}">
+  <meta name="twitter:description" content="{{ page_desc }}">
+  <meta name="twitter:image" content="https://trace.agentrust-io.com/docs/assets/og.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://agentrust-io.com/#organization",
+        "name": "AgenTrust",
+        "url": "https://agentrust-io.com",
+        "sameAs": [
+          "https://github.com/agentrust-io"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "{{ config.site_url }}#website",
+        "url": "{{ config.site_url }}",
+        "name": "{{ config.site_name }}",
+        "description": "{{ config.site_description }}",
+        "publisher": { "@id": "https://agentrust-io.com/#organization" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "TRACE",
+        "alternateName": "Trust Runtime Attestation and Compliance Evidence",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Cross-platform",
+        "url": "{{ config.site_url }}",
+        "downloadUrl": "https://pypi.org/project/agentrust-trace/",
+        "codeRepository": "https://github.com/agentrust-io/trace-spec",
+        "description": "{{ config.site_description }}",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    ]
+  }
+  </script>
+{% endblock %}
