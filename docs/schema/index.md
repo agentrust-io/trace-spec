@@ -14,6 +14,7 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 | `policy`           | object  | **yes**  | Governance policy binding                                        |
 | `data_class`       | string  | **yes**  | Data sensitivity classification                                  |
 | `tool_transcript`  | object  | **yes**  | Tool-call audit summary                                          |
+| `delegation`       | object  | no       | A2A profile: link to the delegating hop's Trust Record           |
 | `build_provenance` | object  | **yes**  | Build-time artifact provenance                                   |
 | `appraisal`        | object  | **yes**  | Verifier judgment                                                |
 | `transparency`     | string  | **yes**  | SCITT transparency log anchor URI (empty string if not anchored) |
@@ -72,6 +73,15 @@ Audit summary of tool invocations during the session.
 | `hash`           | string  | **yes**  | `sha256:` of the canonical JSON of the full `AuditEntry` list |
 | `call_count`     | integer | **yes**  | Number of tool invocations recorded                           |
 | `transcript_uri` | string  | no       | URI to the full per-call transcript (may be encrypted)        |
+
+## `delegation`
+
+A2A profile. Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
+
+| Field                | Type   | Required | Description                                                  |
+| -------------------- | ------ | -------- | ------------------------------------------------------------ |
+| `parent_record_hash` | string | **yes**  | `sha256:`/`sha384:` digest of the parent hop's Trust Record  |
+| `credential_id`      | string | **yes**  | Identifier of the delegation credential this hop acted under |
 
 ## `build_provenance`
 
