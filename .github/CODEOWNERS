@@ -1,0 +1,5 @@
+# Default owners for all files
+* @agentrust-io/maintainers
+
+# CI/CD workflow changes
+.github/workflows/ @agentrust-io/maintainers
