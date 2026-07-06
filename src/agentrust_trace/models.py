@@ -155,6 +155,6 @@ class TrustRecord(BaseModel):
     cnf: ConfirmationKey
     signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
-    canonical JSON form of the record with this field absent. Every Trust Record must
+    canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
     outside the record instead of in this field."""
