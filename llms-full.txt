@@ -404,7 +404,7 @@ This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-
 
 ### Step 1 — Parse the envelope
 
-A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with `signature` and `cnf` removed.
+A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
 
 ```
 import json, base64
@@ -417,7 +417,7 @@ payload = {k: v for k, v in record.items() if k != "signature"}
 payload_bytes = rfc8785.dumps(payload)  # JCS canonical bytes, NOT json.dumps
 ```
 
-The pre-image is the RFC 8785 (JCS) canonical form of the record with `signature` removed. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
+The pre-image is the RFC 8785 (JCS) canonical form of the record with only `signature` removed. All other top-level fields, including `cnf`, are included. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
 
 ### Step 2 — Resolve the public key
 
@@ -774,7 +774,7 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
 
-1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles).
+1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles). The `cnf` field, including `cnf.jwk`, is included in the canonical form.
 1. Apply RFC 8785 JSON Canonicalization Scheme (JCS) to produce a deterministic byte sequence:
 1. Object keys are sorted in Unicode code-point order (ascending).
 1. No whitespace between tokens.
@@ -1020,22 +1020,22 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 
 ## Top-level fields
 
-| Field              | Type    | Required | Description                                                      |
-| ------------------ | ------- | -------- | ---------------------------------------------------------------- |
-| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1`      |
-| `iat`              | integer | **yes**  | Issued-at timestamp (Unix epoch seconds)                         |
-| `subject`          | string  | **yes**  | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`)     |
-| `model`            | object  | **yes**  | Model artifact binding                                           |
-| `runtime`          | object  | **yes**  | Execution environment binding                                    |
-| `policy`           | object  | **yes**  | Governance policy binding                                        |
-| `data_class`       | string  | **yes**  | Data sensitivity classification                                  |
-| `tool_transcript`  | object  | **yes**  | Tool-call audit summary                                          |
-| `delegation`       | object  | no       | A2A profile: link to the delegating hop's Trust Record           |
-| `build_provenance` | object  | **yes**  | Build-time artifact provenance                                   |
-| `appraisal`        | object  | **yes**  | Verifier judgment                                                |
-| `transparency`     | string  | **yes**  | SCITT transparency log anchor URI (empty string if not anchored) |
-| `cnf`              | object  | **yes**  | Confirmation method — contains the `jwk` signing key             |
-| `signature`        | string  | **yes**  | Base64url Ed25519 / ES256 / ES384 signature over the record      |
+| Field              | Type    | Required | Description                                                                                                           |
+| ------------------ | ------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1`                                                           |
+| `iat`              | integer | **yes**  | Issued-at timestamp (Unix epoch seconds)                                                                              |
+| `subject`          | string  | **yes**  | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`)                                                          |
+| `model`            | object  | **yes**  | Model artifact binding                                                                                                |
+| `runtime`          | object  | **yes**  | Execution environment binding                                                                                         |
+| `policy`           | object  | **yes**  | Governance policy binding                                                                                             |
+| `data_class`       | string  | **yes**  | Data sensitivity classification                                                                                       |
+| `tool_transcript`  | object  | **yes**  | Tool-call audit summary                                                                                               |
+| `delegation`       | object  | no       | A2A profile: link to the delegating hop's Trust Record                                                                |
+| `build_provenance` | object  | **yes**  | Build-time artifact provenance                                                                                        |
+| `appraisal`        | object  | **yes**  | Verifier judgment                                                                                                     |
+| `transparency`     | string  | **yes**  | SCITT transparency log anchor URI (empty string if not anchored)                                                      |
+| `cnf`              | object  | **yes**  | Confirmation method — contains the `jwk` signing key                                                                  |
+| `signature`        | string  | **yes**  | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
 ## `model`
 

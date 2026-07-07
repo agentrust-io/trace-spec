@@ -8,7 +8,7 @@ This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-
 
 ### Step 1 — Parse the envelope
 
-A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with `signature` and `cnf` removed.
+A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
 
 ```
 import json, base64
@@ -21,7 +21,7 @@ payload = {k: v for k, v in record.items() if k != "signature"}
 payload_bytes = rfc8785.dumps(payload)  # JCS canonical bytes, NOT json.dumps
 ```
 
-The pre-image is the RFC 8785 (JCS) canonical form of the record with `signature` removed. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
+The pre-image is the RFC 8785 (JCS) canonical form of the record with only `signature` removed. All other top-level fields, including `cnf`, are included. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
 
 ### Step 2 — Resolve the public key
 

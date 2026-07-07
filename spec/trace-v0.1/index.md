@@ -191,7 +191,7 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
 
-1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles).
+1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles). The `cnf` field, including `cnf.jwk`, is included in the canonical form.
 1. Apply RFC 8785 JSON Canonicalization Scheme (JCS) to produce a deterministic byte sequence:
 1. Object keys are sorted in Unicode code-point order (ascending).
 1. No whitespace between tokens.

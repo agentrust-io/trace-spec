@@ -4,22 +4,22 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 
 ## Top-level fields
 
-| Field              | Type    | Required | Description                                                      |
-| ------------------ | ------- | -------- | ---------------------------------------------------------------- |
-| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1`      |
-| `iat`              | integer | **yes**  | Issued-at timestamp (Unix epoch seconds)                         |
-| `subject`          | string  | **yes**  | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`)     |
-| `model`            | object  | **yes**  | Model artifact binding                                           |
-| `runtime`          | object  | **yes**  | Execution environment binding                                    |
-| `policy`           | object  | **yes**  | Governance policy binding                                        |
-| `data_class`       | string  | **yes**  | Data sensitivity classification                                  |
-| `tool_transcript`  | object  | **yes**  | Tool-call audit summary                                          |
-| `delegation`       | object  | no       | A2A profile: link to the delegating hop's Trust Record           |
-| `build_provenance` | object  | **yes**  | Build-time artifact provenance                                   |
-| `appraisal`        | object  | **yes**  | Verifier judgment                                                |
-| `transparency`     | string  | **yes**  | SCITT transparency log anchor URI (empty string if not anchored) |
-| `cnf`              | object  | **yes**  | Confirmation method — contains the `jwk` signing key             |
-| `signature`        | string  | **yes**  | Base64url Ed25519 / ES256 / ES384 signature over the record      |
+| Field              | Type    | Required | Description                                                                                                           |
+| ------------------ | ------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1`                                                           |
+| `iat`              | integer | **yes**  | Issued-at timestamp (Unix epoch seconds)                                                                              |
+| `subject`          | string  | **yes**  | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`)                                                          |
+| `model`            | object  | **yes**  | Model artifact binding                                                                                                |
+| `runtime`          | object  | **yes**  | Execution environment binding                                                                                         |
+| `policy`           | object  | **yes**  | Governance policy binding                                                                                             |
+| `data_class`       | string  | **yes**  | Data sensitivity classification                                                                                       |
+| `tool_transcript`  | object  | **yes**  | Tool-call audit summary                                                                                               |
+| `delegation`       | object  | no       | A2A profile: link to the delegating hop's Trust Record                                                                |
+| `build_provenance` | object  | **yes**  | Build-time artifact provenance                                                                                        |
+| `appraisal`        | object  | **yes**  | Verifier judgment                                                                                                     |
+| `transparency`     | string  | **yes**  | SCITT transparency log anchor URI (empty string if not anchored)                                                      |
+| `cnf`              | object  | **yes**  | Confirmation method — contains the `jwk` signing key                                                                  |
+| `signature`        | string  | **yes**  | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
 ## `model`
 
