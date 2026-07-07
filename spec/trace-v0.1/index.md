@@ -239,6 +239,28 @@ A verifier configured with the issuer key that fails any of these three checks M
 
 **Trust boundary.** External execution evidence is only as trustworthy as the issuer key and the PKI behind it. TRACE binds the receipt into the audit chain — it does not certify that a physical action occurred, that it was executed safely, or that any functional-safety standard was met. Those claims belong to the issuer and its certification body, not to TRACE.
 
+#### 3.3.2 Action receipts for embodied workflows (informative)
+
+Embodied-agent profiles need to keep three evidence layers separate:
+
+| Layer                    | TRACE role                                                                                                                  | Boundary                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Session evidence         | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the governed session.                   | Does not expose every call unless the verifier has the transcript bytes.  |
+| Action issuance evidence | Per-call receipts can prove that a specific action request was issued, signed, ordered, and bound to the session or call.   | Does not prove that the requested physical or business outcome completed. |
+| Outcome evidence         | Controller, monitor, human-review, or safety-system observations can describe acceptance, rejection, aborts, or completion. | The claim belongs to the external issuer, not to core TRACE validity.     |
+
+This split is intentionally independent of build-provenance depth. A verifier can have a fully verified dependency chain with no action receipts, or a complete action-receipt chain for a workload whose builder is only surface checked. Future profiles may express this as a separate action-receipt requirement, such as `required`, `optional`, or `none`, without folding action evidence into the supply-chain provenance axis.
+
+An action receipt profile can build on the external execution evidence rules in section 3.3.1 by requiring the verifier to:
+
+1. recompute the receipt's action or evidence digest from the canonical action preimage;
+1. verify the receipt signature against a pinned, manifest-bound, or otherwise trusted issuer key, not only against a key embedded in the receipt;
+1. verify receipt ordering when receipts are hash-chained;
+1. verify that the receipt binds back to the TRACE session, transcript entry, or cMCP call identifier; and
+1. report missing, stale, mismatched, or unverifiable receipts separately from a verified controller rejection.
+
+A signed controller rejection is valid negative evidence: it can prove that the controller rejected the action request under a trusted key and session binding. It is not a TRACE verification failure unless the receipt itself is malformed, untrusted, stale, out of order, or not bound to the expected call. Conversely, a signed acceptance receipt is not proof of physical completion or functional-safety certification unless the external issuer and profile explicitly make, and the verifier is configured to trust, that stronger claim.
+
 ### 3.4 Scope
 
 TRACE governs any confidential workload — AI agent execution, regulated data processing, sovereign compute, secure multi-party computation. AI agents are the forcing function and the first reference profile, not the limit of the standard.
