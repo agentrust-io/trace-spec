@@ -150,6 +150,16 @@ def test_verify_record_raises_for_tampered_record():
         verify_record(record, trusted)
 
 
+def test_verify_record_raises_for_tampered_cnf_jwk():
+    key = generate_key()
+    other_key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    trusted = key_to_jwk(key)
+    record["cnf"]["jwk"] = key_to_jwk(other_key)
+    with pytest.raises(InvalidSignature):
+        verify_record(record, trusted)
+
+
 def test_verify_record_raises_for_missing_signature():
     record = dict(_fresh_record())
     key = generate_key()

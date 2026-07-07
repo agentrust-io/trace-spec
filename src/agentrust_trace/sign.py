@@ -1,7 +1,7 @@
 """Signing utilities for TRACE Trust Records.
 
 Produces a signed record dict with an embedded ``signature`` field --
-Ed25519 over the canonical JSON of the record with the signature field absent.
+Ed25519 over the canonical JSON of the record with only the signature field absent.
 This is the same convention used by cMCP RuntimeClaim and verified by
 trace-tests TR-SIG at all conformance levels.
 """
@@ -92,7 +92,7 @@ def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any
     """Return a copy of *record* with ``cnf.jwk`` populated and a ``signature`` field added.
 
     The signature is Ed25519 over the canonical JSON (sorted keys, no whitespace)
-    of the record with the ``signature`` field absent. ``cnf.jwk`` is set to the
+    of the record with only the ``signature`` field absent. ``cnf.jwk`` is set to the
     public key derived from *key*.
 
     The returned dict is a plain JSON-serialisable object. Pass it to

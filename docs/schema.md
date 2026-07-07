@@ -19,7 +19,7 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | **yes** | SCITT transparency log anchor URI (empty string if not anchored) |
 | `cnf` | object | **yes** | Confirmation method — contains the `jwk` signing key |
-| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the record |
+| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
 ## `model`
 
