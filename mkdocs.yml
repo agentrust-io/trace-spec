@@ -206,3 +206,7 @@ nav:
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
       - Roadmap: ROADMAP.md
+
+extra_javascript:
+  # Shared cross-project top navigation (TRACE / Manifest / cMCP / cA2A / ...)
+  - https://agentrust-io.com/supernav.js
