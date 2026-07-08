@@ -1,0 +1,47 @@
+{
+  "signer_public_key_hex": "060332967f148817376b76081fc2a642bccb16cd6787269d5d7806245bb689d7",
+  "current_policy_digest": "sha256:bda8d8f60c90afe5c05fc7f3b1b53d4715a0f7ba72ec8d4b82ad7aba70d9609b",
+  "expected_session_id": "ses_8f31ab",
+  "chain": {
+    "02-valid-denied.json": "01-valid-accepted.json",
+    "04-broken-chain.json": "02-valid-denied.json"
+  },
+  "results": {
+    "01-valid-accepted.json": {
+      "signature": "pass",
+      "chain": "n/a",
+      "policy_freshness": "pass",
+      "session_binding": "pass"
+    },
+    "02-valid-denied.json": {
+      "signature": "pass",
+      "chain": "pass",
+      "policy_freshness": "pass",
+      "session_binding": "pass"
+    },
+    "03-signature-key-mismatch.json": {
+      "signature": "fail",
+      "chain": "n/a",
+      "policy_freshness": "n/a",
+      "session_binding": "n/a"
+    },
+    "04-broken-chain.json": {
+      "signature": "pass",
+      "chain": "fail",
+      "policy_freshness": "pass",
+      "session_binding": "pass"
+    },
+    "05-stale-policy-digest.json": {
+      "signature": "pass",
+      "chain": "n/a",
+      "policy_freshness": "fail",
+      "session_binding": "pass"
+    },
+    "06-session-binding-mismatch.json": {
+      "signature": "pass",
+      "chain": "n/a",
+      "policy_freshness": "pass",
+      "session_binding": "fail"
+    }
+  }
+}

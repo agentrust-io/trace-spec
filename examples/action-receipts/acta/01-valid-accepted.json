@@ -1,20 +1,16 @@
 {
-  "v": 2,
-  "type": "decision_receipt",
-  "algorithm": "ed25519",
-  "kid": "acta-demo-2026q3",
-  "issuer": "did:web:legate.scopeblind.com",
-  "issued_at": "2026-07-08T09:00:01.000Z",
   "payload": {
-    "tool": "run_shell",
+    "type": "protectmcp:decision",
+    "tool_name": "run_shell",
     "decision": "allow",
-    "reason_code": "policy_permit",
     "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
-    "scope": "call-7f31",
-    "session_id": "trace-session-2026-07-08T09:00:00Z",
-    "request_id": "call-7f31",
-    "spec": "draft-farley-acta-signed-receipts-02",
-    "parent_receipt_hash": null
+    "session_id": "ses_8f31ab",
+    "issued_at": "2026-07-08T09:00:01.000Z",
+    "issuer_id": "sb:issuer:QUGuJV1P6e6c"
   },
-  "signature": "4b8e45f4a2832b1ba8ae34c9e80022c744568e1305efd1cd401fe2eb42ac1ac8693e3d04b037ba7b9229158e665253b8a77cdee967ccd94a1288fa6d2f2b430c"
+  "signature": {
+    "alg": "EdDSA",
+    "kid": "sb:issuer:QUGuJV1P6e6c",
+    "sig": "d709be9e8d907c14bd2005df05cc960b070d388a665964074a19a355a2eabb3de14cb5cad89b533dc40089d50bd6f108dd1c3f7a78af588466227901f9ac4d04"
+  }
 }
