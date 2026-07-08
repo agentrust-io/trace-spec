@@ -199,6 +199,7 @@ nav:
       - NVIDIA H100: docs/platforms/nvidia-h100.md
   - Crosswalks:
       - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
+      - Acta Decision Receipts: docs/crosswalks/acta-decision-receipts.md
   - Test Suite: https://tests.agentrust-io.com
   - Project:
       - Limitations: LIMITATIONS.md
