@@ -61,6 +61,22 @@ Field names on the left are exact TRACE terms as used in [spec section 3.3.2](..
 | `receipt.signature` | `signature` | Ed25519, as 3.3.2 specifies. |
 | *(no TRACE equivalent)* | `payload.policy_digest` | The digest of the policy bundle in force when the decision was made. Signature validity does not imply this digest is still current; see `05-stale-policy-digest.json` and the freshness discussion below. |
 
+## Referencing an Acta chain from a Trust Record
+
+Per the direction set on [trace-spec#97](https://github.com/agentrust-io/trace-spec/issues/97) and the closed decision on [trace-spec#34](https://github.com/agentrust-io/trace-spec/issues/34), a Trust Record references external evidence by digest plus issuer/key metadata; it does not embed the evidence or its schema. For an Acta chain, the natural reference is the **chain head**: the same digest construction the chain links themselves use (SHA-256 over the JCS-canonical bytes of the latest receipt's `payload`), so a verifier holding the referenced receipts can recompute it with no additional convention. An illustrative (non-normative; field names shown are descriptive, not proposed schema additions) evidence entry for the two-receipt fixture chain in this profile:
+
+```json
+{
+  "evidence_type": "acta/decision-receipt-chain",
+  "chain_head": "sha256:8a1b2c9a8a5c7ca20e920b5a13637ef24d72ed8ef6b1a949d3b3f03544726836",
+  "receipt_count": 2,
+  "issuer": "did:web:legate.scopeblind.com",
+  "issuer_key_id": "acta-demo-2026q3"
+}
+```
+
+The `chain_head` value above is real: it is the recomputable digest of [`02-valid-denied.json`](../../examples/action-receipts/acta/02-valid-denied.json)'s payload, the latest receipt in the fixture chain. A verifier resolves `issuer_key_id` through its trusted key set (never a key carried in the evidence), fetches or is handed the referenced receipts out of band, walks the chain from the head, and runs the per-receipt checks below. The Trust Record itself stays small and schema-stable regardless of how many receipts the chain contains.
+
 ## Verifier obligations, restated for this profile
 
 Following the same five checks [the embodied fixture README](../../examples/action-receipts/README.md#shared-receipt-shape) lists:
@@ -68,7 +84,7 @@ Following the same five checks [the embodied fixture README](../../examples/acti
 1. Recompute the JCS-canonical preimage from `payload` (with `signature` absent).
 2. Resolve `kid` through a pinned or manifest-bound key set, not a key carried inside the receipt.
 3. Verify `signature` against that preimage and the resolved key.
-4. If the deployment binds `request_id`/`session_id` to an external call or session identifier, verify that binding.
+4. If the deployment binds `request_id`/`session_id` to an external call or session identifier, verify that binding (`06-session-binding-mismatch.json` is a genuine, validly signed receipt that fails exactly this check: it belongs to a different session than the one it is presented under).
 5. If the profile uses hash-chained ordering, verify `payload.parent_receipt_hash` against the prior receipt in the chain, exactly as a signature check (see the note on `04` above: a broken chain pointer is a broken signature in this envelope shape, not a separate check).
 
 A sixth check this profile adds, distinct from all five above: compare `payload.policy_digest` against the policy bundle actually in force at verification time. A receipt can pass every signature and chain check and still be **stale** if the policy changed after it was issued. `05-stale-policy-digest.json` is a genuinely, cryptographically valid receipt (step 3 passes) whose policy binding is nonetheless out of date; a verifier that stops at step 3 accepts an authorization basis that no longer exists. This is the same distinction raised independently in the [Composable Trust Evidence Format discussion](https://github.com/a2aproject/A2A/discussions/1734) as `policy_digest` / `policy_or_verdict_id`: cryptographic integrity and authorization freshness are different properties, and a conformant verifier checks both.
@@ -83,7 +99,7 @@ An Acta decision receipt proves that a specific policy decision, over a specific
 
 ## Conformance fixtures
 
-Five real fixtures, generated (not hand-typed) by an actual Ed25519 signer, covering the negative cases raised in [trace-spec#97](https://github.com/agentrust-io/trace-spec/issues/97) and [trace-spec#95](https://github.com/agentrust-io/trace-spec/issues/95): valid accepted, valid denied (negative controller-equivalent outcome), signature/key mismatch, broken chain, and stale policy digest. Details, the generator script, and independent-verification instructions: [`examples/action-receipts/acta/README.md`](../../examples/action-receipts/acta/README.md).
+Six real fixtures, generated (not hand-typed) by an actual Ed25519 signer, covering the negative cases raised in [trace-spec#97](https://github.com/agentrust-io/trace-spec/issues/97) and [trace-spec#95](https://github.com/agentrust-io/trace-spec/issues/95): valid accepted, valid denied (negative controller-equivalent outcome), signature/key mismatch, broken chain, stale policy digest, and mismatched session/call binding. Details, the generator script, and independent-verification instructions: [`examples/action-receipts/acta/README.md`](../../examples/action-receipts/acta/README.md).
 
 ## References
 

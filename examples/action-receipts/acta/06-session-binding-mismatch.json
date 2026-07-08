@@ -1,0 +1,20 @@
+{
+  "v": 2,
+  "type": "decision_receipt",
+  "algorithm": "ed25519",
+  "kid": "acta-demo-2026q3",
+  "issuer": "did:web:legate.scopeblind.com",
+  "issued_at": "2026-07-07T14:30:02.000Z",
+  "payload": {
+    "tool": "run_shell",
+    "decision": "allow",
+    "reason_code": "policy_permit",
+    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "scope": "call-9a10",
+    "session_id": "trace-session-2026-07-07T14:30:00Z",
+    "request_id": "call-9a10",
+    "spec": "draft-farley-acta-signed-receipts-02",
+    "parent_receipt_hash": null
+  },
+  "signature": "9b84662155e8add03d6c0c141f6a9472af8379c045b938d13dd40b07f467533ecdd2ed6194aed0b0b3687958a534ad2da61e250014c3ebb435a3a5c97a54d90a"
+}

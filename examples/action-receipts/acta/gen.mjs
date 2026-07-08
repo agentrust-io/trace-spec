@@ -91,7 +91,7 @@ console.log('01 valid, expect true ->', verify(r1.env, PUB_HEX));
 const r2 = makeReceipt({
   callId: 'call-7f32', sessionId: 'trace-session-2026-07-08T09:00:00Z', tool: 'delete_database',
   decision: 'deny', reasonCode: 'policy_forbid:destructive_action', issuedAt: '2026-07-08T09:00:05.000Z',
-  prevHash: sha256hex(canonicalBytes(r1.env.payload)), policyDigest: POLICY_V1_DIGEST,
+  prevHash: `sha256:${sha256hex(canonicalBytes(r1.env.payload))}`, policyDigest: POLICY_V1_DIGEST,
 });
 results['02-valid-denied.json'] = r2.env;
 console.log('02 valid denial, expect true ->', verify(r2.env, PUB_HEX));
@@ -115,6 +115,27 @@ results['05-stale-policy-digest.json'] = r1.env;
 const CURRENT_POLICY_DIGEST = POLICY_V2_DIGEST; // policy rotated (real digest) after r1 was issued
 console.log('05 stale policy_digest, signature still valid ->', verify(r1.env, PUB_HEX),
   '| digest matches current policy? ->', r1.env.payload.policy_digest === CURRENT_POLICY_DIGEST);
+
+// 6. Mismatched session/call binding: a validly signed receipt whose
+// session_id belongs to a DIFFERENT session than the one it is presented
+// under. Like 05, this passes signature verification (the receipt is not
+// forged or tampered); it fails the binding check a verifier runs against
+// the session/call identifiers the surrounding TRACE/cMCP layer assigned.
+const r6 = makeReceipt({
+  callId: 'call-9a10', sessionId: 'trace-session-2026-07-07T14:30:00Z', tool: 'run_shell',
+  decision: 'allow', reasonCode: 'policy_permit', issuedAt: '2026-07-07T14:30:02.000Z',
+  prevHash: null, policyDigest: POLICY_V1_DIGEST,
+});
+results['06-session-binding-mismatch.json'] = r6.env;
+const EXPECTED_SESSION = 'trace-session-2026-07-08T09:00:00Z'; // the session 01/02 belong to
+console.log('06 session mismatch, signature still valid ->', verify(r6.env, PUB_HEX),
+  '| session binding matches? ->', r6.env.payload.session_id === EXPECTED_SESSION);
+
+// Chain head over the fixture chain (01 -> 02), for the Trust Record
+// reference example in the crosswalk doc: same digest construction the
+// chain links themselves use (SHA-256 over the JCS bytes of the payload).
+const CHAIN_HEAD = `sha256:${sha256hex(canonicalBytes(r2.env.payload))}`;
+console.log('chain head (02):', CHAIN_HEAD);
 
 for (const [name, obj] of Object.entries(results)) {
   writeFileSync(`out/${name}`, JSON.stringify(obj, null, 2) + '\n');
