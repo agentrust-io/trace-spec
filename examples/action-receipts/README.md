@@ -49,14 +49,55 @@ The verifier checks the receipt independently of the core Trust Record:
 - verify `previous_receipt_hash` when the profile uses hash-chain ordering; and
 - report the receipt result separately from the controller decision.
 
-## Fixture cases
+## Conformance fixtures
 
-| Case | Receipt verification result | Controller outcome | Interpretation |
+The files under `conformance/` provide machine-checkable cases for the
+informative action-receipt rules. The fixtures use
+`trace.action_receipt.conformance.v0` as a test-profile identifier. This
+fixture set leaves the TRACE wire profile and `schema/trace-claim.json`
+unchanged.
+
+Each fixture contains:
+
+- `context`, which supplies the expected session, call, receipt-chain
+  predecessor, and freshness policy;
+- `action`, including the canonical action preimage and its `action_ref`;
+- `trusted_issuer_keys`, keyed by the pinned `issuer_key_id`;
+- detached `evidence` and a signed `receipt`, except in the missing-receipt
+  case; and
+- `expected`, which records the result, controller outcome, failure codes, and
+  warnings a conforming verifier should return.
+
+The fixture contract uses RFC 8785 JSON Canonicalization Scheme (JCS) bytes for
+three operations:
+
+1. `action_ref` is SHA-256 over `agent_id`, `action_type`, `action_scope`, and
+   `action_timestamp`.
+2. `evidence_hash` is SHA-256 over the detached `evidence` object.
+3. The Ed25519 signature covers the receipt object with only `signature`
+   removed. The verifier resolves the key through `trusted_issuer_keys`; the
+   receipt cannot authenticate itself with an embedded key.
+
+| Fixture | Receipt result | Controller outcome | Required interpretation |
 |---|---|---|---|
-| Valid accepted action | `receipt_valid_accepted` | `accepted` | The action request was well evidenced and accepted by the controller. |
-| Missing required receipt | `receipt_missing_required` | unknown | The profile required action evidence, but the consequential action had no receipt. |
-| Signature or key mismatch | `receipt_invalid` | unknown | The receipt cannot be trusted, even if its payload claims success. |
-| Valid controller rejection | `receipt_valid_rejected` | `rejected` | The downstream authority rejected the action; this is valid negative evidence, not malformed evidence. |
+| `01-valid-controller-accepted.json` | `receipt_valid_accepted` | `accepted` | The controller accepted the bound action. Physical completion remains unproven. |
+| `02-valid-controller-rejected.json` | `receipt_valid_rejected` | `aborted` | The verifier accepts the signed abort as valid negative evidence. |
+| `03-missing-required-receipt.json` | `receipt_missing_required` | unknown | The profile required a receipt and the action has none. |
+| `04-signature-key-mismatch.json` | `receipt_invalid` | unknown | The signature does not verify under the pinned issuer key. |
+| `05-action-ref-mismatch.json` | `receipt_invalid` | unknown | The signed receipt binds to a different action. |
+| `06-stale-receipt.json` | `receipt_invalid` | unknown | The authentic receipt falls outside the configured freshness window. |
+| `07-receipt-chain-gap.json` | `receipt_invalid` | unknown | The receipt does not link to the expected predecessor. |
+| `08-same-party-self-report.json` | `receipt_valid_accepted` with warning | `accepted` | The evidence verifies, but the issuer is not independent from the gateway. |
+| `09-unsupported-physical-completion.json` | `receipt_invalid` | unknown | Base TRACE cannot verify the asserted physical-completion claim. |
+
+`tests/test_action_receipt_fixtures.py` recomputes each digest, verifies each
+signature against the pinned key, checks session and call binding, enforces
+freshness and receipt-chain ordering, and compares the result with each
+fixture's `expected` object. The tests need no ROS installation or network
+access.
+
+The pinned JWKs and signatures are public test material. Deployments must use
+their own trusted issuer keys.
 
 ## Boundary
 
