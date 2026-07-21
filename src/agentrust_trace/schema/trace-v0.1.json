@@ -73,6 +73,7 @@
           "enum": [
             "intel-tdx",
             "amd-sev-snp",
+            "azure-cvm-sev-snp",
             "nvidia-h100",
             "nvidia-blackwell",
             "aws-nitro",
