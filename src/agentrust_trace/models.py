@@ -25,6 +25,12 @@ class RuntimeInfo(BaseModel):
     platform: Literal[
         "intel-tdx",
         "amd-sev-snp",
+        # Azure confidential VM: AMD SEV-SNP behind a Hyper-V paravisor. The SNP
+        # report is read from the vTPM (the guest does not control REPORT_DATA),
+        # so the runtime binding rides a vTPM AK-signed quote rather than the SNP
+        # report_data. Distinct from amd-sev-snp so a consumer keying on
+        # runtime.platform knows the binding is vTPM-rooted, not direct-silicon.
+        "azure-cvm-sev-snp",
         "nvidia-h100",
         "nvidia-blackwell",
         "aws-nitro",

@@ -39,7 +39,7 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `platform` | string | **yes** | One of: `amd-sev-snp`, `intel-tdx`, `nvidia-h100`, `nvidia-blackwell`, `tpm-2.0`, `software-only` |
+| `platform` | string | **yes** | One of: `amd-sev-snp`, `azure-cvm-sev-snp`, `intel-tdx`, `nvidia-h100`, `nvidia-blackwell`, `tpm-2.0`, `software-only` |
 | `measurement` | string | **yes** | Hardware measurement hash (`sha384:` for SEV-SNP/TDX, `sha256:` for TPM) |
 | `rim_uri` | string | no | Reference Integrity Manifest URI for hardware verification |
 | `firmware_version` | string | no | TEE firmware version |
