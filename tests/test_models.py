@@ -204,3 +204,28 @@ def test_delegation_extra_field_rejected() -> None:
     }
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+def test_transparency_optional_for_unanchored_records() -> None:
+    """A Level 0/1 record has no receipt to name, so its absence must be representable.
+
+    Conformance requires `transparency` at Level 2, where TR-ANC runs. Requiring a
+    non-empty value in the model regardless of level made it stricter than both the
+    conformance suite and schema/trace-claim.json, and left an unanchored record
+    unrepresentable.
+    """
+    data = _load("intel-tdx.json")
+    data.pop("transparency", None)
+    assert TrustRecord.model_validate(data).transparency is None
+
+    data = _load("intel-tdx.json")
+    data["transparency"] = None
+    assert TrustRecord.model_validate(data).transparency is None
+
+
+def test_transparency_rejects_empty_string() -> None:
+    """`None` means unanchored; `""` is a URI-shaped lie and stays rejected."""
+    data = _load("intel-tdx.json")
+    data["transparency"] = ""
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
