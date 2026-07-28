@@ -41,7 +41,7 @@ measurement = "sha256:" + hashlib.sha256(chain_tip.encode()).hexdigest()
 
 # Build the record manually
 record = TrustRecord(
-    eat_profile="tag:agentrust.io,2026:trace-v0.1",
+    eat_profile="tag:agentrust-io.com,2026:trace-v0.2",
     iat=int(time.time()),
     subject=agent_did,
     model=ModelInfo(provider="anthropic", model_id="claude-sonnet-4-6", version="20251001"),
@@ -50,8 +50,8 @@ record = TrustRecord(
     data_class="confidential",
     tool_transcript=ToolTranscript(hash=transcript_hash, call_count=len(audit_entries)),
     build_provenance=BuildProvenance(slsa_level=2, digest="sha256:e5f6..."),
-    appraisal=Appraisal(status="affirming", verifier="https://agentrust.io/verify"),
-    transparency="https://registry.agentrust.io/claim/...",
+    appraisal=Appraisal(status="affirming", verifier="https://agentrust-io.com/verify"),
+    transparency="https://registry.agentrust-io.com/claim/...",
     cnf=ConfirmationKey(jwk=JWK(kty="OKP", crv="Ed25519", x="...")),
 )
 ```
@@ -73,7 +73,7 @@ adapter = TraceAGTAdapter(
     model_id="claude-sonnet-4-6",
     model_version="20251001",
     build_provenance_digest="sha256:e5f6a7b8...",
-    transparency="https://registry.agentrust.io/claim/...",
+    transparency="https://registry.agentrust-io.com/claim/...",
 )
 
 # 2. Collect AGT session data after govern_fn.close_session()

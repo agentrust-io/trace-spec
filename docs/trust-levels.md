@@ -26,7 +26,7 @@ Level 0 records are signed with an Ed25519 key held by the agent process. There 
 
 ```json
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750000000,
   "subject": "spiffe://trust.example.org/agent/my-agent",
   "model": { "provider": "anthropic", "model_id": "claude-sonnet-4-6", "version": "20251001" },
@@ -35,7 +35,7 @@ Level 0 records are signed with an Ed25519 key held by the agent process. There 
   "data_class": "internal",
   "build_provenance": { "slsa_level": 1, "digest": "sha256:e5f6..." },
   "appraisal": { "status": "none", "verifier": "https://verifier.example.org" },
-  "transparency": "https://registry.agentrust.io/claim/placeholder",
+  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "<base64url>" } },
   "signature": "<base64url>"
 }
@@ -113,6 +113,6 @@ Relying parties set the minimum acceptable level in their Cedar policy. Records 
 ## Related
 
 - [Trust Levels in the test suite](https://tests.agentrust-io.com/levels)
-- [TRACE Specification — Section 4: Trust Levels](../spec/trace-v0.1.md)
+- [TRACE Specification — Section 4: Trust Levels](../spec/trace-v0.2.md)
 - [Hardware Attestation Platforms](tutorials/hardware-attestation-platforms.md)
 - [Glossary](glossary.md)

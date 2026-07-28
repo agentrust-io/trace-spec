@@ -23,9 +23,9 @@ TRACE defines the format, anchoring protocol, and verification rules for cryptog
 
 -   :material-file-document: **Specification**
 
-    The normative TRACE v0.1 specification — envelope format, claim types, signing rules, and verification algorithm.
+    The normative TRACE v0.2 specification — envelope format, claim types, signing rules, and verification algorithm.
 
-    [Read the spec →](../spec/trace-v0.1.md)
+    [Read the spec →](../spec/trace-v0.2.md)
 
 -   :material-connection: **Integration**
 

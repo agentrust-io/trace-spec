@@ -60,7 +60,7 @@ A numeric value (0, 1, or 2) that summarizes the strength of the guarantees carr
 ---
 
 **Trust Record**
-A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](../spec/trace-v0.1.md).
+A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](../spec/trace-v0.2.md).
 
 ---
 

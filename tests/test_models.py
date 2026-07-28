@@ -19,7 +19,7 @@ def _load(name: str) -> dict:
 @pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
 def test_example_parses(filename: str) -> None:
     record = TrustRecord.model_validate(_load(filename))
-    assert record.eat_profile == "tag:agentrust.io,2026:trace-v0.1"
+    assert record.eat_profile == "tag:agentrust-io.com,2026:trace-v0.2"
     assert record.subject.startswith(("spiffe://", "did:"))
 
 

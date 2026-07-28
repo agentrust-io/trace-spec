@@ -6,7 +6,7 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `eat_profile` | string | **yes** | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1` |
+| `eat_profile` | string | **yes** | EAT profile URI. Must be `tag:agentrust-io.com,2026:trace-v0.2` |
 | `iat` | integer | **yes** | Issued-at timestamp (Unix epoch seconds) |
 | `subject` | string | **yes** | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`) |
 | `model` | object | **yes** | Model artifact binding |
@@ -131,7 +131,7 @@ TRACE v0.1 supports two wire formats:
 
 ```json
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
@@ -164,7 +164,7 @@ TRACE v0.1 supports two wire formats:
     "status": "affirming",
     "verifier": "https://trust-authority.example.org"
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z",
   "cnf": {
     "jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." }
   },

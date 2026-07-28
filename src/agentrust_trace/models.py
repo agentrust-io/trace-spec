@@ -146,7 +146,7 @@ class TrustRecord(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    eat_profile: Literal["tag:agentrust.io,2026:trace-v0.1"]
+    eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
     iat: Annotated[int, Field(ge=1700000000)]
     subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
     model: ModelInfo

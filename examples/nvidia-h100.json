@@ -1,5 +1,5 @@
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676300,
   "subject": "spiffe://trust.example.org/agent/image-analysis/prod",
   "model": {
@@ -7,7 +7,7 @@
     "model_id": "claude-opus-4-8",
     "version": "20260601",
     "weights_digest": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
-    "aibom_uri": "https://registry.agentrust.io/aibom/claude-opus-4-8-20260601"
+    "aibom_uri": "https://registry.agentrust-io.com/aibom/claude-opus-4-8-20260601"
   },
   "runtime": {
     "platform": "nvidia-h100",
@@ -20,13 +20,13 @@
     "bundle_hash": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
     "enforcement_mode": "enforce",
     "version": "1.0.0",
-    "policy_uri": "https://registry.agentrust.io/policy/image-analysis-v1.0.0"
+    "policy_uri": "https://registry.agentrust-io.com/policy/image-analysis-v1.0.0"
   },
   "data_class": "restricted",
   "tool_transcript": {
     "hash": "sha256:a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8",
     "call_count": 1,
-    "transcript_uri": "https://registry.agentrust.io/transcript/h100-2026-06-23T09:18:20Z"
+    "transcript_uri": "https://registry.agentrust-io.com/transcript/h100-2026-06-23T09:18:20Z"
   },
   "build_provenance": {
     "slsa_level": 2,
@@ -40,7 +40,7 @@
     "policy_ref": "https://nras.nvidia.com/policy/h100-cc-agent-v1",
     "timestamp": 1750676304
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:18:20Z-b2c3d4",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:18:20Z-b2c3d4",
   "cnf": {
     "jwk": {
       "kty": "EC",

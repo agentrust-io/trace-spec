@@ -70,7 +70,7 @@ class TraceAGTAdapter:
             model_id="claude-sonnet-4-6",
             model_version="20251001",
             build_provenance_digest="sha256:e5f6a7b8...",
-            transparency="https://registry.agentrust.io/claim/...",
+            transparency="https://registry.agentrust-io.com/claim/...",
         )
 
         record = adapter.build_trust_record(session)
@@ -95,7 +95,7 @@ class TraceAGTAdapter:
         build_provenance_builder: str | None = None,
         build_provenance_uri: str | None = None,
         transparency: str,
-        appraisal_verifier: str = "https://agentrust.io/verify",
+        appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
         enforcement_mode: str = "enforce",
     ) -> None:
@@ -141,7 +141,7 @@ class TraceAGTAdapter:
         )
 
         record: dict[str, Any] = {
-            "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+            "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
             "iat": session.iat,
             "subject": session.agent_did,
             "model": self._model.model_dump(exclude_none=True),

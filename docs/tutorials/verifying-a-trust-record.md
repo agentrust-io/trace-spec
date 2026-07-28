@@ -127,7 +127,7 @@ Run schema validation before trusting any claims in the record. A record that pa
 Every TRACE record carries an `eat_profile` field that identifies the spec version. Reject records with an unexpected profile before parsing their claims:
 
 ```python
-EXPECTED_PROFILE = "tag:agentrust.io,2026:trace-v0.1"
+EXPECTED_PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
 
 if record.get("eat_profile") != EXPECTED_PROFILE:
     raise ValueError(f"unexpected eat_profile: {record.get('eat_profile')!r}")
@@ -222,7 +222,7 @@ def verify_trust_record(path: str, trusted_jwk: dict) -> dict:
         raise RuntimeError(f"record malformed: {e}")
 
     # 3. Profile check
-    if record.get("eat_profile") != "tag:agentrust.io,2026:trace-v0.1":
+    if record.get("eat_profile") != "tag:agentrust-io.com,2026:trace-v0.2":
         raise ValueError(f"unexpected eat_profile: {record.get('eat_profile')!r}")
 
     # 4. Appraisal
