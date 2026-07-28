@@ -2,7 +2,7 @@
 
 | Field                    | Value                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------- |
-| Version                  | 0.1 — Draft                                                                  |
+| Version                  | 0.2 — Draft                                                                  |
 | Status                   | RFC — Request for Comments                                                   |
 | Authors                  | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems)                             |
 | Target announcement      | Confidential Computing Summit, San Francisco — 23 June 2026                  |
@@ -10,6 +10,20 @@
 | License                  | CC BY 4.0                                                                    |
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
+
+## Changes from v0.1
+
+One normative change, and it is breaking.
+
+**The EAT profile URI is now `tag:agentrust-io.com,2026:trace-v0.2`** (was `tag:agentrust.io,2026:trace-v0.1`).
+
+`agentrust.io` was never a domain this project controlled; it resolves to third-party parked addresses. RFC 4151 permits a tag URI only where the minting authority controlled the named domain on the stated date, so the v0.1 identifier was not merely misspelled, it was invalid: it asserted authority over a name belonging to someone else, who could at any point stand up a conflicting definition at it.
+
+Everything else in this document is unchanged from v0.1. No field was added, removed, or re-typed.
+
+**Cutover, not coexistence.** A v0.2 verifier MUST require `tag:agentrust-io.com,2026:trace-v0.2` and MUST reject the v0.1 identifier. It MUST NOT accept both. A dual-accepting verifier would leave the invalid identifier live indefinitely, which is the thing being fixed, and would let a record minted under a domain we do not own continue to pass as conformant.
+
+Records already issued under v0.1 remain verifiable against the v0.1 specification and the `agentrust-trace` 0.4.x releases, which stay published. They do not become invalid retroactively; they are v0.1 records and are read as such. Producers should move to v0.2 at their next release.
 
 ______________________________________________________________________
 
@@ -111,7 +125,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `appraisal`        | Verifier's appraisal of evidence                                                                                                                                                                                                                                                                | EAR (EAT Attestation Results)                           |
 | `transparency`     | Inclusion proof on append-only log                                                                                                                                                                                                                                                              | SCITT Receipt URI                                       |
 | `cnf`              | Confirmation key — binds record to TEE-held signing key                                                                                                                                                                                                                                         | EAT `cnf` claim (RFC 8747)                              |
-| `eat_profile`      | Profile URI identifying this as a TRACE v0.1 record                                                                                                                                                                                                                                             | EAT profile claim                                       |
+| `eat_profile`      | Profile URI identifying this as a TRACE v0.2 record                                                                                                                                                                                                                                             | EAT profile claim                                       |
 | `iat`              | Issued-at timestamp (Unix epoch)                                                                                                                                                                                                                                                                | EAT standard claim                                      |
 | `signature`        | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON                |
 
@@ -121,13 +135,13 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 
 **Envelope:** EAT (RFC 9711) — JWT (JSON, human-readable contexts) or CWT/CBOR-COSE (constrained and high-throughput contexts).
 
-**Profile URI:** `tag:agentrust.io,2026:trace-v0.1`
+**Profile URI:** `tag:agentrust-io.com,2026:trace-v0.2`
 
 **JWT example (readable form):**
 
 ```
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {

@@ -1,5 +1,5 @@
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676200,
   "subject": "spiffe://trust.example.org/agent/document-processor/staging",
   "model": {
@@ -7,7 +7,7 @@
     "model_id": "llama-3.3-70b-instruct",
     "version": "3.3",
     "weights_digest": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
-    "aibom_uri": "https://registry.agentrust.io/aibom/llama-3.3-70b-20260101"
+    "aibom_uri": "https://registry.agentrust-io.com/aibom/llama-3.3-70b-20260101"
   },
   "runtime": {
     "platform": "intel-tdx",
@@ -20,13 +20,13 @@
     "bundle_hash": "sha256:c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
     "enforcement_mode": "enforce",
     "version": "2.0.1",
-    "policy_uri": "https://registry.agentrust.io/policy/document-v2.0.1"
+    "policy_uri": "https://registry.agentrust-io.com/policy/document-v2.0.1"
   },
   "data_class": "internal",
   "tool_transcript": {
     "hash": "sha256:f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7",
     "call_count": 7,
-    "transcript_uri": "https://registry.agentrust.io/transcript/tdx-2026-06-23T09:16:40Z"
+    "transcript_uri": "https://registry.agentrust-io.com/transcript/tdx-2026-06-23T09:16:40Z"
   },
   "build_provenance": {
     "slsa_level": 3,
@@ -40,7 +40,7 @@
     "policy_ref": "https://api.trustedservices.intel.com/policy/tdx-agent-v1",
     "timestamp": 1750676203
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:16:40Z-a9b0c1",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:16:40Z-a9b0c1",
   "cnf": {
     "jwk": {
       "kty": "EC",

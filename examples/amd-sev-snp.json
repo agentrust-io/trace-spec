@@ -1,12 +1,12 @@
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
     "provider": "anthropic",
     "model_id": "claude-sonnet-4-6",
     "version": "20251001",
-    "aibom_uri": "https://registry.agentrust.io/aibom/claude-sonnet-4-6-20251001"
+    "aibom_uri": "https://registry.agentrust-io.com/aibom/claude-sonnet-4-6-20251001"
   },
   "runtime": {
     "platform": "amd-sev-snp",
@@ -19,13 +19,13 @@
     "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
     "enforcement_mode": "enforce",
     "version": "1.2.0",
-    "policy_uri": "https://registry.agentrust.io/policy/payments-v1.2.0"
+    "policy_uri": "https://registry.agentrust-io.com/policy/payments-v1.2.0"
   },
   "data_class": "confidential",
   "tool_transcript": {
     "hash": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
     "call_count": 3,
-    "transcript_uri": "https://registry.agentrust.io/transcript/amd-2026-06-23T09:15:42Z"
+    "transcript_uri": "https://registry.agentrust-io.com/transcript/amd-2026-06-23T09:15:42Z"
   },
   "build_provenance": {
     "slsa_level": 2,
@@ -39,7 +39,7 @@
     "policy_ref": "https://trust-authority.example.org/policy/sev-snp-agent-v1",
     "timestamp": 1750676145
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
   "cnf": {
     "jwk": {
       "kty": "EC",

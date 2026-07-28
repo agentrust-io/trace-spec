@@ -18,9 +18,9 @@ ______________________________________________________________________
 
 - **Specification**
 
-  The normative TRACE v0.1 specification — envelope format, claim types, signing rules, and verification algorithm.
+  The normative TRACE v0.2 specification — envelope format, claim types, signing rules, and verification algorithm.
 
-  [Read the spec →](https://trace.agentrust-io.com/spec/trace-v0.1/index.md)
+  [Read the spec →](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
 
 - **Integration**
 

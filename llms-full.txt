@@ -26,9 +26,9 @@ ______________________________________________________________________
 
 - **Specification**
 
-  The normative TRACE v0.1 specification — envelope format, claim types, signing rules, and verification algorithm.
+  The normative TRACE v0.2 specification — envelope format, claim types, signing rules, and verification algorithm.
 
-  [Read the spec →](https://trace.agentrust-io.com/spec/trace-v0.1/index.md)
+  [Read the spec →](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
 
 - **Integration**
 
@@ -129,7 +129,7 @@ from agentrust_trace import generate_key, sign_record
 key = generate_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/my-agent",
     "model": {
@@ -156,7 +156,7 @@ record = {
         "status": "none",
         "verifier": "https://verifier.example.org",
     },
-    "transparency": "https://registry.agentrust.io/claim/placeholder",
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
 }
 
 signed = sign_record(record, key)
@@ -181,7 +181,7 @@ from agentrust_trace import load_signing_key, sign_record
 key = load_signing_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/my-agent",
     "model": {
@@ -208,7 +208,7 @@ record = {
         "status": "none",
         "verifier": "https://verifier.example.org",
     },
-    "transparency": "https://registry.agentrust.io/claim/placeholder",
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
 }
 
 signed = sign_record(record, key)
@@ -275,7 +275,7 @@ For TEE-rooted records (AMD SEV-SNP, Intel TDX, NVIDIA H100), use cMCP as the ru
 
 ## Next steps
 
-- [Full Specification](https://trace.agentrust-io.com/spec/trace-v0.1/index.md) — all claims, wire formats, conformance
+- [Full Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) — all claims, wire formats, conformance
 - [Verification Protocol](https://trace.agentrust-io.com/docs/verification/index.md) — five-step offline verification
 - [Schema Reference](https://trace.agentrust-io.com/docs/schema/index.md) — JSON Schema with field descriptions
 
@@ -303,7 +303,7 @@ Level 0 records are signed with an Ed25519 key held by the agent process. There 
 
 ```
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750000000,
   "subject": "spiffe://trust.example.org/agent/my-agent",
   "model": { "provider": "anthropic", "model_id": "claude-sonnet-4-6", "version": "20251001" },
@@ -312,7 +312,7 @@ Level 0 records are signed with an Ed25519 key held by the agent process. There 
   "data_class": "internal",
   "build_provenance": { "slsa_level": 1, "digest": "sha256:e5f6..." },
   "appraisal": { "status": "none", "verifier": "https://verifier.example.org" },
-  "transparency": "https://registry.agentrust.io/claim/placeholder",
+  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "<base64url>" } },
   "signature": "<base64url>"
 }
@@ -390,7 +390,7 @@ Relying parties set the minimum acceptable level in their Cedar policy. Records 
 ## Related
 
 - [Trust Levels in the test suite](https://tests.agentrust-io.com/levels)
-- [TRACE Specification — Section 4: Trust Levels](https://trace.agentrust-io.com/spec/trace-v0.1/index.md)
+- [TRACE Specification — Section 4: Trust Levels](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
 - [Hardware Attestation Platforms](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md)
 - [Glossary](https://trace.agentrust-io.com/docs/glossary/index.md)
 
@@ -400,7 +400,7 @@ TRACE Trust Records are independently verifiable offline — no call to the issu
 
 ## Five-step verification
 
-This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-io.com/spec/trace-v0.1/index.md).
+This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
 
 ### Step 1 — Parse the envelope
 
@@ -445,7 +445,7 @@ print("✓ Signature valid")
 ### Step 4 — Check the EAT profile
 
 ```
-assert record["eat_profile"] == "tag:agentrust.io,2026:trace-v0.1", "Unknown profile"
+assert record["eat_profile"] == "tag:agentrust-io.com,2026:trace-v0.2", "Unknown profile"
 print("✓ eat_profile correct")
 ```
 
@@ -598,7 +598,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-**Trust Record** A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.1/index.md).
+**Trust Record** A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
 
 ______________________________________________________________________
 
@@ -609,7 +609,7 @@ ______________________________________________________________________
 
 | Field                    | Value                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------- |
-| Version                  | 0.1 — Draft                                                                  |
+| Version                  | 0.2 — Draft                                                                  |
 | Status                   | RFC — Request for Comments                                                   |
 | Authors                  | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems)                             |
 | Target announcement      | Confidential Computing Summit, San Francisco — 23 June 2026                  |
@@ -617,6 +617,20 @@ ______________________________________________________________________
 | License                  | CC BY 4.0                                                                    |
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
+
+## Changes from v0.1
+
+One normative change, and it is breaking.
+
+**The EAT profile URI is now `tag:agentrust-io.com,2026:trace-v0.2`** (was `tag:agentrust.io,2026:trace-v0.1`).
+
+`agentrust.io` was never a domain this project controlled; it resolves to third-party parked addresses. RFC 4151 permits a tag URI only where the minting authority controlled the named domain on the stated date, so the v0.1 identifier was not merely misspelled, it was invalid: it asserted authority over a name belonging to someone else, who could at any point stand up a conflicting definition at it.
+
+Everything else in this document is unchanged from v0.1. No field was added, removed, or re-typed.
+
+**Cutover, not coexistence.** A v0.2 verifier MUST require `tag:agentrust-io.com,2026:trace-v0.2` and MUST reject the v0.1 identifier. It MUST NOT accept both. A dual-accepting verifier would leave the invalid identifier live indefinitely, which is the thing being fixed, and would let a record minted under a domain we do not own continue to pass as conformant.
+
+Records already issued under v0.1 remain verifiable against the v0.1 specification and the `agentrust-trace` 0.4.x releases, which stay published. They do not become invalid retroactively; they are v0.1 records and are read as such. Producers should move to v0.2 at their next release.
 
 ______________________________________________________________________
 
@@ -718,7 +732,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `appraisal`        | Verifier's appraisal of evidence                                                                                                                                                                                                                                                                | EAR (EAT Attestation Results)                           |
 | `transparency`     | Inclusion proof on append-only log                                                                                                                                                                                                                                                              | SCITT Receipt URI                                       |
 | `cnf`              | Confirmation key — binds record to TEE-held signing key                                                                                                                                                                                                                                         | EAT `cnf` claim (RFC 8747)                              |
-| `eat_profile`      | Profile URI identifying this as a TRACE v0.1 record                                                                                                                                                                                                                                             | EAT profile claim                                       |
+| `eat_profile`      | Profile URI identifying this as a TRACE v0.2 record                                                                                                                                                                                                                                             | EAT profile claim                                       |
 | `iat`              | Issued-at timestamp (Unix epoch)                                                                                                                                                                                                                                                                | EAT standard claim                                      |
 | `signature`        | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON                |
 
@@ -728,13 +742,13 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
 
 **Envelope:** EAT (RFC 9711) — JWT (JSON, human-readable contexts) or CWT/CBOR-COSE (constrained and high-throughput contexts).
 
-**Profile URI:** `tag:agentrust.io,2026:trace-v0.1`
+**Profile URI:** `tag:agentrust-io.com,2026:trace-v0.2`
 
 **JWT example (readable form):**
 
 ```
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
@@ -1068,7 +1082,7 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 
 | Field              | Type    | Required | Description                                                                                                           |
 | ------------------ | ------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
-| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust.io,2026:trace-v0.1`                                                           |
+| `eat_profile`      | string  | **yes**  | EAT profile URI. Must be `tag:agentrust-io.com,2026:trace-v0.2`                                                       |
 | `iat`              | integer | **yes**  | Issued-at timestamp (Unix epoch seconds)                                                                              |
 | `subject`          | string  | **yes**  | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`)                                                          |
 | `model`            | object  | **yes**  | Model artifact binding                                                                                                |
@@ -1193,7 +1207,7 @@ TRACE v0.1 supports two wire formats:
 
 ```
 {
-  "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
@@ -1226,7 +1240,7 @@ TRACE v0.1 supports two wire formats:
     "status": "affirming",
     "verifier": "https://trust-authority.example.org"
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z",
   "cnf": {
     "jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." }
   },

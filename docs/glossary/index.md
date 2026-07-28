@@ -48,7 +48,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-**Trust Record** A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.1/index.md).
+**Trust Record** A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
 
 ______________________________________________________________________
 

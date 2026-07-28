@@ -14,7 +14,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 
 ## Specification
 
-- [Specification](https://trace.agentrust-io.com/spec/trace-v0.1/index.md)
+- [Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
 - [Schema Reference](https://trace.agentrust-io.com/docs/schema/index.md)
 
 ## Integration
