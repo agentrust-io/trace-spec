@@ -22,7 +22,7 @@ AUDIT_ENTRIES: list[dict] = [
     {"entry_id": 2, "tool": "support.create_ticket", "decision": "permit"},
 ]
 AGENT_DID = "spiffe://trust.example.org/agent/test-agent/prod"
-TRANSPARENCY = "https://registry.agentrust.io/claim/test-abc123"
+TRANSPARENCY = "https://registry.agentrust-io.com/claim/test-abc123"
 
 
 def _make_adapter(**overrides) -> TraceAGTAdapter:
@@ -60,7 +60,7 @@ def test_build_produces_valid_trust_record() -> None:
     record = adapter.build_trust_record(session)
     # Must parse without ValidationError
     tr = TrustRecord.model_validate(record)
-    assert tr.eat_profile == "tag:agentrust.io,2026:trace-v0.1"
+    assert tr.eat_profile == "tag:agentrust-io.com,2026:trace-v0.2"
 
 
 # ---------------------------------------------------------------------------

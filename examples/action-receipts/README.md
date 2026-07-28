@@ -6,7 +6,7 @@ only: the JSON snippets are not TRACE Trust Records and are not validated by
 `schema/trace-claim.json`.
 
 The examples exercise the boundary from
-[spec section 3.3.2](../../spec/trace-v0.1.md#332-action-receipts-for-embodied-workflows-informative):
+[spec section 3.3.2](../../spec/trace-v0.2.md#332-action-receipts-for-embodied-workflows-informative):
 
 1. session evidence verifies the Trust Record and committed transcript;
 2. action issuance evidence verifies that a consequential action request was

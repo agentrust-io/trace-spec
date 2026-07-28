@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentrust.io/schema/trace-v0.1.json",
+  "$id": "https://agentrust-io.com/schema/trace-v0.1.json",
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.1 Trust Record — hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -20,8 +20,8 @@
   "properties": {
     "eat_profile": {
       "type": "string",
-      "const": "tag:agentrust.io,2026:trace-v0.1",
-      "description": "EAT profile URI identifying this as a TRACE v0.1 Trust Record."
+      "const": "tag:agentrust-io.com,2026:trace-v0.2",
+      "description": "EAT profile URI identifying this as a TRACE v0.2 Trust Record."
     },
     "iat": {
       "type": "integer",

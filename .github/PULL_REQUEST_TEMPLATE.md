@@ -12,7 +12,7 @@
 
 ## Spec section
 
-<!-- Which section(s) of spec/trace-v0.1.md does this affect? -->
+<!-- Which section(s) of spec/trace-v0.2.md does this affect? -->
 
 ## Checklist
 

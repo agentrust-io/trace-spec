@@ -31,7 +31,7 @@ It holds the canonical URI of the registry entry — the URL at which any verifi
 Example value from the spec:
 
 ```
-https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z-f2a8d1
+https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z-f2a8d1
 ```
 
 ---
@@ -47,7 +47,7 @@ from agentrust_trace.sign import generate_key, sign_record
 key = generate_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://example.org/agent/my-agent",
     "model": {

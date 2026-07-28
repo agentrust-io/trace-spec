@@ -4,7 +4,7 @@ TRACE Trust Records are independently verifiable offline — no call to the issu
 
 ## Five-step verification
 
-This is the normative protocol from [§3.3 of the spec](../spec/trace-v0.1.md).
+This is the normative protocol from [§3.3 of the spec](../spec/trace-v0.2.md).
 
 ### Step 1 — Parse the envelope
 
@@ -49,7 +49,7 @@ print("✓ Signature valid")
 ### Step 4 — Check the EAT profile
 
 ```python
-assert record["eat_profile"] == "tag:agentrust.io,2026:trace-v0.1", "Unknown profile"
+assert record["eat_profile"] == "tag:agentrust-io.com,2026:trace-v0.2", "Unknown profile"
 print("✓ eat_profile correct")
 ```
 

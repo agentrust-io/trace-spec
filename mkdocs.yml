@@ -89,7 +89,7 @@ plugins:
           - docs/verification.md
           - docs/glossary.md
         Specification:
-          - spec/trace-v0.1.md
+          - spec/trace-v0.2.md
           - docs/schema.md
         Integration:
           - docs/integration/agt.md
@@ -188,7 +188,7 @@ nav:
       - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
       - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
       - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
-  - Specification: spec/trace-v0.1.md
+  - Specification: spec/trace-v0.2.md
   - Integration:
       - AGT: docs/integration/agt.md
       - cMCP: docs/integration/cmcp.md

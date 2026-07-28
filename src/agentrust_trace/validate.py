@@ -10,7 +10,7 @@ import jsonschema
 
 @lru_cache(maxsize=1)
 def _schema() -> dict[str, Any]:
-    ref = importlib.resources.files("agentrust_trace") / "schema" / "trace-v0.1.json"
+    ref = importlib.resources.files("agentrust_trace") / "schema" / "trace-v0.2.json"
     return cast(dict[str, Any], json.loads(ref.read_text(encoding="utf-8")))
 
 

@@ -53,7 +53,7 @@ Every TRACE Trust Record requires these top-level fields. There are no optional 
 import time
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/my-agent",
     "model": {
@@ -78,7 +78,7 @@ record = {
         "status": "none",
         "verifier": "https://verifier.example.org",
     },
-    "transparency": "https://registry.agentrust.io/claim/placeholder",
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
 }
 ```
 

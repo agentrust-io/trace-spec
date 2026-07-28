@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="spec/trace-v0.1.md">Specification</a> &nbsp;|&nbsp;
+  <a href="spec/trace-v0.2.md">Specification</a> &nbsp;|&nbsp;
   <a href="schema/trace-claim.json">Schema</a> &nbsp;|&nbsp;
   <a href="examples/">Examples</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/trace-registry">Registry</a> &nbsp;|&nbsp;
@@ -20,7 +20,7 @@
 </p>
 
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.1.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.2.md)
 [![PyPI](https://img.shields.io/pypi/v/agentrust-trace)](https://pypi.org/project/agentrust-trace/)
 [![CI](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white&style=flat)](https://discord.gg/grgzFEHgkj)
@@ -54,7 +54,7 @@ signed = sign_record(record, key=signing_key)
 | | |
 |---|---|
 | 📖 Full documentation | [trace.agentrust-io.com](https://trace.agentrust-io.com) |
-| 📄 Specification | [spec/trace-v0.1.md](spec/trace-v0.1.md) |
+| 📄 Specification | [spec/trace-v0.2.md](spec/trace-v0.2.md) |
 | 🔍 Schema | [schema/trace-claim.json](schema/trace-claim.json) |
 | 📦 PyPI | [agentrust-trace](https://pypi.org/project/agentrust-trace/) |
 | 🧪 Test suite | [trace-tests](https://github.com/agentrust-io/trace-tests) |
@@ -91,7 +91,7 @@ TRACE is the evidence format. AGT and cMCP produce and consume Trust Records, so
 
 ### What is the current status of TRACE?
 
-The current specification is TRACE v0.1, published with a conformance test suite. See the Limitations page for scope boundaries before relying on it in production.
+The current specification is TRACE v0.2, published with a conformance test suite. See the Limitations page for scope boundaries before relying on it in production.
 
 <script type="application/ld+json">
 {
@@ -143,7 +143,7 @@ The current specification is TRACE v0.1, published with a conformance test suite
       "name": "What is the current status of TRACE?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The current specification is TRACE v0.1, published with a conformance test suite. See the Limitations page for scope boundaries before relying on it in production."
+        "text": "The current specification is TRACE v0.2, published with a conformance test suite. See the Limitations page for scope boundaries before relying on it in production."
       }
     }
   ]

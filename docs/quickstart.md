@@ -51,7 +51,7 @@ from agentrust_trace import generate_key, sign_record
 key = generate_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/my-agent",
     "model": {
@@ -78,7 +78,7 @@ record = {
         "status": "none",
         "verifier": "https://verifier.example.org",
     },
-    "transparency": "https://registry.agentrust.io/claim/placeholder",
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
 }
 
 signed = sign_record(record, key)
@@ -103,7 +103,7 @@ from agentrust_trace import load_signing_key, sign_record
 key = load_signing_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/my-agent",
     "model": {
@@ -130,7 +130,7 @@ record = {
         "status": "none",
         "verifier": "https://verifier.example.org",
     },
-    "transparency": "https://registry.agentrust.io/claim/placeholder",
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
 }
 
 signed = sign_record(record, key)
@@ -197,6 +197,6 @@ For TEE-rooted records (AMD SEV-SNP, Intel TDX, NVIDIA H100), use cMCP as the ru
 
 ## Next steps
 
-- [Full Specification](../spec/trace-v0.1.md) — all claims, wire formats, conformance
+- [Full Specification](../spec/trace-v0.2.md) — all claims, wire formats, conformance
 - [Verification Protocol](verification.md) — five-step offline verification
 - [Schema Reference](schema.md) — JSON Schema with field descriptions

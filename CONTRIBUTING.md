@@ -16,7 +16,7 @@ This adds `Signed-off-by: Your Name <you@example.com>`. PRs without DCO sign-off
 
 ### Spec changes (normative text)
 
-Changes to `spec/trace-v0.1.md` that affect what implementations must do.
+Changes to `spec/trace-v0.2.md` that affect what implementations must do.
 
 1. Open a GitHub issue using the **Spec change proposal** template. Describe the problem, the proposed change, and the spec section affected.
 2. Allow 5 business days for comment. Changes touching wire format, cryptographic algorithms, or Trust Record required fields require 14 days.

@@ -61,7 +61,7 @@ def key_to_jwk(key: Ed25519PrivateKey) -> dict[str, str]:
 def _canonical_bytes(d: dict[str, Any]) -> bytes:
     """Return the RFC 8785 (JCS) canonical UTF-8 byte sequence for *d*.
 
-    This is the signature pre-image mandated by spec/trace-v0.1.md §3.2.2. JCS
+    This is the signature pre-image mandated by spec/trace-v0.2.md §3.2.2. JCS
     sorts object keys by UTF-16 code unit, serializes numbers per the
     ECMAScript Number-to-String / RFC 8785 §3.2.2.3 shortest round-trip form,
     escapes only the characters required by RFC 8259 §7, and emits non-ASCII

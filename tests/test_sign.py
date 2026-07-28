@@ -22,7 +22,7 @@ def _b64url_decode(s: str) -> bytes:
 
 def _minimal_record() -> dict:
     return {
-        "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+        "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1750000000,
         "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
         "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},

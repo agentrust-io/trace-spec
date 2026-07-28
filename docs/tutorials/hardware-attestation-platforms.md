@@ -46,7 +46,7 @@ from agentrust_trace import generate_key, sign_record
 key = generate_key()
 
 record = {
-    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://dev.example.org/agent/local-test",
     "runtime": {
