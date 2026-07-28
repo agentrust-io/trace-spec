@@ -157,7 +157,20 @@ class TrustRecord(BaseModel):
     delegation: Delegation | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
-    transparency: Annotated[str, Field(min_length=1)]
+    transparency: Annotated[str, Field(min_length=1)] | None = None
+    """SCITT receipt URI resolving to the inclusion proof on the transparency log.
+
+    Optional in the model, and required by conformance at **Level 2**, where
+    `TR-ANC` runs (`agentrust-trace-tests`). A Level 0 or Level 1 record is not
+    anchored, so it has no receipt to name, and the model must be able to
+    represent that. Enforcing a non-empty value here regardless of level made the
+    model stricter than both the conformance suite and `schema/trace-claim.json`,
+    which sets no minimum length.
+
+    Use `None` for an unanchored record rather than an empty string: `""` is not a
+    URI, and a field that looks populated but resolves to nothing is worse than an
+    absent one.
+    """
     cnf: ConfirmationKey
     signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
