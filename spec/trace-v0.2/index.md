@@ -164,7 +164,7 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
   "tool_transcript": {
     "hash": "sha256:d4e5f6a7b8c9d0e1...",
     "call_count": 3,
-    "transcript_uri": "https://registry.agentrust.io/transcript/..."
+    "transcript_uri": "https://registry.agentrust-io.com/transcript/..."
   },
   "build_provenance": {
     "slsa_level": 2,
@@ -176,7 +176,7 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
     "verifier": "https://trust-authority.example.org",
     "policy_ref": "https://trust-authority.example.org/policy/agent-v1"
   },
-  "transparency": "https://registry.agentrust.io/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
   "cnf": {
     "jwk": {
       "kty": "EC",
