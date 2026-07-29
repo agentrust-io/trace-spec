@@ -27,9 +27,9 @@
 
 > **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026.
 
-An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools — bound into a single signed artifact rooted in silicon attestation.
+An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
 
-A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_ — in a form any third party can verify without trusting the operator.
+A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can verify without trusting the operator.
 
 ## Quick start
 
