@@ -9,7 +9,14 @@ import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from agentrust_trace import TrustRecord, generate_key, key_to_jwk, sign_record, verify_record
+from agentrust_trace import (
+    TrustRecord,
+    generate_key,
+    jwk_thumbprint,
+    key_to_jwk,
+    sign_record,
+    verify_record,
+)
 from agentrust_trace.sign import _canonical_bytes
 
 
@@ -231,6 +238,160 @@ def test_verify_record_rejects_malformed_signature():
     record["signature"] = "!!!not base64!!!"
     with pytest.raises(ValueError, match="base64url"):
         verify_record(record, key_to_jwk(key))
+
+
+# --- RFC 7638 JWK thumbprints -----------------------------------------------
+
+
+def test_jwk_thumbprint_rfc8037_known_answer():
+    """Known-answer vector from RFC 8037 Appendix A.3 (Ed25519 JWK thumbprint).
+
+    Pinning the published vector proves the member set, ordering, and encoding
+    match the RFC, so a thumbprint computed here is the same identifier a
+    revocation list published by anyone else is keyed on.
+    """
+    jwk = {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    }
+    assert jwk_thumbprint(jwk) == "kPrK_qmxVWaYVA9wwBF6Iuo3vVzz7TxHCTwXBygrS4k"
+
+
+def test_jwk_thumbprint_ignores_optional_members():
+    """Only the required members are hashed, so kid/alg/use do not change the value."""
+    key = generate_key()
+    bare = key_to_jwk(key)
+    decorated = {**bare, "kid": "key-2026-07", "alg": "EdDSA", "use": "sig"}
+    assert jwk_thumbprint(decorated) == jwk_thumbprint(bare)
+
+
+def test_jwk_thumbprint_distinguishes_keys():
+    assert jwk_thumbprint(key_to_jwk(generate_key())) != jwk_thumbprint(
+        key_to_jwk(generate_key())
+    )
+
+
+def test_jwk_thumbprint_rejects_unknown_kty():
+    with pytest.raises(ValueError, match="kty"):
+        jwk_thumbprint({"kty": "unknown", "x": "abc"})
+
+
+def test_jwk_thumbprint_rejects_missing_member():
+    with pytest.raises(ValueError, match="missing required thumbprint member 'x'"):
+        jwk_thumbprint({"kty": "OKP", "crv": "Ed25519"})
+
+
+# --- Revocation at verification time (#76) ----------------------------------
+
+
+def test_verify_record_rejects_revoked_key_by_thumbprint():
+    """A record signed by a listed key is rejected even though its signature is valid."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    trusted = key_to_jwk(key)
+    revoked = {jwk_thumbprint(trusted)}
+
+    # Sanity: the same record verifies when the key is not revoked.
+    verify_record(record, trusted, revocation=set())
+
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, trusted, revocation=revoked)
+
+
+def test_verify_record_passes_when_other_keys_revoked():
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    other = jwk_thumbprint(key_to_jwk(generate_key()))
+    verify_record(record, key_to_jwk(key), revocation={other})  # must not raise
+
+
+def test_verify_record_rejects_revoked_key_by_kid():
+    """A store keyed on kid works for issuers that publish one."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    trusted = {**key_to_jwk(key), "kid": "issuer-key-3"}
+    with pytest.raises(ValueError, match="issuer-key-3"):
+        verify_record(record, trusted, revocation={"issuer-key-3"})
+
+
+def test_verify_record_revocation_accepts_callable_store():
+    """A callable store models a live CRL / status / SCITT lookup."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    trusted = key_to_jwk(key)
+    seen: list[str] = []
+
+    def is_revoked(identifier: str) -> bool:
+        seen.append(identifier)
+        return False
+
+    verify_record(record, trusted, revocation=is_revoked)  # must not raise
+    assert seen == [jwk_thumbprint(trusted)]
+
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, trusted, revocation=lambda _identifier: True)
+
+
+def test_verify_record_fails_closed_when_revocation_source_errors():
+    """An unreachable revocation source is a rejection, not a pass.
+
+    This is the whole point of checking: if a lookup failure fell through to
+    "verified", an attacker holding a revoked key would only need to make the
+    status endpoint unreachable.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    def unreachable(_identifier: str) -> bool:
+        raise ConnectionError("status endpoint unreachable")
+
+    with pytest.raises(ValueError, match="could not be determined"):
+        verify_record(record, key_to_jwk(key), revocation=unreachable)
+
+
+def test_verify_record_revocation_works_with_public_key_object():
+    """The trusted key may be an Ed25519PublicKey; its JWK is derived for the check."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    pub = Ed25519PublicKey.from_public_bytes(_b64url_decode(key_to_jwk(key)["x"]))
+
+    verify_record(record, pub, revocation=set())  # must not raise
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, pub, revocation={jwk_thumbprint(key_to_jwk(key))})
+
+
+def test_verify_record_revocation_rejects_underivable_trusted_key():
+    """A trusted key whose identifiers cannot be derived is refused, not skipped."""
+
+    class OpaqueKey:
+        def verify(self, signature: bytes, data: bytes) -> None:
+            return None
+
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    with pytest.raises(ValueError, match="revocation checking needs"):
+        verify_record(record, OpaqueKey(), revocation=set())
+
+
+def test_verify_record_revocation_checked_against_trusted_key_not_record():
+    """cnf.jwk is attacker-controlled until the signature verifies, so it is not the
+    identifier the revocation check reads. A revoked issuer cannot escape the list by
+    embedding some other key in the record."""
+    revoked_key = generate_key()
+    record = sign_record(_fresh_record(), revoked_key)
+    record["cnf"]["jwk"] = key_to_jwk(generate_key())  # unlisted key, planted
+
+    trusted = key_to_jwk(revoked_key)
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, trusted, revocation={jwk_thumbprint(trusted)})
+
+
+def test_verify_record_without_revocation_store_stays_offline():
+    """The default remains pure offline verification: no store, no check, no error."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    verify_record(record, key_to_jwk(key))  # must not raise
 
 
 # --- RFC 8785 (JCS) canonicalization ----------------------------------------

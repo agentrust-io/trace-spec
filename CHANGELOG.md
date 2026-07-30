@@ -11,6 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Added
+
+- **`verify_record(..., revocation=...)` enforces key revocation at verification time (#76).** §3.2.1 has always required that "Verifiers MUST consult current revocation status at verification time", but `verify_record()` checked only signature and freshness, so a record signed by a revoked or compromised key kept verifying. The new `revocation` parameter accepts either a container of revoked key identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. A listed key is rejected, and a store that cannot answer is also rejected: an unavailable revocation source is not evidence that a key is unrevoked.
+
+  Keys are identified by RFC 7638 JWK Thumbprint or `kid`. The check reads the *trusted* key rather than `record["cnf"]["jwk"]`, which is attacker-controlled until the signature verifies.
+
+  Additive and backward compatible: `revocation` defaults to `None`, which leaves verification purely offline and unchanged. That mode cannot prove non-revocation, now stated in `LIMITATIONS.md` and `docs/verification.md`. No normative text, schema, or record field changed.
+
+- **`jwk_thumbprint(jwk)`**: RFC 7638 JWK Thumbprint (RFC 8037 §2 for OKP), exported so callers can key a revocation list on the same identifier the verifier derives.
+
 ## [0.5.1] — 2026-07-28
 
 ### Fixed
