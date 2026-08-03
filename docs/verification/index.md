@@ -1,6 +1,6 @@
 # Verification Protocol
 
-TRACE Trust Records are independently verifiable offline — no call to the issuer, no API, no trust-me-the-log-is-real.
+TRACE Trust Records are independently verifiable offline — no call to the issuer, no API, no trust-me-the-log-is-real. The one thing offline verification cannot establish is that the signing key is *still* trusted; see [Checking revocation status](#checking-revocation-status).
 
 ## Five-step verification
 
@@ -69,6 +69,40 @@ status = record["appraisal"]["status"]
 assert status == "affirming", f"Appraisal failed: {status}"
 print(f"✓ Appraisal: {status}")
 ```
+
+## Checking revocation status
+
+The five steps above are self-contained: given the record and a trusted key, they run with no network. That is the property TRACE is built for, and it has exactly one gap. A signature is valid forever, so a record signed by a key that was later compromised and revoked still passes every offline step. Nothing inside the record can withdraw the key that signed it.
+
+[§3.2.1 of the spec](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) therefore requires the online half: *"Verifiers MUST consult current revocation status at verification time."*
+
+`verify_record()` takes a `revocation` store to do this. Pass a container of revoked identifiers, or a callable that performs a live lookup:
+
+```
+from agentrust_trace import jwk_thumbprint, verify_record
+
+# A revocation list the caller already holds.
+verify_record(record, trusted_jwk, revocation={"kPrK_qmxVWaYVA9wwBF6Iuo3vVzz7TxHCTwXBygrS4k"})
+
+# Or a live CRL / status endpoint / SCITT lookup.
+def is_revoked(key_id: str) -> bool:
+    return httpx.get(f"https://crl.example.org/keys/{key_id}").json()["revoked"]
+
+verify_record(record, trusted_jwk, revocation=is_revoked)
+```
+
+Keys are identified by their RFC 7638 JWK Thumbprint (`jwk_thumbprint(jwk)`) or by `kid`; a match on either rejects the record. The check reads the **trusted** key, not `record["cnf"]["jwk"]`: the embedded key is attacker-controlled until the signature verifies, so keying the lookup on it would let a revoked issuer present an unlisted thumbprint.
+
+Both failure modes raise `ValueError`, including a store that cannot answer:
+
+| Outcome                               | Result                                                                             |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| Key listed as revoked                 | Rejected                                                                           |
+| Store raises (endpoint down, timeout) | Rejected; an unavailable source is not evidence a key is unrevoked                 |
+| Key absent from the store             | Verification continues                                                             |
+| No `revocation` passed                | Check skipped; verification is offline and proves nothing about current key status |
+
+The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted".
 
 ## Verifying hardware-rooted records
 
@@ -144,6 +178,7 @@ The key boundary is that a valid rejection is not malformed evidence. It is evid
 
 Verification proves *what happened during the recorded session* under the stated policy, in the stated environment. It does not:
 
+- Prove the signing key is still trusted; offline verification cannot prove non-revocation, so pass a `revocation` store
 - Prove the agent's internal reasoning was sound
 - Prove the policy was correctly authored for the intent
 - Prove tool call *contents* (only the hash of the transcript is in v0.1)
