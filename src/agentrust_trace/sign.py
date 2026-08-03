@@ -10,13 +10,29 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import os
 import warnings
-from typing import Any
+from collections.abc import Callable, Container
+from typing import Any, TypeAlias
 
 import rfc8785
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+RevocationStore: TypeAlias = Container[str] | Callable[[str], bool]
+"""Caller-supplied source of key revocation status, consulted by ``verify_record``.
+
+Either form is accepted:
+
+- a container of revoked key identifiers (``set``, ``frozenset``, ``list``, or any
+  object supporting ``in``), for a revocation list the caller already holds; or
+- a callable taking one key identifier and returning ``True`` when that key is
+  revoked, for a live CRL, OCSP-style status endpoint, or SCITT log lookup.
+
+An identifier is either the RFC 7638 JWK Thumbprint of the trusted key (see
+``jwk_thumbprint``) or its ``kid``; a match on either revokes the key.
+"""
 
 
 def generate_key() -> Ed25519PrivateKey:
@@ -47,15 +63,120 @@ def load_signing_key() -> Ed25519PrivateKey:
     return generate_key()
 
 
+def _okp_jwk(raw_public_bytes: bytes) -> dict[str, str]:
+    """Return the OKP / Ed25519 public JWK for raw 32-byte public key material."""
+    x = base64.urlsafe_b64encode(raw_public_bytes).rstrip(b"=").decode()
+    return {"kty": "OKP", "crv": "Ed25519", "x": x}
+
+
 def key_to_jwk(key: Ed25519PrivateKey) -> dict[str, str]:
     """Return the public JWK dict for *key* (OKP / Ed25519)."""
-    pub = key.public_key()
-    raw = pub.public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw,
+    return _okp_jwk(
+        key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
     )
-    x = base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-    return {"kty": "OKP", "crv": "Ed25519", "x": x}
+
+
+def _jwk_from_public_key(pub: Any) -> dict[str, str]:
+    """Return the public JWK for an ``Ed25519PublicKey``.
+
+    Needed only by the revocation check, which is keyed on the trusted key's
+    identifiers. Callers may pass a key object rather than a JWK, so the JWK is
+    reconstructed here rather than requiring one at the call site.
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    if not isinstance(pub, Ed25519PublicKey):
+        raise ValueError(
+            "revocation checking needs the trusted key as an Ed25519PublicKey or a JWK "
+            f"dict, so its identifiers can be derived; got {type(pub).__name__}"
+        )
+    return _okp_jwk(
+        pub.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+    )
+
+
+# RFC 7638 §3.2 (extended for OKP by RFC 8037 §2): the required members of each key
+# type, which are the only ones hashed into a thumbprint. RFC 7638 also defines the
+# member set for "oct"; it is omitted deliberately, because an oct JWK carries a
+# symmetric secret and every key this module handles is a public confirmation key.
+_THUMBPRINT_MEMBERS: dict[str, tuple[str, ...]] = {
+    "EC": ("crv", "kty", "x", "y"),
+    "OKP": ("crv", "kty", "x"),
+    "RSA": ("e", "kty", "n"),
+}
+
+
+def jwk_thumbprint(jwk: dict[str, Any]) -> str:
+    """Return the RFC 7638 JWK Thumbprint of *jwk*: base64url SHA-256, no padding.
+
+    The thumbprint is computed over only the required members for the key type, in
+    lexicographic order with no whitespace, so it is stable across JWKs that differ
+    in optional members such as ``kid``, ``alg``, or ``use``. That makes it the
+    identifier a revocation list can be keyed on when the issuer publishes no ``kid``.
+
+    Member names are ASCII, so the RFC 8785 (JCS) serialization used here is
+    byte-identical to the code-point ordering RFC 7638 §3.3 specifies.
+
+    Raises ``ValueError`` for an unknown ``kty`` or a missing required member.
+    """
+    kty = jwk.get("kty")
+    if not isinstance(kty, str) or kty not in _THUMBPRINT_MEMBERS:
+        raise ValueError(
+            f"cannot compute a JWK thumbprint for kty {kty!r}; "
+            f"expected one of {sorted(_THUMBPRINT_MEMBERS)}"
+        )
+
+    members: dict[str, Any] = {}
+    for name in _THUMBPRINT_MEMBERS[kty]:
+        value = jwk.get(name)
+        if not isinstance(value, str) or not value:
+            raise ValueError(
+                f"jwk with kty={kty!r} is missing required thumbprint member {name!r}"
+            )
+        members[name] = value
+
+    return base64.urlsafe_b64encode(
+        hashlib.sha256(_canonical_bytes(members)).digest()
+    ).rstrip(b"=").decode()
+
+
+def _key_identifiers(jwk: dict[str, Any]) -> list[str]:
+    """Return the identifiers a revocation store may list this key under."""
+    identifiers = [jwk_thumbprint(jwk)]
+    kid = jwk.get("kid")
+    if isinstance(kid, str) and kid and kid not in identifiers:
+        identifiers.append(kid)
+    return identifiers
+
+
+def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None:
+    """Raise ``ValueError`` if *jwk* is revoked, or if its status cannot be determined.
+
+    Both outcomes fail closed. An unreachable revocation source is not evidence
+    that a key is unrevoked, so a store that raises is treated as a rejection
+    rather than passed over.
+    """
+    for identifier in _key_identifiers(jwk):
+        try:
+            revoked = revocation(identifier) if callable(revocation) else identifier in revocation
+        except Exception as exc:
+            raise ValueError(
+                f"revocation status for key {identifier!r} could not be determined: {exc}. "
+                "Verification fails closed: an unavailable revocation source is not "
+                "evidence that the key is unrevoked."
+            ) from exc
+        if revoked:
+            raise ValueError(
+                f"signing key is revoked (listed as {identifier!r}); the record is rejected. "
+                "A signature made by a revoked key stays cryptographically valid, so the "
+                "verifier is the only place this can be caught."
+            )
 
 
 def _canonical_bytes(d: dict[str, Any]) -> bytes:
@@ -136,6 +257,7 @@ def verify_record(
     allow_embedded_key: bool = False,
     max_age_seconds: int | None = 86400,
     expected_nonce: str | None = None,
+    revocation: RevocationStore | None = None,
 ) -> None:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -144,8 +266,8 @@ def verify_record(
 
     Raises ``InvalidSignature`` if the signature does not verify, and ``ValueError``
     for every other rejection (no signature, no trusted key, malformed input,
-    unsupported JWK type, stale record, or nonce mismatch). Returns ``None`` on
-    success. All checks fail closed.
+    unsupported JWK type, stale record, nonce mismatch, or revoked key). Returns
+    ``None`` on success. All checks fail closed.
 
     Trust anchoring (fail closed):
         Without a trusted key, the record cannot vouch for itself, so verification
@@ -159,6 +281,19 @@ def verify_record(
         ``expected_nonce`` is given, it is compared in constant time against
         ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
         ``ValueError``.
+
+    Revocation (fail closed):
+        ``spec/trace-v0.2.md`` §3.2.1 requires a verifier to consult current
+        revocation status at verification time. Pass a ``revocation`` store, either
+        a container of revoked key identifiers or a callable performing a live
+        CRL/status/SCITT lookup. The trusted key is rejected if it is listed, or if
+        the store cannot answer. Identifiers are the key's RFC 7638 thumbprint
+        (``jwk_thumbprint``) and its ``kid``.
+
+        ``revocation=None`` (the default) skips the check and keeps verification
+        purely offline. Offline verification cannot prove non-revocation: a
+        signature made by a compromised key stays cryptographically valid forever,
+        and nothing inside the record can retract it. See ``LIMITATIONS.md``.
     """
     import time
     from hmac import compare_digest
@@ -197,6 +332,23 @@ def verify_record(
         pub = _pubkey_from_jwk(public_key_or_jwk)
     else:
         pub = public_key_or_jwk
+
+    # Revocation: signature validity is permanent, trust is not. A key compromised
+    # after issuance still produces records that verify, so the only place the
+    # withdrawal of trust can be applied is here, at verification time.
+    #
+    # The check is keyed on the TRUSTED key, never on record["cnf"]["jwk"]: cnf.jwk
+    # is attacker-controlled until the signature verifies, so keying on it would let
+    # a revoked issuer present an unlisted thumbprint and pass. With
+    # allow_embedded_key=True the two are the same object, and that path is already
+    # documented as proving internal consistency only.
+    if revocation is not None:
+        trusted_jwk = (
+            public_key_or_jwk
+            if isinstance(public_key_or_jwk, dict)
+            else _jwk_from_public_key(pub)
+        )
+        _check_not_revoked(trusted_jwk, revocation)
 
     # Freshness: bound the age of the record against its issued-at timestamp.
     if max_age_seconds is not None:

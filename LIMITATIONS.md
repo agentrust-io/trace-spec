@@ -25,6 +25,9 @@ Hardware attestation proves the TRACE signing key and policy engine were measure
 **Revocation of the signing key after issuance**
 If the TRACE signing key is compromised after records are issued, existing records remain cryptographically valid. Key monitoring, rapid revocation, and transparency log integration are the required controls — TRACE provides the anchoring mechanism but cannot detect compromise itself.
 
+**Pure offline verification cannot prove non-revocation**
+Signature validity is permanent; trust is not. Nothing inside a record can retract the key that signed it, so a record signed by a since-revoked key verifies offline forever. Spec §3.2.1 accordingly requires verifiers to consult current revocation status at verification time, which is by definition an online step. `verify_record()` takes a `revocation` store, either a container of revoked identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. It rejects a listed key, and fails closed when the store cannot answer. Without that store, verification is offline and its result means "this record was validly signed by this key", not "this key is still trusted".
+
 ## What Level 0 does not provide
 
 Level 0 (software-only signing) is suitable for development, internal audit trails, and staging environments. It does not satisfy:

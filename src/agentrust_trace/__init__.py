@@ -14,7 +14,9 @@ from agentrust_trace.models import (
     TrustRecord,
 )
 from agentrust_trace.sign import (
+    RevocationStore,
     generate_key,
+    jwk_thumbprint,
     key_to_jwk,
     load_key,
     load_signing_key,
@@ -43,10 +45,12 @@ __all__ = [
     "RuntimeInfo",
     "ToolTranscript",
     "TrustRecord",
+    "RevocationStore",
     "SCHEMA",
     "iter_errors",
     "validate_json",
     "generate_key",
+    "jwk_thumbprint",
     "key_to_jwk",
     "load_key",
     "load_signing_key",
