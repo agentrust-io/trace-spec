@@ -22,7 +22,7 @@ Read [who may author normative text](GOVERNANCE.md#who-may-author-normative-text
 
 1. Open a GitHub issue using the **Spec change proposal** template. Describe the problem, the proposed change, and the spec section affected.
 2. Allow 5 business days for comment. Changes touching wire format, cryptographic algorithms, or Trust Record required fields require 14 days.
-3. Submit a PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN — description -->`.
+3. Submit a PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN - description -->`.
 4. Update `CHANGELOG.md`.
 5. Breaking changes (backward-incompatible field removals, algorithm deprecations) require Project Lead approval and an explicit backward-compatibility statement.
 
