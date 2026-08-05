@@ -151,6 +151,15 @@ def test_fixture_set_is_complete() -> None:
         "07-receipt-chain-gap.json",
         "08-same-party-self-report.json",
         "09-unsupported-physical-completion.json",
+        # 10-16 cover the receipt rules that had no fixture at all. Each was a check a
+        # conforming implementation could have omitted entirely while passing this set.
+        "10-action-ref-not-recomputable.json",
+        "11-call-id-mismatch.json",
+        "12-session-id-mismatch.json",
+        "13-evidence-hash-mismatch.json",
+        "14-receipt-issuer-key-untrusted.json",
+        "15-receipt-from-future.json",
+        "16-decision-not-in-enum.json",
     ]
 
 
