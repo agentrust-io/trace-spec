@@ -184,17 +184,27 @@ def main() -> None:
     f["evidence"]["terminal_state"] = "rejected"  # after the hash was taken
     fixtures.append(("13-evidence-hash-mismatch.json", f))
 
-    fixtures.append((
-        "14-receipt-issuer-key-untrusted.json",
-        build(
-            "receipt-issuer-key-untrusted",
-            "The receipt names an issuer key the verifier has not pinned. A signature "
-            "verifies against whatever key it names; only a pinned set decides whether "
-            "that key was ever entitled to speak.",
-            "issuer_key_untrusted",
-            trusted={f"{ISSUER}#ed25519-some-other-key": jwk()},
-        ),
-    ))
+    # issuer_key_unknown — the one non-failure in this set. Spec section 3.3.1: a
+    # receipt whose issuer key is unknown to the verifier is unverified, not invalid.
+    # An unpinned key means the signature cannot be checked, which confers no trust and
+    # proves no forgery, so the expected block is written by hand rather than through
+    # build()'s invalid-with-one-failure shape.
+    f = build(
+        "receipt-issuer-key-unknown",
+        "The receipt names an issuer key the verifier has not pinned. A signature "
+        "verifies against whatever key it names; only a pinned set decides whether "
+        "that key was ever entitled to speak. Not holding the key is an inability to "
+        "check, not evidence of forgery: the receipt is unverified, not invalid.",
+        "issuer_key_unknown",
+        trusted={f"{ISSUER}#ed25519-some-other-key": jwk()},
+    )
+    f["expected"] = {
+        "status": "receipt_unverified",
+        "controller_outcome": "unknown",
+        "failures": [],
+        "warnings": ["issuer_key_unknown"],
+    }
+    fixtures.append(("14-receipt-issuer-key-unknown.json", f))
 
     fixtures.append((
         "15-receipt-from-future.json",

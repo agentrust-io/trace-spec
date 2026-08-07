@@ -156,14 +156,15 @@ Keep the verification results separate:
 | Action issuance evidence | Canonical action digest, receipt signature, trusted issuer key, session or call binding, chain order | Successful physical completion |
 | Outcome evidence | Controller or monitor decision carried by the receipt payload | Functional-safety certification unless the issuer and profile explicitly claim it |
 
-For action receipts, a verifier should distinguish four common outcomes:
+For action receipts, a verifier should distinguish five common outcomes:
 
 | Outcome | Meaning |
 |---|---|
 | `receipt_valid_accepted` | The receipt is well-formed, trusted, bound to the call, and reports acceptance. |
 | `receipt_valid_rejected` | The receipt is well-formed, trusted, bound to the call, and reports controller or policy rejection. This is valid negative evidence. |
 | `receipt_missing_required` | The profile required a receipt, but none was present for the consequential action. |
-| `receipt_invalid` | The receipt is present but fails signature, digest, issuer, freshness, ordering, or call-binding checks. |
+| `receipt_invalid` | The receipt is present but fails signature, digest, freshness, ordering, or call-binding checks against a key the verifier holds. |
+| `receipt_unverified` | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.1 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
 
 The key boundary is that a valid rejection is not malformed evidence. It is
 evidence that the downstream authority declined the action. A valid acceptance

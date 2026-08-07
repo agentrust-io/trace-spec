@@ -1,6 +1,6 @@
 {
-  "name": "receipt-issuer-key-untrusted",
-  "description": "The receipt names an issuer key the verifier has not pinned. A signature verifies against whatever key it names; only a pinned set decides whether that key was ever entitled to speak.",
+  "name": "receipt-issuer-key-unknown",
+  "description": "The receipt names an issuer key the verifier has not pinned. A signature verifies against whatever key it names; only a pinned set decides whether that key was ever entitled to speak. Not holding the key is an inability to check, not evidence of forgery: the receipt is unverified, not invalid.",
   "profile": "trace.action_receipt.conformance.v0",
   "context": {
     "call_id": "01986d7c-6b2f-7c68-9ff8-3e2f9d0db337",
@@ -44,11 +44,11 @@
     "signature": "f1bVg8ZaBv6SaT5JGzs0J4XkzyVkvhS5wGNit-790NFeHAGLfw1kalsiqBxGC8HFNUVjHRcW2urOPl8A90sbDw"
   },
   "expected": {
-    "status": "receipt_invalid",
+    "status": "receipt_unverified",
     "controller_outcome": "unknown",
-    "failures": [
-      "issuer_key_untrusted"
-    ],
-    "warnings": []
+    "failures": [],
+    "warnings": [
+      "issuer_key_unknown"
+    ]
   }
 }
