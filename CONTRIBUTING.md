@@ -16,15 +16,24 @@ This adds `Signed-off-by: Your Name <you@example.com>`. PRs without DCO sign-off
 
 ### Spec changes (normative text)
 
-Changes to `spec/trace-v0.2.md` that affect what implementations must do.
+Changes to `spec/trace-v0.2.md` that affect what implementations must do. Normative text is any statement using an RFC 2119 keyword in uppercase: what a conformant implementation MUST, SHOULD or MAY do. A normative change binds every implementation of TRACE, including implementations whose authors are not in the discussion.
 
-Read [who may author normative text](GOVERNANCE.md#who-may-author-normative-text) first. Normative changes need an organizational sponsor accountable for the requirement. Anyone may propose one, and a Maintainer carries the PR for an accepted proposal that has no sponsor. Everything else in the list below, including informative crosswalks and mappings to external schemas, needs no sponsor.
+**Anyone may propose a Normative Change, however only Normative Contributions with an organizational sponsor willing to implement and maintain that element in the specification will be accepted.**
 
-1. Open a GitHub issue using the **Spec change proposal** template. Describe the problem, the proposed change, and the spec section affected.
-2. Allow 5 business days for comment. Changes touching wire format, cryptographic algorithms, or Trust Record required fields require 14 days.
-3. Submit a PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN - description -->`.
-4. Update `CHANGELOG.md`.
-5. Breaking changes (backward-incompatible field removals, algorithm deprecations) require Project Lead approval and an explicit backward-compatibility statement.
+The sponsor is an organization that implements TRACE, or produces the attestation platform the change concerns, and is willing to be named as accountable for the requirement in the PR. In practice that has meant silicon and cloud attestation vendors, platform and framework implementers, and standards bodies carrying the work forward. Reviewers confirm the sponsorship, not the individual's competence.
+
+The reason is maintenance cost, not merit. A MUST is a promise the project keeps for every future version. Evaluating whether it can be implemented, at what cost, across which platforms, needs an organization that will actually implement it and answer for it later.
+
+Steps for a normative contribution:
+
+1. Open a GitHub issue using the **Spec change proposal** template. Describe the problem, the proposed change, and the spec section affected. Proposals are evaluated on the technical argument alone, sponsored or not.
+2. Allow a minimum 5 business days for comment. Breaking changes, including anything touching wire format, cryptographic algorithms, or Trust Record required fields, carry a minimum 30-day comment period. See [Backward compatibility](GOVERNANCE.md#backward-compatibility) for the conditions under which a breaking change is considered at all.
+3. Name the sponsoring organization in the PR. If a proposal is accepted without a sponsor, a Maintainer may sponsor and carry the PR, and the proposer is credited in the `CHANGELOG.md` entry. A normative PR opened without a sponsor is not rejected on that basis: reviewers will say so on the PR and either identify a sponsor or convert it to an informative change.
+4. Submit the PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN - description -->`.
+5. Update `CHANGELOG.md`.
+6. Breaking changes require Project Lead approval and an explicit backward-compatibility statement naming what breaks and what implementers must do.
+
+**No sponsor is required for** editorial changes, examples, conformance tests, tooling, schema changes tracking an already-merged spec change, and informative additions such as crosswalks and mappings to external schemas. Informative text carries no RFC 2119 keywords and binds no implementation, so it is the right home for a mapping that is still settling. Most contributions are in this set.
 
 ### Schema changes (schema/trace-claim.json)
 
@@ -44,9 +53,15 @@ TRACE will publish vendor-co-authored claim-mapping annexes (§4.4 of the spec) 
 
 ## Review timeline
 
-- Editorial PRs: 3 business days
-- Non-breaking spec changes: 7 business days
-- Breaking or wire-format changes: 14 business days + Project Lead sign-off
+Comment periods are minimums. The project takes as much time as it needs to reach a consensus decision.
+
+- Non-breaking spec changes: a minimum 5 business days for comment
+- Breaking or wire-format changes: a minimum 30-day comment period + Project Lead sign-off
+
+Maintainer response targets are commitments to you, not minimums. Ping the PR if one is missed.
+
+- Editorial PRs: reviewed within 3 business days
+- Spec change PRs: reviewed within 7 business days
 
 ## Style
 
@@ -57,4 +72,6 @@ TRACE will publish vendor-co-authored claim-mapping annexes (§4.4 of the spec) 
 
 ## License
 
-By contributing you agree that your contributions will be licensed under the terms in [LICENSE](LICENSE).
+Anyone who submits a PR, files an issue, or participates in discussion on the repository is a Contributor bound by the license terms.
+
+Code and specification contributions are made under the Apache License, Version 2.0, the Project License. Documentation contributions other than specification text are made under CC BY 4.0. You keep the copyright in your contributions: no contributor is asked to assign copyright to the project. See [LICENSE](LICENSE) and [General Project Policies](GOVERNANCE.md#general-project-policies).

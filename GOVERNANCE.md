@@ -1,54 +1,109 @@
 # Governance
 
+## General Project Policies
+
+TRACE Specification has been established as TRACE Specification a Series of LF Projects, LLC. Policies applicable to TRACE Specification and participants in the TRACE Specification project, including guidelines on the usage of trademarks, are located at https://www.lfprojects.org/policies/. Governance changes approved as per the provisions of this governance document must also be approved by LF Projects, LLC.
+
+TRACE Specification participants acknowledge that the copyright in all new contributions will be retained by the copyright holder as independent works of authorship and that no contributor or copyright holder will be required to assign copyrights to the project.
+
+Except as described below, all code and specification contributions to the project must be made using the Apache License, Version 2.0 available at http://www.apache.org/licenses/LICENSE-2.0 (the "Project License").
+
+All outbound code and specifications will be made available under the Project License. The Maintainers may approve the use of an alternative open license or licenses for inbound or outbound contributions on an exception basis.
+
+All documentation (excluding specifications) will be made available under the Creative Commons Attribution 4.0 International license, available at: https://creativecommons.org/licenses/by/4.0.
+
+Specification text published before this policy took effect stays available under the license it was published under. See [LICENSE](LICENSE).
+
 ## Roles
 
 ### Contributor
 
-Anyone who submits a PR, files an issue, or participates in discussion. No formal appointment required. Must follow the [Code of Conduct](CODE_OF_CONDUCT.md) and sign commits with DCO.
+Anyone who submits a PR, files an issue, or participates in discussion on the repository is a Contributor bound by the license terms. No formal appointment is required. Contributors must follow the [Code of Conduct](CODE_OF_CONDUCT.md) and sign commits with DCO.
 
 ### Reviewer
 
-Trusted contributors with triage and review rights. Can approve PRs but cannot merge breaking spec changes without Project Lead approval.
+Trusted Contributors with triage and review rights. Reviewers can approve PRs but cannot merge breaking spec changes without Project Lead approval.
 
-**Advancement**: 3+ merged substantive PRs. Nominated by any Maintainer, confirmed by Project Lead.
+**Advancement**: 3+ merged substantive PRs. Nominated by any Maintainer, confirmed by the Project Lead.
 
 ### Maintainer
 
 Full merge rights. Responsible for reviewing PRs in their area within 7 business days. See [MAINTAINERS.md](MAINTAINERS.md).
 
-**Advancement**: Active Reviewer for 60+ days, 5+ merged PRs, demonstrated judgment on spec design questions. Nominated by any Maintainer, confirmed by Project Lead.
+**Advancement**: Active Reviewer for 60+ days, 5+ merged PRs, demonstrated judgment on spec design questions. Nominated by any Maintainer, confirmed by the Project Lead.
 
 ### Project Lead
 
-Final decision authority on specification changes, conformance requirements, AAIF submission scope, and Maintainer appointments. Currently: Imran Siddique (OPAQUE Systems).
+The Project Lead is responsible for determining Consensus among Contributors regarding specification changes, conformance requirements, advancement of the project or its deliverables to other organizations, role appointments, and other project decisions. If Consensus can't be determined, the Project Lead may call for a majority vote of the Maintainers. The current Project Lead is listed in [MAINTAINERS.md](MAINTAINERS.md).
 
-**Succession**: If the Project Lead is unavailable for 30+ days without notice, active Maintainers vote to appoint an interim lead.
+**Succession**: Active Maintainers vote to appoint a new Project Lead if the then-current Project Lead steps down or is unavailable for more than 30 days without notifying the Maintainers.
 
-## Decision-making
+## Decision Making
+
+### Consensus-based decision making
+
+The Project makes decisions through a consensus process ("Approval" or "Approved"). While the agreement of all Contributors is preferred, it is not required for consensus. Rather, the Project Lead will determine consensus based on their good faith consideration of a number of factors, including the dominant view of the Project Contributors and nature of support and objections. The Project Lead will document evidence of consensus in accordance with these requirements.
+
+### Appeal process
+
+Decisions may be appealed via a pull request or an issue, and that appeal will be considered by the Project Lead in good faith, who will respond in writing within a reasonable time.
+
+### Review periods by change class
+
+Review periods are minimums. The Project takes as much time as it needs to reach a consensus decision, and a period does not expire a discussion that is still live.
 
 **Editorial changes** (typos, broken links, clarifications that do not affect normative requirements): Maintainer review + merge.
 
-**Non-breaking spec changes** (new optional fields, new OPTIONAL conformance behavior, informative additions): open issue, 5-day comment period, Maintainer review, merge.
+**Non-breaking spec changes** (new optional fields, new OPTIONAL conformance behavior, informative additions): open issue, a minimum 5 business days for comment, Maintainer review, merge.
 
-**Breaking spec changes** (backward-incompatible field changes, algorithm additions to the required set, conformance level redefinition): open issue, 14-day comment period, no unresolved objections from Maintainers, Project Lead sign-off.
+**Breaking spec changes** (backward-incompatible field changes, algorithm additions to the required set, conformance level redefinition): open issue, a minimum 30-day comment period, no unresolved objections from Maintainers, Project Lead sign-off. See [Backward compatibility](#backward-compatibility).
 
 **Wire format changes**: treated as breaking regardless of backward-compatibility argument.
 
-**Voting**: If consensus cannot be reached, Maintainers vote. Simple majority for non-breaking changes; two-thirds for breaking changes. Project Lead has tie-breaking vote.
+**Voting**: If Consensus cannot be determined, the Project Lead may call for a majority vote of the Maintainers. Two-thirds of Maintainers are required for breaking changes. The Project Lead has the tie-breaking vote.
 
-## Who may author normative text
+## Specification Development Process
 
-Normative text is any statement using an RFC 2119 keyword in uppercase: what a conformant implementation MUST, SHOULD or MAY do. A normative change binds every implementation of TRACE, including implementations whose authors are not in the discussion.
+### Pre-Draft
 
-**Normative spec changes require an organizational sponsor.** The sponsor is an organization that implements TRACE, or produces the attestation platform the change concerns, and is willing to be named as accountable for the requirement in the PR. In practice that has meant silicon and cloud attestation vendors, platform and framework implementers, and standards bodies carrying the work forward. Reviewers confirm the sponsorship, not the individual's competence.
+Any Contributor may submit a proposed initial draft document as a candidate Draft Specification of the Project. The Project Lead will designate each submission as a "Pre-Draft" document.
 
-The reason is maintenance cost, not merit. A MUST is a promise the project keeps for every future version. Evaluating whether it can be implemented, at what cost, across which platforms, needs an organization that will actually implement it and answer for it later. Individual authorship gives the project no way to make that assessment and no one to return to when the requirement proves wrong.
+### Draft
 
-**Anyone may propose a normative change.** Open a Spec change proposal issue. Proposals are evaluated on the technical argument alone. If one is accepted without a sponsor, a Maintainer carries the normative PR and the proposer is credited in the CHANGELOG entry. This is a question of who signs the requirement, not whose idea it was.
+Each Pre-Draft document must first be Approved to become a "Draft Specification". Once the Project approves a document as a Draft Specification, the Draft Specification becomes the basis for all going forward work on that specification.
 
-**No sponsor is required for** editorial changes, examples, conformance tests, tooling, schema changes tracking an already-merged spec change, and informative additions such as crosswalks and mappings to external schemas. Informative text carries no RFC 2119 keywords and binds no implementation, so it is the right home for a mapping that is still settling. Most contributions are in this set.
+A Draft Specification is not stable. Normative requirements, wire formats, and conformance criteria may change, including incompatibly, while a specification is in Draft. Implementers should expect change and should not treat a Draft as a long-lived interoperability target. Every Draft carries this status in its header.
 
-A normative PR opened without a sponsor is not rejected on that basis. Reviewers will say so on the PR and either identify a sponsor or convert it to an informative change.
+### Final
+
+Once the Project believes it has achieved the objectives for its specification as described in the Scope, it will Approve that Draft Specification and progress it to "Final" status.
+
+A Final specification is stable. Its normative content does not change except through errata, which are corrections that do not alter what a conformant implementation must do. New requirements are made in a new version, not in the published one. Conformance claims are made against a Final version, and the conformance suite tracks Final versions.
+
+### Deprecated
+
+A Final specification is marked "Deprecated" when it has been superseded and the Project no longer intends to maintain it. A Deprecated version stays published and readable. It receives no further errata, and the Project states in the deprecation notice how long conformance claims against that version continue to be recognized.
+
+### Publication and submission
+
+Upon designation of a Draft Specification as Final, the Project Lead will publish it in a manner agreed upon by the Project Contributors. Publication in a publicly accessible manner must include the terms under which the specification is being made available.
+
+No Draft Specification or Final specification may be submitted to another standards development organization without Approval of the Project. Upon reaching Approval, the Project Lead will coordinate the submission. Project Contributors that developed that specification agree to grant the copyright rights necessary to make those submissions.
+
+## Backward compatibility
+
+TRACE does not break backward compatibility in a Final specification. Implementers build against published requirements, and a requirement that changes underneath them costs them work they did not choose. Additive change is the default: new capability arrives as an optional field, an optional conformance behavior, or a new conformance level, so that an existing conformant implementation stays conformant.
+
+A breaking change is a last resort. The Project will consider one only where the existing requirement cannot be left standing:
+
+- a cryptographic algorithm or construction is broken, or is withdrawn by the body that issued it
+- a requirement creates a security or privacy defect that cannot be corrected compatibly
+- an identifier or wire construct is invalid under the external standard it claims to conform to
+- a requirement is not implementable on a platform within the specification's stated scope
+
+A breaking change carries a minimum 30-day comment period, an explicit backward-compatibility statement naming what breaks and what implementers must do, and Project Lead sign-off. Where the change can be staged, the affected element is marked Deprecated in one version before it is removed in a later one.
+
+Draft specifications are exempt: see [Draft](#draft).
 
 ## Conflict of interest
 
@@ -58,10 +113,14 @@ Maintainers must disclose commercial interest in a proposal before participating
 
 Vendor-co-authored platform-mapping annexes (§4.4 of the spec) are informative. They are reviewed by the vendor author and one TRACE Maintainer. Annexes do not require the full spec-change process.
 
-## Foundation transition
+## Non-Confidential, Restricted Disclosure
 
-TRACE is targeting co-hosting under CoSAI (technical workstream) and the Linux Foundation entity hosting MCP (spec, IP, trademark, conformance mark). On acceptance, governance transitions to a Technical Steering Committee (TSC) as defined in [CHARTER.md](CHARTER.md). Until then, this document is the governance authority.
+Information disclosed in connection with any Project activity, including but not limited to meetings, Contributions, and submissions, is not confidential, regardless of any markings or statements to the contrary. Notwithstanding the foregoing, if the Project is collaborating via a private repository, the Contributors will not make any public disclosures of that information contained in that private repository without the Approval of the Project.
+
+## Linux Foundation hosting
+
+TRACE Specification is hosted at the Linux Foundation as a Series of LF Projects, LLC. Project formation is underway: the Technical Charter and Project Contribution Agreement are being executed with LF Projects, LLC. This document is the governance authority until the Technical Charter takes effect, at which point governance transitions to a Technical Steering Committee as described in [CHARTER.md](CHARTER.md), and the Technical Charter controls where the two differ.
 
 ## Amendments
 
-Amendments to this document require a PR, 14-day comment period, and Project Lead approval.
+Amendments to this document require a PR, a minimum 14-day comment period, and Project Lead approval. Per [General Project Policies](#general-project-policies), governance changes approved under this document must also be approved by LF Projects, LLC.

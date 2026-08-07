@@ -1,20 +1,22 @@
-The TRACE specification and this repository use a dual license:
+TRACE Specification, a Series of LF Projects, LLC.
 
-SPECIFICATION TEXT (spec/*.md, README.md, CHANGELOG.md)
-=========================================================
-Creative Commons Attribution 4.0 International (CC BY 4.0)
-https://creativecommons.org/licenses/by/4.0/
-
-You are free to share and adapt the specification text for any purpose,
-including commercial, provided you give appropriate credit, link to the
-license, and indicate if changes were made.
-
-SCHEMA, EXAMPLES, AND CODE (schema/, examples/, .github/)
-==========================================================
+PROJECT LICENSE
+===============
 Apache License, Version 2.0
 https://www.apache.org/licenses/LICENSE-2.0
 
-Copyright 2026 OPAQUE Systems, Inc.
+Except as described below, all code and specification contributions to the
+project are made under the Apache License, Version 2.0 (the "Project
+License"), and all outbound code and specifications are made available under
+the Project License. This covers:
+
+  spec/          specification text
+  schema/        JSON Schema
+  examples/      example Trust Records
+  src/, tests/   reference implementation and tests
+  .github/       workflows and templates
+
+Copyright 2026 OPAQUE Systems, Inc. and the TRACE Specification contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use these files except in compliance with the License.
@@ -28,10 +30,43 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+DOCUMENTATION (EXCLUDING SPECIFICATIONS)
+========================================
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+All documentation other than specification text is made available under
+CC BY 4.0. This covers README.md, CHANGELOG.md, docs/, and the project
+process documents (GOVERNANCE.md, CONTRIBUTING.md, CHARTER.md, and the
+other top-level Markdown files).
+
+You are free to share and adapt this material for any purpose, including
+commercial, provided you give appropriate credit, link to the license, and
+indicate if changes were made.
+
+PRIOR PUBLICATION UNDER CC BY 4.0
+=================================
+Before this policy took effect, TRACE specification text was published under
+CC BY 4.0. Those grants stand:
+
+  spec/trace-v0.1.md is published under CC BY 4.0 and stays under CC BY 4.0.
+  It is a superseded version and is retained for reference.
+
+  Copies of any TRACE specification version already distributed under
+  CC BY 4.0 remain usable under CC BY 4.0 by their recipients. Relicensing
+  is forward-looking and does not withdraw a grant already made.
+
+Portions of spec/trace-v0.1.md carried forward into later specification
+versions remain available under CC BY 4.0 until the contributors of those
+portions have recorded their consent to the Project License. Where both
+licenses apply to the same text, a recipient may rely on either.
+
 PATENT PROMISE
 ==============
 OPAQUE Systems, Inc. grants a royalty-free, worldwide, non-exclusive
 license under any patent claims it controls that are necessarily infringed
 by a conforming implementation of this specification, for the purpose of
 implementing or operating a product that conforms to this specification.
-This promise applies to v0.1 and all subsequent versions of TRACE.
+This promise applies to v0.1 and all subsequent versions of TRACE. It is
+made in addition to, and does not narrow, the patent grant in Section 3 of
+the Apache License, Version 2.0.
