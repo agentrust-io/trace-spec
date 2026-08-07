@@ -8,6 +8,21 @@
   Material already emits the canonical link when site_url is set, so it
   is not repeated here.
 #}
+
+{#
+  The homepage is built from README.md, which mkdocs treats as the site index.
+  Material falls back to site_name when a page has no front-matter title, so the
+  homepage was titled with the bare string "TRACE". Front matter is not an option
+  here: README.md is also the GitHub landing page and YAML would render as noise
+  there. Inner pages keep their own titles through super().
+#}
+{% block htmltitle %}
+  {% if page and page.is_homepage %}
+    <title>Hardware-attested receipts for AI agent actions - {{ config.site_name }}</title>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
 {% block extrahead %}
   {{ super() }}
 
