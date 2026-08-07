@@ -94,6 +94,7 @@ plugins:
         Integration:
           - docs/integration/agt.md
           - docs/integration/cmcp.md
+          - docs/integration/sandbox-runtime.md
         Platforms:
           - docs/platforms/index.md
   - minify:
@@ -192,6 +193,7 @@ nav:
   - Integration:
       - AGT: docs/integration/agt.md
       - cMCP: docs/integration/cmcp.md
+      - Sandboxed agent runtimes: docs/integration/sandbox-runtime.md
   - Platforms:
       - Overview: docs/platforms/index.md
       - AMD SEV-SNP: docs/platforms/amd-sev-snp.md

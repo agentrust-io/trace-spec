@@ -1,6 +1,12 @@
 """agentrust-trace — TRACE Trust Record models, validation, and signing."""
 
-from agentrust_trace.adapters import AGTSessionResult, TraceAGTAdapter
+from agentrust_trace.adapters import (
+    AGTSessionResult,
+    SandboxAttestation,
+    SandboxSessionResult,
+    TraceAGTAdapter,
+    TraceSandboxAdapter,
+)
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
@@ -35,6 +41,9 @@ __all__ = [
     "__version__",
     "AGTSessionResult",
     "TraceAGTAdapter",
+    "SandboxAttestation",
+    "SandboxSessionResult",
+    "TraceSandboxAdapter",
     "Appraisal",
     "BuildProvenance",
     "ConfirmationKey",

@@ -1,0 +1,49 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1754400000,
+  "subject": "spiffe://runtime.example.org/sandbox/code-review-7f2a",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "version": "20251001"
+  },
+  "runtime": {
+    "platform": "tpm2",
+    "measurement": "sha256:3b4c2a1f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b",
+    "rim_uri": "https://registry.agentrust-io.com/rim/sandbox-runtime-v1",
+    "nonce": "c2FuZGJveC1ydW50aW1lLW5vbmNl",
+    "firmware_version": "7.85"
+  },
+  "policy": {
+    "bundle_hash": "sha256:c34cd643f50840b454569674325334f7d374466fd351d0a0053638f5011cf9b6",
+    "enforcement_mode": "enforce",
+    "version": "sandbox-egress-v3.1",
+    "policy_uri": "https://registry.agentrust-io.com/policy/sandbox-egress-v3.1"
+  },
+  "data_class": "confidential",
+  "tool_transcript": {
+    "hash": "sha256:656c14fc7f3f698acdb9f6f14eb3758d685f63bd9e9e221221486dd1d7624969",
+    "call_count": 4
+  },
+  "build_provenance": {
+    "slsa_level": 2,
+    "builder": "https://github.com/example-org/agent-runtime/.github/workflows/release.yml",
+    "digest": "sha256:5e8b2d1a4f7c0e3b6a9d2f5c8e1b4a7d0f3c6e9b2a5d8f1c4e7b0a3d6f9c2e5b",
+    "provenance_uri": "https://rekor.sigstore.dev/api/v1/log/entries/sandbox-example"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://www.microsoft.com/pkiops/certs/tpm",
+    "policy_ref": "https://registry.agentrust-io.com/policy/tpm2-appraisal-v1",
+    "timestamp": 1754400000
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "kid": "sandbox-runtime-key-2026"
+    }
+  },
+  "transparency": "https://registry.agentrust-io.com/claim/sandbox-runtime-7f2a"
+}
