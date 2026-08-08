@@ -53,6 +53,8 @@ assert record["eat_profile"] == "tag:agentrust-io.com,2026:trace-v0.2", "Unknown
 print("✓ eat_profile correct")
 ```
 
+If you verify with `agentrust_trace.verify_record`, this step is enforced for you, before any cryptographic work: a record whose `eat_profile` is missing, superseded (the v0.1 identifier), or anything other than `TRACE_PROFILE_V0_2` raises `ValueError`. The manual assert above is what a from-scratch verifier must do itself — spec section 2 requires a v0.2 verifier to reject everything but the v0.2 identifier, and a valid signature over semantics your build does not implement is not evidence.
+
 ### Step 5 — Appraise the claims
 
 Interpret `appraisal.status` against your policy:
