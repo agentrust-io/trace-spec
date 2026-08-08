@@ -19,7 +19,7 @@ One normative change, and it is breaking.
 
 `agentrust.io` was never a domain this project controlled; it resolves to third-party parked addresses. RFC 4151 permits a tag URI only where the minting authority controlled the named domain on the stated date, so the v0.1 identifier was not merely misspelled, it was invalid: it asserted authority over a name belonging to someone else, who could at any point stand up a conflicting definition at it.
 
-Everything else in this document is unchanged from v0.1. No field was added, removed, or re-typed.
+Everything else in the record format is unchanged from v0.1. No field was added, removed, or re-typed. The non-normative sections have moved on: §6.1 now names the Linux Foundation series as the host, and §7 marks two open questions resolved.
 
 **Cutover, not coexistence.** A v0.2 verifier MUST require `tag:agentrust-io.com,2026:trace-v0.2` and MUST reject the v0.1 identifier. It MUST NOT accept both. A dual-accepting verifier would leave the invalid identifier live indefinitely, which is the thing being fixed, and would let a record minted under a domain we do not own continue to pass as conformant.
 
@@ -313,8 +313,8 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 - **SPIFFE / SPIRE** — workload identity. The SVID is bound to the TEE measurement so identity is rooted in hardware.
 - **SCITT** — append-only transparency log. TRACE defines a SCITT profile for Trust Record inclusion (Signed Statement registration, Receipt format, key rotation semantics).
 - **EAR (draft-ietf-rats-ar4si)** — verifier output format. Separates *what was claimed* from *what was accepted*.
-- **MCP** — Model Context Protocol tool surface. TRACE adds (a) cryptographic binding of the transcript hash into the EAT envelope and (b) a per-call `data_class` classification. MCP profile targeted for v0.2.
-- **A2A** — Agent-to-Agent communication. TRACE adds transcript binding and cross-protocol identity threading via SPIFFE SVID. A2A profile targeted for v0.2.
+- **MCP** — Model Context Protocol tool surface. TRACE adds (a) cryptographic binding of the transcript hash into the EAT envelope and (b) a per-call `data_class` classification. The normative MCP profile is not in this version; it is targeted for v0.3.
+- **A2A** — Agent-to-Agent communication. TRACE adds transcript binding and cross-protocol identity threading via SPIFFE SVID. The `delegation` link block (§3.1) landed in v0.2 as the foundation; the normative A2A binding rules are targeted for v0.3.
 - **AIBOM (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM)** — component inventory for models, datasets, dependencies. Referenced by digest from `model`.
 - **C2PA** — adjacent, not absorbed. Where a TRACE'd execution produces media, the output may carry a C2PA manifest that references the Trust Record.
 
@@ -366,11 +366,13 @@ ______________________________________________________________________
 
 ## 6. Governance
 
-### 6.1 Proposed host
+### 6.1 Host
 
-**CoSAI** (Coalition for Secure AI) for the technical workstream; the **Linux Foundation entity hosting the Model Context Protocol** for spec, IP, trademark, and conformance mark. Co-locating TRACE governance with the protocol whose attestation surface TRACE most directly profiles inherits LF's IP and trademark machinery.
+**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
-Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
+This supersedes the earlier proposal to split the technical workstream to CoSAI and the spec, IP and trademark to the Linux Foundation entity hosting the Model Context Protocol. That arrangement made TRACE a guest of two hosts, neither of which owned the conformance mark outright.
+
+Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups), CoSAI (WS4 interoperability).
 
 ### 6.2 Target contributing organizations
 
@@ -389,14 +391,14 @@ ______________________________________________________________________
 
 ## 7. Open Questions
 
-These need input before v0.2:
+These need input before v1.0. Two are now resolved and are kept here, marked, so a reader tracking them can see how they landed.
 
-1. **Host organization.** CoSAI, Linux Foundation, or a federated arrangement?
+1. ~~**Host organization.** CoSAI, Linux Foundation, or a federated arrangement?~~ **Resolved:** the Linux Foundation, as TRACE's own series. See §6.1.
 1. **AI-agent profile vs general profile.** One inclusive profile or split agent execution and generic confidential workload from day one?
 1. **Transparency log operator(s).** One canonical SCITT log, federated logs, or BYO with conformance criteria?
 1. **Policy language.** TRACE binds a policy *hash*. Does v1.0 also specify a policy *language* (Cedar, Rego, custom DSL), or stay language-agnostic?
 1. **Privacy of the record.** Records may contain sensitive classifications. Standardize encrypted-claims envelope (JWE / COSE-Encrypt) from v1.0?
-1. **A2A profile timing.** Ship A2A as a peer profile to MCP in v1.0, or wait for A2A to stabilize?
+1. ~~**A2A profile timing.** Ship A2A as a peer profile to MCP in v1.0, or wait for A2A to stabilize?~~ **Resolved:** A2A is stable at v1.x, which cleared the blocker. The `delegation` link block landed in v0.2 and the normative binding rules are targeted for v0.3, as a peer profile to MCP.
 1. **Relationship to IETF AIIP.** Absorb, supersede, or coexist with draft-ritz-aiip?
 
 ______________________________________________________________________
