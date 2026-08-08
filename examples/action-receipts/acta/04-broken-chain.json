@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "type": "protectmcp:decision",
+    "tool_name": "read_file",
+    "decision": "allow",
+    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "session_id": "ses_8f31ab",
+    "issued_at": "2026-07-08T09:00:09.000Z",
+    "issuer_id": "sb:issuer:QUGuJV1P6e6c",
+    "previousReceiptHash": "8fea5801658968ceb360401caed3532f133e42b4b9fa726f4dcb9a030344f345"
+  },
+  "signature": {
+    "alg": "EdDSA",
+    "kid": "sb:issuer:QUGuJV1P6e6c",
+    "sig": "f0df4f88a5bae5c1bf07b1fed55d78bf4e5b35e9edef1cb17619cf0a6a9a6627ffee7c4ba7fd61a8ea55599a9ca0b81ba6c8304dc926be070b0935be6202b105"
+  }
+}
