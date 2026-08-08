@@ -1,0 +1,56 @@
+{
+  "name": "utf16-key-order",
+  "description": "Two object keys whose order under RFC 8785's UTF-16 code-unit sort is the reverse of their code-point order. This is the record that distinguishes a true RFC 8785 serializer from json.dumps with every option set carefully: compact separators and ensure_ascii=False survive vectors 01 and 02, and fail here.",
+  "spec": "trace-v0.2 section 3.2.2 — implementations MUST use an RFC 8785-conformant library",
+  "profile": "trace.canonicalization.boundary.v0",
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA",
+        "zk😀": "sorts-first-under-rfc-8785",
+        "zk�": "sorts-second-under-rfc-8785"
+      }
+    },
+    "signature": "CjOuPwCnxnwegFjguiSCi-_xPg3iOwnCgyKuKYnV0OorofjPJrkOLn3dUFa-6tVf0z8EDiHaczl6AN46MuBtCQ"
+  },
+  "expected": {
+    "outcome": "verified"
+  },
+  "diverges_under": [
+    "sort_keys_default",
+    "sort_keys_compact",
+    "sort_keys_compact_utf8"
+  ]
+}
