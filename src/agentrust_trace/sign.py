@@ -20,6 +20,16 @@ import rfc8785
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+TRACE_PROFILE_V0_2 = "tag:agentrust-io.com,2026:trace-v0.2"
+"""The profile URI this build implements — the only one ``verify_record`` accepts."""
+
+_TRACE_PROFILE_V0_1 = "tag:agentrust.io,2026:trace-v0.1"
+"""The superseded identifier, minted under a domain the project does not own.
+
+Named only so its rejection can say why. Deliberately not exported: no caller
+should be able to spell it without reading this file.
+"""
+
 RevocationStore: TypeAlias = Container[str] | Callable[[str], bool]
 """Caller-supplied source of key revocation status, consulted by ``verify_record``.
 
@@ -265,9 +275,24 @@ def verify_record(
     *public_key_or_jwk* to verify against a key the caller already trusts.
 
     Raises ``InvalidSignature`` if the signature does not verify, and ``ValueError``
-    for every other rejection (no signature, no trusted key, malformed input,
-    unsupported JWK type, stale record, nonce mismatch, or revoked key). Returns
-    ``None`` on success. All checks fail closed.
+    for every other rejection (wrong or missing profile, no signature, no trusted
+    key, malformed input, unsupported JWK type, stale record, nonce mismatch, or
+    revoked key). Returns ``None`` on success. All checks fail closed.
+
+    Profile (fail closed):
+        The record's ``eat_profile`` must be exactly ``TRACE_PROFILE_V0_2``.
+        ``spec/trace-v0.2.md`` section 2 requires this of a v0.2 verifier: require
+        the v0.2 identifier, reject the superseded v0.1 identifier, and never accept
+        both. Any other profile is refused rather than verified on a best-effort
+        basis, because "the signature checks out" says nothing about whether this
+        code implements the semantics the record was written under. A missing
+        profile is refused for the same reason: a verifier cannot supply it by
+        assumption.
+
+        The profile is read before any cryptographic work, which is safe because
+        the only action taken on the unauthenticated value is refusal; a record
+        that verifies has had its profile covered by the signature, since the
+        signature spans the whole record.
 
     Trust anchoring (fail closed):
         Without a trusted key, the record cannot vouch for itself, so verification
@@ -299,6 +324,28 @@ def verify_record(
     from hmac import compare_digest
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
+
+    # Profile first: refuse semantics this build does not implement before spending
+    # any work on the record.
+    profile = record.get("eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ValueError(
+            "record has no 'eat_profile': the profile URI states which semantics the "
+            "record was written under, and a verifier cannot supply it by assumption"
+        )
+    if profile != TRACE_PROFILE_V0_2:
+        if profile == _TRACE_PROFILE_V0_1:
+            raise ValueError(
+                f"record carries the superseded v0.1 profile {profile!r}. "
+                "spec/trace-v0.2.md section 2: the cutover is cutover, not "
+                "coexistence — a v0.2 verifier rejects the v0.1 identifier, which "
+                "was minted under a domain the project does not own."
+            )
+        raise ValueError(
+            f"record profile {profile!r} is not {TRACE_PROFILE_V0_2!r}. Verification "
+            "is refused rather than attempted: a valid signature over semantics this "
+            "build does not implement is not evidence."
+        )
 
     sig_b64 = record.get("signature")
     if not sig_b64:

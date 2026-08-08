@@ -10,6 +10,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from agentrust_trace import (
+    TRACE_PROFILE_V0_2,
     TrustRecord,
     generate_key,
     jwk_thumbprint,
@@ -145,6 +146,71 @@ def _fresh_record() -> dict:
 def test_verify_record_passes_for_valid_signature():
     key = generate_key()
     record = sign_record(_fresh_record(), key)
+    verify_record(record, key_to_jwk(key))  # must not raise
+
+
+def _fresh_record_with_profile(profile) -> dict:
+    record = _fresh_record()
+    if profile is None:
+        del record["eat_profile"]
+    else:
+        record["eat_profile"] = profile
+    return record
+
+
+def test_verify_record_rejects_superseded_v0_1_profile():
+    """spec/trace-v0.2.md section 2: a v0.2 verifier MUST reject the v0.1 identifier.
+
+    The signature is genuine; the refusal must come from the profile, not from
+    tampering, or this would test the wrong check.
+    """
+    key = generate_key()
+    record = sign_record(
+        _fresh_record_with_profile("tag:agentrust.io,2026:trace-v0.1"), key
+    )
+
+    with pytest.raises(ValueError, match="superseded v0.1 profile"):
+        verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_rejects_unknown_profile():
+    """A future or foreign profile is refused, not best-effort verified."""
+    key = generate_key()
+    record = sign_record(
+        _fresh_record_with_profile("tag:example.com,2031:trace-v9.9"), key
+    )
+
+    with pytest.raises(ValueError, match="is not"):
+        verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_rejects_missing_profile():
+    """A missing profile cannot be supplied by assumption."""
+    key = generate_key()
+    record = sign_record(_fresh_record_with_profile(None), key)
+
+    with pytest.raises(ValueError, match="no 'eat_profile'"):
+        verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_profile_check_runs_before_signature_work():
+    """A wrong-profile record is refused even when its signature is garbage.
+
+    The refusal must not depend on cryptographic work: the profile error, not a
+    signature error, is what surfaces.
+    """
+    record = _fresh_record_with_profile("tag:agentrust.io,2026:trace-v0.1")
+    record["signature"] = "not-even-base64url!!"
+
+    with pytest.raises(ValueError, match="superseded v0.1 profile"):
+        verify_record(record, key_to_jwk(generate_key()))
+
+
+def test_verified_records_carry_the_exported_profile_constant():
+    """The constant callers can pin is the one the verifier accepts."""
+    assert TRACE_PROFILE_V0_2 == "tag:agentrust-io.com,2026:trace-v0.2"
+    key = generate_key()
+    record = sign_record(_fresh_record_with_profile(TRACE_PROFILE_V0_2), key)
     verify_record(record, key_to_jwk(key))  # must not raise
 
 
