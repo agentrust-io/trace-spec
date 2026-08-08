@@ -358,7 +358,7 @@ Level 2 adds a SCITT transparency log entry to a Level 1 record. The `transparen
 | -------------- | -------------------------------------------- |
 | `transparency` | Resolvable `https://` URI to a SCITT receipt |
 
-The [SCITT reference implementation](https://github.com/microsoft/scitt-api-emulator) and the [agentrust SCITT registry](https://registry.agentrust.io) are both supported anchors.
+The [SCITT reference implementation](https://github.com/microsoft/scitt-api-emulator) and the [agentrust SCITT registry](https://registry.agentrust-io.com) are both supported anchors.
 
 **Recommended flow:**
 
@@ -534,7 +534,7 @@ If `transparency` is set, the record is anchored in an append-only transparency 
 
 ```
 agentrust-trace verify-scitt session.trace.json \
-  --transparency-log https://registry.agentrust.io
+  --transparency-log https://registry.agentrust-io.com
 ```
 
 A valid SCITT receipt proves the record was included in the log and cannot be retroactively removed or modified.
@@ -1338,7 +1338,7 @@ adapter = TraceAGTAdapter(
     model_id="claude-sonnet-4-6",
     model_version="20251001",
     build_provenance_digest="sha256:e5f6a7b8...",
-    transparency="https://registry.agentrust.io/claim/...",
+    transparency="https://registry.agentrust-io.com/claim/...",
 )
 
 session = AGTSessionResult(
@@ -1547,7 +1547,7 @@ Or let cMCP push it to the transparency registry automatically:
 # cmcp.yaml
 trace:
   emit: true
-  registry: https://registry.agentrust.io
+  registry: https://registry.agentrust-io.com
   scitt_anchor: true
 ```
 

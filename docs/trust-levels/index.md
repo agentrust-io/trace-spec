@@ -77,7 +77,7 @@ Level 2 adds a SCITT transparency log entry to a Level 1 record. The `transparen
 | -------------- | -------------------------------------------- |
 | `transparency` | Resolvable `https://` URI to a SCITT receipt |
 
-The [SCITT reference implementation](https://github.com/microsoft/scitt-api-emulator) and the [agentrust SCITT registry](https://registry.agentrust.io) are both supported anchors.
+The [SCITT reference implementation](https://github.com/microsoft/scitt-api-emulator) and the [agentrust SCITT registry](https://registry.agentrust-io.com) are both supported anchors.
 
 **Recommended flow:**
 

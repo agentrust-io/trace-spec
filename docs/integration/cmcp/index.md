@@ -114,7 +114,7 @@ Or let cMCP push it to the transparency registry automatically:
 # cmcp.yaml
 trace:
   emit: true
-  registry: https://registry.agentrust.io
+  registry: https://registry.agentrust-io.com
   scitt_anchor: true
 ```
 
