@@ -13,6 +13,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
+- **`TraceSandboxAdapter`: Trust Records from a sandboxed agent runtime.** A kernel sandbox confines one agent on one machine. It does not answer, on its own, which agent on which of two hundred machines took an action, what actually ran rather than what the policy said, or how to say either on a host with no secure hardware. The adapter builds a record from what such a runtime already has at session close: sandbox identity, image digest, the effective policy bundle bytes, and the decision log. No change to the runtime is required.
+
+  Unlike `TraceAGTAdapter`, one code path spans Level 0 and Level 1. Passing a `SandboxAttestation` moves the record from `software-only` to the attested platform and nothing else about the call changes, because a sandbox runs wherever the customer runs it and the deployments that most need evidence often have the least hardware.
+
+  A caller cannot claim hardware it does not have: `platform` is only ever set from a supplied attestation, an attestation may not name `software-only`, the platform is validated against the enum on `RuntimeInfo` rather than a copy of it, and the measurement must be a `sha256:`/`sha384:` digest. Sandbox identity and image ride the existing `subject` and `build_provenance.digest`, so no schema change was needed.
+
+  Two defaults differ from the AGT adapter, deliberately. `appraisal.status` is `"none"`, because building a record does not appraise it and `affirming` would put a verdict in the field a consumer reads to find out whether anybody checked. `transparency` is `None` and omitted, which is what an unanchored record should say.
+
+  `tool_transcript.hash` is taken over the RFC 8785 canonical form of the decision log rather than `json.dumps(sort_keys=True)`. The two agree on ASCII and diverge on non-ASCII strings and number formatting; a decision log carries paths and hostnames, and the signature pre-image already uses JCS. See `docs/integration/sandbox-runtime.md` and `examples/sandbox-runtime.json`.
+
 - **`verify_record(..., revocation=...)` enforces key revocation at verification time (#76).** §3.2.1 has always required that "Verifiers MUST consult current revocation status at verification time", but `verify_record()` checked only signature and freshness, so a record signed by a revoked or compromised key kept verifying. The new `revocation` parameter accepts either a container of revoked key identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. A listed key is rejected, and a store that cannot answer is also rejected: an unavailable revocation source is not evidence that a key is unrevoked.
 
   Keys are identified by RFC 7638 JWK Thumbprint or `kid`. The check reads the *trusted* key rather than `record["cnf"]["jwk"]`, which is attacker-controlled until the signature verifies.

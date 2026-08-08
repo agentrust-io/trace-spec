@@ -6,6 +6,10 @@ Each file is a canonical TRACE v0.1 Trust Record that validates as-is against
 - `intel-tdx.json`: Intel TDX example.
 - `amd-sev-snp.json`: AMD SEV-SNP example.
 - `nvidia-h100.json`: NVIDIA H100 Confidential Computing example.
+- `tpm2.json`: TPM 2.0 example.
+- `sandbox-runtime.json`: a sandboxed agent runtime, TPM 2.0 rooted. Produced by
+  `TraceSandboxAdapter`; the decision log is a kernel-sandbox policy trace rather
+  than MCP tool calls.
 - `action-receipts/`: informative fixture shapes for action-level receipt
   verification. These are not TRACE Trust Records and are not validated against
   `schema/trace-claim.json`.
