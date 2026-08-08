@@ -189,7 +189,9 @@ nav:
       - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
       - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
       - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
-  - Specification: spec/trace-v0.2.md
+  - Specification:
+      - TRACE v0.2: spec/trace-v0.2.md
+      - Registry Anchor Format v1: spec/registry-anchor-v1.md
   - Integration:
       - AGT: docs/integration/agt.md
       - cMCP: docs/integration/cmcp.md
