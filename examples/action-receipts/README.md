@@ -89,6 +89,26 @@ three operations:
 | `07-receipt-chain-gap.json` | `receipt_invalid` | unknown | The receipt does not link to the expected predecessor. |
 | `08-same-party-self-report.json` | `receipt_valid_accepted` with warning | `accepted` | The evidence verifies, but the issuer is not independent from the gateway. |
 | `09-unsupported-physical-completion.json` | `receipt_invalid` | unknown | Base TRACE cannot verify the asserted physical-completion claim. |
+| `10-action-ref-not-recomputable.json` | `receipt_invalid` | unknown | The declared `action_ref` is not the digest of its own preimage, so it binds nothing. |
+| `11-call-id-mismatch.json` | `receipt_invalid` | unknown | An authentic receipt bound to a different call. |
+| `12-session-id-mismatch.json` | `receipt_invalid` | unknown | An authentic receipt from a different session. |
+| `13-evidence-hash-mismatch.json` | `receipt_invalid` | unknown | The receipt is authentic but the detached evidence was swapped after signing. |
+| `14-receipt-issuer-key-unknown.json` | `receipt_unverified` with advisory | unknown | The issuer key is not in the verifier's pinned set. Unverifiable is not invalid (spec §3.3.1): no trust is conferred and no forgery is proven, surfaced as an `issuer_key_unknown` advisory. |
+| `15-receipt-from-future.json` | `receipt_invalid` | unknown | Issued after the verification time, so an upper bound on age never rejects it. |
+| `16-decision-not-in-enum.json` | `receipt_invalid` | unknown | An unrecognised decision verb, which must not read as accept or reject. |
+
+Fixtures `10`–`16` each pin down one rule that the verifier applies and that no fixture
+previously exercised. Every one was a check a conforming implementation could have
+omitted entirely while passing this set. Two matter beyond tidiness: without
+`issuer_key_unknown` a receipt authenticates itself — a signature verifies against
+whatever key it names, and only the pinned set decides which keys the verifier can
+check at all; per spec §3.3.1 the outcome is `receipt_unverified`, not
+`receipt_invalid`, but a verifier that never consults its pinned set would report such
+a receipt as fully valid, which is what the vector distinguishes. Without
+`evidence_hash_mismatch` the signature covers a digest whose document may have been
+replaced. They pin their own deterministic test key, since the private half of the key
+used by `01`–`09` is not published; `gen_rule_coverage_vectors.py` regenerates them
+byte-for-byte and only public JWKs appear in the files.
 
 `tests/test_action_receipt_fixtures.py` recomputes each digest, verifies each
 signature against the pinned key, checks session and call binding, enforces

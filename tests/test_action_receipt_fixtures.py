@@ -92,7 +92,12 @@ def _verify_fixture(fixture: dict[str, Any]) -> ReceiptResult:
 
     trusted_jwk = fixture["trusted_issuer_keys"].get(receipt["issuer_key_id"])
     if trusted_jwk is None:
-        failures.append("issuer_key_untrusted")
+        # Spec section 3.3.1: a receipt whose issuer key is unknown to the verifier is
+        # unverified, not invalid. An unpinned key is an inability to check, not
+        # evidence of forgery, so this is an advisory rather than a failure; the
+        # structural checks below still run, and any of them failing is positive
+        # evidence that does make the receipt invalid.
+        warnings.append("issuer_key_unknown")
     else:
         try:
             _verify_signature(receipt, trusted_jwk)
@@ -128,6 +133,18 @@ def _verify_fixture(fixture: dict[str, Any]) -> ReceiptResult:
             warnings=warnings,
         )
 
+    if trusted_jwk is None:
+        # Nothing failed, but nothing was signed by a key the verifier could check
+        # either. The receipt confers no trust and proves no wrongdoing, and the
+        # controller outcome stays unknown because the evidence is only as good as
+        # the unverified receipt that binds it.
+        return ReceiptResult(
+            status="receipt_unverified",
+            controller_outcome="unknown",
+            failures=[],
+            warnings=warnings,
+        )
+
     status = "receipt_valid_accepted" if decision == "accepted" else "receipt_valid_rejected"
     return ReceiptResult(
         status=status,
@@ -151,6 +168,15 @@ def test_fixture_set_is_complete() -> None:
         "07-receipt-chain-gap.json",
         "08-same-party-self-report.json",
         "09-unsupported-physical-completion.json",
+        # 10-16 cover the receipt rules that had no fixture at all. Each was a check a
+        # conforming implementation could have omitted entirely while passing this set.
+        "10-action-ref-not-recomputable.json",
+        "11-call-id-mismatch.json",
+        "12-session-id-mismatch.json",
+        "13-evidence-hash-mismatch.json",
+        "14-receipt-issuer-key-unknown.json",
+        "15-receipt-from-future.json",
+        "16-decision-not-in-enum.json",
     ]
 
 
