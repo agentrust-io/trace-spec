@@ -1,0 +1,54 @@
+{
+  "name": "non-bmp-values",
+  "description": "String values above U+FFFF, encoded as four UTF-8 bytes each. Under ASCII-escaping they become surrogate pairs; either way the bytes differ from RFC 8785's literal UTF-8.",
+  "spec": "trace-v0.2 section 3.2.2 — implementations MUST use an RFC 8785-conformant library",
+  "profile": "trace.canonicalization.boundary.v0",
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6",
+      "version": "4.6-🤖"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential-🔒",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA"
+      }
+    },
+    "signature": "62CaOUWmDFPmgthTUkJ4cdwxmDQXzYg9hN6KaCB3EHjeDzeLiB_rdVFIRQrDVTzt-clmIoxNs7UxzJMFvWB_Bw"
+  },
+  "expected": {
+    "outcome": "verified"
+  },
+  "diverges_under": [
+    "sort_keys_default",
+    "sort_keys_compact"
+  ]
+}
