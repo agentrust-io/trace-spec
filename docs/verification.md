@@ -144,7 +144,7 @@ If `transparency` is set, the record is anchored in an append-only transparency 
 
 ```bash
 agentrust-trace verify-scitt session.trace.json \
-  --transparency-log https://registry.agentrust.io
+  --transparency-log https://registry.agentrust-io.com
 ```
 
 A valid SCITT receipt proves the record was included in the log and cannot be retroactively removed or modified.

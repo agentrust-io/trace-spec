@@ -11,6 +11,20 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Added
+
+- **`spec/registry-anchor-v1.md`: the registry anchor and inclusion-proof format is now public (#111).** The format was already normative and already written so a conforming verifier could be built from it alone, but it lived in `trace-registry`, which is private. The effect was that the one document an external verifier needs was the one they could not read, and an inclusion proof nobody outside can check is not transparency. It is published here, in the public spec home, as @l33tdawg proposed in the discussion that raised this.
+
+  §0 leads with the trap, because it is the one that costs an implementer a day and gives no useful error: TRACE canonicalizes with **RFC 8785 (JCS)** for *signing* and with **sorted-key JSON** for the *anchor leaf*. The two agree on ASCII-only records with integer numbers, which is most records, which is exactly what makes assuming JCS at the leaf dangerous.
+
+  §8 states conformance, including the requirement that the append-only property be externally checkable rather than asserted. An operator that issues verifiable proofs but publishes nothing an outsider can audit is running a log, not a transparency log.
+
+### Fixed
+
+- **Four documents told readers to send signed records to a domain this project does not own.** `docs/integration/agt.md`, `docs/integration/cmcp.md`, `docs/trust-levels.md` and `docs/verification.md` still named `registry.agentrust.io`, which resolves to third-party parked addresses. This is the same defect the v0.2 profile cutover fixed in the identifier, missed in the prose. Moved to `registry.agentrust-io.com`, which is what the SDK's adapters already emit. The v0.1 spec keeps its original values; it is a superseded document and a record of what was published.
+
+- **The anchoring tutorial documented an API that does not exist.** It instructed readers to POST signed Trust Records to a SCITT HTTP endpoint at the parked domain above and to read a `receipt_uri` from the response. There is no such endpoint. Rewritten against the actual mechanism: submit to staging, retrieve an inclusion proof, and verify that proof yourself against the published entry. It also still described `transparency` as a required string, which 0.5.1 changed. The page carries a dated note saying what it used to say, because anyone who built against it deserves to know nothing they sent was received.
+
 ### Changed
 
 - **The spec, the README and the roadmap named three different standards homes between them.** §6.1 proposed splitting TRACE between CoSAI and the Linux Foundation entity hosting MCP; the README said "Targeting AAIF"; neither is where this is going. TRACE is being formed at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC" (see #127). §6.1 is rewritten, the README line is corrected, and §7 Q1 is marked resolved rather than deleted so a reader tracking it can see how it landed.
