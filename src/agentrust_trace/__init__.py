@@ -1,5 +1,7 @@
 """agentrust-trace — TRACE Trust Record models, validation, and signing."""
 
+from importlib import metadata as _metadata
+
 from agentrust_trace.adapters import (
     AGTSessionResult,
     SandboxAttestation,
@@ -36,7 +38,17 @@ from agentrust_trace.validate import (
     validate_json,
 )
 
-__version__ = "0.2.0"
+try:
+    __version__ = _metadata.version("agentrust-trace")
+except _metadata.PackageNotFoundError:  # source tree, not installed
+    __version__ = "0.0.0+unknown"
+"""Read from installed package metadata rather than hardcoded.
+
+A literal here drifted from ``pyproject.toml`` at #36 and stayed wrong through
+v0.3.0, v0.4.0, v0.5.0 and v0.5.1, so four releases reported ``0.2.0`` at runtime.
+Deriving it from the metadata makes that class of drift impossible; a test pins the
+two together for the source tree.
+"""
 
 __all__ = [
     "__version__",
