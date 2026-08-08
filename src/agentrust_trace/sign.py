@@ -400,7 +400,7 @@ def verify_record(
     # Freshness: bound the age of the record against its issued-at timestamp.
     if max_age_seconds is not None:
         iat = record.get("iat")
-        if not isinstance(iat, (int, float)) or isinstance(iat, bool):
+        if not isinstance(iat, int | float) or isinstance(iat, bool):
             raise ValueError("record has no valid integer 'iat' for freshness check")
         age = time.time() - iat
         if age > max_age_seconds:

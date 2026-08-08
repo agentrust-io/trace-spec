@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentrust-trace"
-version = "0.5.1"
-description = "TRACE v0.1 — hardware-attested governance records for AI agents"
+version = "0.6.0"
+description = "TRACE v0.2 — hardware-attested governance records for AI agents"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"

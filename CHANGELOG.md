@@ -11,6 +11,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-07
+
+### Fixed
+
+- **`__version__` reported the wrong number for four releases.** It was a literal that drifted from `pyproject.toml` at #36 and was never corrected, so v0.3.0, v0.4.0, v0.5.0 and v0.5.1 each shipped a wheel reporting `0.2.0` at runtime. Anyone pinning or logging on `agentrust_trace.__version__` got the wrong answer, and nothing failed. It now derives from installed package metadata, which makes the two unable to disagree, and `tests/test_version.py` pins the source tree against `pyproject.toml` and requires the changelog to carry a section for the declared version before a tag is cut.
+
+- **The package description advertised TRACE v0.1.** The PyPI summary still named the superseded profile.
+
 ### Added
 
 - **`TraceSandboxAdapter`: Trust Records from a sandboxed agent runtime.** A kernel sandbox confines one agent on one machine. It does not answer, on its own, which agent on which of two hundred machines took an action, what actually ran rather than what the policy said, or how to say either on a host with no secure hardware. The adapter builds a record from what such a runtime already has at session close: sandbox identity, image digest, the effective policy bundle bytes, and the decision log. No change to the runtime is required.
