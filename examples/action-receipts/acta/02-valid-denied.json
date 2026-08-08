@@ -1,0 +1,18 @@
+{
+  "payload": {
+    "type": "protectmcp:decision",
+    "tool_name": "delete_database",
+    "decision": "deny",
+    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "session_id": "ses_8f31ab",
+    "issued_at": "2026-07-08T09:00:05.000Z",
+    "issuer_id": "sb:issuer:QUGuJV1P6e6c",
+    "reason": "policy_block",
+    "previousReceiptHash": "8fea5801658968ceb360401caed3532f133e42b4b9fa726f4dcb9a030344f345"
+  },
+  "signature": {
+    "alg": "EdDSA",
+    "kid": "sb:issuer:QUGuJV1P6e6c",
+    "sig": "12f7f08171446124b74c7e0d3d434496db8551065ddc823903320753b2091691231f71b7d1499c5af4de07b3f84c3e055c1bb31b2a54a4815be91e98b2814602"
+  }
+}

@@ -49,6 +49,10 @@
          <lastmod>2026-08-08</lastmod>
     </url>
     <url>
+         <loc>https://trace.agentrust-io.com/docs/crosswalks/acta-decision-receipts/</loc>
+         <lastmod>2026-08-08</lastmod>
+    </url>
+    <url>
          <loc>https://trace.agentrust-io.com/docs/crosswalks/owasp-agentic-top-10/</loc>
          <lastmod>2026-08-08</lastmod>
     </url>
@@ -114,6 +118,10 @@
     </url>
     <url>
          <loc>https://trace.agentrust-io.com/examples/action-receipts/</loc>
+         <lastmod>2026-08-08</lastmod>
+    </url>
+    <url>
+         <loc>https://trace.agentrust-io.com/examples/action-receipts/acta/</loc>
          <lastmod>2026-08-08</lastmod>
     </url>
     <url>
