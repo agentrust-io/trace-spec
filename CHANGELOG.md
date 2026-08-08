@@ -11,6 +11,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Changed
+
+- **The spec, the README and the roadmap named three different standards homes between them.** §6.1 proposed splitting TRACE between CoSAI and the Linux Foundation entity hosting MCP; the README said "Targeting AAIF"; neither is where this is going. TRACE is being formed at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC" (see #127). §6.1 is rewritten, the README line is corrected, and §7 Q1 is marked resolved rather than deleted so a reader tracking it can see how it landed.
+
+- **§4.1 described the MCP and A2A profiles as "targeted for v0.2" in the v0.2 document.** Neither shipped in v0.2. Both are now stated as targeted for v0.3, and the A2A entry says what did land: the `delegation` link block, as the foundation the binding rules will attach to. §7 Q6 (A2A timing) is marked resolved, since A2A stabilizing at v1.x was the blocker it asked about.
+
+- **§7 was headed "These need input before v0.2".** Now v1.0. No normative text, schema, or record field changed.
+
 ## [0.6.0] — 2026-08-07
 
 ### Fixed

@@ -65,7 +65,7 @@ signed = sign_record(record, key=signing_key)
 
 ## Standards alignment
 
-Targeting the [Agentic AI Foundation (AAIF)](https://agenticai.foundation) at the Linux Foundation. Active standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
+Being formed at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC". Related standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
 
 ## Frequently asked questions
 
