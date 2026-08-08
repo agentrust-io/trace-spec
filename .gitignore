@@ -17,3 +17,4 @@ htmlcov/
 # Virtualenvs
 .venv/
 venv/
+uv.lock

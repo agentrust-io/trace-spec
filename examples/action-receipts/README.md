@@ -96,6 +96,20 @@ three operations:
 | `14-receipt-issuer-key-unknown.json` | `receipt_unverified` with advisory | unknown | The issuer key is not in the verifier's pinned set. Unverifiable is not invalid (spec §3.3.1): no trust is conferred and no forgery is proven, surfaced as an `issuer_key_unknown` advisory. |
 | `15-receipt-from-future.json` | `receipt_invalid` | unknown | Issued after the verification time, so an upper bound on age never rejects it. |
 | `16-decision-not-in-enum.json` | `receipt_invalid` | unknown | An unrecognised decision verb, which must not read as accept or reject. |
+| `17-missing-receipt-explicit-null.json` | `receipt_missing_required` | unknown | The receipt supplied as an explicit `null`: 03's absence through a different door, misread by presence-checking implementations. |
+| `18-action-ref-tail-forged.json` | `receipt_invalid` | unknown | The declared `action_ref` matches the recomputed digest in every character but the last. |
+| `19-action-ref-mismatch-in-tail.json` | `receipt_invalid` | unknown | Receipt and action references differ only in the final character. |
+| `20-call-id-case-mismatch.json` | `receipt_invalid` | unknown | The linked call id is this call's id in a different case — a different call. |
+| `21-session-id-case-mismatch.json` | `receipt_invalid` | unknown | The session id in a different case — a different session. |
+| `22-evidence-hash-mismatch-in-tail.json` | `receipt_invalid` | unknown | The evidence hash is wrong only in its final character. |
+| `23-receipt-issuer-key-case-variant.json` | `receipt_unverified` with advisory | unknown | The right key pinned under a case-variant of the receipt's key id: not the key the receipt names. |
+| `24-receipt-signature-malformed.json` | `receipt_invalid` | unknown | Valid base64url decoding to 32 bytes — rejected by structure, where 04 needs cryptography. |
+| `25-stale-receipt-boundary.json` | `receipt_invalid` | unknown | Stale by exactly one second. |
+| `26-receipt-from-future-boundary.json` | `receipt_invalid` | unknown | Issued one second after the verification time. |
+| `27-receipt-chain-gap-in-tail.json` | `receipt_invalid` | unknown | The predecessor link is wrong only in its final character. |
+| `28-physical-completion-claim-case.json` | `receipt_invalid` | unknown | The claim `"None"`: the vocabulary word under case-normalisation, outside it as bytes. |
+| `29-same-party-self-report-rejected.json` | `receipt_valid_rejected` with warning | `rejected` | A gateway self-report on the rejected branch: issuer independence matters on both. |
+| `30-decision-case-variant.json` | `receipt_invalid` | unknown | The decision `"Accepted"`: in the vocabulary case-insensitively, outside it as bytes. |
 
 Fixtures `10`–`16` each pin down one rule that the verifier applies and that no fixture
 previously exercised. Every one was a check a conforming implementation could have
@@ -106,9 +120,19 @@ check at all; per spec §3.3.1 the outcome is `receipt_unverified`, not
 `receipt_invalid`, but a verifier that never consults its pinned set would report such
 a receipt as fully valid, which is what the vector distinguishes. Without
 `evidence_hash_mismatch` the signature covers a digest whose document may have been
-replaced. They pin their own deterministic test key, since the private half of the key
-used by `01`–`09` is not published; `gen_rule_coverage_vectors.py` regenerates them
-byte-for-byte and only public JWKs appear in the files.
+replaced.
+
+Fixtures `17`–`30` are the second, independent vector for each rule. Two vectors are
+independent when a single implementation defect causes one to pass and the other to
+fail (#124), and each pair here is split by a declared, plausible shortcut: truncated
+digest comparison, case-normalised identifier matching, clock tolerance, structural
+signature validation, presence-checking instead of null-checking. The defect that
+separates each pair is declared and enforced in
+`tests/test_vector_completeness.py::DEFECTS`.
+
+Everything from `10` up pins its own deterministic test key, since the private half of
+the key used by `01`–`09` is not published; `gen_rule_coverage_vectors.py` regenerates
+the range byte-for-byte and only public JWKs appear in the files.
 
 `tests/test_action_receipt_fixtures.py` recomputes each digest, verifies each
 signature against the pinned key, checks session and call binding, enforces
