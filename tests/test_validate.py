@@ -122,3 +122,48 @@ def test_origin_unknown_kind_fails_json_schema() -> None:
     data["runtime"]["platform"] = "software-only"
     data["origin"] = {"kind": "vendor-asserted", "producer": "vendor/1.0"}
     assert iter_errors(data)
+
+
+def test_packaged_schema_matches_the_normative_schema() -> None:
+    """The packaged copy must say the same thing as ``schema/trace-claim.json``.
+
+    ``validate_json`` loads the packaged copy, while the spec, README and
+    CONTRIBUTING all point a reader at the root file as the normative one. When the
+    two drift, the schema someone reads is not the schema their record is checked
+    against, and nothing fails: both files are individually valid.
+
+    Compared as parsed JSON rather than as bytes, because the two files differ in
+    line endings by long-standing accident (the root file is CRLF, the packaged one
+    LF) and that changes nothing about how either validates a record.
+    """
+    repo_root = Path(__file__).parent.parent
+    normative = json.loads((repo_root / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
+    packaged = json.loads(
+        (repo_root / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert packaged == normative, (
+        "src/agentrust_trace/schema/trace-v0.2.json has drifted from the normative "
+        "schema/trace-claim.json"
+    )
+    assert SCHEMA == normative, "the schema loaded at runtime is not the normative one"
+
+
+@pytest.mark.parametrize(
+    "subject",
+    [
+        "spiffe://trust.example.org/agent/payments-processor",
+        "did:web:example.org:agent:payments-processor",
+    ],
+)
+def test_both_subject_forms_pass_validate_json(subject: str) -> None:
+    """The subject pattern the model and the normative schema accept, checked at runtime.
+
+    This is the concrete shape the drift above took: the root file and ``models.py``
+    accepted a DID subject, the packaged copy still required ``spiffe://``, so a record
+    the specification permits was rejected by the reference validator.
+    """
+    data = _load("intel-tdx.json")
+    data["subject"] = subject
+    assert iter_errors(data) == []

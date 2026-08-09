@@ -11,6 +11,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The packaged schema had drifted from the normative one, and a DID subject was the casualty.** `validate_json()` loads `src/agentrust_trace/schema/trace-v0.2.json`, while the spec, README and CONTRIBUTING all point a reader at `schema/trace-claim.json`. The two disagreed in three places, so the schema someone reads was not the schema their record was checked against. The visible consequence: the root file and `models.py` both accept a `did:` subject, the packaged copy still required `^spiffe://`, so `agentrust_trace.validate_json()` rejected a subject form the specification permits. Also resynced: the `slsa_level` description, and the root file's `$id`, which still said `trace-v0.1.json` on a schema whose `eat_profile` const is v0.2.
+
+  `tests/test_validate.py` now compares the two as parsed JSON on every run, so the next drift fails instead of shipping. Compared parsed rather than byte for byte because the two files differ in line endings by long-standing accident, which changes nothing about how either validates a record.
+
+- **A 0.6.0 changelog entry was filed under 0.5.1.** The `verify_record()` profile-cutover enforcement shipped in 0.6.0; its entry landed in the 0.5.1 section, next to the cutover declaration it implements, which left 0.5.1 with two `### Fixed` blocks and 0.6.0 with no entry for a behaviour change. Moved, with its two internal cross-references corrected to match where it now sits.
+
 ## [0.7.0] — 2026-08-08
 
 ### Added
@@ -55,6 +63,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **The package description advertised TRACE v0.1.** The PyPI summary still named the superseded profile.
 
+- **`verify_record()` now enforces the profile cutover this changelog already declares.** The 0.5.1 cutover entry states that a v0.2 verifier "requires the new URI and rejects the old one; it does not accept both" — but `verify_record()` never read `eat_profile`, so a record carrying the v0.1 identifier, a future version, a foreign tag, or no profile at all verified exactly as a v0.2 record, provided its signature checked out. A valid signature over semantics this build does not implement is not evidence, so the profile is now checked first, before any cryptographic work: anything other than `TRACE_PROFILE_V0_2` (newly exported) raises `ValueError`, with a message that says why when the profile is the superseded v0.1 identifier. Same shape as the revocation enforcement in this release: an already-merged spec requirement (`spec/trace-v0.2.md` section 2) that the reference implementation did not carry out. `docs/verification.md` step 4 notes the check is now built in. No normative text, schema, or record field changed.
+
 ### Added
 
 - **`TraceSandboxAdapter`: Trust Records from a sandboxed agent runtime.** A kernel sandbox confines one agent on one machine. It does not answer, on its own, which agent on which of two hundred machines took an action, what actually ran rather than what the policy said, or how to say either on a host with no secure hardware. The adapter builds a record from what such a runtime already has at session close: sandbox identity, image digest, the effective policy bundle bytes, and the decision log. No change to the runtime is required.
@@ -92,10 +102,6 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   Moved together: `spec/trace-v0.2.md` (new, with a "Changes from v0.1" section), `spec/trace-v0.1.md` (retained, marked superseded), the root `schema/trace-claim.json` const, the packaged `agentrust_trace/schema/trace-v0.2.json`, the `eat_profile` `Literal` in `models.py`, the AGT adapter, `validate.py`'s schema resource, the four platform example records, and the docs.
 
 - Other `agentrust.io` URLs moved to `agentrust-io.com`: the registry and verifier hosts in the AGT adapter and the schema `$id`.
-
-### Fixed
-
-- **`verify_record()` now enforces the profile cutover this changelog already declares.** The entry above states that a v0.2 verifier "requires the new URI and rejects the old one; it does not accept both" — but `verify_record()` never read `eat_profile`, so a record carrying the v0.1 identifier, a future version, a foreign tag, or no profile at all verified exactly as a v0.2 record, provided its signature checked out. A valid signature over semantics this build does not implement is not evidence, so the profile is now checked first, before any cryptographic work: anything other than `TRACE_PROFILE_V0_2` (newly exported) raises `ValueError`, with a message that says why when the profile is the superseded v0.1 identifier. Same shape as the revocation fix above: an already-merged spec requirement (`spec/trace-v0.2.md` section 2) that the reference implementation did not carry out. `docs/verification.md` step 4 notes the check is now built in. No normative text, schema, or record field changed.
 
 ## [0.4.0]
 
