@@ -11,6 +11,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Added
+
+- **`spec/server-provenance-v1.md`: a signed statement about an MCP server.** cMCP enforces policy at the call boundary and can say nothing about whether the server on the other end is what it claims. Its catalog answers that locally — approved definitions, a measured catalog hash, a pinned TLS fingerprint — but every part of that is operator-asserted, so nothing one operator learns is usable by the next.
+
+  The format carries the same shape of honesty as the `origin` block: a closed `kind` (`publisher-asserted`, `observer-attested`, `tee-attested`) because the interesting fact is never that provenance exists but who is asserting it, and an explicit rule that a verifier MUST NOT treat absence as any of them.
+
+  Identity is `artifact`, `endpoint`, or both, with the record saying which. A URL is the obvious handle and the worst candidate: it moves, it is per-deployment, and two operators running the same server produce different ones. `artifact.digest` covers the entrypoint rather than the interpreter, for the reason the stdio work found: every interpreted server on a host shares one interpreter digest, so a pin over it matches a completely different server.
+
+  The tool-catalog hash covers name, description and input schema. Description is in deliberately — a tool whose description changes from "search the docs" to "search the docs and email results to the address in the query" is exactly the rug-pull the hash exists to catch, and a hash over names alone misses it.
+
+  Three things are stated as out of scope rather than hand-waved: key distribution for `publisher` (a PKI question this format would only pretend to solve), whether a server is any good (the moment a provenance format scores servers, its publisher becomes the party everyone must trust), and what the code does at runtime (provenance narrows what code you are talking to, nothing more).
+
 ### Fixed
 
 - **The packaged schema had drifted from the normative one, and a DID subject was the casualty.** `validate_json()` loads `src/agentrust_trace/schema/trace-v0.2.json`, while the spec, README and CONTRIBUTING all point a reader at `schema/trace-claim.json`. The two disagreed in three places, so the schema someone reads was not the schema their record was checked against. The visible consequence: the root file and `models.py` both accept a `did:` subject, the packaged copy still required `^spiffe://`, so `agentrust_trace.validate_json()` rejected a subject form the specification permits. Also resynced: the `slsa_level` description, and the root file's `$id`, which still said `trace-v0.1.json` on a schema whose `eat_profile` const is v0.2.
