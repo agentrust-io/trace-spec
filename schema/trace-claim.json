@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentrust-io.com/schema/trace-v0.1.json",
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record \u2014 hardware-attested governance evidence for an AI agent execution.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -36,7 +36,10 @@
     "model": {
       "type": "object",
       "description": "Model identity and provenance.",
-      "required": ["provider", "model_id"],
+      "required": [
+        "provider",
+        "model_id"
+      ],
       "properties": {
         "provider": {
           "type": "string",
@@ -66,7 +69,10 @@
     "runtime": {
       "type": "object",
       "description": "TEE measurement chain binding the workload to hardware.",
-      "required": ["platform", "measurement"],
+      "required": [
+        "platform",
+        "measurement"
+      ],
       "properties": {
         "platform": {
           "type": "string",
@@ -108,7 +114,10 @@
     "policy": {
       "type": "object",
       "description": "Policy bundle sealed to the TEE measurement.",
-      "required": ["bundle_hash", "enforcement_mode"],
+      "required": [
+        "bundle_hash",
+        "enforcement_mode"
+      ],
       "properties": {
         "bundle_hash": {
           "type": "string",
@@ -117,7 +126,11 @@
         },
         "enforcement_mode": {
           "type": "string",
-          "enum": ["enforce", "advisory", "silent"],
+          "enum": [
+            "enforce",
+            "advisory",
+            "silent"
+          ],
           "default": "enforce",
           "description": "How policy decisions were applied: enforce (block on deny), advisory (log and allow), silent (allow and suppress operational logs; the audit chain still records every would-have-denied decision). Gateways MUST default to enforce. A deployment MUST explicitly configure silent mode; it MUST NOT be the default."
         },
@@ -136,12 +149,20 @@
     "data_class": {
       "type": "string",
       "description": "Highest-sensitivity data classification of inputs and outputs processed during this execution.",
-      "examples": ["public", "internal", "confidential", "restricted", "top-secret"]
+      "examples": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted",
+        "top-secret"
+      ]
     },
     "tool_transcript": {
       "type": "object",
       "description": "Bound hash of the MCP/A2A tool-call transcript. OPTIONAL for Phase 1 records; REQUIRED for Phase 2+.",
-      "required": ["hash"],
+      "required": [
+        "hash"
+      ],
       "properties": {
         "hash": {
           "type": "string",
@@ -164,7 +185,10 @@
     "delegation": {
       "type": "object",
       "description": "A2A profile: links this record to the delegating hop's Trust Record. Present when this execution acted on delegated authority; absent on a root (non-delegated) execution. A chain of these forms an offline-verifiable delegation DAG.",
-      "required": ["parent_record_hash", "credential_id"],
+      "required": [
+        "parent_record_hash",
+        "credential_id"
+      ],
       "properties": {
         "parent_record_hash": {
           "type": "string",
@@ -179,10 +203,48 @@
       },
       "additionalProperties": false
     },
+    "origin": {
+      "type": "object",
+      "description": "Where the evidence in this record came from, when that is not this runtime. Absent means the runtime produced its own record, which is what a consumer assumes and what every hardware profile is. Present means something else assembled the record from evidence it did not measure. A non-self kind cannot carry a hardware runtime.platform.",
+      "required": [
+        "kind",
+        "producer"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "self",
+            "third-party-control-plane",
+            "log-import"
+          ],
+          "description": "self: the runtime produced its own record. third-party-control-plane: assembled from another vendor's runtime governance output, asserted by the system that produced it with no root outside that system. log-import: assembled from a log or export whose producer is not a control plane."
+        },
+        "producer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the system that produced the source evidence."
+        },
+        "source_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the source event in the producing system, so a record can be traced back to it."
+        },
+        "ingested_at": {
+          "type": "integer",
+          "minimum": 1700000000,
+          "description": "Unix time at which the source evidence was ingested. Distinct from iat, which is when this record was issued."
+        }
+      },
+      "additionalProperties": false
+    },
     "build_provenance": {
       "type": "object",
       "description": "SLSA provenance for the workload (agent code + container image).",
-      "required": ["slsa_level", "digest"],
+      "required": [
+        "slsa_level",
+        "digest"
+      ],
       "properties": {
         "slsa_level": {
           "type": "integer",
@@ -210,11 +272,19 @@
     "appraisal": {
       "type": "object",
       "description": "Verifier's EAR appraisal of the evidence (draft-ietf-rats-ar4si).",
-      "required": ["status", "verifier"],
+      "required": [
+        "status",
+        "verifier"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["affirming", "warning", "contraindicated", "none"],
+          "enum": [
+            "affirming",
+            "warning",
+            "contraindicated",
+            "none"
+          ],
           "description": "EAR appraisal status."
         },
         "verifier": {
@@ -241,34 +311,71 @@
     },
     "cnf": {
       "type": "object",
-      "description": "Confirmation key (RFC 8747) — binds the Trust Record to the TEE-held signing key.",
-      "required": ["jwk"],
+      "description": "Confirmation key (RFC 8747) \u2014 binds the Trust Record to the TEE-held signing key.",
+      "required": [
+        "jwk"
+      ],
       "properties": {
         "jwk": {
           "type": "object",
           "description": "JWK (RFC 7517) representing the TEE-sealed public key. Keys must carry actual key material: OKP keys require crv and x; EC keys require crv, x, and y.",
-          "required": ["kty"],
+          "required": [
+            "kty"
+          ],
           "properties": {
-            "kty": {"type": "string"},
-            "crv": {"type": "string"},
-            "x":   {"type": "string"},
-            "y":   {"type": "string"},
-            "kid": {"type": "string"}
+            "kty": {
+              "type": "string"
+            },
+            "crv": {
+              "type": "string"
+            },
+            "x": {
+              "type": "string"
+            },
+            "y": {
+              "type": "string"
+            },
+            "kid": {
+              "type": "string"
+            }
           },
           "allOf": [
             {
               "if": {
-                "required": ["kty"],
-                "properties": {"kty": {"const": "OKP"}}
+                "required": [
+                  "kty"
+                ],
+                "properties": {
+                  "kty": {
+                    "const": "OKP"
+                  }
+                }
               },
-              "then": {"required": ["crv", "x"]}
+              "then": {
+                "required": [
+                  "crv",
+                  "x"
+                ]
+              }
             },
             {
               "if": {
-                "required": ["kty"],
-                "properties": {"kty": {"const": "EC"}}
+                "required": [
+                  "kty"
+                ],
+                "properties": {
+                  "kty": {
+                    "const": "EC"
+                  }
+                }
               },
-              "then": {"required": ["crv", "x", "y"]}
+              "then": {
+                "required": [
+                  "crv",
+                  "x",
+                  "y"
+                ]
+              }
             }
           ]
         }
@@ -281,5 +388,41 @@
       "pattern": "^[A-Za-z0-9_-]+$"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$comment": "A record assembled from another party's evidence has no hardware root. Mirrors the cross-field check in the reference model, so a validator that only reads this schema enforces it too.",
+      "if": {
+        "required": [
+          "origin"
+        ],
+        "properties": {
+          "origin": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "third-party-control-plane",
+                  "log-import"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "platform": {
+                "const": "software-only"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

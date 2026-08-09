@@ -81,6 +81,45 @@ class Delegation(BaseModel):
     credential_id: Annotated[str, Field(min_length=1)]
 
 
+class Origin(BaseModel):
+    """Where the evidence in this record came from, when that is not this runtime.
+
+    Absent means the record was produced by the runtime whose execution it
+    describes, which is the case a consumer assumes and the case every hardware
+    profile is. Present means something else assembled the record from evidence
+    it did not itself measure, and it names what.
+
+    This exists because ``runtime.platform: "software-only"`` alone is ambiguous.
+    It is the honest value for a dev-mode record *and* for a record transcribed
+    from a third-party control plane's log, and those are not the same claim: the
+    first is unattested because nothing attested it, the second is unattested
+    because the party that asserted it also wrote the log. A consumer deciding
+    how much weight to give a record needs to tell them apart, and it cannot from
+    ``platform`` alone.
+
+    ``kind`` is closed rather than free text, because the whole value of the field
+    is that a verifier can key on it.
+
+    - ``self``: the runtime produced its own record. Equivalent to omitting the
+      block; allowed so a producer can state it rather than leave it inferred.
+    - ``third-party-control-plane``: assembled from another vendor's runtime
+      governance output. The evidence is asserted by the system that produced it,
+      with no root outside that system.
+    - ``log-import``: assembled from a log or export whose producer is not a
+      control plane (a SIEM export, an audit trail, a batch job).
+
+    Neither non-self kind can carry a hardware root, so a record with one of them
+    and a hardware ``runtime.platform`` is a contradiction and is rejected.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["self", "third-party-control-plane", "log-import"]
+    producer: Annotated[str, Field(min_length=1)]
+    source_event_id: Annotated[str, Field(min_length=1)] | None = None
+    ingested_at: Annotated[int, Field(ge=1700000000)] | None = None
+
+
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -155,6 +194,7 @@ class TrustRecord(BaseModel):
     data_class: str
     tool_transcript: ToolTranscript | None = None
     delegation: Delegation | None = None
+    origin: Origin | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None
@@ -177,3 +217,24 @@ class TrustRecord(BaseModel):
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
     outside the record instead of in this field."""
+
+    @model_validator(mode="after")
+    def _origin_cannot_claim_hardware(self) -> TrustRecord:
+        """A record assembled from someone else's evidence cannot carry a hardware root.
+
+        A hardware ``runtime.platform`` asserts that this runtime produced a quote
+        rooted in silicon. An importer holding a vendor's log has no quote to
+        present, so the combination is not a stricter claim, it is an untrue one,
+        and it is exactly the shape an adapter would produce by copying a hardware
+        example and editing the fields it understood.
+        """
+        if self.origin is None or self.origin.kind == "self":
+            return self
+        if self.runtime.platform != "software-only":
+            raise ValueError(
+                f"origin.kind={self.origin.kind!r} cannot carry "
+                f"runtime.platform={self.runtime.platform!r}: evidence assembled from "
+                "another party's output has no hardware root, so the platform must be "
+                "'software-only'"
+            )
+        return self

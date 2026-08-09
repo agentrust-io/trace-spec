@@ -90,3 +90,35 @@ def test_delegation_bad_digest_fails_json_schema() -> None:
     data = _load("intel-tdx.json")
     data["delegation"] = {"parent_record_hash": "nope", "credential_id": "c"}
     assert iter_errors(data)
+
+
+def test_origin_self_passes_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["origin"] = {"kind": "self", "producer": "cmcp/0.4.0"}
+    assert iter_errors(data) == []
+
+
+def test_origin_third_party_on_software_only_passes_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {
+        "kind": "third-party-control-plane",
+        "producer": "vendor-gateway/2.1",
+        "source_event_id": "evt-7f3a",
+        "ingested_at": 1760000000,
+    }
+    assert iter_errors(data) == []
+
+
+def test_origin_third_party_with_hardware_fails_json_schema() -> None:
+    """The cross-field rule has to hold for a validator that never sees the Python model."""
+    data = _load("intel-tdx.json")
+    data["origin"] = {"kind": "third-party-control-plane", "producer": "vendor-gateway/2.1"}
+    assert iter_errors(data)
+
+
+def test_origin_unknown_kind_fails_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {"kind": "vendor-asserted", "producer": "vendor/1.0"}
+    assert iter_errors(data)
