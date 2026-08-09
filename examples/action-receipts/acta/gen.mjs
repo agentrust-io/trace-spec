@@ -70,12 +70,12 @@ function envelope(payload, privHex) {
 // s5.7: chain hash covers the ENTIRE envelope, signature included.
 const envelopeHash = (env) => sha256hex(canonicalBytes(env));
 
-function decisionPayload({ tool, decision, reason, sessionId, issuedAt, prevHash }) {
+function decisionPayload({ tool, decision, reason, sessionId, issuedAt, prevHash, policyDigest = POLICY_V2 }) {
   const p = {
     type: 'protectmcp:decision',
     tool_name: tool,
     decision,
-    policy_digest: POLICY_V1,
+    policy_digest: policyDigest,
     session_id: sessionId,
     issued_at: issuedAt,
     issuer_id: KID,
@@ -120,6 +120,7 @@ const r04 = envelope(decisionPayload({
 const r05 = envelope(decisionPayload({
   tool: 'run_shell', decision: 'allow', sessionId: SESSION,
   issuedAt: '2026-07-08T09:00:12.000Z',
+  policyDigest: POLICY_V1, // the only fixture carrying the superseded policy
 }), SIGNER_PRIV);
 
 // 06: validly signed, but bound to a different session than the one the
@@ -152,9 +153,7 @@ const expected = {
     '05-stale-policy-digest.json':     { signature: 'pass', chain: 'n/a',  policy_freshness: 'fail', session_binding: 'pass' },
     '06-session-binding-mismatch.json':{ signature: 'pass', chain: 'n/a',  policy_freshness: 'pass', session_binding: 'fail' },
   },
-  note: 'policy_freshness for 01/02/04/06 is pass relative to their v1-era chain context in the docs narrative; see README. Freshness is only asserted as the DISTINGUISHING failure for 05.',
 };
-// Simplify: freshness comparisons below only assert the manifest values.
 
 // --- Self-check every fixture against the manifest before writing ---
 const verifySig = (env, pubHex) => {
@@ -181,19 +180,29 @@ for (const [name, env] of Object.entries(fixtures)) {
   console.log(`${name}: signature=${sig} chain=${chain} structural=${ok ? 'ok' : 'BAD'}`);
   if (!ok) failures++;
 }
-// distinguishing checks for 05 / 06
-const fresh05 = fixtures['05-stale-policy-digest.json'].payload.policy_digest === expected.current_policy_digest;
-const bind06 = fixtures['06-session-binding-mismatch.json'].payload.session_id === expected.expected_session_id;
-console.log(`05 policy freshness (expect false): ${fresh05}`);
-console.log(`06 session binding (expect false): ${bind06}`);
-if (fresh05 || bind06) failures++;
+// Freshness and binding are checked for EVERY fixture against the manifest, not
+// only for the two that are meant to fail them. Asserting the failure alone
+// passes whether one fixture is stale or all six are, which is how every fixture
+// came to carry the same policy_digest while four were declared to pass.
+for (const [name, env] of Object.entries(fixtures)) {
+  const exp = expected.results[name];
+  for (const [axis, actual] of [
+    ['policy_freshness', env.payload.policy_digest === expected.current_policy_digest ? 'pass' : 'fail'],
+    ['session_binding', env.payload.session_id === expected.expected_session_id ? 'pass' : 'fail'],
+  ]) {
+    if (exp[axis] === 'n/a') continue;   // 03 fails signature; nothing downstream is asserted
+    if (actual !== exp[axis]) {
+      console.error(`${name}: ${axis} is ${actual}, manifest declares ${exp[axis]}`);
+      failures++;
+    }
+  }
+}
 if (failures) { console.error('SELF-CHECK FAILED'); process.exit(1); }
 
 mkdirSync('out', { recursive: true });
 for (const [name, env] of Object.entries(fixtures)) {
   writeFileSync(`out/${name}`, JSON.stringify(env, null, 2) + '\n');
 }
-delete expected.note;
 writeFileSync('out/expected.json', JSON.stringify(expected, null, 2) + '\n');
 writeFileSync('out/signer-public-key.txt', SIGNER_PUB + '\n');
 writeFileSync('out/mismatched-signer-public-key.txt', MISMATCH_PUB + '\n');
