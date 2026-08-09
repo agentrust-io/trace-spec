@@ -11,6 +11,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-08-09
+
 ### Added
 
 - **`agentrust_trace.provenance`: build, sign and verify MCP Server Provenance Records.** Step 2 of the sequence, implementing `spec/server-provenance-v1.md`. In the SDK rather than in cMCP, so a publisher can produce a record without adopting a runtime, which is the only way the format reaches an ecosystem that will not adopt one.
