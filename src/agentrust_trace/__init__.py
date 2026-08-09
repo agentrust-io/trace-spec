@@ -90,3 +90,6 @@ __all__ = [
 from agentrust_trace import provenance as provenance  # noqa: E402
 
 __all__ = [*__all__, "provenance"]
+from agentrust_trace import content_marking as content_marking  # noqa: E402
+
+__all__ = [*__all__, "content_marking"]
