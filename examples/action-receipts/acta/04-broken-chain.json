@@ -3,15 +3,15 @@
     "type": "protectmcp:decision",
     "tool_name": "read_file",
     "decision": "allow",
-    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "policy_digest": "sha256:bda8d8f60c90afe5c05fc7f3b1b53d4715a0f7ba72ec8d4b82ad7aba70d9609b",
     "session_id": "ses_8f31ab",
     "issued_at": "2026-07-08T09:00:09.000Z",
     "issuer_id": "sb:issuer:QUGuJV1P6e6c",
-    "previousReceiptHash": "8fea5801658968ceb360401caed3532f133e42b4b9fa726f4dcb9a030344f345"
+    "previousReceiptHash": "ba9b64ec5c13fc6f00ccb32c4a7a5da597a8cb49a1ca334d64ed0960d8bca639"
   },
   "signature": {
     "alg": "EdDSA",
     "kid": "sb:issuer:QUGuJV1P6e6c",
-    "sig": "f0df4f88a5bae5c1bf07b1fed55d78bf4e5b35e9edef1cb17619cf0a6a9a6627ffee7c4ba7fd61a8ea55599a9ca0b81ba6c8304dc926be070b0935be6202b105"
+    "sig": "8dc6e3859e141ea751e33508d205b1b7985356c27e2325248090c3a62045f6178d3f565ad3a294fbc9966977cdce8cbb82743a3b089e252e5554ed22227e7b0d"
   }
 }

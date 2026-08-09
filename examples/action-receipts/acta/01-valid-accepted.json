@@ -3,7 +3,7 @@
     "type": "protectmcp:decision",
     "tool_name": "run_shell",
     "decision": "allow",
-    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "policy_digest": "sha256:bda8d8f60c90afe5c05fc7f3b1b53d4715a0f7ba72ec8d4b82ad7aba70d9609b",
     "session_id": "ses_8f31ab",
     "issued_at": "2026-07-08T09:00:01.000Z",
     "issuer_id": "sb:issuer:QUGuJV1P6e6c"
@@ -11,6 +11,6 @@
   "signature": {
     "alg": "EdDSA",
     "kid": "sb:issuer:QUGuJV1P6e6c",
-    "sig": "d709be9e8d907c14bd2005df05cc960b070d388a665964074a19a355a2eabb3de14cb5cad89b533dc40089d50bd6f108dd1c3f7a78af588466227901f9ac4d04"
+    "sig": "cf4665db8613b3b8b398fae6c1bacf88e4963d300af63cf709a2be1e8a6bda69d7897a6e3671aaa242cd9d41dc310698206fc905670c4c4f1f60304eb3a5590c"
   }
 }

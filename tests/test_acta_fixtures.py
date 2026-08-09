@@ -90,20 +90,54 @@ def test_chain_link_result_matches_expected(name):
     assert actual == EXPECTED["results"][name]["chain"]
 
 
-def test_stale_policy_digest_is_valid_but_stale():
-    env = _load("05-stale-policy-digest.json")
-    assert _signature_verifies(env), "05 must pass signature verification"
-    assert env["payload"]["policy_digest"] != EXPECTED["current_policy_digest"], (
-        "05 must fail the policy-freshness comparison"
-    )
+@pytest.mark.parametrize("name", sorted(FIXTURES))
+def test_policy_freshness_result_matches_expected(name):
+    """Every fixture's declared freshness, not only the one meant to fail it.
+
+    Asserting the failure alone passes whether one fixture is stale or all of them
+    are, which is how the set came to share a single ``policy_digest`` while four
+    fixtures were declared to pass a comparison they failed.
+    """
+    declared = EXPECTED["results"][name]["policy_freshness"]
+    if declared == "n/a":
+        return
+    env = _load(name)
+    fresh = env["payload"]["policy_digest"] == EXPECTED["current_policy_digest"]
+    assert ("pass" if fresh else "fail") == declared
 
 
-def test_session_binding_mismatch_is_valid_but_misbound():
-    env = _load("06-session-binding-mismatch.json")
-    assert _signature_verifies(env), "06 must pass signature verification"
-    assert env["payload"]["session_id"] != EXPECTED["expected_session_id"], (
-        "06 must fail the session-binding comparison"
-    )
+@pytest.mark.parametrize("name", sorted(FIXTURES))
+def test_session_binding_result_matches_expected(name):
+    declared = EXPECTED["results"][name]["session_binding"]
+    if declared == "n/a":
+        return
+    env = _load(name)
+    actual = "pass" if env["payload"]["session_id"] == EXPECTED["expected_session_id"] else "fail"
+    assert actual == declared
+
+
+def test_the_two_distinguishing_fixtures_are_otherwise_valid():
+    """05 and 06 must isolate their own axis: signature passes, one comparison fails."""
+    for name in ("05-stale-policy-digest.json", "06-session-binding-mismatch.json"):
+        assert _signature_verifies(_load(name)), f"{name} must pass signature verification"
+
+
+def test_crosswalk_document_quotes_the_live_fixture_values():
+    """The crosswalk embeds real digests and says so; regenerating must not falsify that.
+
+    ``docs/crosswalks/acta-decision-receipts.md`` quotes 01 in full and states that the
+    ``chain_head`` it shows "is real". Both go stale the moment the fixtures are
+    regenerated, and nothing else would notice.
+    """
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "crosswalks").joinpath(
+        "acta-decision-receipts.md"
+    ).read_text(encoding="utf-8")
+    r01 = _load("01-valid-accepted.json")
+    chain_head = hashlib.sha256(_jcs(_load("02-valid-denied.json"))).hexdigest()
+
+    assert r01["payload"]["policy_digest"] in doc, "the quoted 01 payload is stale"
+    assert r01["signature"]["sig"][:64] in doc, "the quoted 01 signature is stale"
+    assert chain_head in doc, "the quoted chain head is not 02's current envelope hash"
 
 
 def test_key_mismatch_fixture_is_signed_by_the_committed_second_key():
