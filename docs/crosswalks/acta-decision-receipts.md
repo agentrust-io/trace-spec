@@ -24,7 +24,7 @@ Per Acta s2.1, a receipt is a two-field envelope: a `payload` and a `signature` 
     "type": "protectmcp:decision",
     "tool_name": "run_shell",
     "decision": "allow",
-    "policy_digest": "sha256:b5af974ae7e1c6e4a656c9637c68ec0755a6cffa7861e196c0aaa2d6a7874cb5",
+    "policy_digest": "sha256:bda8d8f60c90afe5c05fc7f3b1b53d4715a0f7ba72ec8d4b82ad7aba70d9609b",
     "session_id": "ses_8f31ab",
     "issued_at": "2026-07-08T09:00:01.000Z",
     "issuer_id": "sb:issuer:QUGuJV1P6e6c"
@@ -32,7 +32,7 @@ Per Acta s2.1, a receipt is a two-field envelope: a `payload` and a `signature` 
   "signature": {
     "alg": "EdDSA",
     "kid": "sb:issuer:QUGuJV1P6e6c",
-    "sig": "d709be9e8d907c14bd2005df05cc960b070d388a665964074a19a355a2eabb3d..."
+    "sig": "cf4665db8613b3b8b398fae6c1bacf88e4963d300af63cf709a2be1e8a6bda69..."
   }
 }
 ```
@@ -68,7 +68,7 @@ Per the direction set on [trace-spec#97](https://github.com/agentrust-io/trace-s
 ```json
 {
   "evidence_type": "acta/decision-receipt-chain",
-  "chain_head": "99c36f17af17d48c2e6aab51ca21d9a08c53dcffbbb1f5b847c76fda9bf098bd",
+  "chain_head": "ddf7efb089f7504bbe880a623976b34be04b0bd4a991cdec12288841030229e4",
   "receipt_count": 2,
   "issuer_key_id": "sb:issuer:QUGuJV1P6e6c"
 }
