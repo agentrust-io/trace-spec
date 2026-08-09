@@ -222,3 +222,97 @@ def test_both_identities_may_be_present() -> None:
     rec = _record(endpoint={"url": "https://mcp.acme.example/", "spki_sha256": OTHER_DIGEST})
     assert "artifact" in rec["identity"]
     assert "endpoint" in rec["identity"]
+
+
+# --- rules the consumer must apply, not only the producer (#142) -------------
+#
+# A record does not have to come from build_record. Anyone can write the JSON and
+# sign it, so a structural rule enforced only on the producer side is a rule an
+# attacker never runs. These assert the consumer applies each of them.
+
+
+def _forged(**over):
+    """A hand-assembled record that never passes through build_record."""
+    record = {
+        "format": FORMAT,
+        "kind": "publisher-asserted",
+        "issued_at": 1_754_000_000,
+        "identity": {"artifact": _artifact()},
+        "publisher": "did:web:acme.example",
+        "tool_catalog": {"hash": tool_catalog_hash(TOOLS), "tool_count": len(TOOLS)},
+        "attestation": None,
+    }
+    record.update(over)
+    return record
+
+
+def test_tee_attested_without_evidence_is_refused_by_the_verifier() -> None:
+    """Top trust tier with attestation: null, everything else well-formed."""
+    key = generate_key()
+    signed = sign_record(_forged(kind="tee-attested", attestation=None), key)
+    with pytest.raises(ProvenanceError, match="tee-attested"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_the_reported_forgery_is_refused(capsys) -> None:
+    """The reproduction from #142 verbatim, which violates three rules at once.
+
+    Which rule fires first does not matter; that it verified at all was the bug.
+    """
+    key = generate_key()
+    forged = {
+        "format": FORMAT,
+        "kind": "tee-attested",
+        "identity": {"endpoint": {"url": "https://mcp.acme.example"}},
+        "publisher": "did:web:acme.example",
+        "tool_catalog": {"hash": tool_catalog_hash(TOOLS), "tool_count": len(TOOLS)},
+        "attestation": None,
+    }
+    signed = sign_record(forged, key)
+    with pytest.raises(ProvenanceError):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_endpoint_without_a_key_digest_is_refused_by_the_verifier() -> None:
+    key = generate_key()
+    signed = sign_record(_forged(identity={"endpoint": {"url": "https://mcp.acme.example"}}), key)
+    with pytest.raises(ProvenanceError, match="spki_sha256"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_artifact_without_a_digest_is_refused_by_the_verifier() -> None:
+    key = generate_key()
+    signed = sign_record(
+        _forged(identity={"artifact": {"package": "pkg:npm/%40acme/mcp-search@2.1.0"}}), key
+    )
+    with pytest.raises(ProvenanceError, match="artifact.digest"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("issued_at", [None, "tomorrow", -1, True])
+def test_unusable_issued_at_is_refused_by_the_verifier(issued_at) -> None:
+    """No issue time means a consumer cannot age the record, so it cannot reject a stale one."""
+    key = generate_key()
+    record = _forged()
+    if issued_at is None:
+        del record["issued_at"]
+    else:
+        record["issued_at"] = issued_at
+    signed = sign_record(record, key)
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_evidence_without_the_claim_is_refused_by_the_verifier() -> None:
+    """The mirror case: attestation present on a kind that does not claim it."""
+    key = generate_key()
+    signed = sign_record(_forged(attestation={"format": "sev-snp", "quote": "..."}), key)
+    with pytest.raises(ProvenanceError, match="attestation evidence"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_a_well_formed_record_still_verifies() -> None:
+    """The new checks must not reject what build_record produces."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    verify_record(signed, key_to_jwk(key))
