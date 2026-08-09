@@ -123,6 +123,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `policy` | Bound policy set hash + enforcement mode. `enforcement_mode` MUST default to `enforce`; a deployment MUST explicitly configure `silent` mode. | Policy artifact hash sealed to TEE measurement |
 | `data_class` | Classification of inputs and outputs | Classification label bound to per-call execution |
 | `tool_transcript` | MCP / A2A tool calls invoked, parameters classified, responses filtered | MCP / A2A protocol transcripts bound to TEE measurement |
+| `origin` | OPTIONAL. Where the evidence came from, when that is not this runtime. See §3.1.1. | — |
 | `build_provenance` | How the running code and model were built | SLSA Provenance v1.0 |
 | `appraisal` | Verifier's appraisal of evidence | EAR (EAT Attestation Results) |
 | `transparency` | Inclusion proof on append-only log | SCITT Receipt URI |
@@ -132,6 +133,31 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `signature` | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON |
 
 Each field is independently verifiable. Sub-records (e.g., per-tool-call transcripts) compose under one root envelope.
+
+#### 3.1.1 `origin`: who assembled this record
+
+A Trust Record normally describes an execution and is produced by the runtime that performed it. Not every record is: a record can also be **assembled** from evidence someone else produced, which is what an adapter over a third-party governance product does.
+
+`runtime.platform: "software-only"` is the honest platform value in both cases, and that is the problem this block solves. It is the correct value for a dev-mode record, where nothing attested the execution, and for a record transcribed from another vendor's control plane, where the party asserting the evidence also wrote the log. Those are different claims and a consumer weighing a record needs to tell them apart. It cannot, from `platform` alone.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `kind` | yes | `self`, `third-party-control-plane`, or `log-import` |
+| `producer` | yes | Identifier of the system that produced the source evidence |
+| `source_event_id` | no | Identifier of the source event in that system, so a record traces back to it |
+| `ingested_at` | no | Unix time the source evidence was ingested; distinct from `iat`, which is when this record was issued |
+
+`kind` is a closed set, because the value of the field is that a verifier can key on it.
+
+- **`self`** — the runtime produced its own record. Equivalent to omitting the block; stating it is allowed so a producer can be explicit rather than leave it inferred.
+- **`third-party-control-plane`** — assembled from another vendor's runtime governance output. The evidence is asserted by the system that produced it, with no root outside that system.
+- **`log-import`** — assembled from a log or export whose producer is not a control plane: a SIEM export, an audit trail, a batch job.
+
+**A record whose `origin.kind` is not `self` MUST carry `runtime.platform: "software-only"`, and a verifier MUST reject it otherwise.** An importer holding someone else's log has no quote to present, so a hardware platform value on such a record is not a stronger claim but an untrue one. It is also the exact shape an adapter produces by starting from a hardware example and editing the fields it understood, which is why this is a MUST rather than a recommendation.
+
+`origin` is absent on every hardware profile in this specification and on every record a TEE-backed runtime produces. Absence means `self`.
+
+**This block does not launder assurance in either direction.** It cannot raise a record: nothing about naming your producer makes unattested evidence attested. It cannot lower one either: a record with a hardware platform and a verified quote is what it is, whether or not it says `origin: self`.
 
 ### 3.2 Wire format
 

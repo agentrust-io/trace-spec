@@ -15,9 +15,10 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 | `data_class` | string | **yes** | Data sensitivity classification |
 | `tool_transcript` | object | **yes** | Tool-call audit summary |
 | `delegation` | object | no | A2A profile: link to the delegating hop's Trust Record |
+| `origin` | object | no | Where the evidence came from, when that is not this runtime |
 | `build_provenance` | object | **yes** | Build-time artifact provenance |
 | `appraisal` | object | **yes** | Verifier judgment |
-| `transparency` | string | **yes** | SCITT transparency log anchor URI (empty string if not anchored) |
+| `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
 | `cnf` | object | **yes** | Confirmation method — contains the `jwk` signing key |
 | `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
@@ -82,6 +83,21 @@ A2A profile. Present when this execution acted on authority delegated by another
 |---|---|---|---|
 | `parent_record_hash` | string | **yes** | `sha256:`/`sha384:` digest of the parent hop's Trust Record |
 | `credential_id` | string | **yes** | Identifier of the delegation credential this hop acted under |
+
+## `origin`
+
+Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
+
+It exists because `runtime.platform: "software-only"` is ambiguous on its own: it is the honest value for a dev-mode record, where nothing attested the execution, and for a record transcribed from another vendor's control plane, where the party asserting the evidence also wrote the log.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `kind` | string | **yes** | `self`, `third-party-control-plane`, or `log-import` |
+| `producer` | string | **yes** | Identifier of the system that produced the source evidence |
+| `source_event_id` | string | no | Identifier of the source event in that system |
+| `ingested_at` | integer | no | Unix time the evidence was ingested; `iat` is when this record was issued |
+
+A record whose `kind` is not `self` **must** carry `runtime.platform: "software-only"`. An importer holding someone else's log has no quote to present, so a hardware platform on such a record is untrue rather than stronger. Both the reference model and `schema/trace-claim.json` reject the combination.
 
 ## `build_provenance`
 

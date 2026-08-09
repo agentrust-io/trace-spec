@@ -229,3 +229,85 @@ def test_transparency_rejects_empty_string() -> None:
     data["transparency"] = ""
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+# --- origin block ---------------------------------------------------------
+#
+# The block exists to disambiguate runtime.platform == "software-only", which is
+# the honest value both for a dev-mode record and for one transcribed from a
+# third party's control plane. These tests pin the part that makes it worth
+# having: a record cannot claim someone else's evidence AND a hardware root.
+
+
+def test_record_without_origin_is_valid() -> None:
+    """Absence means self. Every hardware profile in the spec omits the block."""
+    record = TrustRecord.model_validate(_load("intel-tdx.json"))
+    assert record.origin is None
+
+
+def test_origin_self_may_carry_a_hardware_platform() -> None:
+    data = _load("intel-tdx.json")
+    data["origin"] = {"kind": "self", "producer": "cmcp/0.4.0"}
+    record = TrustRecord.model_validate(data)
+    assert record.origin is not None
+    assert record.origin.kind == "self"
+    assert record.runtime.platform == "intel-tdx"
+
+
+def test_third_party_origin_with_hardware_platform_rejected() -> None:
+    """The failure mode this block is for: a hardware example with the fields edited.
+
+    An importer holding a vendor's log has no quote to present, so a hardware
+    platform value here is untrue rather than stronger.
+    """
+    data = _load("intel-tdx.json")
+    data["origin"] = {"kind": "third-party-control-plane", "producer": "vendor-gateway/2.1"}
+    with pytest.raises(ValidationError, match="software-only"):
+        TrustRecord.model_validate(data)
+
+
+def test_log_import_origin_with_hardware_platform_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["origin"] = {"kind": "log-import", "producer": "siem-export/1.0"}
+    with pytest.raises(ValidationError, match="software-only"):
+        TrustRecord.model_validate(data)
+
+
+def test_third_party_origin_on_software_only_parses() -> None:
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {
+        "kind": "third-party-control-plane",
+        "producer": "vendor-gateway/2.1",
+        "source_event_id": "evt-7f3a",
+        "ingested_at": 1760000000,
+    }
+    record = TrustRecord.model_validate(data)
+    assert record.origin is not None
+    assert record.origin.producer == "vendor-gateway/2.1"
+    assert record.origin.source_event_id == "evt-7f3a"
+
+
+def test_origin_kind_is_closed() -> None:
+    """Free text would defeat the point: a verifier has to be able to key on it."""
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {"kind": "vendor-asserted", "producer": "vendor/1.0"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_origin_requires_a_producer() -> None:
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {"kind": "log-import"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_origin_rejects_unknown_fields() -> None:
+    data = _load("intel-tdx.json")
+    data["runtime"]["platform"] = "software-only"
+    data["origin"] = {"kind": "log-import", "producer": "x/1.0", "assurance": "operator-asserted"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)

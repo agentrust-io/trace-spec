@@ -11,7 +11,19 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-08
+
 ### Added
+
+- **`origin` (optional object): who assembled this record, when it was not the runtime that ran.** `{kind, producer, source_event_id, ingested_at}`. Additive and backward compatible; existing records without it stay valid, and absence means `self`. Same shape of change as `delegation` in 0.4.0, under the same v0.2 profile URI.
+
+  It exists because `runtime.platform: "software-only"` is ambiguous, and the ambiguity is about to matter. It is the honest value for a dev-mode record, where nothing attested the execution, and for a record transcribed from a third-party control plane, where the party asserting the evidence also wrote the log. Those are different claims, and a consumer weighing a record could not tell them apart from `platform` alone. `kind` is a closed set (`self`, `third-party-control-plane`, `log-import`) rather than free text, because the value of the field is that a verifier can key on it.
+
+  **A record whose `kind` is not `self` MUST carry `runtime.platform: "software-only"`,** enforced in the model and in `schema/trace-claim.json` via `if`/`then`, so a validator that never loads the Python still rejects it. An importer holding someone else's log has no quote to present, so a hardware platform there is untrue rather than stronger. It is also exactly what an adapter produces by starting from a hardware example and editing the fields it understood, which is why it is a MUST and why it is tested from both directions.
+
+  The block launders assurance in neither direction. Naming your producer does not make unattested evidence attested, and a record with a verified hardware quote is what it is whether or not it says `origin: self`.
+
+  Spec §3.1.1, `docs/schema.md`, both schemas, 11 tests.
 
 - **`spec/registry-anchor-v1.md`: the registry anchor and inclusion-proof format is now public (#111).** The format was already normative and already written so a conforming verifier could be built from it alone, but it lived in `trace-registry`, which is private. The effect was that the one document an external verifier needs was the one they could not read, and an inclusion proof nobody outside can check is not transparency. It is published here, in the public spec home, as @l33tdawg proposed in the discussion that raised this.
 
@@ -20,6 +32,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   §8 states conformance, including the requirement that the append-only property be externally checkable rather than asserted. An operator that issues verifiable proofs but publishes nothing an outsider can audit is running a log, not a transparency log.
 
 ### Fixed
+
+- `docs/schema.md` described `transparency` as required with an empty string for unanchored records. It has been optional below Level 2 since 0.5.1, and `""` is rejected.
 
 - **Four documents told readers to send signed records to a domain this project does not own.** `docs/integration/agt.md`, `docs/integration/cmcp.md`, `docs/trust-levels.md` and `docs/verification.md` still named `registry.agentrust.io`, which resolves to third-party parked addresses. This is the same defect the v0.2 profile cutover fixed in the identifier, missed in the prose. Moved to `registry.agentrust-io.com`, which is what the SDK's adapters already emit. The v0.1 spec keeps its original values; it is a superseded document and a record of what was published.
 
