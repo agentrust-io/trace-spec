@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentrust-io.com/schema/trace-v0.1.json",
+  "$id": "https://agentrust-io.com/schema/trace-v0.2.json",
   "title": "TRACE Trust Record",
   "description": "A TRACE v0.2 Trust Record \u2014 hardware-attested governance evidence for an AI agent execution.",
   "type": "object",
