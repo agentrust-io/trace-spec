@@ -129,10 +129,11 @@
           "enum": [
             "enforce",
             "advisory",
-            "silent"
+            "silent",
+            "declared"
           ],
           "default": "enforce",
-          "description": "How policy decisions were applied: enforce (block on deny), advisory (log and allow), silent (allow and suppress operational logs; the audit chain still records every would-have-denied decision). Gateways MUST default to enforce. A deployment MUST explicitly configure silent mode; it MUST NOT be the default."
+          "description": "How the policy named by bundle_hash related to this execution. enforce: evaluated and blocked on deny. advisory: evaluated, logged, allowed. silent: evaluated and enforced with operational logs suppressed; the audit chain still records every would-have-denied decision. declared: the policy is named and bound into the signed record and NOTHING evaluated it, which is the honest value for a producer with no policy engine, such as an agent framework. Gateways MUST default to enforce. A deployment MUST explicitly configure silent. declared is never a default, a producer that evaluates policy MUST NOT use it, and a consumer MUST NOT read it as evidence that any rule was checked."
         },
         "version": {
           "type": "string",
