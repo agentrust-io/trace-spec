@@ -235,7 +235,7 @@ A Trust Record normally describes an execution and is produced by the runtime th
 
 1. Construct the record object with all fields EXCEPT the `signature` field (for embedded-signature profiles) or the outer envelope (for enveloping-signature profiles). The `cnf` field, including `cnf.jwk`, is included in the canonical form.
 2. Apply RFC 8785 JSON Canonicalization Scheme (JCS) to produce a deterministic byte sequence:
-   - Object keys are sorted in Unicode code-point order (ascending).
+   - Object keys are sorted by UTF-16 code unit (ascending), per RFC 8785 §3.2.3. This is not the same as Unicode code-point order: the two agree across the Basic Multilingual Plane and diverge once a key contains a supplementary-plane character, because surrogates occupy U+D800 to U+DFFF and therefore sort below high BMP characters. Sorting Python `str` values with `sorted()` gives code-point order and is wrong here; an RFC 8785 library gets this right.
    - No whitespace between tokens.
    - Numbers are serialized in IEEE 754 double-precision format using the shortest decimal representation that round-trips.
    - Strings are serialized as UTF-8; only the characters mandated by RFC 8259 §7 are escaped (U+0022, U+005C, and U+0000–U+001F).
