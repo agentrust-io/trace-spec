@@ -13,6 +13,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
+- **`spec/content-marking-v1.md` and `agentrust_trace.content_marking`: bind a marked asset to the execution that produced it.** EU AI Act Article 50(2) and 50(4) have been in force since 2 August 2026 and are the only AI Act obligations that bite this year. One C2PA assertion, `com.agentrust-io.trace`, carries a hashed reference to the Trust Record for the execution that produced the asset.
+
+  **The document opens with what this does not do**, because the temptation to overclaim here is strong. It does not stop anyone stripping the mark: removing a C2PA manifest from a file is trivial and nothing here changes that. It is not watermarking. It does not make a deployment compliant. What it buys is narrower and real: a mark that *is* present becomes checkable against a hardware-rooted claim instead of being an unverifiable label, and in a channel that requires marks an absent one is detectable.
+
+  Three separate things must be checked and the assertion merges none of them: the C2PA signature says the assertion was in the manifest when the asset was signed, the TRACE signature says the execution happened as described, and the hash says the record being pointed at is the one the signer meant. A verifier that checks one of the three has checked a third.
+
+  `build_assertion()` takes the **exact bytes** that will be served rather than a record object, because a hash over a re-serialized dict is a hash of bytes nobody will fetch; a test pins that `indent=2` alone breaks the binding. `verify_assertion()` has no signature-only path: `record_bytes` is a required parameter, since an assertion whose hash was never checked is a URL in a file.
+
+  17 tests.
+
+### Added
+
 - **`enforcement_mode: "declared"`.** The three existing modes all assert that *something evaluated the policy*: `enforce` acted on the result, `advisory` did not, `silent` acted with the log lines suppressed. `declared` asserts less — the policy is named and bound into the signed record, and nothing evaluated it.
 
   That is not a corner case, it is the common one. An agent framework has no policy engine, so a record built by observing a LangChain or LlamaIndex run has a policy the operator declares and no evaluation of it anywhere. With three values, such a record had to claim an evaluation that never happened; both framework adapters refused to default the field and documented the overstatement instead, which is honest and still leaves every framework record marginally untrue.

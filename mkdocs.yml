@@ -193,6 +193,7 @@ nav:
       - TRACE v0.2: spec/trace-v0.2.md
       - Registry Anchor Format v1: spec/registry-anchor-v1.md
       - MCP Server Provenance v1: spec/server-provenance-v1.md
+      - Content Marking v1: spec/content-marking-v1.md
   - Integration:
       - AGT: docs/integration/agt.md
       - cMCP: docs/integration/cmcp.md
