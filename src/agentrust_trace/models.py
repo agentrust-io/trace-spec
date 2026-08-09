@@ -52,7 +52,27 @@ class PolicyInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     bundle_hash: DigestStr
-    enforcement_mode: Literal["enforce", "advisory", "silent"]
+    enforcement_mode: Literal["enforce", "advisory", "silent", "declared"]
+    """How the policy named by ``bundle_hash`` related to this execution.
+
+    The first three all assert that **something evaluated the policy**:
+    ``enforce`` acted on the result, ``advisory`` did not, ``silent`` acted and
+    suppressed the log lines. ``declared`` asserts less than any of them: the
+    policy is named and bound into the signed record, and nothing evaluated it.
+
+    That case is not hypothetical, it is the common one. An agent framework has
+    no policy engine, so a record produced by observing a LangChain or LlamaIndex
+    run has a policy the operator declares and no evaluation of it anywhere. With
+    only three values, such a record had to overstate: ``advisory`` claims an
+    evaluation that did not happen. The adapters refused to default the field and
+    documented the overstatement, which is honest and leaves every framework
+    record marginally untrue.
+
+    ``declared`` is deliberately the weakest value and is never a default. A
+    producer that evaluates policy must not use it, and a consumer must not read
+    it as evidence that any rule was checked. It says only: this is the policy
+    this deployment says it was operating under.
+    """
     version: str | None = None
     policy_uri: str | None = None
 

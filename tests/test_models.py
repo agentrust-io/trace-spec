@@ -311,3 +311,29 @@ def test_origin_rejects_unknown_fields() -> None:
     data["origin"] = {"kind": "log-import", "producer": "x/1.0", "assurance": "operator-asserted"}
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)
+
+
+# --- enforcement_mode: declared -------------------------------------------
+
+
+def test_declared_enforcement_mode_parses() -> None:
+    """The honest value for a producer with no policy engine."""
+    data = _load("intel-tdx.json")
+    data["policy"]["enforcement_mode"] = "declared"
+    record = TrustRecord.model_validate(data)
+    assert record.policy.enforcement_mode == "declared"
+
+
+def test_enforcement_mode_stays_closed() -> None:
+    """Adding a value must not turn the field into free text."""
+    data = _load("intel-tdx.json")
+    data["policy"]["enforcement_mode"] = "monitor"
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_the_three_evaluating_modes_still_parse() -> None:
+    for mode in ("enforce", "advisory", "silent"):
+        data = _load("intel-tdx.json")
+        data["policy"]["enforcement_mode"] = mode
+        assert TrustRecord.model_validate(data).policy.enforcement_mode == mode

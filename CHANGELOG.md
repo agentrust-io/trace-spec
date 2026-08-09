@@ -11,6 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Added
+
+- **`enforcement_mode: "declared"`.** The three existing modes all assert that *something evaluated the policy*: `enforce` acted on the result, `advisory` did not, `silent` acted with the log lines suppressed. `declared` asserts less — the policy is named and bound into the signed record, and nothing evaluated it.
+
+  That is not a corner case, it is the common one. An agent framework has no policy engine, so a record built by observing a LangChain or LlamaIndex run has a policy the operator declares and no evaluation of it anywhere. With three values, such a record had to claim an evaluation that never happened; both framework adapters refused to default the field and documented the overstatement instead, which is honest and still leaves every framework record marginally untrue.
+
+  `declared` is the weakest value and is never a default. A producer that evaluates policy MUST NOT use it, and a consumer MUST NOT read it as evidence that any rule was checked. A verifier appraising for enforcement SHOULD treat it as it treats an absent enforcement claim.
+
+  Additive to a closed enum in both the model and the JSON schema, so unknown values are still rejected. Same one-directional consequence as `origin`: a verifier older than this release rejects a record carrying `declared`.
+
 ## [0.8.0] — 2026-08-09
 
 ### Added

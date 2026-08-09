@@ -167,3 +167,15 @@ def test_both_subject_forms_pass_validate_json(subject: str) -> None:
     data = _load("intel-tdx.json")
     data["subject"] = subject
     assert iter_errors(data) == []
+
+
+def test_declared_enforcement_mode_passes_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["policy"]["enforcement_mode"] = "declared"
+    assert iter_errors(data) == []
+
+
+def test_unknown_enforcement_mode_fails_json_schema() -> None:
+    data = _load("intel-tdx.json")
+    data["policy"]["enforcement_mode"] = "monitor"
+    assert iter_errors(data)
