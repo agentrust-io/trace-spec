@@ -91,6 +91,60 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
+def _check_structure(
+    *,
+    kind: str,
+    artifact: dict[str, Any] | None,
+    endpoint: dict[str, Any] | None,
+    attestation: dict[str, Any] | None,
+    issued_at: Any,
+) -> None:
+    """The structural rules both the producer and the consumer must apply.
+
+    Shared rather than duplicated because these rules were enforced only in
+    :func:`build_record` for a time, and a record does not have to come from
+    ``build_record``: anyone can write the JSON and sign it. A rule that lives
+    only on the producer side is a rule an attacker simply does not run, so a
+    ``tee-attested`` record with ``attestation: null`` verified cleanly.
+
+    Keeping one implementation is the point. Two copies drift, and the copy that
+    matters is the one on the consumer side.
+    """
+    if artifact is not None:
+        if not artifact.get("package"):
+            raise ProvenanceError("artifact.package is required (a Package URL)")
+        if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
+            raise ProvenanceError(
+                "artifact.digest must be a sha256: digest of the entrypoint. For an "
+                "interpreted server that is the script, not the interpreter: every such "
+                "server on a host shares one interpreter digest."
+            )
+    if endpoint is not None:
+        if not endpoint.get("url"):
+            raise ProvenanceError("endpoint.url is required when endpoint is present")
+        if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
+            raise ProvenanceError(
+                "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
+                "Info. A URL on its own is not an identity."
+            )
+    if kind == "tee-attested" and not attestation:
+        raise ProvenanceError(
+            "kind='tee-attested' without attestation evidence is the claim without the "
+            "thing that backs it"
+        )
+    if kind != "tee-attested" and attestation:
+        raise ProvenanceError(
+            f"kind={kind!r} carries attestation evidence. Evidence that is present but "
+            "not claimed invites a consumer to read it as an attestation that was made."
+        )
+    # bool is an int subclass, and True would otherwise pass as a timestamp.
+    if not isinstance(issued_at, int) or isinstance(issued_at, bool) or issued_at < 0:
+        raise ProvenanceError(
+            "issued_at must be a non-negative integer Unix timestamp. A record with no "
+            "issue time cannot be aged, so a consumer has no way to reject a stale one."
+        )
+
+
 def build_record(
     *,
     kind: str,
@@ -120,33 +174,14 @@ def build_record(
             "a record needs artifact identity, endpoint identity, or both. One with "
             "neither identifies nothing."
         )
-    if artifact is not None:
-        if not artifact.get("package"):
-            raise ProvenanceError("artifact.package is required (a Package URL)")
-        if not _DIGEST_RE.match(artifact.get("digest", "")):
-            raise ProvenanceError(
-                "artifact.digest must be a sha256: digest of the entrypoint. For an "
-                "interpreted server that is the script, not the interpreter: every such "
-                "server on a host shares one interpreter digest."
-            )
-    if endpoint is not None:
-        if not endpoint.get("url"):
-            raise ProvenanceError("endpoint.url is required when endpoint is present")
-        if not _DIGEST_RE.match(endpoint.get("spki_sha256", "")):
-            raise ProvenanceError(
-                "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
-                "Info. A URL on its own is not an identity."
-            )
-    if kind == "tee-attested" and not attestation:
-        raise ProvenanceError(
-            "kind='tee-attested' without attestation evidence is the claim without the "
-            "thing that backs it"
-        )
-    if kind != "tee-attested" and attestation:
-        raise ProvenanceError(
-            f"kind={kind!r} carries attestation evidence. Evidence that is present but "
-            "not claimed invites a consumer to read it as an attestation that was made."
-        )
+    stamped_at = int(issued_at if issued_at is not None else time.time())
+    _check_structure(
+        kind=kind,
+        artifact=artifact,
+        endpoint=endpoint,
+        attestation=attestation,
+        issued_at=stamped_at,
+    )
 
     identity: dict[str, Any] = {}
     if artifact is not None:
@@ -157,7 +192,7 @@ def build_record(
     return {
         "format": FORMAT,
         "kind": kind,
-        "issued_at": int(issued_at if issued_at is not None else time.time()),
+        "issued_at": stamped_at,
         "identity": identity,
         "publisher": publisher,
         "tool_catalog": {"hash": tool_catalog_hash(tools), "tool_count": len(tools)},
@@ -199,6 +234,13 @@ def verify_record(record: dict[str, Any], trusted_jwk: dict[str, Any]) -> None:
     identity = record.get("identity") or {}
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
+    _check_structure(
+        kind=str(record.get("kind")),
+        artifact=identity.get("artifact"),
+        endpoint=identity.get("endpoint"),
+        attestation=record.get("attestation"),
+        issued_at=record.get("issued_at"),
+    )
     catalog = record.get("tool_catalog") or {}
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
