@@ -82,3 +82,11 @@ __all__ = [
     "sign_record",
     "verify_record",
 ]
+
+# MCP Server Provenance Records (spec/server-provenance-v1.md) live in their own
+# module: they describe an artifact rather than an execution, so importing them
+# from the top level alongside TrustRecord would invite exactly the conflation
+# the specification opens by ruling out.
+from agentrust_trace import provenance as provenance  # noqa: E402
+
+__all__ = [*__all__, "provenance"]

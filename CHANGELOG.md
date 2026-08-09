@@ -13,6 +13,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
+- **`agentrust_trace.provenance`: build, sign and verify MCP Server Provenance Records.** Step 2 of the sequence, implementing `spec/server-provenance-v1.md`. In the SDK rather than in cMCP, so a publisher can produce a record without adopting a runtime, which is the only way the format reaches an ecosystem that will not adopt one.
+
+  **`check_tool_catalog()` is a separate call on purpose.** Verifying the signature proves a document is internally consistent and signed by a key you trust, which is exactly what an attacker holding a stolen publisher key can produce. What they cannot do is make the server in front of you offer the tools their record describes. That comparison needs something `verify_record()` does not have — what the server said to *you* — so it is its own obvious call rather than a flag, and it raises its own exception type so a consumer can tell "bad document" from "wrong server".
+
+  The builder refuses records that cannot mean anything: an identity with neither artifact nor endpoint, a `tee-attested` record with no evidence, evidence attached to a kind that does not claim it (a reader would take it as an attestation that was made), a publisher that is a display name rather than a resolvable DID or SPIFFE URI, and an endpoint URL with no key digest, since a URL alone is not an identity.
+
+  `verify_record()` requires a trusted key and never takes one from the record. Verifying a document against a key it supplies proves only that it is internally consistent, which is what a forgery is.
+
+  24 tests, including the one the format exists for: a perfectly valid signature over a description of a different server still fails the catalog check.
+
+### Added
+
 - **`spec/server-provenance-v1.md`: a signed statement about an MCP server.** cMCP enforces policy at the call boundary and can say nothing about whether the server on the other end is what it claims. Its catalog answers that locally — approved definitions, a measured catalog hash, a pinned TLS fingerprint — but every part of that is operator-asserted, so nothing one operator learns is usable by the next.
 
   The format carries the same shape of honesty as the `origin` block: a closed `kind` (`publisher-asserted`, `observer-attested`, `tee-attested`) because the interesting fact is never that provenance exists but who is asserting it, and an explicit rule that a verifier MUST NOT treat absence as any of them.
