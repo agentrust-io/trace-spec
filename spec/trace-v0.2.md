@@ -29,7 +29,7 @@ Records already issued under v0.1 remain verifiable against the v0.1 specificati
 
 ## Abstract
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-enforced governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-attested governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
 
 TRACE composes existing standards rather than replacing them. It profiles RATS/EAT (RFC 9711) for the wire envelope, SLSA for build-time provenance, SCITT for transparency anchoring, SPIFFE for workload identity, EAR for evidence appraisal, and MCP / A2A for the agent execution surface. Where gaps exist — notably the AI-agent execution profile — TRACE proposes the minimum new schema to close them.
 
