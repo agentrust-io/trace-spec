@@ -1,0 +1,54 @@
+{
+  "name": "receipt-chain-gap-in-tail",
+  "description": "The previous_receipt_hash matches the expected predecessor through every prefix and differs in the final character. 07 links somewhere else entirely.",
+  "profile": "trace.action_receipt.conformance.v0",
+  "context": {
+    "call_id": "01986d7c-6b2f-7c68-9ff8-3e2f9d0db337",
+    "session_id": "trace-session-2026-07-06T15:22:11Z",
+    "require_receipt": true,
+    "verification_time": "2026-07-06T15:24:00Z",
+    "max_receipt_age_seconds": 300,
+    "expected_previous_receipt_hash": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1"
+  },
+  "action": {
+    "agent_id": "spiffe://factory.example/agent/ros2-fibonacci/dev",
+    "action_type": "ros2.action.example_interfaces/Fibonacci",
+    "action_scope": "/abort_fibonacci_process",
+    "action_timestamp": "2026-07-06T15:22:13Z",
+    "action_ref": "sha256:c2e97956de8b86d825780fcecea601a6eea02616855e6f0aa19d10bd351fe034"
+  },
+  "trusted_issuer_keys": {
+    "did:web:factory.example:safety-controller#ed25519-coverage-2026q3": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "GUrISuzIssGcot1U1RFv02lETpxCYoQ0tz421ALSdqE"
+    }
+  },
+  "evidence": {
+    "terminal_state": "accepted",
+    "physical_completion_claim": "none",
+    "completeness_claim": "not_proven"
+  },
+  "receipt": {
+    "issuer": "did:web:factory.example:safety-controller",
+    "issuer_key_id": "did:web:factory.example:safety-controller#ed25519-coverage-2026q3",
+    "issuer_independence": "separate_process",
+    "linked_call_id": "01986d7c-6b2f-7c68-9ff8-3e2f9d0db337",
+    "session_id": "trace-session-2026-07-06T15:22:11Z",
+    "action_ref": "sha256:c2e97956de8b86d825780fcecea601a6eea02616855e6f0aa19d10bd351fe034",
+    "evidence_type": "application/vnd.agentrust.action-receipt+json",
+    "evidence_hash": "sha256:cf43260df01d89b5ce9ed0dce484ae1e3331fb477efda92cd0fd9365df9089d7",
+    "previous_receipt_hash": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c0",
+    "issued_at": "2026-07-06T15:22:15Z",
+    "decision": "accepted",
+    "signature": "bF-rlW1L5jO5NB8jUdZXvUV7cF4wozJB1fyzglkGhrusTQ_3T7f_VNo9BOC4b19lWQQaSqk8f0Z3g1iXUmjFDw"
+  },
+  "expected": {
+    "status": "receipt_invalid",
+    "controller_outcome": "unknown",
+    "failures": [
+      "receipt_chain_gap"
+    ],
+    "warnings": []
+  }
+}
