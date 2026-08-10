@@ -1,0 +1,16 @@
+{
+  "action_ref_invalid": 2,
+  "action_ref_mismatch": 2,
+  "call_id_mismatch": 2,
+  "decision_invalid": 2,
+  "evidence_hash_mismatch": 2,
+  "issuer_key_unknown": 2,
+  "issuer_not_independent": 2,
+  "receipt_chain_gap": 2,
+  "receipt_from_future": 2,
+  "receipt_missing": 2,
+  "receipt_stale": 2,
+  "session_id_mismatch": 2,
+  "signature_or_key_mismatch": 2,
+  "unsupported_physical_completion_claim": 2
+}
