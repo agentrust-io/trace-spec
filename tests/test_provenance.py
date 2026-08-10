@@ -316,3 +316,45 @@ def test_a_well_formed_record_still_verifies() -> None:
     key = generate_key()
     signed = sign_record(_record(), key)
     verify_record(signed, key_to_jwk(key))
+
+
+# --- anchoring: a trailing newline is not part of an identifier ------------
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("publisher", "did:web:acme.example\n"),
+        ("artifact.digest", DIGEST + "\n"),
+        ("endpoint.spki_sha256", DIGEST + "\n"),
+        ("tool_catalog.hash", DIGEST + "\n"),
+    ],
+)
+def test_a_trailing_newline_does_not_satisfy_a_pattern(field: str, value: str) -> None:
+    """`$` in Python matches before a single trailing newline; these need `\\Z`.
+
+    Four fields are anchored with the same two patterns. Before this, every one of them
+    accepted its own value with a newline glued to the end, and `verify_record` returned
+    cleanly on all four. Only `tool_catalog.hash` had anything downstream to catch it,
+    and only because `check_tool_catalog` recomputes and compares.
+    """
+    key = generate_key()
+    record = {
+        "format": FORMAT,
+        "kind": "publisher-asserted",
+        "identity": {"artifact": _artifact()},
+        "publisher": "did:web:acme.example",
+        "tool_catalog": {"hash": tool_catalog_hash(TOOLS), "tool_count": len(TOOLS)},
+        "issued_at": 1760000000,
+    }
+    if field == "publisher":
+        record["publisher"] = value
+    elif field == "artifact.digest":
+        record["identity"]["artifact"]["digest"] = value
+    elif field == "endpoint.spki_sha256":
+        record["identity"] = {"endpoint": {"url": "https://acme.example/mcp", "spki_sha256": value}}
+    else:
+        record["tool_catalog"]["hash"] = value
+
+    with pytest.raises(ProvenanceError):
+        verify_record(sign_record(record, key), key_to_jwk(key))

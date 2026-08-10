@@ -40,8 +40,10 @@ FORMAT = "agentrust-io/mcp-server-provenance/1"
 #: Closed on purpose: the value of the field is that a verifier can key on it.
 KINDS = ("publisher-asserted", "observer-attested", "tee-attested")
 
-_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-_PUBLISHER_RE = re.compile(r"^(did:[a-z0-9]+:.+|spiffe://[^/]+/.+)$")
+# `\Z`, not `$`: in Python `$` also matches immediately before a single trailing newline,
+# so `^...$` accepts "did:web:acme.example\n" and every digest with a newline glued to it.
+_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}\Z")
+_PUBLISHER_RE = re.compile(r"^(did:[a-z0-9]+:.+|spiffe://[^/]+/.+)\Z")
 
 
 class ProvenanceError(ValueError):
