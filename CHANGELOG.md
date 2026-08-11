@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Documentation
+
+- **The security policy now describes the software that is actually released.** It puts the Python signing and verification APIs, schemas, adapters, packaging, and release automation in scope; lists TRACE v0.2 and `agentrust-trace` 0.x as supported; and marks the superseded v0.1 profile unsupported.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added
