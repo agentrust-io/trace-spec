@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Local test runs now always exercise the checkout.** Pytest prepends `src` to its import path, and a regression test asserts that `agentrust_trace` resolves to the repository source. A stale installed wheel can no longer shadow current security fixes and produce misleading failures or passes.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added
