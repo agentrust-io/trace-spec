@@ -17,6 +17,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [0.9.0] — 2026-08-09
 
+### Documentation
+
+- **The security policy now describes the software that is actually released.** It puts the Python signing and verification APIs, schemas, adapters, packaging, and release automation in scope; lists TRACE v0.2 and `agentrust-trace` 0.x as supported; and marks the superseded v0.1 profile unsupported.
+
+## [0.9.0] — 2026-08-09
+
 ### Added
 
 - **`spec/content-marking-v1.md` and `agentrust_trace.content_marking`: bind a marked asset to the execution that produced it.** EU AI Act Article 50(2) and 50(4) have been in force since 2 August 2026 and are the only AI Act obligations that bite this year. One C2PA assertion, `com.agentrust-io.trace`, carries a hashed reference to the Trust Record for the execution that produced the asset.
