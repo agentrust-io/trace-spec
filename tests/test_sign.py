@@ -285,13 +285,26 @@ def test_verify_record_compares_key_identity_not_optional_jwk_metadata():
 
 
 def test_verify_record_rejects_signed_record_without_confirmation_key():
+    """A record with no confirmation key does not verify, whoever signed it.
+
+    Since schema enforcement landed (#156) the rejection comes from the schema,
+    which makes `cnf` required, rather than from the cnf-to-trusted-key binding
+    below it: absent `cnf` is caught before the binding is reached. Both are
+    correct refusals, and the earlier one is the more fundamental. Asserted on
+    `cnf` rather than on the exact sentence so this does not re-break the next
+    time the order of two correct checks changes.
+
+    The binding itself is covered by test_verify_record_raises_for_tampered_cnf_jwk
+    and test_verify_record_rejects_valid_signature_that_names_another_cnf_key,
+    where `cnf` is present and names the wrong key.
+    """
     key = generate_key()
     record = _fresh_record()
     record.pop("cnf", None)
     body = _canonical_bytes(record)
     record["signature"] = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
 
-    with pytest.raises(ValueError, match=r"cnf\.jwk"):
+    with pytest.raises(ValueError, match=r"cnf"):
         verify_record(record, key_to_jwk(key))
 
 
