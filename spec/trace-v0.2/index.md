@@ -243,7 +243,7 @@ Implementations MUST use an RFC 8785-conformant library. Using `json.dumps(sort_
 
 Each profile MUST declare which binding form it uses. A record with no verifiable signature binding is not a Trust Record: verifiers MUST reject it. Schema validity alone confers no trust.
 
-**Freshness.** Records MUST carry `iat`. Verifiers MUST enforce a maximum record age: a record whose `iat` is older than the maximum age MUST be rejected. The default maximum age is 24 hours; a deployment profile MAY specify a different value. Verifiers SHOULD additionally support challenge-nonce binding for online verification: the verifier supplies a nonce, the issuer echoes it in `runtime.nonce`, and the verifier checks the echo. When a challenge nonce was issued, a record that omits or mismatches it MUST be rejected.
+**Freshness.** Records MUST carry `iat`. Verifiers MUST enforce a maximum record age: a record whose `iat` is older than the maximum age MUST be rejected. The default maximum age is 24 hours; a deployment profile MAY specify a different value. Verifiers MUST also reject a record whose `iat` is later than the verifier's current time plus an allowed clock-skew tolerance. The default tolerance is 5 minutes; a deployment profile MAY specify a different value. Without the upper bound, a far-future `iat` creates a record that remains fresh until that time plus the maximum age. Verifiers SHOULD additionally support challenge-nonce binding for online verification: the verifier supplies a nonce, the issuer echoes it in `runtime.nonce`, and the verifier checks the echo. When a challenge nonce was issued, a record that omits or mismatches it MUST be rejected.
 
 **Conformance alignment.** The TRACE conformance suite (trace-tests) already enforces both rules: records without a verifiable signature fail at conformance level 1 and above, and the default 24-hour max-age is enforced.
 
@@ -252,7 +252,7 @@ Each profile MUST declare which binding form it uses. A record with no verifiabl
 Any party — browser, CLI, in-cluster verifier, third-party auditor — verifies:
 
 1. The record's signature binding (section 3.2.2) verifies against the key in `cnf`, BEFORE any other field is trusted. A record with no verifiable binding MUST be rejected.
-1. The record is fresh: `iat` is within the maximum age (default 24 hours unless the deployment profile specifies otherwise). If the verifier issued a challenge nonce, `runtime.nonce` echoes it.
+1. The record is fresh: `iat` is neither older than the maximum age (default 24 hours) nor later than the current time plus the allowed clock skew (default 5 minutes), unless the deployment profile specifies different bounds. If the verifier issued a challenge nonce, `runtime.nonce` echoes it.
 1. Signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).
 1. Runtime measurements match published Reference Integrity Manifests (RIMs).
 1. Policy hash matches the policy bundle the verifier expects.
