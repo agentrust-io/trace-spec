@@ -4,7 +4,7 @@
 
 | Name | Affiliation | GitHub | Contact |
 |---|---|---|---|
-| Imran Siddique | OPAQUE Systems | @imraan | maintainers@agentrust.io |
+| Imran Siddique | OPAQUE Systems | @imran-siddique | maintainers@agentrust.io |
 
 The Project Lead has final decision authority on specification changes, AAIF/CoSAI submission scope, conformance requirements, and Maintainer appointments.
 

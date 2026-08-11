@@ -2,7 +2,7 @@
   <img src="docs/assets/icon.svg" width="96" height="96" alt="TRACE"/>
 </p>
 
-# TRACE: Trust Runtime Attestation and Compliance Evidence
+# TRACE: Trust, Runtime Attestation, and Compliance Evidence
 
 <p align="center">
   <a href="https://trace.agentrust-io.com">
@@ -71,7 +71,7 @@ Being formed at the Linux Foundation as its own series, "TRACE Specification, a 
 
 ### What is TRACE?
 
-TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools.
 
 ### What does a TRACE Trust Record prove?
 
@@ -103,7 +103,7 @@ The current specification is TRACE v0.2, published with a conformance test suite
       "name": "What is TRACE?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools."
+        "text": "TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools."
       }
     },
     {

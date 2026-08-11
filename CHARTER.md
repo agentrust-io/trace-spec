@@ -1,7 +1,7 @@
 # Technical Charter — TRACE
 
-**Proposed hosting**: CoSAI (Coalition for Secure AI) for the technical workstream; Linux Foundation entity hosting the Model Context Protocol for specification, IP, trademark, and conformance mark.  
-**Status**: Pre-acceptance draft — effective upon host organization acceptance.
+**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". This supersedes the earlier proposal to split the technical workstream to CoSAI and the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol. CoSAI participates as a technical-liaison partner for WS4 interoperability, not as a host.  
+**Status**: Draft — formation with LF Projects, LLC is in progress; effective when the Technical Charter takes effect.
 
 > **Note for external contributors:** This charter is a working draft and has not yet been accepted by a host organization. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
 **Version**: 0.1 (aligned with spec v0.1)
@@ -10,7 +10,7 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-enforced governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party — without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party — without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 
@@ -78,7 +78,7 @@ TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming pr
 | Milestone | Target |
 |---|---|
 | v0.1 draft — CC Summit announcement | June 2026 |
-| CoSAI committee formation | Q3 2026 |
+| LF Projects series formation | Q3 2026 |
 | MCP profile and A2A profile (v0.2) | Q3 2026 |
 | Host organization submission | Q3 2026 |
 | v1.0 ratification under TSC governance | 2027 |
