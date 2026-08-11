@@ -266,6 +266,7 @@ def verify_record(
     *,
     allow_embedded_key: bool = False,
     max_age_seconds: int | None = 86400,
+    max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
 ) -> None:
@@ -302,7 +303,9 @@ def verify_record(
 
     Freshness (fail closed):
         ``max_age_seconds`` (default 86400 = 24h) bounds how old ``record["iat"]``
-        may be relative to now; pass ``None`` to disable the age check. If
+        may be relative to now; pass ``None`` to disable the age check.
+        ``max_future_skew_seconds`` (default 300 = 5m) bounds tolerated clock skew;
+        a record dated further in the future is rejected. If
         ``expected_nonce`` is given, it is compared in constant time against
         ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
         ``ValueError``.
@@ -398,11 +401,18 @@ def verify_record(
         _check_not_revoked(trusted_jwk, revocation)
 
     # Freshness: bound the age of the record against its issued-at timestamp.
+    if max_future_skew_seconds < 0:
+        raise ValueError("max_future_skew_seconds must be non-negative")
+    iat = record.get("iat")
+    if not isinstance(iat, int) or isinstance(iat, bool):
+        raise ValueError("record has no valid integer 'iat' for freshness check")
+    age = time.time() - iat
+    if age < -max_future_skew_seconds:
+        raise ValueError(
+            f"record is dated {int(-age)}s in the future, exceeds "
+            f"max_future_skew_seconds={max_future_skew_seconds}"
+        )
     if max_age_seconds is not None:
-        iat = record.get("iat")
-        if not isinstance(iat, int | float) or isinstance(iat, bool):
-            raise ValueError("record has no valid integer 'iat' for freshness check")
-        age = time.time() - iat
         if age > max_age_seconds:
             raise ValueError(
                 f"record is stale: iat is {int(age)}s old, exceeds max_age_seconds="
