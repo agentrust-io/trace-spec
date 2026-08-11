@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Security
+
+- **Release gates now fail closed.** CodeQL analysis failures block instead of being ignored. Before trusted PyPI publication, clean virtual environments install and verify both the built wheel and source distribution outside the checkout, checking tag/version identity, packaged schema resources, signing and verification, and rejection of unknown security fields.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added

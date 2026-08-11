@@ -27,6 +27,26 @@ jobs:
           pip install hatchling
           python -m hatchling build
 
+      - name: Verify wheel as installed artifact
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-venv"
+          "$RUNNER_TEMP/wheel-venv/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-venv/bin/python" \
+            "$GITHUB_WORKSPACE/scripts/verify_release_artifact.py" \
+            --workspace "$GITHUB_WORKSPACE" \
+            --expected-version "${GITHUB_REF_NAME#v}"
+
+      - name: Verify source distribution as installed artifact
+        run: |
+          python -m venv "$RUNNER_TEMP/sdist-venv"
+          "$RUNNER_TEMP/sdist-venv/bin/python" -m pip install "$GITHUB_WORKSPACE"/dist/*.tar.gz
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/sdist-venv/bin/python" \
+            "$GITHUB_WORKSPACE/scripts/verify_release_artifact.py" \
+            --workspace "$GITHUB_WORKSPACE" \
+            --expected-version "${GITHUB_REF_NAME#v}"
+
       - uses: actions/upload-artifact@v7
         with:
           name: dist
