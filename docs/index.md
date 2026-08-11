@@ -1,6 +1,6 @@
 # TRACE
 
-**Trust Runtime Attestation and Compliance Evidence** — an open specification for hardware-attested AI agent governance records.
+**Trust, Runtime Attestation, and Compliance Evidence** — an open specification for hardware-attested AI agent governance records.
 
 TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools — bound into a single signed artifact rooted in silicon attestation.
 
