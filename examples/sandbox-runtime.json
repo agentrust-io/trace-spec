@@ -1,6 +1,6 @@
 {
   "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-  "iat": 1754400000,
+  "iat": 1785936000,
   "subject": "spiffe://runtime.example.org/sandbox/code-review-7f2a",
   "model": {
     "provider": "anthropic",

@@ -1,6 +1,6 @@
 {
   "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-  "iat": 1750676300,
+  "iat": 1782212300,
   "subject": "spiffe://trust.example.org/agent/image-analysis/prod",
   "model": {
     "provider": "anthropic",
