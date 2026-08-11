@@ -149,6 +149,36 @@ def test_verify_record_passes_for_valid_signature():
     verify_record(record, key_to_jwk(key))  # must not raise
 
 
+def test_verify_record_rejects_signed_unknown_top_level_field():
+    key = generate_key()
+    record = _fresh_record()
+    record["unexpected_security_semantics"] = "trusted"
+    signed = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="does not conform.*unexpected_security_semantics"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_verify_record_rejects_signed_missing_required_claim():
+    key = generate_key()
+    record = _fresh_record()
+    del record["appraisal"]
+    signed = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="does not conform.*appraisal"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_verify_record_rejects_signed_invalid_nested_value():
+    key = generate_key()
+    record = _fresh_record()
+    record["policy"]["enforcement_mode"] = "bypass"
+    signed = sign_record(record, key)
+
+    with pytest.raises(ValueError, match=r"policy\.enforcement_mode"):
+        verify_record(signed, key_to_jwk(key))
+
+
 def _fresh_record_with_profile(profile) -> dict:
     record = _fresh_record()
     if profile is None:
@@ -310,6 +340,54 @@ def test_verify_record_expired_allowed_when_max_age_none():
     record["iat"] = int(time.time()) - 90000
     record = sign_record(record, key)
     verify_record(record, key_to_jwk(key), max_age_seconds=None)  # must not raise
+
+
+def test_verify_record_rejects_record_beyond_default_future_skew():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 301
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="future"):
+        verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_accepts_record_within_default_future_skew():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 299
+    record = sign_record(record, key)
+
+    verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_future_skew_is_deployment_configurable():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 601
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="max_future_skew_seconds=600"):
+        verify_record(record, key_to_jwk(key), max_future_skew_seconds=600)
+    verify_record(record, key_to_jwk(key), max_future_skew_seconds=602)
+
+
+def test_disabling_max_age_does_not_disable_future_bound():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 3600
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="future"):
+        verify_record(record, key_to_jwk(key), max_age_seconds=None)
+
+
+def test_verify_record_rejects_negative_future_skew_configuration():
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    with pytest.raises(ValueError, match="must be non-negative"):
+        verify_record(record, key_to_jwk(key), max_future_skew_seconds=-1)
 
 
 def test_verify_record_rejects_non_okp_jwk():
@@ -561,6 +639,6 @@ def test_round_trip_with_non_ascii_payload():
     """End-to-end: signing and verifying a record carrying non-ASCII data."""
     key = generate_key()
     record = _fresh_record()
-    record["model"]["note"] = "modèle français \U0001f916"
+    record["model"]["provider"] = "modèle français \U0001f916"
     signed = sign_record(record, key)
     verify_record(signed, key_to_jwk(key))  # must not raise

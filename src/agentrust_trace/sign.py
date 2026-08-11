@@ -17,6 +17,7 @@ from collections.abc import Callable, Container
 from typing import Any, TypeAlias
 
 import rfc8785
+from jsonschema import ValidationError
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -266,6 +267,7 @@ def verify_record(
     *,
     allow_embedded_key: bool = False,
     max_age_seconds: int | None = 86400,
+    max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
 ) -> None:
@@ -302,7 +304,9 @@ def verify_record(
 
     Freshness (fail closed):
         ``max_age_seconds`` (default 86400 = 24h) bounds how old ``record["iat"]``
-        may be relative to now; pass ``None`` to disable the age check. If
+        may be relative to now; pass ``None`` to disable the age check.
+        ``max_future_skew_seconds`` (default 300 = 5m) bounds tolerated clock skew;
+        a record dated further in the future is rejected. If
         ``expected_nonce`` is given, it is compared in constant time against
         ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
         ``ValueError``.
@@ -352,6 +356,21 @@ def verify_record(
         raise ValueError("record has no 'signature' field")
 
     sig_bytes = _b64url_decode(sig_b64, field="signature")
+
+    # Signature validity is not schema validity. Enforce the canonical profile
+    # shape here so callers cannot accidentally treat a signed object carrying
+    # unknown fields, missing required claims, or invalid nested values as a
+    # verified TRACE Trust Record. Signature presence and encoding are checked
+    # first so the public API preserves its specific envelope errors.
+    from agentrust_trace.validate import validate_json
+
+    try:
+        validate_json(record)
+    except ValidationError as exc:
+        location = ".".join(str(part) for part in exc.absolute_path) or "<record>"
+        raise ValueError(
+            f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
+        ) from exc
 
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.
@@ -409,11 +428,18 @@ def verify_record(
         )
 
     # Freshness: bound the age of the record against its issued-at timestamp.
+    if max_future_skew_seconds < 0:
+        raise ValueError("max_future_skew_seconds must be non-negative")
+    iat = record.get("iat")
+    if not isinstance(iat, int) or isinstance(iat, bool):
+        raise ValueError("record has no valid integer 'iat' for freshness check")
+    age = time.time() - iat
+    if age < -max_future_skew_seconds:
+        raise ValueError(
+            f"record is dated {int(-age)}s in the future, exceeds "
+            f"max_future_skew_seconds={max_future_skew_seconds}"
+        )
     if max_age_seconds is not None:
-        iat = record.get("iat")
-        if not isinstance(iat, int | float) or isinstance(iat, bool):
-            raise ValueError("record has no valid integer 'iat' for freshness check")
-        age = time.time() - iat
         if age > max_age_seconds:
             raise ValueError(
                 f"record is stale: iat is {int(age)}s old, exceeds max_age_seconds="
