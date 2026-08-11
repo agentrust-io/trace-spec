@@ -24,7 +24,7 @@ SCHEMA: dict[str, Any] = _schema()
 
 
 def validate_json(record: dict[str, Any]) -> None:
-    """Validate *record* against the canonical TRACE v0.1 JSON Schema.
+    """Validate *record* against the canonical TRACE v0.2 JSON Schema.
 
     Raises :class:`jsonschema.ValidationError` on the first violation found.
     Use :func:`iter_errors` for all violations.

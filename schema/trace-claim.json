@@ -14,7 +14,6 @@
     "data_class",
     "build_provenance",
     "appraisal",
-    "transparency",
     "cnf"
   ],
   "properties": {

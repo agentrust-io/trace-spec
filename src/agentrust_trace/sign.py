@@ -17,6 +17,7 @@ from collections.abc import Callable, Container
 from typing import Any, TypeAlias
 
 import rfc8785
+from jsonschema import ValidationError
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -355,6 +356,21 @@ def verify_record(
         raise ValueError("record has no 'signature' field")
 
     sig_bytes = _b64url_decode(sig_b64, field="signature")
+
+    # Signature validity is not schema validity. Enforce the canonical profile
+    # shape here so callers cannot accidentally treat a signed object carrying
+    # unknown fields, missing required claims, or invalid nested values as a
+    # verified TRACE Trust Record. Signature presence and encoding are checked
+    # first so the public API preserves its specific envelope errors.
+    from agentrust_trace.validate import validate_json
+
+    try:
+        validate_json(record)
+    except ValidationError as exc:
+        location = ".".join(str(part) for part in exc.absolute_path) or "<record>"
+        raise ValueError(
+            f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
+        ) from exc
 
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.
