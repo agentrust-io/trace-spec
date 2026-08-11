@@ -229,8 +229,40 @@ def test_verify_record_raises_for_tampered_cnf_jwk():
     record = sign_record(_fresh_record(), key)
     trusted = key_to_jwk(key)
     record["cnf"]["jwk"] = key_to_jwk(other_key)
-    with pytest.raises(InvalidSignature):
+    with pytest.raises(ValueError, match=r"cnf\.jwk.*trusted key"):
         verify_record(record, trusted)
+
+
+def test_verify_record_rejects_valid_signature_that_names_another_cnf_key():
+    """A trusted signer must not authenticate another key as the confirmation key."""
+    signer = generate_key()
+    other = generate_key()
+    record = _fresh_record()
+    record["cnf"] = {"jwk": key_to_jwk(other)}
+    body = _canonical_bytes(record)
+    record["signature"] = base64.urlsafe_b64encode(signer.sign(body)).rstrip(b"=").decode()
+
+    with pytest.raises(ValueError, match=r"cnf\.jwk.*trusted key"):
+        verify_record(record, key_to_jwk(signer))
+
+
+def test_verify_record_compares_key_identity_not_optional_jwk_metadata():
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    trusted = {**key_to_jwk(key), "kid": "issuer-key-7", "use": "sig"}
+
+    verify_record(record, trusted)
+
+
+def test_verify_record_rejects_signed_record_without_confirmation_key():
+    key = generate_key()
+    record = _fresh_record()
+    record.pop("cnf", None)
+    body = _canonical_bytes(record)
+    record["signature"] = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+
+    with pytest.raises(ValueError, match=r"cnf\.jwk"):
+        verify_record(record, key_to_jwk(key))
 
 
 def test_verify_record_raises_for_missing_signature():
@@ -259,7 +291,7 @@ def test_verify_record_rejects_wrong_trusted_key():
     key_b = generate_key()
     record = sign_record(_fresh_record(), key_a)
     # Signed by A, verified against B's public key — must not verify.
-    with pytest.raises(InvalidSignature):
+    with pytest.raises(ValueError, match=r"cnf\.jwk.*trusted key"):
         verify_record(record, key_to_jwk(key_b))
 
 

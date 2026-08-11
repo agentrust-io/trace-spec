@@ -27,6 +27,12 @@ The pre-image is the RFC 8785 (JCS) canonical form of the record with only `sign
 
 The `cnf.jwk` field embeds the public key. For TEE-issued records, this key is TEE-bound — its private half never leaves the measured enclave.
 
+Resolve trust out of band and require the trusted key and `cnf.jwk` to have the
+same RFC 7638 thumbprint before verification. Checking the signature with a
+trusted key while allowing the signed record to name a different confirmation
+key breaks the binding required by §3.2.2 and can mislead downstream
+proof-of-possession checks.
+
 ```python
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 

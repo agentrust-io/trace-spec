@@ -377,8 +377,10 @@ def verify_record(
 
     if isinstance(public_key_or_jwk, dict):
         pub = _pubkey_from_jwk(public_key_or_jwk)
+        trusted_jwk = public_key_or_jwk
     else:
         pub = public_key_or_jwk
+        trusted_jwk = _jwk_from_public_key(pub)
 
     # Revocation: signature validity is permanent, trust is not. A key compromised
     # after issuance still produces records that verify, so the only place the
@@ -390,12 +392,21 @@ def verify_record(
     # allow_embedded_key=True the two are the same object, and that path is already
     # documented as proving internal consistency only.
     if revocation is not None:
-        trusted_jwk = (
-            public_key_or_jwk
-            if isinstance(public_key_or_jwk, dict)
-            else _jwk_from_public_key(pub)
-        )
         _check_not_revoked(trusted_jwk, revocation)
+
+    # The signature binding is defined as a signature made by the key in cnf.
+    # Verifying with a caller-pinned key is necessary for authenticity, but it
+    # must not permit a trusted signer to authenticate a record that names a
+    # different confirmation key for downstream proof-of-possession checks.
+    cnf = record.get("cnf")
+    embedded_jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
+    if not isinstance(embedded_jwk, dict):
+        raise ValueError("record has no valid cnf.jwk confirmation key")
+    _pubkey_from_jwk(embedded_jwk)
+    if not compare_digest(jwk_thumbprint(embedded_jwk), jwk_thumbprint(trusted_jwk)):
+        raise ValueError(
+            "record cnf.jwk does not identify the trusted key that verifies its signature"
+        )
 
     # Freshness: bound the age of the record against its issued-at timestamp.
     if max_age_seconds is not None:

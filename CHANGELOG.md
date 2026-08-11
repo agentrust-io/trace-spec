@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The confirmation key must now match the trusted signing key.** `verify_record()` compares the RFC 7638 thumbprints of `cnf.jwk` and the caller-supplied trusted key before accepting the signature. A trusted signer can no longer produce a record that verifies under one key while naming another key for downstream proof-of-possession checks.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added

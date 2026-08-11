@@ -56,7 +56,7 @@ except ValueError as e:
 
 ## Verify Against a Pinned Public Key
 
-The embedded `cnf.jwk` proves the record was not tampered with after signing. It does not prove the key is one you should trust. For stricter verification, supply your own trusted public key as the second argument.
+The embedded `cnf.jwk` names the key the record claims made its mandatory signature binding. It cannot establish trust by itself. Supply a trusted public key out of band; `verify_record()` requires the embedded and trusted keys to have the same RFC 7638 thumbprint, then verifies the signature with the trusted key.
 
 Pass either an `Ed25519PublicKey` object or a JWK dict you obtained out-of-band (for example, from the issuer's published key manifest):
 
@@ -84,7 +84,7 @@ pub_key = Ed25519PublicKey.from_public_bytes(x_bytes)
 verify_record(record, pub_key)
 ```
 
-When you supply a key, the library uses it instead of `cnf.jwk`. If the record was signed with a different key, `InvalidSignature` is raised.
+When you supply a key, the library first requires it to identify the same public key as `cnf.jwk`, ignoring optional JWK metadata such as `kid`, and then uses the trusted key for signature verification. A key mismatch raises `ValueError`; a matching key with an invalid signature raises `InvalidSignature`.
 
 ---
 
