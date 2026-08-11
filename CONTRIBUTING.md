@@ -2,6 +2,22 @@
 
 TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
 
+## Running the reference-library checks
+
+Install the development dependencies and run the suite from the repository root:
+
+```bash
+pip install -e ".[dev]"
+pytest
+ruff check src tests
+mypy src/agentrust_trace
+```
+
+Pytest is configured to import `src/agentrust_trace` from the checkout. A stale
+wheel installed elsewhere in the environment must not shadow the code under
+test; a regression test fails with the resolved import path if that guarantee is
+lost.
+
 ## DCO sign-off
 
 All commits must include a Developer Certificate of Origin sign-off:

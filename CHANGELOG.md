@@ -13,6 +13,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Fixed
 
+- **Local test runs now always exercise the checkout.** Pytest prepends `src` to its import path, and a regression test asserts that `agentrust_trace` resolves to the repository source. A stale installed wheel can no longer shadow current security fixes and produce misleading failures or passes.
+
+### Fixed
+
 - **The confirmation key must now match the trusted signing key.** `verify_record()` compares the RFC 7638 thumbprints of `cnf.jwk` and the caller-supplied trusted key before accepting the signature. A trusted signer can no longer produce a record that verifies under one key while naming another key for downstream proof-of-possession checks.
 
 - **`verify_record()` now enforces the canonical v0.2 JSON Schema.** A cryptographically valid signature no longer causes an object with unknown fields, missing required claims, or invalid nested values to be accepted as a verified TRACE record. Schema failures are surfaced as `ValueError` with the failing field path.
