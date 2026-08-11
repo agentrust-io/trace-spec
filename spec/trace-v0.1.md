@@ -6,7 +6,7 @@
 |---|---|
 | Version | 0.1 — Draft |
 | Status | RFC — Request for Comments |
-| Authors | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
+| Authors | Imran Siddique, Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
 | Target announcement | Confidential Computing Summit, San Francisco — 23 June 2026 |
 | Reference implementation | [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) — Confidential MCP |
 | License | CC BY 4.0 |
