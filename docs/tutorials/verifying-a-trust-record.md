@@ -6,7 +6,7 @@ Check the integrity and schema conformance of a TRACE Trust Record you received 
 
 - What `verify_record()` does internally, step by step
 - How to verify against a pinned trusted key instead of the embedded key
-- How to run schema validation separately from signature verification
+- How built-in schema validation rejects malformed signed records
 - How to collect all validation errors with `iter_errors()`
 - How to interpret `runtime.platform` to distinguish development from hardware-attested records
 - What to do when verification fails
@@ -23,12 +23,13 @@ pip install agentrust-trace
 
 When you call `verify_record(record, trusted_key)` the library:
 
-1. Reads `record["signature"]` and base64url-decodes it to raw bytes
-2. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
-3. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
-4. Rebuilds the canonical payload: all fields except `signature`, serialized with sorted keys and no whitespace
-5. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
-6. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection
+1. Requires the exact TRACE v0.2 profile and validates the complete record against its canonical JSON Schema
+2. Reads `record["signature"]` and base64url-decodes it to raw bytes
+3. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
+4. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
+5. Rebuilds the canonical payload with all fields except `signature`, using RFC 8785 (JCS)
+6. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
+7. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection
 
 A trusted key is required. A record cannot authenticate itself with the key it embeds, so `verify_record` will not fall back to `cnf.jwk` unless you explicitly opt in with `allow_embedded_key=True` (which emits a `UserWarning`, since it proves only internal consistency, not authenticity).
 
@@ -50,7 +51,7 @@ except ValueError as e:
     print(f"verification failed: {e}")
 ```
 
-`ValueError` is raised when no trusted key is supplied, the record is missing a `signature` field, a key or signature cannot be decoded, the JWK type is not Ed25519, or the record is stale. Treat all of these as verification failure.
+`ValueError` is raised when schema conformance fails, no trusted key is supplied, the record is missing a `signature` field, a key or signature cannot be decoded, the JWK type is not Ed25519, or the record is stale. Treat all of these as verification failure.
 
 ---
 

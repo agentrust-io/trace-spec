@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`verify_record()` now enforces the canonical v0.2 JSON Schema.** A cryptographically valid signature no longer causes an object with unknown fields, missing required claims, or invalid nested values to be accepted as a verified TRACE record. Schema failures are surfaced as `ValueError` with the failing field path.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added
