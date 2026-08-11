@@ -402,6 +402,8 @@ TRACE Trust Records are independently verifiable offline — no call to the issu
 
 This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
 
+Before interpreting any claim, validate the complete object against the canonical v0.2 JSON Schema. A valid signature authenticates every byte but does not make an unknown field, missing required claim, or invalid enum meaningful. The Python `verify_record()` API performs this schema check automatically and fails closed.
+
 ### Step 1 — Parse the envelope
 
 A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
