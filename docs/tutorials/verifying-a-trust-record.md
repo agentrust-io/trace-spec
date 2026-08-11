@@ -25,7 +25,7 @@ When you call `verify_record(record, trusted_key)` the library:
 
 1. Reads `record["signature"]` and base64url-decodes it to raw bytes
 2. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
-3. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
+3. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h) or further in the future than `max_future_skew_seconds` (default 5m), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
 4. Rebuilds the canonical payload: all fields except `signature`, serialized with sorted keys and no whitespace
 5. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
 6. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection

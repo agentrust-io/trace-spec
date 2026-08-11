@@ -8,7 +8,7 @@ This document describes what TRACE does not do, and where layered defenses are n
 A TRACE claim at Level 0 (software-only signing) is signed by a key held in software. A privileged operator with root access can produce a valid-looking Level 0 record for a run that never happened, or that violated policy. Level 0 is suitable for development and audit-trail tooling only — not for third-party verification.
 
 **Replay of a valid past record**
-A TRACE claim proves a specific run happened; it does not prevent a verifier from being shown a valid record from an earlier run. Verifiers that rely on recency must check the `iat` and `exp` claims, require nonce binding to a challenge, or anchor records to a public transparency log and check for freshness.
+A TRACE claim proves a specific run happened; it does not prevent a verifier from being shown a valid record from an earlier run. Verifiers that rely on recency must bound `iat` in both directions (maximum age and allowed future clock skew), check `exp` when present, require nonce binding to a challenge, or anchor records to a public transparency log and check for freshness.
 
 **Policy correctness**
 The `policy.bundle_hash` field attests that a specific policy was in force at runtime. It does not attest that the policy achieves the intended security outcome. Policy review is a separate control.
