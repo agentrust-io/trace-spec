@@ -26,7 +26,7 @@ When you call `verify_record(record, trusted_key)` the library:
 1. Requires the exact TRACE v0.2 profile and validates the complete record against its canonical JSON Schema
 2. Reads `record["signature"]` and base64url-decodes it to raw bytes
 3. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
-4. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
+4. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h) or further in the future than `max_future_skew_seconds` (default 5m), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
 5. Rebuilds the canonical payload with all fields except `signature`, using RFC 8785 (JCS)
 6. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
 7. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection

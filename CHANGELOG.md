@@ -15,6 +15,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **`verify_record()` now enforces the canonical v0.2 JSON Schema.** A cryptographically valid signature no longer causes an object with unknown fields, missing required claims, or invalid nested values to be accepted as a verified TRACE record. Schema failures are surfaced as `ValueError` with the failing field path.
 
+### Fixed
+
+- **Future-dated records no longer create an unbounded freshness window.** `verify_record()` now rejects an `iat` later than the verifier's clock plus `max_future_skew_seconds` (default 5 minutes), independently of the maximum-age check. The v0.2 freshness requirements and verification tutorial document both bounds.
+
+## [0.9.0] — 2026-08-09
+
+### Documentation
+
+- **The security policy now describes the software that is actually released.** It puts the Python signing and verification APIs, schemas, adapters, packaging, and release automation in scope; lists TRACE v0.2 and `agentrust-trace` 0.x as supported; and marks the superseded v0.1 profile unsupported.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added

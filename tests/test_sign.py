@@ -310,6 +310,54 @@ def test_verify_record_expired_allowed_when_max_age_none():
     verify_record(record, key_to_jwk(key), max_age_seconds=None)  # must not raise
 
 
+def test_verify_record_rejects_record_beyond_default_future_skew():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 301
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="future"):
+        verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_accepts_record_within_default_future_skew():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 299
+    record = sign_record(record, key)
+
+    verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_future_skew_is_deployment_configurable():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 601
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="max_future_skew_seconds=600"):
+        verify_record(record, key_to_jwk(key), max_future_skew_seconds=600)
+    verify_record(record, key_to_jwk(key), max_future_skew_seconds=602)
+
+
+def test_disabling_max_age_does_not_disable_future_bound():
+    key = generate_key()
+    record = _minimal_record()
+    record["iat"] = int(time.time()) + 3600
+    record = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="future"):
+        verify_record(record, key_to_jwk(key), max_age_seconds=None)
+
+
+def test_verify_record_rejects_negative_future_skew_configuration():
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    with pytest.raises(ValueError, match="must be non-negative"):
+        verify_record(record, key_to_jwk(key), max_future_skew_seconds=-1)
+
+
 def test_verify_record_rejects_non_okp_jwk():
     key = generate_key()
     record = sign_record(_fresh_record(), key)
