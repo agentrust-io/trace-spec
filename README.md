@@ -19,7 +19,8 @@
   <a href="https://github.com/agentrust-io/cmcp">Reference Impl</a>
 </p>
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-lightgrey.svg)](LICENSE)
+[![Specification: Community Specification License 1.0](https://img.shields.io/badge/Specification-Community_Specification_License_1.0-blue.svg)](Governance/COMMUNITY-SPECIFICATION-LICENSE.md)
+[![Code: Apache 2.0](https://img.shields.io/badge/Code-Apache_2.0-lightgrey.svg)](LICENSE)
 [![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.2.md)
 [![PyPI](https://img.shields.io/pypi/v/agentrust-trace)](https://pypi.org/project/agentrust-trace/)
 [![CI](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml)
