@@ -2,11 +2,11 @@
 
 ## Scope
 
-This repository contains a specification and machine-readable schema. Security issues fall into two categories:
+This repository contains the TRACE specification, machine-readable schemas, conformance fixtures, and the `agentrust-trace` Python reference library. Security issues fall into two categories:
 
 **Specification vulnerabilities** — flaws in the TRACE spec that would allow an attacker to forge a valid Trust Record, bypass verification, break the cryptographic chain, or make verifiable claims that are structurally false. These are the most serious and are treated as critical.
 
-**Implementation vulnerabilities** — flaws in reference examples or schema that could mislead implementors into producing insecure Trust Records. Report these here.
+**Implementation vulnerabilities** — flaws in the Python signing or verification APIs, schemas, adapters, reference examples, packaging, or release automation that could accept, produce, or distribute insecure Trust Records. Report these here.
 
 Vulnerabilities in the reference implementation (cMCP) should be reported at [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) using its security policy.
 
@@ -27,7 +27,7 @@ Include:
 | Severity | Initial response | Fix target |
 |---|---|---|
 | Critical (forgeable Trust Record, broken verification chain) | 24 hours | 7 days |
-| High (misleading schema, incorrect normative text) | 48 hours | 14 days |
+| High (verification bypass, misleading schema, incorrect normative text) | 48 hours | 14 days |
 | Medium / Low (editorial, non-normative) | 5 business days | Next spec patch |
 
 ## Disclosure
@@ -38,5 +38,5 @@ We follow coordinated disclosure. We will work with reporters to agree on a disc
 
 | Version | Supported |
 |---|---|
-| v0.1 (current) | Yes |
-| Earlier drafts | No |
+| TRACE v0.2 / `agentrust-trace` 0.x | Yes |
+| TRACE v0.1 and earlier drafts | No |

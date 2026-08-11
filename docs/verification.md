@@ -6,6 +6,11 @@ TRACE Trust Records are independently verifiable offline — no call to the issu
 
 This is the normative protocol from [§3.3 of the spec](../spec/trace-v0.2.md).
 
+Before interpreting any claim, validate the complete object against the canonical
+v0.2 JSON Schema. A valid signature authenticates every byte but does not make an
+unknown field, missing required claim, or invalid enum meaningful. The Python
+`verify_record()` API performs this schema check automatically and fails closed.
+
 ### Step 1 — Parse the envelope
 
 A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
@@ -26,6 +31,12 @@ The pre-image is the RFC 8785 (JCS) canonical form of the record with only `sign
 ### Step 2 — Resolve the public key
 
 The `cnf.jwk` field embeds the public key. For TEE-issued records, this key is TEE-bound — its private half never leaves the measured enclave.
+
+Resolve trust out of band and require the trusted key and `cnf.jwk` to have the
+same RFC 7638 thumbprint before verification. Checking the signature with a
+trusted key while allowing the signed record to name a different confirmation
+key breaks the binding required by §3.2.2 and can mislead downstream
+proof-of-possession checks.
 
 ```python
 from cryptography.hazmat.primitives.serialization import load_der_public_key
