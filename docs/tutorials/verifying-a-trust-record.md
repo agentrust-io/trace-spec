@@ -6,7 +6,7 @@ Check the integrity and schema conformance of a TRACE Trust Record you received 
 
 - What `verify_record()` does internally, step by step
 - How to verify against a pinned trusted key instead of the embedded key
-- How to run schema validation separately from signature verification
+- How built-in schema validation rejects malformed signed records
 - How to collect all validation errors with `iter_errors()`
 - How to interpret `runtime.platform` to distinguish development from hardware-attested records
 - What to do when verification fails
@@ -23,12 +23,13 @@ pip install agentrust-trace
 
 When you call `verify_record(record, trusted_key)` the library:
 
-1. Reads `record["signature"]` and base64url-decodes it to raw bytes
-2. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
-3. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
-4. Rebuilds the canonical payload: all fields except `signature`, serialized with sorted keys and no whitespace
-5. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
-6. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection
+1. Requires the exact TRACE v0.2 profile and validates the complete record against its canonical JSON Schema
+2. Reads `record["signature"]` and base64url-decodes it to raw bytes
+3. Resolves the trusted key you supplied, checking `kty == "OKP"` and `crv == "Ed25519"` before reconstructing an `Ed25519PublicKey` from the `x` field
+4. Enforces freshness: rejects records whose `iat` is older than `max_age_seconds` (default 24h) or further in the future than `max_future_skew_seconds` (default 5m), and, if you pass `expected_nonce`, compares it in constant time to `runtime.nonce`
+5. Rebuilds the canonical payload with all fields except `signature`, using RFC 8785 (JCS)
+6. Calls `Ed25519PublicKey.verify(sig_bytes, payload_bytes)` from the `cryptography` library
+7. Returns `None` on success, raises `cryptography.exceptions.InvalidSignature` on a bad signature and `ValueError` on every other rejection
 
 A trusted key is required. A record cannot authenticate itself with the key it embeds, so `verify_record` will not fall back to `cnf.jwk` unless you explicitly opt in with `allow_embedded_key=True` (which emits a `UserWarning`, since it proves only internal consistency, not authenticity).
 
@@ -50,13 +51,13 @@ except ValueError as e:
     print(f"verification failed: {e}")
 ```
 
-`ValueError` is raised when no trusted key is supplied, the record is missing a `signature` field, a key or signature cannot be decoded, the JWK type is not Ed25519, or the record is stale. Treat all of these as verification failure.
+`ValueError` is raised when schema conformance fails, no trusted key is supplied, the record is missing a `signature` field, a key or signature cannot be decoded, the JWK type is not Ed25519, or the record is stale. Treat all of these as verification failure.
 
 ---
 
 ## Verify Against a Pinned Public Key
 
-The embedded `cnf.jwk` proves the record was not tampered with after signing. It does not prove the key is one you should trust. For stricter verification, supply your own trusted public key as the second argument.
+The embedded `cnf.jwk` names the key the record claims made its mandatory signature binding. It cannot establish trust by itself. Supply a trusted public key out of band; `verify_record()` requires the embedded and trusted keys to have the same RFC 7638 thumbprint, then verifies the signature with the trusted key.
 
 Pass either an `Ed25519PublicKey` object or a JWK dict you obtained out-of-band (for example, from the issuer's published key manifest):
 
@@ -84,7 +85,7 @@ pub_key = Ed25519PublicKey.from_public_bytes(x_bytes)
 verify_record(record, pub_key)
 ```
 
-When you supply a key, the library uses it instead of `cnf.jwk`. If the record was signed with a different key, `InvalidSignature` is raised.
+When you supply a key, the library first requires it to identify the same public key as `cnf.jwk`, ignoring optional JWK metadata such as `kid`, and then uses the trusted key for signature verification. A key mismatch raises `ValueError`; a matching key with an invalid signature raises `InvalidSignature`.
 
 ---
 

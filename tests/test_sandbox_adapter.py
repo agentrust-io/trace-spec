@@ -329,23 +329,11 @@ def test_an_anchored_record_passes_the_published_json_schema() -> None:
     validate_json(sign_record(record, generate_key()))
 
 
-def test_unanchored_record_is_model_valid_but_the_json_schema_still_requires_transparency() -> None:
-    """Documents a live divergence between the model and schema/trace-claim.json.
-
-    0.5.1 made ``transparency`` optional on the model, because a Level 0 or Level 1
-    record is not anchored and has no receipt to name. The published JSON Schema still
-    lists ``transparency`` in ``required``. Until that is reconciled, an unanchored
-    record validates against the model and not against the schema.
-
-    This test exists so the divergence is visible and fails loudly the day it is fixed,
-    rather than being rediscovered by a downstream implementer.
-    """
-    import jsonschema
-
+def test_unanchored_record_is_model_and_schema_valid() -> None:
+    """Level 0/1 records are unanchored, so transparency is optional everywhere."""
     record = _make_adapter().build_trust_record(_make_session())
     TrustRecord.model_validate(record)
-    with pytest.raises(jsonschema.ValidationError, match="transparency"):
-        validate_json(record)
+    validate_json(record)
 
 
 # ---------------------------------------------------------------------------

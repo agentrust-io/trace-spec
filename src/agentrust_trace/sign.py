@@ -17,6 +17,7 @@ from collections.abc import Callable, Container
 from typing import Any, TypeAlias
 
 import rfc8785
+from jsonschema import ValidationError
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -266,6 +267,7 @@ def verify_record(
     *,
     allow_embedded_key: bool = False,
     max_age_seconds: int | None = 86400,
+    max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
 ) -> None:
@@ -302,7 +304,9 @@ def verify_record(
 
     Freshness (fail closed):
         ``max_age_seconds`` (default 86400 = 24h) bounds how old ``record["iat"]``
-        may be relative to now; pass ``None`` to disable the age check. If
+        may be relative to now; pass ``None`` to disable the age check.
+        ``max_future_skew_seconds`` (default 300 = 5m) bounds tolerated clock skew;
+        a record dated further in the future is rejected. If
         ``expected_nonce`` is given, it is compared in constant time against
         ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
         ``ValueError``.
@@ -353,6 +357,21 @@ def verify_record(
 
     sig_bytes = _b64url_decode(sig_b64, field="signature")
 
+    # Signature validity is not schema validity. Enforce the canonical profile
+    # shape here so callers cannot accidentally treat a signed object carrying
+    # unknown fields, missing required claims, or invalid nested values as a
+    # verified TRACE Trust Record. Signature presence and encoding are checked
+    # first so the public API preserves its specific envelope errors.
+    from agentrust_trace.validate import validate_json
+
+    try:
+        validate_json(record)
+    except ValidationError as exc:
+        location = ".".join(str(part) for part in exc.absolute_path) or "<record>"
+        raise ValueError(
+            f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
+        ) from exc
+
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.
     if public_key_or_jwk is None:
@@ -377,8 +396,10 @@ def verify_record(
 
     if isinstance(public_key_or_jwk, dict):
         pub = _pubkey_from_jwk(public_key_or_jwk)
+        trusted_jwk = public_key_or_jwk
     else:
         pub = public_key_or_jwk
+        trusted_jwk = _jwk_from_public_key(pub)
 
     # Revocation: signature validity is permanent, trust is not. A key compromised
     # after issuance still produces records that verify, so the only place the
@@ -390,19 +411,35 @@ def verify_record(
     # allow_embedded_key=True the two are the same object, and that path is already
     # documented as proving internal consistency only.
     if revocation is not None:
-        trusted_jwk = (
-            public_key_or_jwk
-            if isinstance(public_key_or_jwk, dict)
-            else _jwk_from_public_key(pub)
-        )
         _check_not_revoked(trusted_jwk, revocation)
 
+    # The signature binding is defined as a signature made by the key in cnf.
+    # Verifying with a caller-pinned key is necessary for authenticity, but it
+    # must not permit a trusted signer to authenticate a record that names a
+    # different confirmation key for downstream proof-of-possession checks.
+    cnf = record.get("cnf")
+    embedded_jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
+    if not isinstance(embedded_jwk, dict):
+        raise ValueError("record has no valid cnf.jwk confirmation key")
+    _pubkey_from_jwk(embedded_jwk)
+    if not compare_digest(jwk_thumbprint(embedded_jwk), jwk_thumbprint(trusted_jwk)):
+        raise ValueError(
+            "record cnf.jwk does not identify the trusted key that verifies its signature"
+        )
+
     # Freshness: bound the age of the record against its issued-at timestamp.
+    if max_future_skew_seconds < 0:
+        raise ValueError("max_future_skew_seconds must be non-negative")
+    iat = record.get("iat")
+    if not isinstance(iat, int) or isinstance(iat, bool):
+        raise ValueError("record has no valid integer 'iat' for freshness check")
+    age = time.time() - iat
+    if age < -max_future_skew_seconds:
+        raise ValueError(
+            f"record is dated {int(-age)}s in the future, exceeds "
+            f"max_future_skew_seconds={max_future_skew_seconds}"
+        )
     if max_age_seconds is not None:
-        iat = record.get("iat")
-        if not isinstance(iat, int | float) or isinstance(iat, bool):
-            raise ValueError("record has no valid integer 'iat' for freshness check")
-        age = time.time() - iat
         if age > max_age_seconds:
             raise ValueError(
                 f"record is stale: iat is {int(age)}s old, exceeds max_age_seconds="

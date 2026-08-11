@@ -15,6 +15,26 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **Release gates now fail closed.** CodeQL analysis failures block instead of being ignored. Before trusted PyPI publication, clean virtual environments install and verify both the built wheel and source distribution outside the checkout, checking tag/version identity, packaged schema resources, signing and verification, and rejection of unknown security fields.
 
+### Fixed
+
+- **Local test runs now always exercise the checkout.** Pytest prepends `src` to its import path, and a regression test asserts that `agentrust_trace` resolves to the repository source. A stale installed wheel can no longer shadow current security fixes and produce misleading failures or passes.
+
+### Fixed
+
+- **The confirmation key must now match the trusted signing key.** `verify_record()` compares the RFC 7638 thumbprints of `cnf.jwk` and the caller-supplied trusted key before accepting the signature. A trusted signer can no longer produce a record that verifies under one key while naming another key for downstream proof-of-possession checks.
+
+- **`verify_record()` now enforces the canonical v0.2 JSON Schema.** A cryptographically valid signature no longer causes an object with unknown fields, missing required claims, or invalid nested values to be accepted as a verified TRACE record. Schema failures are surfaced as `ValueError` with the failing field path.
+
+### Fixed
+
+- **Future-dated records no longer create an unbounded freshness window.** `verify_record()` now rejects an `iat` later than the verifier's clock plus `max_future_skew_seconds` (default 5 minutes), independently of the maximum-age check. The v0.2 freshness requirements and verification tutorial document both bounds.
+
+## [0.9.0] — 2026-08-09
+
+### Documentation
+
+- **The security policy now describes the software that is actually released.** It puts the Python signing and verification APIs, schemas, adapters, packaging, and release automation in scope; lists TRACE v0.2 and `agentrust-trace` 0.x as supported; and marks the superseded v0.1 profile unsupported.
+
 ## [0.9.0] — 2026-08-09
 
 ### Added

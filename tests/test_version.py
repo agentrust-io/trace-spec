@@ -13,6 +13,7 @@ tagging a version that is not semver.
 
 from __future__ import annotations
 
+import inspect
 import pathlib
 import re
 import tomllib
@@ -25,6 +26,14 @@ import agentrust_trace
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _PYPROJECT = _ROOT / "pyproject.toml"
 _INIT = _ROOT / "src" / "agentrust_trace" / "__init__.py"
+
+
+def test_test_suite_imports_checkout_source() -> None:
+    """A stale installed wheel must never shadow the source being tested."""
+    imported = pathlib.Path(inspect.getfile(agentrust_trace)).resolve()
+    assert imported == _INIT.resolve(), (
+        f"tests imported agentrust_trace from {imported}, not the checkout at {_INIT.resolve()}"
+    )
 
 
 def _declared_version() -> str:
