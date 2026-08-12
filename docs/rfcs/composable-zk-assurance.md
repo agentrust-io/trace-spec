@@ -4,7 +4,7 @@
 **Author:** Florian Kluge
 **Contact:** florian.kluge@o1labs.org
 **Organisation:** o1Labs
-**Scope:** Non-breaking assurance model extension
+**Scope:** Informative assurance-model proposal; normative implementation requires follow-up changes
 **Target:** TRACE specification
 **Primary topic:** Zero-knowledge proof as a composable mechanism
 
@@ -125,7 +125,7 @@ In particular, a ZK-only profile can provide independently verifiable computatio
 
 This RFC therefore does not propose mapping ZK onto a new position in the existing trust-level ladder. Instead, it identifies a need for follow-up conformance work so that relying parties can evaluate orthogonal assurance properties without reducing them to a single scalar level.
 
-Future normative work may require changes to the TRACE conformance model and runtime checks to represent these assurance profiles correctly.
+Future normative work will need to address §7 conformance and the `TR-RTE` runtime checks so that relying parties can represent ZK computation assurance independently of hardware-runtime assurance.
 
 ## Relying-party interpretation
 
@@ -206,6 +206,8 @@ These assumptions are proof-system dependent. For example, some proof systems re
 
 TRACE can remain proof-system neutral at the assurance-model level, but a concrete ZK profile must identify the proof system and the assumptions required to verify its claims.
 
+A future normative ZK profile should extend §2.3 so that TRACE soundness is conditional on the TCB of the selected assurance mechanisms rather than only on a silicon root of trust.
+
 ### 3. Input authenticity
 
 **Input authenticity** means evidence that an input came from the claimed source and that the proof or record is bound to that exact input.
@@ -274,6 +276,8 @@ decision_or_output_commitment
 ```
 
 `program_id` is security-critical: it identifies the exact computation whose execution the proof attests to. A verifier must not treat two programs as equivalent unless their identifiers resolve to the same defined computation under the applicable verification rules.
+
+A concrete ZK profile MUST define a canonical derivation and comparison rule for `program_id` that uniquely identifies the verifier-relevant computation. Human-readable names or implementation-local identifiers are insufficient.
 
 The proof and the TRACE record must also satisfy a **same-values binding** requirement. The public inputs and commitments verified by the proof must be cryptographically bound to the exact corresponding TRACE claims, or to an unambiguous digest of those claims.
 
@@ -387,7 +391,7 @@ ZK assurance should be represented as an orthogonal, composable assurance mechan
 
 ## Compatibility
 
-This RFC is an informative and non-breaking proposal, but implementing ZK assurance in the current TRACE record format will require normative follow-up work.
+This RFC is informative and does not itself change TRACE conformance. Implementing the proposed assurance model in the current TRACE record format requires normative schema, verifier, and conformance work.
 
 The current TRACE schema does not provide a generic extension point for unknown assurance evidence. A ZK evidence block therefore cannot be added to an existing TRACE record and ignored by older verifiers. A verifier that validates the current closed schema will reject an unknown field.
 
