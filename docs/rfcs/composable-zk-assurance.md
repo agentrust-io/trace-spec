@@ -214,6 +214,8 @@ destination_or_tool
 decision_or_output_commitment
 ```
 
+These proof inputs must be cryptographically bound to the same values represented by the corresponding TRACE claims. A valid proof and a valid TRACE record are insufficient if they can refer to different values. The binding must define an unambiguous mapping to TRACE claims and use canonical encoding, domain separation and explicit algorithm identifiers.
+
 The exact fields and encoding are outside the initial scope of this proposal.
 
 The verifier can use the proof to establish a statement such as:
@@ -224,7 +226,7 @@ This provides a hardware-independent path for computation assurance.
 
 ## TEE + ZK composition
 
-ZK can also add computation assurance to a TEE-backed TRACE deployment.
+ZK can also add computation assurance to a TEE-backed TRACE deployment. The transcript commitment used by the ZK proof must be the same commitment authenticated by the TEE evidence; independently valid TEE and ZK evidence is insufficient without this binding.
 
 For example, a cMCP gateway can authenticate runtime events inside a TEE and create a signed commitment to the execution transcript.
 
