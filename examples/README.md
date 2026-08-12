@@ -27,6 +27,11 @@ checking any archived record, including these.
 - `action-receipts/`: informative fixture shapes for action-level receipt
   verification. These are not TRACE Trust Records and are not validated against
   `schema/trace-claim.json`.
+- `build-provenance-depth/`: six vectors that separate the three depths a verifier can
+  stop at when checking `build_provenance`. Each is accepted by the depth below it and
+  rejected by the depth in its filename, so a verifier's stopping point is visible in
+  its verdicts. Informative: not Trust Records, not validated against
+  `schema/trace-claim.json`. See that directory's README.
 - `canonicalization-boundary/`: three signed Trust Records that separate an
   RFC 8785-conformant canonicalizer from `json.dumps(sort_keys=True)`, which
   §3.2.2 requires and names as insufficient. Each file is a test-vector envelope;
