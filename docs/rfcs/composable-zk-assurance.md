@@ -395,16 +395,18 @@ This RFC is informative and does not itself change TRACE conformance. Implementi
 
 The current TRACE schema does not provide a generic extension point for unknown assurance evidence. A ZK evidence block therefore cannot be added to an existing TRACE record and ignored by older verifiers. A verifier that validates the current closed schema will reject an unknown field.
 
-A future implementation should define ZK evidence as an explicit optional TRACE member, following the existing pattern used for other optional evidence. This keeps the evidence inside the signed TRACE record and therefore binds its integrity to the record signature.
+A future normative ZK EAT profile should define ZK evidence as an explicit signed TRACE member, following the existing pattern used for optional evidence fields. This keeps the evidence inside the signed TRACE record and therefore binds its integrity to the record signature.
 
 Existing TRACE records that do not contain ZK evidence should remain valid. However, a verifier must explicitly support the future ZK evidence representation before it can accept and evaluate a TRACE record that uses that assurance composition.
 
-A normative ZK representation also depends on how TRACE identifies records with additional assurance semantics through `eat_profile`. A ZK-bearing record cannot claim semantics that an existing `trace-v0.2` verifier does not implement while using the same profile identifier without an explicit compatibility rule.
+A normative ZK representation also requires a distinct EAT profile identifier under the current TRACE versioning model.
 
-Future normative work must therefore define either a distinct EAT profile identifier for records that use ZK assurance evidence, or compatible-version semantics that allow the existing profile identifier to evolve safely. This RFC does not select between those approaches.
+The current `trace-v0.2` profile identifies the semantics defined by TRACE v0.2, and existing v0.2 verifiers require that exact identifier before verification. A record that introduces additional ZK assurance semantics therefore cannot continue to identify itself as `trace-v0.2` without changing the meaning of that profile identifier.
+
+Future normative work should define a new EAT profile identifier for TRACE records that carry ZK assurance semantics. If TRACE later introduces explicit compatible-version or extension semantics for `eat_profile`, that versioning model can be revisited separately.
 
 The exact schema fields and verifier behavior remain follow-up normative work.
 
 ## Next Steps
 
-Detailed wire-format changes, required fields, proof-system identifiers and conformance requirements can be specified in follow-up work after the assurance model is accepted. Follow-up normative work must also resolve the EAT profile/versioning semantics for TRACE records that carry ZK assurance evidence. This RFC is proof-system neutral and does not require a specific ZK proof system; the choice of proving system remains an implementation detail.
+Detailed wire-format changes, required fields, proof-system identifiers and conformance requirements can be specified in follow-up work after the assurance model is accepted. Follow-up normative work must define the EAT profile identifier for TRACE records that carry ZK assurance semantics. Any future compatible-version or extension mechanism for `eat_profile` is a separate TRACE versioning concern and is outside the scope of this RFC. This RFC is proof-system neutral and does not require a specific ZK proof system; the choice of proving system remains an implementation detail.
