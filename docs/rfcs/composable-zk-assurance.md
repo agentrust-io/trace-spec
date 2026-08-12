@@ -168,7 +168,7 @@ A valid ZK proof only proves the statement that was encoded in the proof. If an 
 
 A verified ZK proof can be used to **gate a downstream action**. The proof verifier and the enforcement point do not need to run inside the TEE.
 
-For example, an external credential or tool gateway can verify the proof before releasing a credential, forwarding a request, or allowing an action to proceed. If the proof is invalid or missing, the gateway blocks the action.
+For example, an external credential or tool gateway can verify the proof before releasing a credential, forwarding a request, or allowing an action to proceed. The gateway must verify both the validity of the proof and its applicability to the current request. The proven statement must bind the intended action or audience, authorization scope, relevant session/state and freshness information such as an expiry or nonce. The gateway must reject missing, invalid, stale, replayed, mismatched or unsupported proofs.
 
 ```
 Proven execution
@@ -178,6 +178,8 @@ Proven execution
       |
       v
 External verifier / gate
+    - verify proof
+    - verify request/context binding
       |
       v
 Downstream action
