@@ -344,16 +344,16 @@ This composition provides different layers of assurance:
 
 The mechanisms provide different properties.
 
-| Security property                                              | Software | ZK                                                              | TEE                                         | TEE + ZK                                                         |
-| -------------------------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
-| Records a policy decision                                      | Yes      | Yes                                                             | Yes                                         | Yes                                                              |
-| Independently proves a specified computation                   | No       | Yes                                                             | No, unless separately proven                | Yes                                                              |
+| Security property                                              | Software | ZK                                                              | TEE                                         | TEE + ZK                                                                                                  |
+| -------------------------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Records a policy decision                                      | Yes      | Yes                                                             | Yes                                         | Yes                                                                                                       |
+| Independently proves a specified computation                   | No       | Yes                                                             | No, unless separately proven                | Yes                                                                                                       |
 | Independently verifiable computation without trusted hardware  | No       | Yes                                                             | No                                          | Yes for computation; the overall assurance composition additionally depends on the TEE for runtime claims |
-| Attests a measured protected runtime                           | No       | No                                                              | Yes                                         | Yes                                                              |
-| Protects runtime secrets from the host                         | No       | No                                                              | Yes, subject to TEE guarantees              | Yes, subject to TEE guarantees                                   |
-| Can protect runtime credentials                                | No       | No                                                              | Yes                                         | Yes                                                              |
-| Can prove selective claims without disclosing the full witness | No       | Yes, when zero knowledge is provided by the proof configuration | No                                          | Yes                                                              |
-| Can support proof-gated action enforcement                     | No       | Yes, with a proof-verifying enforcement point                   | No, unless the TEE controls the action path | Yes                                                              |
+| Attests a measured protected runtime                           | No       | No                                                              | Yes                                         | Yes                                                                                                       |
+| Protects runtime secrets from the host                         | No       | No                                                              | Yes, subject to TEE guarantees              | Yes, subject to TEE guarantees                                                                            |
+| Can protect runtime credentials                                | No       | No                                                              | Yes                                         | Yes                                                                                                       |
+| Can prove selective claims without disclosing the full witness | No       | Yes, when zero knowledge is provided by the proof configuration | No                                          | Yes                                                                                                       |
+| Can support proof-gated action enforcement                     | No       | Yes, with a proof-verifying enforcement point                   | No, unless the TEE controls the action path | Yes                                                                                                       |
 
 Transparency and durability mechanisms can compose with compatible assurance compositions independently of this table. They can also provide durable, externally verifiable evidence that a verifier or downstream gate can rely on after the original execution has completed.
 
@@ -404,6 +404,8 @@ A normative ZK representation also requires a distinct EAT profile identifier un
 The current `trace-v0.2` profile identifies the semantics defined by TRACE v0.2, and existing v0.2 verifiers require that exact identifier before verification. A record that introduces additional ZK assurance semantics therefore cannot continue to identify itself as `trace-v0.2` without changing the meaning of that profile identifier.
 
 Future normative work should define a new EAT profile identifier for TRACE records that carry ZK assurance semantics. If TRACE later introduces explicit compatible-version or extension semantics for `eat_profile`, that versioning model can be revisited separately.
+
+This also gives existing v0.2 verifiers the correct fail-closed behavior: they can reject a ZK-bearing record as using an unsupported EAT profile before attempting schema or cryptographic verification, rather than treating the record as malformed v0.2.
 
 The exact schema fields and verifier behavior remain follow-up normative work.
 
