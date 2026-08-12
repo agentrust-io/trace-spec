@@ -16,7 +16,7 @@ This proposal adds **zero-knowledge proofs** as an additional mechanism that can
 
 **TEE attestation and ZK proofs establish different properties.** TEE attestation can establish properties about the measured runtime and execution boundary, while ZK can establish properties about a defined computation. They can therefore be used independently or composed when both types of assurance are required.
 
-The proposal does not define zero-knowledge proofs as a trust level above or below a Trusted Execution Environment. ZK proofs and TEEs provide different security properties and rely on different trust assumptions. A ZK-based profile relies on the soundness of the proof system, the correct identification of the proven program or policy, authenticated and committed inputs and correct proof verification. A TEE-based profile relies on the hardware vendor and attestation chain, the measured workload and the correct deployment of the trusted runtime. In return, ZK can provide independently verifiable computation integrity without trusted hardware, while a TEE can provide runtime isolation, host confidentiality and protected credential handling. The two mechanisms can be used independently or composed when an implementation requires both sets of properties.
+The proposal does not define zero-knowledge proofs as a trust level above or below a Trusted Execution Environment. ZK proofs and TEEs provide different security properties and rely on different trust assumptions. A ZK-based assurance composition relies on the soundness of the proof system, the correct identification of the proven program or policy, authenticated and committed inputs and correct proof verification. A TEE-based assurance composition relies on the hardware vendor and attestation chain, the measured workload and the correct deployment of the trusted runtime. In return, ZK can provide independently verifiable computation integrity without trusted hardware, while a TEE can provide runtime isolation, host confidentiality and protected credential handling. The two mechanisms can be used independently or composed when an implementation requires both sets of properties.
 
 Instead, TRACE should support a **non-linear, composable assurance model**. An implementer can select and combine assurance mechanisms according to the required **security, privacy, verification and deployment properties**.
 
@@ -44,7 +44,7 @@ TRACE
 
 _SCITT = Supply Chain Integrity, Transparency and Trust, a transparency architecture that can provide durable, independently verifiable evidence._
 
-These branches can exist independently where the TRACE profile permits it or they can combine into a stronger assurance profile for a specific set of security properties.
+These branches can exist independently where the applicable assurance composition permits it or they can combine into a stronger assurance composition for a specific set of security properties.
 
 ## Motivation
 
@@ -66,20 +66,20 @@ A ZK proof can answer questions such as:
 - Did the computation produce this decision or state transition?
 - Does a committed execution transcript satisfy a defined policy claim without revealing the underlying private values or full transcript?
 
-Because ZK proofs and TEEs provide assurance about different properties, they cannot be placed in a single general hierarchy. A profile can provide stronger assurance for one property while providing less assurance for another.
+Because ZK proofs and TEEs provide assurance about different properties, they cannot be placed in a single general hierarchy. An assurance composition can provide stronger assurance for one property while providing less assurance for another.
 
 For example, ZK can provide independently verifiable computation integrity, while a TEE can provide runtime isolation, confidentiality and protected credential handling. The next section expands on this distinction and defines a composable assurance model for TRACE.
 
-## Proposed model: composable assurance profiles
+## Proposed model: composable assurance
 
 This section expands on the distinction above by modeling TRACE assurance as a set of mechanisms that can fan out across different assurance properties and recombine when multiple properties are required.
 
-An **assurance profile** is the set of assurance mechanisms that support the claims made by a TRACE record.
+An **assurance composition** is the set of assurance mechanisms that support the claims made by a TRACE record.
 
 Conceptually:
 
 ```
-                    TRACE assurance profile
+                    TRACE assurance composition
                               |
           +-------------------+-------------------+
           |                   |                   |
@@ -103,7 +103,7 @@ ZK and TEE are **peer assurance mechanisms**. Neither mechanism is defined as th
 
 The model can fan out according to the assurance property that an implementation requires and recombine when multiple properties are required.
 
-Example profiles include:
+Example assurance compositions include:
 
 ```
 A. Software TRACE
@@ -119,9 +119,9 @@ E. TRACE + TEE + SCITT
 F. TRACE + TEE + ZK + SCITT
 ```
 
-The existing TRACE trust levels do not currently express all of the assurance profiles described here.
+The existing TRACE trust levels do not currently express all of the assurance compositions described here.
 
-In particular, a ZK-only profile can provide independently verifiable computation assurance while still using a software runtime. Under the current linear runtime-oriented trust-level model, that profile remains associated with the software-only level even though it provides an additional cryptographic assurance property.
+In particular, a ZK-only assurance composition can provide independently verifiable computation assurance while still using a software runtime. Under the current linear runtime-oriented trust-level model, that assurance composition remains associated with the software-only level even though it provides an additional cryptographic assurance property.
 
 This RFC therefore does not propose mapping ZK onto a new position in the existing trust-level ladder. Instead, it identifies a need for follow-up conformance work so that relying parties can evaluate orthogonal assurance properties without reducing them to a single scalar level.
 
@@ -129,7 +129,7 @@ Future normative work will need to address §7 conformance and the `TR-RTE` runt
 
 ## Relying-party interpretation
 
-An assurance profile must distinguish between:
+An assurance composition must distinguish between:
 
 1. **evidence presence** — the record contains or references an assurance artifact;
 2. **evidence verification** — the artifact has been successfully verified under a defined verification policy and context;
@@ -154,14 +154,14 @@ claim supported
 
 A relying party should only treat a claim as supported when the required evidence verifies successfully and is bound to that claim.
 
-The assurance profile must also define how multiple mechanisms relate to a claim. Where several mechanisms are required together, all required mechanisms must verify (`AND`). Where a profile permits alternative mechanisms, successful verification of one permitted mechanism can be sufficient (`OR`). The applicable rule must be explicit rather than inferred from evidence presence.
+The assurance composition must also define how multiple mechanisms relate to a claim. Where several mechanisms are required together, all required mechanisms must verify (`AND`). Where an assurance composition permits alternative mechanisms, successful verification of one permitted mechanism can be sufficient (`OR`). The applicable rule must be explicit rather than inferred from evidence presence.
 
 A relying party should handle the following cases explicitly:
 
 - **Unsupported mechanism:** the relying party must not treat the associated claim as verified through that mechanism.
 - **Verification failure:** the associated assurance claim fails.
 - **Valid but unrelated evidence:** evidence that verifies successfully but is not bound to the claim being evaluated does not support that claim.
-- **Multiple mechanisms:** the verifier must apply the profile's explicit AND/OR requirements.
+- **Multiple mechanisms:** the verifier must apply the assurance composition's explicit AND/OR requirements.
 
 ## Assurance dimensions
 
@@ -193,7 +193,7 @@ A ZK proof alone does not provide these runtime properties.
 
 ### ZK trust assumptions
 
-A ZK-based assurance profile has its own Trusted Computing Base (TCB). Its guarantees depend on at least:
+A ZK-based assurance composition has its own Trusted Computing Base (TCB). Its guarantees depend on at least:
 
 - the soundness of the selected proof system;
 - correct implementation of the verifier;
@@ -204,9 +204,9 @@ A ZK-based assurance profile has its own Trusted Computing Base (TCB). Its guara
 
 These assumptions are proof-system dependent. For example, some proof systems require no trusted setup, while others rely on circuit-specific or universal setup parameters.
 
-TRACE can remain proof-system neutral at the assurance-model level, but a concrete ZK profile must identify the proof system and the assumptions required to verify its claims.
+TRACE can remain proof-system neutral at the assurance-model level, but a concrete ZK assurance composition must identify the proof system and the assumptions required to verify its claims.
 
-A future normative ZK profile should extend §2.3 so that TRACE soundness is conditional on the TCB of the selected assurance mechanisms rather than only on a silicon root of trust.
+A future normative ZK assurance composition should extend §2.3 so that TRACE soundness is conditional on the TCB of the selected assurance mechanisms rather than only on a silicon root of trust.
 
 ### 3. Input authenticity
 
@@ -260,7 +260,7 @@ Privacy is not implied by the presence of a computation proof. It requires that 
 
 **Privacy assurance** means that a verifier can confirm a required claim without receiving the complete underlying data. ZK can provide this by proving statements over private inputs, committed execution data or authenticated receipts while keeping sensitive values hidden.
 
-For example, a verifier could confirm that all payments in a session were below EUR 10,000, that only approved tools were used or that an external service returned an acceptable result without seeing the full transcript, exact values, or complete receipt. In a TEE + ZK profile, the TEE can authenticate the underlying execution evidence, while ZK enables selective disclosure of only the claims the verifier needs.
+For example, a verifier could confirm that all payments in a session were below EUR 10,000, that only approved tools were used or that an external service returned an acceptable result without seeing the full transcript, exact values, or complete receipt. In a TEE + ZK assurance composition, the TEE can authenticate the underlying execution evidence, while ZK enables selective disclosure of only the claims the verifier needs.
 
 ## ZK assurance branch
 
@@ -277,7 +277,7 @@ decision_or_output_commitment
 
 `program_id` is security-critical: it identifies the exact computation whose execution the proof attests to. A verifier must not treat two programs as equivalent unless their identifiers resolve to the same defined computation under the applicable verification rules.
 
-A concrete ZK profile MUST define a canonical derivation and comparison rule for `program_id` that uniquely identifies the verifier-relevant computation. Human-readable names or implementation-local identifiers are insufficient.
+A concrete ZK assurance composition MUST define a canonical derivation and comparison rule for `program_id` that uniquely identifies the verifier-relevant computation. Human-readable names or implementation-local identifiers are insufficient.
 
 The proof and the TRACE record must also satisfy a **same-values binding** requirement. The public inputs and commitments verified by the proof must be cryptographically bound to the exact corresponding TRACE claims, or to an unambiguous digest of those claims.
 
@@ -290,7 +290,7 @@ The binding must define:
 - domain separation for commitments or hashes used for different purposes;
 - explicit algorithm identifiers where cryptographic algorithms are used.
 
-The exact wire-format fields remain outside the initial scope of this proposal. However, computation identity and same-values binding are requirements of the assurance model and must be defined unambiguously by any concrete profile.
+The exact wire-format fields remain outside the initial scope of this proposal. However, computation identity and same-values binding are requirements of the assurance model and must be defined unambiguously by any concrete assurance composition.
 
 The verifier can use the proof to establish a statement such as:
 
@@ -348,14 +348,14 @@ The mechanisms provide different properties.
 | -------------------------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
 | Records a policy decision                                      | Yes      | Yes                                                             | Yes                                         | Yes                                                              |
 | Independently proves a specified computation                   | No       | Yes                                                             | No, unless separately proven                | Yes                                                              |
-| Independently verifiable computation without trusted hardware  | No       | Yes                                                             | No                                          | Yes for computation; the overall profile additionally depends on the TEE for runtime claims |
+| Independently verifiable computation without trusted hardware  | No       | Yes                                                             | No                                          | Yes for computation; the overall assurance composition additionally depends on the TEE for runtime claims |
 | Attests a measured protected runtime                           | No       | No                                                              | Yes                                         | Yes                                                              |
 | Protects runtime secrets from the host                         | No       | No                                                              | Yes, subject to TEE guarantees              | Yes, subject to TEE guarantees                                   |
 | Can protect runtime credentials                                | No       | No                                                              | Yes                                         | Yes                                                              |
 | Can prove selective claims without disclosing the full witness | No       | Yes, when zero knowledge is provided by the proof configuration | No                                          | Yes                                                              |
 | Can support proof-gated action enforcement                     | No       | Yes, with a proof-verifying enforcement point                   | No, unless the TEE controls the action path | Yes                                                              |
 
-Transparency and durability mechanisms can compose with compatible profiles independently of this table. They can also provide durable, externally verifiable evidence that a verifier or downstream gate can rely on after the original execution has completed.
+Transparency and durability mechanisms can compose with compatible assurance compositions independently of this table. They can also provide durable, externally verifiable evidence that a verifier or downstream gate can rely on after the original execution has completed.
 
 ## Non-goals
 
@@ -387,7 +387,7 @@ The specification should define how ZK evidence can:
 5. support real-time enforcement when a verifier checks the proof before an action;
 6. support post-hoc evidence when proof verification occurs after an action
 
-ZK assurance should be represented as an orthogonal, composable assurance mechanism rather than a new linear trust level. Follow-up normative work is required so that conformance and relying-party evaluation can represent the assurance profiles described here without reducing them to a single scalar trust level.
+ZK assurance should be represented as an orthogonal, composable assurance mechanism rather than a new linear trust level. Follow-up normative work is required so that conformance and relying-party evaluation can represent the assurance compositions described here without reducing them to a single scalar trust level.
 
 ## Compatibility
 
@@ -397,10 +397,14 @@ The current TRACE schema does not provide a generic extension point for unknown 
 
 A future implementation should define ZK evidence as an explicit optional TRACE member, following the existing pattern used for other optional evidence. This keeps the evidence inside the signed TRACE record and therefore binds its integrity to the record signature.
 
-Existing TRACE records that do not contain ZK evidence should remain valid. However, a verifier must explicitly support the future ZK evidence representation before it can accept and evaluate a TRACE record that uses that profile.
+Existing TRACE records that do not contain ZK evidence should remain valid. However, a verifier must explicitly support the future ZK evidence representation before it can accept and evaluate a TRACE record that uses that assurance composition.
+
+A normative ZK representation also depends on how TRACE identifies records with additional assurance semantics through `eat_profile`. A ZK-bearing record cannot claim semantics that an existing `trace-v0.2` verifier does not implement while using the same profile identifier without an explicit compatibility rule.
+
+Future normative work must therefore define either a distinct EAT profile identifier for records that use ZK assurance evidence, or compatible-version semantics that allow the existing profile identifier to evolve safely. This RFC does not select between those approaches.
 
 The exact schema fields and verifier behavior remain follow-up normative work.
 
 ## Next Steps
 
-Detailed wire-format changes, required fields, proof-system identifiers and conformance requirements can be specified in follow-up work after the assurance model is accepted. This RFC is proof-system neutral and does not require a specific ZK proof system; the choice of proving system remains an implementation detail.
+Detailed wire-format changes, required fields, proof-system identifiers and conformance requirements can be specified in follow-up work after the assurance model is accepted. Follow-up normative work must also resolve the EAT profile/versioning semantics for TRACE records that carry ZK assurance evidence. This RFC is proof-system neutral and does not require a specific ZK proof system; the choice of proving system remains an implementation detail.
