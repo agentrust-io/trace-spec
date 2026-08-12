@@ -50,7 +50,7 @@ These branches can exist independently where the TRACE profile permits it or the
 
 A **Trusted Execution Environment (TEE)** is a hardware-backed isolated execution environment. A TEE can provide runtime isolation, hardware-rooted attestation, host confidentiality and protected credential handling.
 
-A **zero-knowledge proof (ZK proof)** is a cryptographic proof that lets a verifier check a defined computation or statement without requiring access to all private inputs. For TRACE, a ZK proof can provide independently verifiable evidence that an identified program correctly evaluated committed inputs and produced a claimed result.
+A **proof of computation** is a cryptographic proof that lets a verifier check that a defined computation was performed correctly. For TRACE, this can provide independently verifiable evidence that an identified program evaluated committed inputs and produced a claimed result. Zero knowledge is an additional privacy property: where supported by the selected proof system and configuration, the proof can establish the claim without revealing the private witness.
 
 These mechanisms answer different questions.
 
@@ -195,6 +195,8 @@ This dimension is independent of whether computation assurance is based on softw
 
 ### 6. Privacy
 
+Privacy is not implied by the presence of a computation proof. It requires that the selected proof system and configuration provide the required zero-knowledge guarantees for the private witness, subject to their setup and implementation assumptions.
+
 **Privacy assurance** means that a verifier can confirm a required claim without receiving the complete underlying data. ZK can provide this by proving statements over private inputs, committed execution data or authenticated receipts while keeping sensitive values hidden.
 
 For example, a verifier could confirm that all payments in a session were below EUR 10,000, that only approved tools were used or that an external service returned an acceptable result without seeing the full transcript, exact values, or complete receipt. In a TEE + ZK profile, the TEE can authenticate the underlying execution evidence, while ZK enables selective disclosure of only the claims the verifier needs.
@@ -264,16 +266,16 @@ This composition provides different layers of assurance:
 
 The mechanisms provide different properties.
 
-| Security property                                              | Software | ZK                                            | TEE                                         | TEE + ZK                       |
-| -------------------------------------------------------------- | -------- | --------------------------------------------- | ------------------------------------------- | ------------------------------ |
-| Records a policy decision                                      | Yes      | Yes                                           | Yes                                         | Yes                            |
-| Independently proves a specified computation                   | No       | Yes                                           | No, unless separately proven                | Yes                            |
-| Hardware-independent computation assurance                     | No       | Yes                                           | No                                          | No                             |
-| Attests a measured protected runtime                           | No       | No                                            | Yes                                         | Yes                            |
-| Protects runtime secrets from the host                         | No       | No                                            | Yes, subject to TEE guarantees              | Yes, subject to TEE guarantees |
-| Can protect runtime credentials                                | No       | No                                            | Yes                                         | Yes                            |
-| Can prove selective claims without disclosing the full witness | No       | Yes                                           | No                                          | Yes                            |
-| Can support proof-gated action enforcement                     | No       | Yes, with a proof-verifying enforcement point | No, unless the TEE controls the action path | Yes                            |
+| Security property                                              | Software | ZK                                                              | TEE                                         | TEE + ZK                       |
+| -------------------------------------------------------------- | -------- | --------------------------------------------------------------- | ------------------------------------------- | ------------------------------ |
+| Records a policy decision                                      | Yes      | Yes                                                             | Yes                                         | Yes                            |
+| Independently proves a specified computation                   | No       | Yes                                                             | No, unless separately proven                | Yes                            |
+| Hardware-independent computation assurance                     | No       | Yes                                                             | No                                          | No                             |
+| Attests a measured protected runtime                           | No       | No                                                              | Yes                                         | Yes                            |
+| Protects runtime secrets from the host                         | No       | No                                                              | Yes, subject to TEE guarantees              | Yes, subject to TEE guarantees |
+| Can protect runtime credentials                                | No       | No                                                              | Yes                                         | Yes                            |
+| Can prove selective claims without disclosing the full witness | No       | Yes, when zero knowledge is provided by the proof configuration | No                                          | Yes                            |
+| Can support proof-gated action enforcement                     | No       | Yes, with a proof-verifying enforcement point                   | No, unless the TEE controls the action path | Yes                            |
 
 Transparency and durability mechanisms can compose with compatible profiles independently of this table. They can also provide durable, externally verifiable evidence that a verifier or downstream gate can rely on after the original execution has completed.
 
