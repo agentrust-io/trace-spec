@@ -106,7 +106,7 @@ Build-time provenance binding the deployed artifact.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `slsa_level` | integer | **yes** | SLSA provenance level (0–3) |
-| `builder` | string | **yes** | Builder identity URI (e.g., GitHub Actions SLSA generator) |
+| `builder` | string | no | Builder identity URI (e.g., GitHub Actions SLSA generator) |
 | `digest` | string | **yes** | `sha256:` digest of the built artifact |
 | `provenance_uri` | string | no | URI to the SLSA provenance document (e.g., Rekor entry) |
 
