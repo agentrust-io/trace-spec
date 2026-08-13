@@ -93,6 +93,7 @@ plugins:
           - docs/schema.md
         Integration:
           - docs/integration/agt.md
+          - docs/integration/openshell.md
           - docs/integration/cmcp.md
           - docs/integration/sandbox-runtime.md
         Platforms:
@@ -196,6 +197,7 @@ nav:
       - Content Marking v1: spec/content-marking-v1.md
   - Integration:
       - AGT: docs/integration/agt.md
+      - NVIDIA OpenShell: docs/integration/openshell.md
       - cMCP: docs/integration/cmcp.md
       - Sandboxed agent runtimes: docs/integration/sandbox-runtime.md
   - Platforms:
