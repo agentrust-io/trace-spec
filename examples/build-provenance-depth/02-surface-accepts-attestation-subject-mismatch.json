@@ -1,0 +1,136 @@
+{
+  "name": "surface-accepts-attestation-subject-mismatch",
+  "description": "digest matches the artifact and builder is trusted, so Surface accepts. The attestation at provenance_uri is well-formed and names a trusted builder, but its subject is a different image (2.4.0). Nothing binds the attestation to what ran.",
+  "profile": "trace.build_provenance.depth.v0",
+  "context": {
+    "artifact_digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
+    "trusted_builders": [
+      "https://github.com/slsa-framework/slsa-github-generator"
+    ],
+    "trusted_publisher_issuers": [
+      "https://token.actions.githubusercontent.com"
+    ],
+    "attestations": {
+      "https://provenance.example.org/support-agent/2.4.1.intoto.jsonl": {
+        "statement": {
+          "_type": "https://in-toto.io/Statement/v1",
+          "subject": [
+            {
+              "name": "ghcr.io/example-org/support-agent",
+              "digest": {
+                "sha256": "361044e7e99a1e6a47085867f5844ca53387d897fa9ad63610eb60c814c27150"
+              }
+            }
+          ],
+          "predicateType": "https://slsa.dev/provenance/v1",
+          "predicate": {
+            "buildDefinition": {
+              "buildType": "https://slsa.dev/container-based-build/v0.1",
+              "externalParameters": {
+                "source": "git+https://github.com/example-org/support-agent@refs/tags/v2.4.1"
+              },
+              "resolvedDependencies": [
+                {
+                  "uri": "pkg:npm/%40example-org/agent-core@1.8.2",
+                  "digest": {
+                    "sha256": "fb6bfb2c7ffab3de12cbac5639014ae049aafb4dbb36390f251c82f63cf2d2cb"
+                  }
+                },
+                {
+                  "uri": "pkg:pypi/requests@2.32.3",
+                  "digest": {
+                    "sha256": "a30964f520316ef09eb682027001f6f142547f350fadaeef8be4bb1b48f6d49c"
+                  }
+                }
+              ]
+            },
+            "runDetails": {
+              "builder": {
+                "id": "https://github.com/slsa-framework/slsa-github-generator"
+              },
+              "metadata": {
+                "invocationId": "https://github.com/example-org/support-agent/actions/runs/9931"
+              }
+            }
+          }
+        }
+      }
+    },
+    "dependency_attestations": {
+      "pkg:npm/%40example-org/agent-core@1.8.2": {
+        "statement": {
+          "_type": "https://in-toto.io/Statement/v1",
+          "subject": [
+            {
+              "name": "@example-org/agent-core",
+              "digest": {
+                "sha256": "fb6bfb2c7ffab3de12cbac5639014ae049aafb4dbb36390f251c82f63cf2d2cb"
+              }
+            }
+          ],
+          "predicateType": "https://slsa.dev/provenance/v1",
+          "predicate": {
+            "runDetails": {
+              "builder": {
+                "id": "https://github.com/actions/runner"
+              }
+            }
+          }
+        },
+        "verified_identity": {
+          "issuer": "https://token.actions.githubusercontent.com",
+          "subject_alternative_name": "https://github.com/example-org/agent-core/.github/workflows/publish.yml@refs/tags/v1.8.2"
+        }
+      },
+      "pkg:pypi/requests@2.32.3": {
+        "statement": {
+          "_type": "https://in-toto.io/Statement/v1",
+          "subject": [
+            {
+              "name": "requests",
+              "digest": {
+                "sha256": "a30964f520316ef09eb682027001f6f142547f350fadaeef8be4bb1b48f6d49c"
+              }
+            }
+          ],
+          "predicateType": "https://slsa.dev/provenance/v1",
+          "predicate": {
+            "runDetails": {
+              "builder": {
+                "id": "https://github.com/actions/runner"
+              }
+            }
+          }
+        },
+        "verified_identity": {
+          "issuer": "https://token.actions.githubusercontent.com",
+          "subject_alternative_name": "https://github.com/psf/requests/.github/workflows/publish.yml@refs/tags/v2.32.3"
+        }
+      }
+    }
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator",
+    "digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
+    "provenance_uri": "https://provenance.example.org/support-agent/2.4.1.intoto.jsonl"
+  },
+  "expected": {
+    "surface": {
+      "outcome": "accept",
+      "failures": []
+    },
+    "builder_chain": {
+      "outcome": "reject",
+      "failures": [
+        "attestation_subject_mismatch"
+      ]
+    },
+    "dependency_chain": {
+      "outcome": "reject",
+      "failures": [
+        "attestation_subject_mismatch"
+      ]
+    }
+  }
+}

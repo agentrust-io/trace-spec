@@ -1,0 +1,69 @@
+{
+  "name": "builder-chain-accepts-resolved-dependencies-absent",
+  "description": "The attestation binds subject and builder but declares no build inputs. A verifier that walks resolvedDependencies accepts vacuously: the loop has nothing to check. Dependency-chain assurance cannot be met by an attestation that enumerates nothing.",
+  "profile": "trace.build_provenance.depth.v0",
+  "context": {
+    "artifact_digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
+    "trusted_builders": [
+      "https://github.com/slsa-framework/slsa-github-generator"
+    ],
+    "trusted_publisher_issuers": [
+      "https://token.actions.githubusercontent.com"
+    ],
+    "attestations": {
+      "https://provenance.example.org/support-agent/2.4.1.intoto.jsonl": {
+        "statement": {
+          "_type": "https://in-toto.io/Statement/v1",
+          "subject": [
+            {
+              "name": "ghcr.io/example-org/support-agent",
+              "digest": {
+                "sha256": "361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8"
+              }
+            }
+          ],
+          "predicateType": "https://slsa.dev/provenance/v1",
+          "predicate": {
+            "buildDefinition": {
+              "buildType": "https://slsa.dev/container-based-build/v0.1",
+              "externalParameters": {
+                "source": "git+https://github.com/example-org/support-agent@refs/tags/v2.4.1"
+              }
+            },
+            "runDetails": {
+              "builder": {
+                "id": "https://github.com/slsa-framework/slsa-github-generator"
+              },
+              "metadata": {
+                "invocationId": "https://github.com/example-org/support-agent/actions/runs/9931"
+              }
+            }
+          }
+        }
+      }
+    },
+    "dependency_attestations": {}
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "builder": "https://github.com/slsa-framework/slsa-github-generator",
+    "digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
+    "provenance_uri": "https://provenance.example.org/support-agent/2.4.1.intoto.jsonl"
+  },
+  "expected": {
+    "surface": {
+      "outcome": "accept",
+      "failures": []
+    },
+    "builder_chain": {
+      "outcome": "accept",
+      "failures": []
+    },
+    "dependency_chain": {
+      "outcome": "reject",
+      "failures": [
+        "resolved_dependencies_absent"
+      ]
+    }
+  }
+}
