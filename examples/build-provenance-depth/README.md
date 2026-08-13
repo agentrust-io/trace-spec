@@ -54,9 +54,11 @@ catches a verifier whose dependency loop accepts vacuously over an empty list.
 `02` is also the vector for the shortcut of comparing truncated digests. Its mismatching
 subject digest shares the leading 12 hex characters with the real one — the prefix
 container tooling displays — so a verifier comparing short IDs still has to reject it.
-That digest is constructed rather than derived for exactly this reason. The others are
-`sha256("trace-spec/build-provenance-depth/" + label)` over the label naming the
-artifact or package, so they are reproducible and none of them is arbitrary.
+That digest is constructed rather than derived for exactly this reason. The three
+dependency digests are `sha256("trace-spec/build-provenance-depth/" + purl)` over the
+decoded package URL — `pkg:npm/@example-org/agent-core@1.8.2`, not the `%40` form the
+`resolvedDependencies` entry carries — so they regenerate from the file itself. The
+artifact digest the six vectors share is a fixed constant and derives from nothing.
 
 ## What each vector carries
 
