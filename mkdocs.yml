@@ -180,6 +180,7 @@ nav:
       - Quickstart: docs/quickstart.md
       - Trust Levels: docs/trust-levels.md
       - Verification: docs/verification.md
+      - Build Provenance Depth: docs/build-provenance-depth.md
       - Schema Reference: docs/schema.md
       - Glossary: docs/glossary.md
   - Tutorials:
