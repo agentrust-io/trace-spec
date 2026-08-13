@@ -354,3 +354,66 @@ def test_surface_mutation_rejects_at_every_depth() -> None:
     mutated = _mutate(digest="sha256:" + "0" * 64)
     for depth in DEPTHS:
         assert verify(mutated, depth)["outcome"] == "reject"
+
+
+def _checking_only_first(count: int) -> tuple[Rule, ...]:
+    """The rule set of a verifier that walks `resolvedDependencies` and stops early."""
+
+    def truncated(check: Callable[[dict[str, Any]], bool]) -> Callable[[dict[str, Any]], bool]:
+        def run(vector: dict[str, Any]) -> bool:
+            dependencies = _resolved_dependencies(vector)
+            if not dependencies:
+                return check(vector)
+            trimmed = copy.deepcopy(vector)
+            statement = _attestation(trimmed)
+            assert statement is not None
+            build_definition = statement["predicate"]["buildDefinition"]
+            build_definition["resolvedDependencies"] = dependencies[:count]
+            return check(trimmed)
+
+        return run
+
+    walks_the_list = ("dependency_attestation_missing", "dependency_publisher_untrusted")
+    return tuple(
+        Rule(rule.code, rule.depth, truncated(rule.check))
+        if rule.code in walks_the_list
+        else rule
+        for rule in RULES
+    )
+
+
+@pytest.mark.parametrize("count", [1, 2])
+def test_a_verifier_that_stops_early_in_the_dependency_list_is_caught(count: int) -> None:
+    """Distinct failure codes are not enough on their own.
+
+    `test_each_boundary_is_separated_by_two_independent_vectors` asks that the two
+    vectors introduce different codes. A verifier can run every dependency check and
+    still be wrong by running them over too few dependencies, and that defeats distinct
+    codes without emitting one: every check is implemented, so no code is missing.
+
+    Both dependency vectors once placed their defect last, so a verifier reading any
+    proper prefix of the list accepted both while still rejecting the absent-list vector
+    — presenting as a `dependency_chain` verifier having read one dependency of three.
+    At least one vector must therefore fail for a verifier that stops early.
+    """
+    weakened = _checking_only_first(count)
+    walks_the_list = {"dependency_attestation_missing", "dependency_publisher_untrusted"}
+    # Only the vectors whose rejection depends on reading the list. 06 rejects because
+    # the list is absent, which an early-stopping verifier still catches, so counting it
+    # would satisfy this assertion without testing anything.
+    separating = [
+        (name, vector)
+        for name, vector in FIXTURES
+        if verify(vector, "builder_chain")["outcome"] == "accept"
+        and walks_the_list & set(verify(vector, "dependency_chain")["failures"])
+    ]
+    assert separating, "no vector rejects on a rule that walks resolvedDependencies"
+    caught = [
+        name
+        for name, vector in separating
+        if verify(vector, "dependency_chain", weakened)["outcome"] == "reject"
+    ]
+    assert caught, (
+        f"a verifier checking only the first {count} of resolvedDependencies is accepted "
+        f"by every vector that separates this boundary: {[n for n, _ in separating]}"
+    )
