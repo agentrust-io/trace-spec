@@ -133,6 +133,52 @@ For Level 2 records (TEE-issued), additionally verify that the `cnf.jwk` key is 
 
 This chain proves the key that signed the TRACE record was generated *inside* the attested enclave — not by an operator process.
 
+## Verifying build provenance depth
+
+`build_provenance.provenance_depth` declares how far down the supply chain the issuer claims to
+have walked. A verifier MUST record what it actually checked in
+`appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the
+record.
+
+| Claimed depth | Verifier MUST | Verifier MAY downgrade to |
+|---|---|---|
+| `surface` (or absent) | Confirm `digest` matches the workload artifact and `builder` resolves to the configured trusted-builder set. | Already the floor |
+| `builder` | All of surface, plus fetch `provenance_uri`, verify the SLSA attestation signature, check the attestation `subject` matches `digest`, and check the attestation `builder.id` matches `builder`. | `surface`, when `provenance_uri` is unreachable or its signature does not resolve. The appraisal MUST then record the lower depth rather than a failure of the higher one. |
+| `transitive` | All of builder, plus enumerate the SLSA `materials` / `resolvedDependencies` and confirm every entry has a verifiable publisher attestation (npm OIDC, PyPI Trusted Publisher, Sigstore Rekor entry, or platform equivalent). | `builder`, when transitive coverage is unavailable for any input, or `surface` per the row above. |
+
+A verifier MUST NOT record `provenance_depth_verified` at a depth higher than it executed.
+Downgrading is how a verifier stays honest when evidence does not resolve; claiming depth it did
+not run is what the field exists to prevent.
+
+Records that omit `provenance_depth` MUST be treated as `surface`. This keeps every record issued
+before this field existed valid and correctly interpreted.
+
+### Profile floors
+
+Deployment profiles select the minimum acceptable verified depth:
+
+| Profile | Floor |
+|---|---|
+| Default, SLSA L0 to L1 | `surface` |
+| SLSA L2 and above | `builder` |
+| FIPS-aligned, EU AI Act Annex IV high-risk, HIPAA | `transitive` |
+| cMCP reference profile | `builder`, with `transitive` recommended where ecosystem coverage permits |
+
+A verifier whose configured floor is not met by `provenance_depth_verified` MUST set
+`appraisal.status` to `contraindicated`.
+
+### Why depth is recorded rather than assumed
+
+A SLSA attestation produced by a trusted builder is signature-valid even when a maintainer's CI
+token has been stolen and used to publish a poisoned build input. Surface verification accepts
+that record. Transitive verification rejects it, because the poisoned input's publisher
+attestation does not chain back to the legitimate maintainer. Without a recorded depth, two
+conformant verifiers reach opposite conclusions on the same record and neither says why, which
+is the federation gap [section 1](../spec/trace-v0.2.md) names.
+
+[Build provenance depth](build-provenance-depth.md) is the informative companion to this section:
+it states what each depth does not assure.
+
 ## CLI verification
 
 ```bash
@@ -209,7 +255,7 @@ Verification proves *what happened during the recorded session* under the stated
 - Prove the agent's internal reasoning was sound
 - Prove the policy was correctly authored for the intent
 - Prove tool call *contents* (only the hash of the transcript is in v0.1)
-- Prove how the artifact was built past the point the verifier stops walking; [Build provenance depth](build-provenance-depth.md) states what each stopping point leaves unknown
+- Prove how the artifact was built past the depth recorded in `appraisal.provenance_depth_verified`; [Build provenance depth](build-provenance-depth.md) states what each stopping point leaves unknown
 - Prove physical completion or functional-safety compliance for externally consequential actions
 - Replace ongoing monitoring
 

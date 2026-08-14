@@ -109,6 +109,7 @@ Build-time provenance binding the deployed artifact.
 | `builder` | string | no | Builder identity URI (e.g., GitHub Actions SLSA generator) |
 | `digest` | string | **yes** | `sha256:` digest of the built artifact |
 | `provenance_uri` | string | no | URI to the SLSA provenance document (e.g., Rekor entry) |
+| `provenance_depth` | string | no | Depth the issuer claims: `surface`, `builder` or `transitive`. Absent is read as `surface` |
 
 ## `appraisal`
 
@@ -120,6 +121,7 @@ Verifier judgment on the evidence in this record.
 | `verifier` | string | **yes** | URI of the verifier that produced this appraisal |
 | `policy_ref` | string | no | URI to the appraisal policy applied |
 | `timestamp` | integer | no | Unix epoch seconds when appraisal was performed |
+| `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
 
 ## `transparency`
 

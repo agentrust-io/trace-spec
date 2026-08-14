@@ -147,6 +147,9 @@ class BuildProvenance(BaseModel):
     builder: str | None = None
     digest: DigestStr
     provenance_uri: str | None = None
+    # Absent means surface: the shallowest depth, so an existing record keeps its
+    # meaning rather than becoming unverifiable at a depth nobody claimed.
+    provenance_depth: Literal["surface", "builder", "transitive"] | None = None
 
 
 class Appraisal(BaseModel):
@@ -156,6 +159,8 @@ class Appraisal(BaseModel):
     verifier: str
     policy_ref: str | None = None
     timestamp: int | None = None
+    # What this verifier ran, not what the issuer claimed.
+    provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
 
 
 # Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
