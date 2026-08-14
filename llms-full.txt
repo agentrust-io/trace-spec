@@ -337,7 +337,7 @@ Level 1 requires that the signing key be generated inside a verified TEE (AMD SE
 | `runtime.platform`            | Must be `tpm2`, `sev-snp`, `tdx`, or `opaque` (not `software-only`) |
 | `runtime.measurement`         | Non-zero `sha256:` or `sha384:` digest of the TEE launch state      |
 | `appraisal.status`            | Must be `affirming` (verifier has checked the TEE quote)            |
-| `build_provenance.slsa_level` | Must be present (0–4)                                               |
+| `build_provenance.slsa_level` | Must be present (0–3)                                               |
 | `build_provenance.digest`     | Must be a valid `sha256:` digest                                    |
 
 The cMCP runtime handles Level 1 record emission automatically when running in a supported TEE. See [Hardware Attestation Platforms](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md).
