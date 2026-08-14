@@ -209,6 +209,7 @@ Verification proves *what happened during the recorded session* under the stated
 - Prove the agent's internal reasoning was sound
 - Prove the policy was correctly authored for the intent
 - Prove tool call *contents* (only the hash of the transcript is in v0.1)
+- Prove how the artifact was built past the point the verifier stops walking; [Build provenance depth](build-provenance-depth.md) states what each stopping point leaves unknown
 - Prove physical completion or functional-safety compliance for externally consequential actions
 - Replace ongoing monitoring
 

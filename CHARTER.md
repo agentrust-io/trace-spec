@@ -45,7 +45,7 @@ Upon host organization acceptance, governance transitions from the current Proje
 
 All contributions must be made under the terms of [LICENSE](LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
 
-Specification text, schema, examples, and code are licensed under Apache 2.0, the Project License, with Patent Promise. Documentation other than specification text is licensed under CC BY 4.0. Specification text published before the Project License took effect stays available under CC BY 4.0. See [LICENSE](LICENSE).
+Normative specification text and the normative TRACE JSON Schema are licensed under the Community Specification License 1.0. Source code, examples, workflows, and tests are licensed under Apache License 2.0. Documentation other than specification materials is licensed under CC BY 4.0. Earlier specification publications remain available under the licenses stated when they were published. See [LICENSE](LICENSE) and the [license map](Governance/License.md).
 
 ## 5. Trademark Policy
 

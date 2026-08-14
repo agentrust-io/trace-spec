@@ -26,6 +26,7 @@ from agentrust_trace.sign import (
     _canonical_bytes,
     _check_not_revoked,
     _pubkey_from_jwk,
+    jwk_thumbprint,
     key_to_jwk,
 )
 
@@ -218,6 +219,24 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     return {**payload, "signature": sig}
 
 
+def _check_seconds(name: str, value: Any, *, optional: bool = False) -> None:
+    """Reject a malformed policy input instead of silently acting on it.
+
+    A verifier's age policy is configuration, and a wrong one fails in the
+    direction that matters: ``max_age_seconds=-1`` is not a stricter bound, it
+    classifies every record ever issued as stale, and a caller who meant to
+    disable the bound would see a uniform refusal rather than an error naming
+    the cause. ``bool`` is excluded explicitly because it is a subclass of
+    ``int`` in Python, so ``True`` would otherwise pass as one second.
+    """
+    if optional and value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ProvenanceError(f"{name} must be an integer, got {type(value).__name__}")
+    if value < 0:
+        raise ProvenanceError(f"{name} must be non-negative, got {value}")
+
+
 def verify_record(
     record: dict[str, Any],
     trusted_jwk: dict[str, Any],
@@ -283,8 +302,8 @@ def verify_record(
     # existed, with an error message explaining that a record with no issue time
     # cannot be aged; this is the step that reads it. `_check_structure` above has
     # already established it is a non-negative int.
-    if max_future_skew_seconds < 0:
-        raise ProvenanceError("max_future_skew_seconds must be non-negative")
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
+    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
     age = time.time() - int(record["issued_at"])
     if age < -max_future_skew_seconds:
         raise ProvenanceError(
@@ -311,11 +330,23 @@ def verify_record(
         raise ProvenanceError("record carries no signature")
 
     embedded = (record.get("cnf") or {}).get("jwk")
-    if embedded and embedded != trusted_jwk:
-        raise ProvenanceError(
-            "the record's embedded key is not the trusted key. A record signed by some "
-            "other key is a record about a server somebody else is describing."
-        )
+    if embedded:
+        # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
+        # its key material; `kid`, `use` and `alg` are optional members that carry none
+        # of it, and a key resolved from a JWKS endpoint normally has `kid` while
+        # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
+        # and rejected records signed by exactly the right key.
+        from hmac import compare_digest
+
+        try:
+            matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+        except ValueError as exc:
+            raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
+        if not matched:
+            raise ProvenanceError(
+                "the record's embedded key is not the trusted key. A record signed by "
+                "some other key is a record about a server somebody else is describing."
+            )
 
     pub = _pubkey_from_jwk(trusted_jwk)
     body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})

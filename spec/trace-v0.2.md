@@ -4,10 +4,10 @@
 |---|---|
 | Version | 0.2 — Draft |
 | Status | RFC — Request for Comments |
-| Authors | Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
+| Authors | Imran Siddique, Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
 | Target announcement | Confidential Computing Summit, San Francisco — 23 June 2026 |
 | Reference implementation | [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) — Confidential MCP |
-| License | Apache 2.0 (see [LICENSE](../LICENSE)) |
+| License | Community Specification License 1.0 (see [LICENSE](../LICENSE)) |
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
@@ -430,7 +430,7 @@ Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential
 
 ### 6.3 IP and licensing
 
-- **Specifications:** Apache 2.0, the Project License. Text carried forward from v0.1 also remains available under CC BY 4.0.
+- **Specifications:** Community Specification License 1.0. Earlier publications and carried-forward text remain available under the licenses stated when they were published.
 - **Reference code:** Apache 2.0.
 - **Test suite:** Apache 2.0, mandatory for conformance claims.
 - **Conformance mark:** managed by host org.

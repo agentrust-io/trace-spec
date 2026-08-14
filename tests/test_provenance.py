@@ -362,6 +362,54 @@ def test_a_trailing_newline_does_not_satisfy_a_pattern(field: str, value: str) -
     with pytest.raises(ProvenanceError):
         verify_record(sign_record(record, key), key_to_jwk(key))
 
+# --- key identity ---------------------------------------------------------
+
+
+def test_a_trusted_key_carrying_kid_still_verifies() -> None:
+    """The deployment case: a key resolved from a JWKS endpoint has `kid`.
+
+    `key_to_jwk` emits the bare `{crv, kty, x}`, while a JWKS serves the same key
+    with `kid` (and often `use`) because that is how it distinguishes keys across
+    rotation. Compared as dicts those differ, and every record signed by exactly
+    the right key was refused.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    from_jwks = {**key_to_jwk(key), "kid": "2026q3", "use": "sig"}
+    verify_record(signed, from_jwks)
+
+
+def test_an_embedded_key_carrying_kid_still_verifies() -> None:
+    """The same difference on the record's own `cnf.jwk`.
+
+    Signed by hand because `sign_record` builds `cnf` itself from `key_to_jwk`, so
+    this implementation cannot emit a `cnf.jwk` carrying `kid` even though the
+    format permits one. A record from another implementation can, and it has to
+    verify here.
+    """
+    key = generate_key()
+    payload = {**_forged(), "cnf": {"jwk": {**key_to_jwk(key), "kid": "2026q3"}}}
+    body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    signature = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+    verify_record({**payload, "signature": signature}, key_to_jwk(key))
+
+
+def test_a_genuinely_different_embedded_key_is_still_refused() -> None:
+    """Widening the comparison must not widen it to a different key."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["cnf"]["jwk"] = key_to_jwk(generate_key())
+    with pytest.raises(ProvenanceError, match="not the trusted key"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_an_unusable_embedded_key_is_refused_rather_than_crashing() -> None:
+    """A `cnf.jwk` with no usable `kty` has no thumbprint; that is a refusal."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["cnf"]["jwk"] = {"kty": "RSA-not-supported", "n": "..."}
+    with pytest.raises(ProvenanceError, match="unusable"):
+        verify_record(signed, key_to_jwk(key))
 
 # --- freshness and revocation, the affordances sign.verify_record already has -----
 #
@@ -475,3 +523,54 @@ def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
     """
     key = generate_key()
     verify_record(sign_record(_record(), key), key_to_jwk(key))
+
+
+# --- policy inputs, per the review on #164 ----------------------------------
+#
+# The age bound is verifier configuration, and a malformed one fails in the
+# direction that matters: -1 is not a stricter bound, it calls every record
+# ever issued stale, uniformly, with no error naming the cause. `bool` gets its
+# own case because it is a subclass of `int`, so `True` would otherwise be
+# accepted as one second.
+
+
+@pytest.mark.parametrize("bad", [-1, -86400, True, False, 1.5, "300", object()])
+def test_a_malformed_max_age_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    signed = _signed_at(int(time.time()), key)
+    with pytest.raises(ProvenanceError) as exc:
+        verify_record(signed, key_to_jwk(key), max_age_seconds=bad)
+    assert "max_age_seconds" in str(exc.value)
+
+
+@pytest.mark.parametrize("bad", [-1, True, False, 1.5, "300", None])
+def test_a_malformed_skew_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    signed = _signed_at(int(time.time()), key)
+    with pytest.raises(ProvenanceError) as exc:
+        verify_record(signed, key_to_jwk(key), max_future_skew_seconds=bad)
+    assert "max_future_skew_seconds" in str(exc.value)
+
+
+@pytest.mark.parametrize("ok", [1, 86400])
+def test_a_well_formed_bound_still_verifies(ok: int) -> None:
+    key = generate_key()
+    verify_record(_signed_at(int(time.time()), key), key_to_jwk(key), max_age_seconds=ok)
+    verify_record(
+        _signed_at(int(time.time()), key), key_to_jwk(key), max_future_skew_seconds=ok
+    )
+
+
+def test_zero_is_a_bound_and_not_a_falsy_stand_in_for_unset() -> None:
+    """`0` and `None` are different policies and must not be conflated.
+
+    `None` disables the age bound; `0` is the strictest one expressible - the
+    record must be issued at this instant, so anything already in the past is
+    stale. A validator that treated `0` as falsy would silently accept every
+    record under the strictest policy a caller can write.
+    """
+    key = generate_key()
+    a_moment_ago = _signed_at(int(time.time()) - 5, key)
+    verify_record(a_moment_ago, key_to_jwk(key))  # None: no age bound
+    with pytest.raises(ProvenanceError, match="stale"):
+        verify_record(a_moment_ago, key_to_jwk(key), max_age_seconds=0)
