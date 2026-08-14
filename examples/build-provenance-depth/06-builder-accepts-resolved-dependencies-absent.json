@@ -1,5 +1,5 @@
 {
-  "name": "builder-chain-accepts-resolved-dependencies-absent",
+  "name": "builder-accepts-resolved-dependencies-absent",
   "description": "The attestation binds subject and builder but declares no build inputs. A verifier that walks resolvedDependencies accepts vacuously: the loop has nothing to check. `transitive` assurance cannot be met by an attestation that enumerates nothing, so the evidence never resolves and the verifier records `builder`.",
   "profile": "trace.build_provenance.depth.v0",
   "context": {

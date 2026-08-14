@@ -1,6 +1,6 @@
 {
-  "name": "builder-chain-accepts-dependency-publisher-untrusted",
-  "description": "Every resolved input carries an attestation, so a verifier checking only for presence accepts. One was signed under an OIDC issuer the verifier does not trust, so the input's publisher is unverified rather than verified-and-wrong.",
+  "name": "builder-accepts-dependency-unattested",
+  "description": "Subject and builder both bind, so `builder` accepts. One resolved build input has no publisher attestation at all, which is the shape a compromised-dependency build presents: the top-level attestation is honest about a poisoned input.",
   "profile": "trace.build_provenance.depth.v0",
   "context": {
     "artifact_digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
@@ -112,31 +112,6 @@
           "issuer": "https://token.actions.githubusercontent.com",
           "subject_alternative_name": "https://github.com/psf/requests/.github/workflows/publish.yml@refs/tags/v2.32.3"
         }
-      },
-      "pkg:npm/%40example-org/telemetry@0.4.7": {
-        "statement": {
-          "_type": "https://in-toto.io/Statement/v1",
-          "subject": [
-            {
-              "name": "@example-org/telemetry",
-              "digest": {
-                "sha256": "3b6f7d63eeee3e1a792c0fa54e5dbb581ba3a651cfc20672fb6ca2af3fea0fb3"
-              }
-            }
-          ],
-          "predicateType": "https://slsa.dev/provenance/v1",
-          "predicate": {
-            "runDetails": {
-              "builder": {
-                "id": "https://github.com/actions/runner"
-              }
-            }
-          }
-        },
-        "verified_identity": {
-          "issuer": "https://ci.example.org/oidc",
-          "subject_alternative_name": "https://ci.example.org/example-org/telemetry/pipelines/publish"
-        }
       }
     }
   },
@@ -160,12 +135,12 @@
       "unresolved": []
     },
     "transitive": {
-      "outcome": "reject",
-      "verified_depth": "transitive",
-      "failures": [
-        "dependency_publisher_untrusted"
-      ],
-      "unresolved": []
+      "outcome": "accept",
+      "verified_depth": "builder",
+      "failures": [],
+      "unresolved": [
+        "dependency_attestation_missing"
+      ]
     }
   }
 }

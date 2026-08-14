@@ -245,9 +245,9 @@ def test_fixture_set_is_complete() -> None:
         "01-all-depths-accept.json",
         "02-surface-accepts-attestation-subject-mismatch.json",
         "03-surface-accepts-attestation-builder-mismatch.json",
-        "04-builder-chain-accepts-dependency-unattested.json",
-        "05-builder-chain-accepts-dependency-publisher-untrusted.json",
-        "06-builder-chain-accepts-resolved-dependencies-absent.json",
+        "04-builder-accepts-dependency-unattested.json",
+        "05-builder-accepts-dependency-publisher-untrusted.json",
+        "06-builder-accepts-resolved-dependencies-absent.json",
     ]
 
 
