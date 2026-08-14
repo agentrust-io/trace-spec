@@ -8,6 +8,8 @@ produces.
 
 from __future__ import annotations
 
+import base64
+
 import pytest
 
 from agentrust_trace.provenance import (
@@ -20,7 +22,7 @@ from agentrust_trace.provenance import (
     tool_catalog_hash,
     verify_record,
 )
-from agentrust_trace.sign import generate_key, key_to_jwk
+from agentrust_trace.sign import _canonical_bytes, generate_key, key_to_jwk
 
 DIGEST = "sha256:" + "a" * 64
 OTHER_DIGEST = "sha256:" + "b" * 64
@@ -358,3 +360,53 @@ def test_a_trailing_newline_does_not_satisfy_a_pattern(field: str, value: str) -
 
     with pytest.raises(ProvenanceError):
         verify_record(sign_record(record, key), key_to_jwk(key))
+
+# --- key identity ---------------------------------------------------------
+
+
+def test_a_trusted_key_carrying_kid_still_verifies() -> None:
+    """The deployment case: a key resolved from a JWKS endpoint has `kid`.
+
+    `key_to_jwk` emits the bare `{crv, kty, x}`, while a JWKS serves the same key
+    with `kid` (and often `use`) because that is how it distinguishes keys across
+    rotation. Compared as dicts those differ, and every record signed by exactly
+    the right key was refused.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    from_jwks = {**key_to_jwk(key), "kid": "2026q3", "use": "sig"}
+    verify_record(signed, from_jwks)
+
+
+def test_an_embedded_key_carrying_kid_still_verifies() -> None:
+    """The same difference on the record's own `cnf.jwk`.
+
+    Signed by hand because `sign_record` builds `cnf` itself from `key_to_jwk`, so
+    this implementation cannot emit a `cnf.jwk` carrying `kid` even though the
+    format permits one. A record from another implementation can, and it has to
+    verify here.
+    """
+    key = generate_key()
+    payload = {**_forged(), "cnf": {"jwk": {**key_to_jwk(key), "kid": "2026q3"}}}
+    body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    signature = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+    verify_record({**payload, "signature": signature}, key_to_jwk(key))
+
+
+def test_a_genuinely_different_embedded_key_is_still_refused() -> None:
+    """Widening the comparison must not widen it to a different key."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["cnf"]["jwk"] = key_to_jwk(generate_key())
+    with pytest.raises(ProvenanceError, match="not the trusted key"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_an_unusable_embedded_key_is_refused_rather_than_crashing() -> None:
+    """A `cnf.jwk` with no usable `kty` has no thumbprint; that is a refusal."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["cnf"]["jwk"] = {"kty": "RSA-not-supported", "n": "..."}
+    with pytest.raises(ProvenanceError, match="unusable"):
+        verify_record(signed, key_to_jwk(key))
+
