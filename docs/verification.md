@@ -140,15 +140,33 @@ have walked. A verifier MUST record what it actually checked in
 `appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the
 record.
 
-| Claimed depth | Verifier MUST | Verifier MAY downgrade to |
-|---|---|---|
-| `surface` (or absent) | Confirm `digest` matches the workload artifact and `builder` resolves to the configured trusted-builder set. | Already the floor |
-| `builder` | All of surface, plus fetch `provenance_uri`, verify the SLSA attestation signature, check the attestation `subject` matches `digest`, and check the attestation `builder.id` matches `builder`. | `surface`, when `provenance_uri` is unreachable or its signature does not resolve. The appraisal MUST then record the lower depth rather than a failure of the higher one. |
-| `transitive` | All of builder, plus enumerate the SLSA `materials` / `resolvedDependencies` and confirm every entry has a verifiable publisher attestation (npm OIDC, PyPI Trusted Publisher, Sigstore Rekor entry, or platform equivalent). | `builder`, when transitive coverage is unavailable for any input, or `surface` per the row above. |
+| Claimed depth | Verifier MUST | MAY downgrade to — evidence does not resolve | MUST fail — evidence resolves and contradicts |
+|---|---|---|---|
+| `surface` (or absent) | Confirm `digest` matches the workload artifact and `builder` resolves to the configured trusted-builder set. | Already the floor. | `digest` does not match the artifact the verifier independently holds, or `builder` is outside the trusted-builder set. |
+| `builder` | All of surface, plus fetch `provenance_uri`, verify the SLSA attestation signature, check the attestation `subject` matches `digest`, and check the attestation `builder.id` matches `builder`. | `surface`, when `provenance_uri` is absent or unreachable, or its signature does not resolve. | The attestation resolves and its `subject` does not match `digest`, or its `builder.id` does not match `builder`. |
+| `transitive` | All of builder, plus enumerate the SLSA `materials` / `resolvedDependencies` and confirm every entry has a verifiable publisher attestation (npm OIDC, PyPI Trusted Publisher, Sigstore Rekor entry, or platform equivalent). | `builder`, when an input carries no publisher attestation or the attestation declares no inputs at all; or `surface` per the row above. | An input's publisher attestation resolves and was signed under an issuer outside the configured trusted set. |
+
+The two right-hand columns are disjoint, and which one applies turns on whether the evidence
+resolved — not on how serious the finding is.
+
+**Evidence that does not resolve** leaves a check unrun. The verifier MAY stop at the depth
+below, MUST then record that lower depth in `appraisal.provenance_depth_verified`, and MUST
+NOT report the missing evidence as a failure of the record. A record is not defective because
+someone else's transparency log is unreachable, and a verifier that rejects on this is failing
+records for the weather.
+
+**Evidence that resolves and contradicts the record** MUST fail the appraisal. A verifier MUST
+NOT downgrade to escape it. Downgrading there would record a narrower claim that is true while
+suppressing a wider one that is false — the record would pass as `builder` on evidence that
+positively refutes it at `transitive`, and the appraisal would say nothing about why.
 
 A verifier MUST NOT record `provenance_depth_verified` at a depth higher than it executed.
 Downgrading is how a verifier stays honest when evidence does not resolve; claiming depth it did
-not run is what the field exists to prevent.
+not run is what the field exists to prevent. This last rule cannot be expressed in JSON Schema:
+the record is byte-identical whether the verifier walked the chain or merely says it did. The
+conformance vectors in
+[`examples/build-provenance-depth/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/build-provenance-depth)
+hold it instead, against a verifier's own output, and encode the split above vector by vector.
 
 Records that omit `provenance_depth` MUST be treated as `surface`. This keeps every record issued
 before this field existed valid and correctly interpreted.
@@ -175,6 +193,22 @@ that record. Transitive verification rejects it, because the poisoned input's pu
 attestation does not chain back to the legitimate maintainer. Without a recorded depth, two
 conformant verifiers reach opposite conclusions on the same record and neither says why, which
 is the federation gap [section 1](../spec/trace-v0.2.md) names.
+
+That case is a failure and not a downgrade, and it is the sharpest reason the two are kept
+apart. The poisoned input's attestation resolved: the verifier holds it and can see the issuer
+is outside the trusted set. A verifier permitted to call that "transitive coverage unavailable"
+would record `builder`, accept, and report exactly what a verifier that never looked reports —
+which would make the depth field cover for the attack it was added to expose.
+
+### `transitive` is a floor on effort, not a comparable claim
+
+Until evidence resolution is standardized, two verifiers can both honestly record `transitive`
+over different material sets. Nothing above specifies which inputs must be enumerated or where a
+publisher attestation must be looked up, so the value states how far a verifier walked, not what
+ground it covered. `builder` has no such gap, because `provenance_uri` names its own evidence.
+A consumer comparing `transitive` across verifiers is therefore comparing effort; it does not
+license the inference that the same dependencies were checked. Specifying a transitive coverage
+URI is left to a follow-up.
 
 [Build provenance depth](build-provenance-depth.md) is the informative companion to this section:
 it states what each depth does not assure.
