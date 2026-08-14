@@ -20,6 +20,12 @@ A Licensee may accept the current Community Specification License version or any
 - Authorized individual and system identifier:
 - Specification version:
 
+### Recorded acceptances
+
+1. - Licensee's name: Yi (Louie) Lu
+   - Authorized individual and system identifier: Yi (Louie) Lu, GitHub `@lywinged`
+   - Specification version: 0.2 or later
+
 ## Withdrawals
 
 A Contributor may withdraw from the Project by submitting a pull request that records:
