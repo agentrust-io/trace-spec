@@ -1215,7 +1215,7 @@ String. Sensitivity classification applied to the data processed in this session
 
 Defined values: `public`, `internal`, `confidential`, `restricted`, `secret`.
 
-Custom values are allowed and SHOULD follow your organization's data classification policy.
+Custom values are allowed and should follow your organization's data classification policy.
 
 ## `tool_transcript`
 
