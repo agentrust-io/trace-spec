@@ -277,7 +277,7 @@ decision_or_output_commitment
 
 `program_id` is security-critical: it identifies the exact computation whose execution the proof attests to. A verifier must not treat two programs as equivalent unless their identifiers resolve to the same defined computation under the applicable verification rules.
 
-A concrete ZK assurance composition MUST define a canonical derivation and comparison rule for `program_id` that uniquely identifies the verifier-relevant computation. Human-readable names or implementation-local identifiers are insufficient.
+A concrete ZK assurance composition must define a canonical derivation and comparison rule for `program_id` that uniquely identifies the verifier-relevant computation. Human-readable names or implementation-local identifiers are insufficient.
 
 The proof and the TRACE record must also satisfy a **same-values binding** requirement. The public inputs and commitments verified by the proof must be cryptographically bound to the exact corresponding TRACE claims, or to an unambiguous digest of those claims.
 
