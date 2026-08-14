@@ -6,13 +6,13 @@ TRACE Specification has been established as TRACE Specification a Series of LF P
 
 TRACE Specification participants acknowledge that the copyright in all new contributions will be retained by the copyright holder as independent works of authorship and that no contributor or copyright holder will be required to assign copyrights to the project.
 
-Except as described below, all code and specification contributions to the project must be made using the Apache License, Version 2.0 available at http://www.apache.org/licenses/LICENSE-2.0 (the "Project License").
+All specification contributions to the Project must be made under the [Community Specification License 1.0](Governance/COMMUNITY-SPECIFICATION-LICENSE.md) and the [Community Specification Contributor License Agreement](Governance/CLA.md).
 
-All outbound code and specifications will be made available under the Project License. The Maintainers may approve the use of an alternative open license or licenses for inbound or outbound contributions on an exception basis.
+All code contributions to the Project must be made under the Apache License, Version 2.0, available at https://www.apache.org/licenses/LICENSE-2.0 (the "Source Code License"). Outbound code will be made available under the Source Code License. The Maintainers may approve an alternative open source license for code on an exception basis.
 
 All documentation (excluding specifications) will be made available under the Creative Commons Attribution 4.0 International license, available at: https://creativecommons.org/licenses/by/4.0.
 
-Specification text published before this policy took effect stays available under the license it was published under. See [LICENSE](LICENSE).
+Specification text published before this policy took effect stays available under the license under which it was published. See [LICENSE](LICENSE) and the [license map](Governance/License.md).
 
 ## Roles
 
@@ -48,6 +48,34 @@ The Project makes decisions through a consensus process ("Approval" or "Approved
 
 Decisions may be appealed via a pull request or an issue, and that appeal will be considered by the Project Lead in good faith, who will respond in writing within a reasonable time.
 
+## Ways of Working
+
+Inspired by [ANSI's Essential Requirements for Due Process](https://share.ansi.org/Shared%20Documents/Standards%20Activities/American%20National%20Standards/Procedures,%20Guides,%20and%20Forms/2020_ANSI_Essential_Requirements.pdf), the Project adheres to consensus-based due-process requirements for approving, revising, reaffirming, and withdrawing TRACE specifications. Any person or organization with a direct and material interest has the right to express a position and its basis, have that position considered, and appeal a decision.
+
+### Openness
+
+Participation is open to all persons and organizations directly and materially affected by the work. There are no undue financial barriers to participation. Voting or decision-making eligibility is not conditional on membership in another organization or unreasonably restricted by technical qualifications.
+
+### Lack of dominance
+
+The specification-development process must not be dominated by any single interest category, individual, or organization to the exclusion of fair and equitable consideration of other viewpoints.
+
+### Balance
+
+The Project seeks participation from diverse interest categories, including implementers, technology providers, users, security and privacy experts, and other materially affected parties.
+
+### Coordination and harmonization
+
+The Project makes good-faith efforts to identify and resolve conflicts between TRACE deliverables and existing industry standards.
+
+### Consideration of views and objections
+
+The Project promptly considers written views and objections from all Contributors. The Project Lead documents the evidence used to determine Consensus, including material objections and their disposition.
+
+### Written procedures
+
+This governance document and other materials describing the Community Specification development process are publicly available to any interested person.
+
 ### Review periods by change class
 
 Review periods are minimums. The Project takes as much time as it needs to reach a consensus decision, and a period does not expire a discussion that is still live.
@@ -76,7 +104,7 @@ A Draft Specification is not stable. Normative requirements, wire formats, and c
 
 ### Final
 
-Once the Project believes it has achieved the objectives for its specification as described in the Scope, it will Approve that Draft Specification and progress it to "Final" status.
+Once the Project believes it has achieved the objectives for its specification as described in the [Scope](Governance/Scope.md), it will Approve that Draft Specification and progress it to "Final" status. A Final specification is an "Approved Specification" for purposes of the Community Specification License 1.0.
 
 A Final specification is stable. Its normative content does not change except through errata, which are corrections that do not alter what a conformant implementation must do. New requirements are made in a new version, not in the published one. Conformance claims are made against a Final version, and the conformance suite tracks Final versions.
 
