@@ -20,6 +20,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 ## Integration
 
 - [AGT](https://trace.agentrust-io.com/docs/integration/agt/index.md)
+- [NVIDIA OpenShell](https://trace.agentrust-io.com/docs/integration/openshell/index.md)
 - [cMCP](https://trace.agentrust-io.com/docs/integration/cmcp/index.md)
 - [Sandboxed agent runtimes](https://trace.agentrust-io.com/docs/integration/sandbox-runtime/index.md)
 
