@@ -9,6 +9,7 @@ produces.
 from __future__ import annotations
 
 import base64
+import time
 
 import pytest
 
@@ -22,7 +23,7 @@ from agentrust_trace.provenance import (
     tool_catalog_hash,
     verify_record,
 )
-from agentrust_trace.sign import _canonical_bytes, generate_key, key_to_jwk
+from agentrust_trace.sign import _canonical_bytes, generate_key, jwk_thumbprint, key_to_jwk
 
 DIGEST = "sha256:" + "a" * 64
 OTHER_DIGEST = "sha256:" + "b" * 64
@@ -410,3 +411,166 @@ def test_an_unusable_embedded_key_is_refused_rather_than_crashing() -> None:
     with pytest.raises(ProvenanceError, match="unusable"):
         verify_record(signed, key_to_jwk(key))
 
+# --- freshness and revocation, the affordances sign.verify_record already has -----
+#
+# `issued_at` has been required since the format existed, with an error message saying a
+# record with no issue time cannot be aged. Nothing aged it. These cover the step that
+# reads it, and the revocation hook whose absence had no caller-side substitute.
+
+
+def _signed_at(issued_at: int, key):
+    return sign_record(_record(issued_at=issued_at), key)
+
+
+def test_an_old_record_is_still_accepted_by_default() -> None:
+    """The default is deliberate, not an oversight.
+
+    A provenance record describes an artifact by immutable digest, like a package
+    signature, and those are conventionally valid indefinitely. So `max_age_seconds`
+    defaults to None here, unlike the 86400 of a Trust Record.
+    """
+    key = generate_key()
+    verify_record(_signed_at(int(time.time()) - 400 * 86400, key), key_to_jwk(key))
+
+
+def test_an_old_record_is_refused_when_the_consumer_asks_for_a_bound() -> None:
+    """The hook the format did not give the consumer."""
+    key = generate_key()
+    signed = _signed_at(int(time.time()) - 400 * 86400, key)
+    with pytest.raises(ProvenanceError, match="stale"):
+        verify_record(signed, key_to_jwk(key), max_age_seconds=86400)
+
+
+def test_a_future_dated_record_is_refused_without_asking() -> None:
+    """Enforced whether or not an age bound is set.
+
+    Without this, a far-future `issued_at` sits inside any later `max_age_seconds`
+    window until that time arrives. Adding the age bound alone would have shipped
+    the defect #155 had just fixed for Trust Records.
+    """
+    key = generate_key()
+    signed = _signed_at(int(time.time()) + 3600, key)
+    with pytest.raises(ProvenanceError, match="future"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_clock_skew_inside_the_tolerance_is_accepted() -> None:
+    key = generate_key()
+    verify_record(_signed_at(int(time.time()) + 60, key), key_to_jwk(key))
+
+
+def test_a_negative_skew_bound_is_refused_rather_than_applied() -> None:
+    key = generate_key()
+    signed = _signed_at(int(time.time()), key)
+    with pytest.raises(ProvenanceError, match="non-negative"):
+        verify_record(signed, key_to_jwk(key), max_future_skew_seconds=-1)
+
+
+def test_a_revoked_key_is_refused() -> None:
+    """A signature by a revoked key stays valid for ever; the verifier is the only
+    place the fact can be applied."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    crl = {jwk_thumbprint(key_to_jwk(key))}
+    with pytest.raises(ProvenanceError, match="revoked"):
+        verify_record(signed, key_to_jwk(key), revocation=crl)
+
+
+def test_a_key_revoked_under_its_kid_is_refused() -> None:
+    """The case a hand-written caller-side check misses.
+
+    `_key_identifiers` is private, and it returns the thumbprint *and* the `kid`. A
+    caller writing the check themselves reaches for the thumbprint and misses every
+    entry listed by `kid`, which is what `kid` is for. Signed by hand because
+    `sign_record` builds `cnf` from `key_to_jwk` and cannot emit one carrying `kid`.
+    """
+    key = generate_key()
+    jwk = {**key_to_jwk(key), "kid": "acme-2026q3"}
+    payload = {**_record(), "cnf": {"jwk": jwk}}
+    body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    signature = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+    signed = {**payload, "signature": signature}
+
+    verify_record(signed, jwk)                                  # unrevoked: fine
+    assert jwk_thumbprint(jwk) not in {"acme-2026q3"}           # the substitute misses it
+    with pytest.raises(ProvenanceError, match="revoked"):
+        verify_record(signed, jwk, revocation={"acme-2026q3"})
+
+
+def test_an_unreachable_revocation_source_fails_closed() -> None:
+    """Not evidence that the key is unrevoked."""
+    def unreachable(_identifier: str) -> bool:
+        raise ConnectionError("CRL endpoint unreachable")
+
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    with pytest.raises(ProvenanceError, match="could not be determined"):
+        verify_record(signed, key_to_jwk(key), revocation=unreachable)
+
+
+def test_an_unrevoked_key_passes_the_check() -> None:
+    """The check must not reject what it should accept."""
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    verify_record(signed, key_to_jwk(key), revocation={"some-other-key"})
+
+
+def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
+    """`revocation=None` skips the check, as sign.verify_record documents.
+
+    Offline verification cannot prove non-revocation; the point is that the consumer
+    now has somewhere to put a store, not that one is imposed.
+    """
+    key = generate_key()
+    verify_record(sign_record(_record(), key), key_to_jwk(key))
+
+
+# --- policy inputs, per the review on #164 ----------------------------------
+#
+# The age bound is verifier configuration, and a malformed one fails in the
+# direction that matters: -1 is not a stricter bound, it calls every record
+# ever issued stale, uniformly, with no error naming the cause. `bool` gets its
+# own case because it is a subclass of `int`, so `True` would otherwise be
+# accepted as one second.
+
+
+@pytest.mark.parametrize("bad", [-1, -86400, True, False, 1.5, "300", object()])
+def test_a_malformed_max_age_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    signed = _signed_at(int(time.time()), key)
+    with pytest.raises(ProvenanceError) as exc:
+        verify_record(signed, key_to_jwk(key), max_age_seconds=bad)
+    assert "max_age_seconds" in str(exc.value)
+
+
+@pytest.mark.parametrize("bad", [-1, True, False, 1.5, "300", None])
+def test_a_malformed_skew_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    signed = _signed_at(int(time.time()), key)
+    with pytest.raises(ProvenanceError) as exc:
+        verify_record(signed, key_to_jwk(key), max_future_skew_seconds=bad)
+    assert "max_future_skew_seconds" in str(exc.value)
+
+
+@pytest.mark.parametrize("ok", [1, 86400])
+def test_a_well_formed_bound_still_verifies(ok: int) -> None:
+    key = generate_key()
+    verify_record(_signed_at(int(time.time()), key), key_to_jwk(key), max_age_seconds=ok)
+    verify_record(
+        _signed_at(int(time.time()), key), key_to_jwk(key), max_future_skew_seconds=ok
+    )
+
+
+def test_zero_is_a_bound_and_not_a_falsy_stand_in_for_unset() -> None:
+    """`0` and `None` are different policies and must not be conflated.
+
+    `None` disables the age bound; `0` is the strictest one expressible - the
+    record must be issued at this instant, so anything already in the past is
+    stale. A validator that treated `0` as falsy would silently accept every
+    record under the strictest policy a caller can write.
+    """
+    key = generate_key()
+    a_moment_ago = _signed_at(int(time.time()) - 5, key)
+    verify_record(a_moment_ago, key_to_jwk(key))  # None: no age bound
+    with pytest.raises(ProvenanceError, match="stale"):
+        verify_record(a_moment_ago, key_to_jwk(key), max_age_seconds=0)
