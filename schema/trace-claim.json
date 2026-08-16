@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentrust-io.com/schema/trace-v0.2.json",
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.2 Trust Record \u2014 hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -265,6 +265,15 @@
           "type": "string",
           "format": "uri",
           "description": "URI to the SLSA provenance attestation on a Sigstore/Rekor or compatible log."
+        },
+        "provenance_depth": {
+          "type": "string",
+          "enum": [
+            "surface",
+            "builder",
+            "transitive"
+          ],
+          "description": "Depth of supply-chain verification the issuer claims for this record. surface: digest matches the workload artifact and builder is in a trusted set. builder: all of surface, plus provenance_uri resolves, the SLSA attestation signature verifies, its subject matches digest, and its builder.id matches builder. transitive: all of builder, plus every entry in the SLSA materials / resolvedDependencies has a verifiable publisher attestation. Records omitting this field are treated as surface by verifiers, so existing records keep their meaning."
         }
       },
       "additionalProperties": false
@@ -300,6 +309,15 @@
         "timestamp": {
           "type": "integer",
           "description": "Unix epoch seconds when the appraisal was produced."
+        },
+        "provenance_depth_verified": {
+          "type": "string",
+          "enum": [
+            "surface",
+            "builder",
+            "transitive"
+          ],
+          "description": "Depth at which this verifier actually checked build_provenance, which is not necessarily the depth the issuer claimed. A verifier may downgrade when deeper evidence does not resolve, and records the lower depth rather than a failure of the higher one. A verifier does not record a depth higher than it executed."
         }
       },
       "additionalProperties": false
@@ -311,7 +329,7 @@
     },
     "cnf": {
       "type": "object",
-      "description": "Confirmation key (RFC 8747) \u2014 binds the Trust Record to the TEE-held signing key.",
+      "description": "Confirmation key (RFC 8747) — binds the Trust Record to the TEE-held signing key.",
       "required": [
         "jwk"
       ],

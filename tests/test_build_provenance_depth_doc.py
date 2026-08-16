@@ -40,7 +40,7 @@ RFC_2119 = re.compile(
     r"\b(MUST|SHALL|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL)\b",
 )
 
-_SLSA_RANGE_RE = re.compile(r"\((\d+)–(\d+)\)")
+_SLSA_RANGE_RE = re.compile(r"\((\d+)[-–](\d+)\)")
 
 
 def _schema_doc_required() -> dict[str, bool]:

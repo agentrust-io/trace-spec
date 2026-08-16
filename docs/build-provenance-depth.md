@@ -4,7 +4,7 @@ description: What each build_provenance verification depth does not assure. Surf
 
 # Build provenance verification depth
 
-> **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. The depth question itself is [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50), labelled `policy: take-internal`; nothing here anticipates its outcome. The names *Surface*, *Builder-chain* and *Dependency-chain* describe where verifiers stop today, not a proposed enum.
+> **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. The depth question itself was decided on [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50). The names *Surface*, *Builder-chain* and *Dependency-chain* used on this page are the descriptive ones; they map one to one onto the `build_provenance.provenance_depth` values `surface`, `builder` and `transitive`. [Section 3.3.1 of the specification](../spec/trace-v0.2.md#331-build-provenance-verification-depth) carries the normative rules.
 
 [Spec section 3.3](../spec/trace-v0.2.md) step 7 is one sentence: *"SLSA provenance resolves to a trusted builder."* It does not say how far the verifier walks, and three stopping points satisfy it. They are not equally strong, and the weakest is the cheapest to implement.
 
@@ -66,9 +66,9 @@ Nor does it assure the artifact was built from the source you think. A trusted b
 |---|---|---|
 | Surface | The artifact digest and a trusted-builder list | Nothing. It always runs. |
 | Builder-chain | Attestation retrieval at verification time, or a cached bundle | A record whose `provenance_uri` is absent or unresolvable cannot be verified past surface |
-| Dependency-chain | A publisher attestation per input, and ecosystem coverage for those inputs | Inputs from ecosystems without attestation coverage fail, benign ones included |
+| Dependency-chain | A publisher attestation per input, and ecosystem coverage for those inputs | Inputs from ecosystems without attestation coverage cannot be verified past builder, benign ones included |
 
-Deeper is not free, and the honest reason deployments stop early is usually not laziness. Dependency-chain verification fails closed on unattested inputs, and attestation coverage across package ecosystems is uneven, so a strict verifier rejects a lot of software that is fine.
+Deeper is not free, and the honest reason deployments stop early is usually not laziness. An unattested input is unverifiable rather than incriminating, so [verification.md](verification.md) has the verifier record `builder` and name what it could not fetch; a deployment whose floor is `transitive` then treats that record as `contraindicated`. Attestation coverage across package ecosystems is uneven, so such a deployment turns away a lot of software that is fine — the strictness lives in the floor, not in a finding against the record.
 
 That trade-off is a legitimate choice. Picking Surface because it was the cheapest to implement, without recording that "trusted builder" is then a claim nobody checked, is not the same choice.
 
