@@ -4,7 +4,7 @@ description: What each build_provenance verification depth does not assure. Surf
 
 # Build provenance verification depth
 
-> **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. The depth question itself was decided on [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50). The names *Surface*, *Builder-chain* and *Dependency-chain* used on this page are the descriptive ones; they map one to one onto the `build_provenance.provenance_depth` values `surface`, `builder` and `transitive`. [Verifying build provenance depth](verification.md) carries the normative rules.
+> **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. The depth question itself was decided on [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50). The names *Surface*, *Builder-chain* and *Dependency-chain* used on this page are the descriptive ones; they map one to one onto the `build_provenance.provenance_depth` values `surface`, `builder` and `transitive`. [Section 3.3.1 of the specification](../spec/trace-v0.2.md#331-build-provenance-verification-depth) carries the normative rules.
 
 [Spec section 3.3](../spec/trace-v0.2.md) step 7 is one sentence: *"SLSA provenance resolves to a trusted builder."* It does not say how far the verifier walks, and three stopping points satisfy it. They are not equally strong, and the weakest is the cheapest to implement.
 

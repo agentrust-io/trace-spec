@@ -516,7 +516,7 @@ def _checking_only_first(count: int) -> tuple[Rule, ...]:
 
     walks_the_list = ("dependency_attestation_missing", "dependency_publisher_untrusted")
     return tuple(
-        Rule(rule.code, rule.depth, truncated(rule.check))
+        Rule(rule.code, rule.depth, rule.effect, truncated(rule.check))
         if rule.code in walks_the_list
         else rule
         for rule in RULES
@@ -545,14 +545,14 @@ def test_a_verifier_that_stops_early_in_the_dependency_list_is_caught(count: int
     separating = [
         (name, vector)
         for name, vector in FIXTURES
-        if verify(vector, "builder_chain")["outcome"] == "accept"
-        and walks_the_list & set(verify(vector, "dependency_chain")["failures"])
+        if verify(vector, "builder")["outcome"] == "accept"
+        and walks_the_list & set(verify(vector, "transitive")["failures"])
     ]
     assert separating, "no vector rejects on a rule that walks resolvedDependencies"
     caught = [
         name
         for name, vector in separating
-        if verify(vector, "dependency_chain", weakened)["outcome"] == "reject"
+        if verify(vector, "transitive", weakened)["outcome"] == "reject"
     ]
     assert caught, (
         f"a verifier checking only the first {count} of resolvedDependencies is accepted "
