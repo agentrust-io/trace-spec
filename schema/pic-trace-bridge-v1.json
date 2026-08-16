@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trace.agentrust-io.com/schema/pic-trace-bridge-v1.json",
+  "title": "PIC/TRACE Bridge Authorization v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["profile", "authorization", "signature"],
+  "properties": {
+    "profile": {"const": "tag:agentrust-io.com,2026:pic-trace-bridge-v1"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"},
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorization_id", "decision", "authorizer", "authorizer_key_id", "authorized_at", "expires_at", "scope", "pic", "declaration_digest", "tool_call_digest", "transcript_required"],
+      "properties": {
+        "authorization_id": {"type": "string", "minLength": 1},
+        "decision": {"enum": ["allow", "deny"]},
+        "authorizer": {"type": "string", "minLength": 1},
+        "authorizer_key_id": {"type": "string", "minLength": 1},
+        "authorized_at": {"type": "integer", "minimum": 0},
+        "expires_at": {"type": "integer", "minimum": 0},
+        "scope": {"type": "object", "additionalProperties": false, "required": ["tools", "impacts"], "properties": {
+          "tools": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "impacts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }},
+        "pic": {"type": "object", "additionalProperties": false, "required": ["profile", "intent_digest", "args_digest"], "properties": {
+          "profile": {"const": "PIC-CJSON/1.0"}, "intent_digest": {"$ref": "#/$defs/digest"}, "args_digest": {"$ref": "#/$defs/digest"}
+        }},
+        "declaration_digest": {"$ref": "#/$defs/digest"}, "tool_call_digest": {"$ref": "#/$defs/digest"},
+        "transcript_required": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}
