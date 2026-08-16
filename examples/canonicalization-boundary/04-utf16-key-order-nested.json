@@ -1,0 +1,58 @@
+{
+  "name": "utf16-key-order-nested",
+  "description": "The divergence of vector 03 moved inside a nested object, so that a canonicalizer sorting by UTF-16 code units at the outer levels and by code points below them passes 03 and fails here. Without it the closest non-conformant form is caught by one vector, and the boundary disappears with that vector.",
+  "spec": "trace-v0.2 section 3.2.2 — implementations MUST use an RFC 8785-conformant library",
+  "profile": "trace.canonicalization.boundary.v0",
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "Be97jkxfFpVXzj9B-gwpMzv5t8PH30Edd-J7AIlrdoA",
+        "zmeta": {
+          "zk😀": "sorts-first-under-rfc-8785",
+          "zk�": "sorts-second-under-rfc-8785"
+        }
+      }
+    },
+    "signature": "yXsht9nU--Hvr8K7xHq72MOU6xyVhsCKw0_YcAdDff641JNlPG1d2qAZ_zwXaLe48agijvRk3MVZioG85aAiBg"
+  },
+  "expected": {
+    "outcome": "verified"
+  },
+  "diverges_under": [
+    "sort_keys_default",
+    "sort_keys_compact",
+    "sort_keys_compact_utf8"
+  ]
+}
