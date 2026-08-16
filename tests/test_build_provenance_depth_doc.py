@@ -11,6 +11,11 @@ The same check is applied to the ``build_provenance`` table in docs/schema.md,
 which listed ``builder`` as required while the schema and the reference model
 both treat it as optional. That drift is what this test exists to catch the
 next time.
+
+``docs/trust-levels.md`` is also checked: the displayed slsa_level range must
+agree with the schema minimum and maximum. The original drift (0–4 vs max 3)
+was reported in #172 and would have caused a reader to emit slsa_level: 4,
+which the schema and the pydantic model both reject.
 """
 
 from __future__ import annotations
@@ -27,12 +32,15 @@ PACKAGED_SCHEMA = json.loads(
 )
 NOTE = (ROOT / "docs" / "build-provenance-depth.md").read_text()
 SCHEMA_DOC = (ROOT / "docs" / "schema.md").read_text()
+TRUST_LEVELS_DOC = (ROOT / "docs" / "trust-levels.md").read_text()
 
 BUILD_PROVENANCE = CANONICAL_SCHEMA["properties"]["build_provenance"]
 
 RFC_2119 = re.compile(
     r"\b(MUST|SHALL|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL)\b",
 )
+
+_SLSA_RANGE_RE = re.compile(r"\((\d+)–(\d+)\)")
 
 
 def _schema_doc_required() -> dict[str, bool]:
@@ -72,3 +80,42 @@ def test_note_is_non_normative():
     """It is informative text, so no uppercase RFC 2119 keyword may appear in it."""
     found = sorted(set(RFC_2119.findall(NOTE)))
     assert not found, f"informative note carries RFC 2119 keywords: {found}"
+
+
+def _trust_levels_slsa_range() -> tuple[int, int]:
+    """Extract the slsa_level numeric range from docs/trust-levels.md.
+
+    Looks for the table row that documents build_provenance.slsa_level and
+    parses the (low–high) range stated there. Raises AssertionError if the
+    row is absent or carries no range in that format, so the test fails loudly
+    if the prose is restructured rather than silently passing on a missing row.
+    """
+    for line in TRUST_LEVELS_DOC.splitlines():
+        if "build_provenance.slsa_level" not in line:
+            continue
+        m = _SLSA_RANGE_RE.search(line)
+        assert m, (
+            f"slsa_level row found in trust-levels.md but no (low–high) range: {line!r}"
+        )
+        return int(m.group(1)), int(m.group(2))
+    raise AssertionError(
+        "build_provenance.slsa_level row not found in docs/trust-levels.md"
+    )
+
+
+def test_trust_levels_slsa_range_matches_schema():
+    """docs/trust-levels.md must agree with the schema on the valid slsa_level range.
+
+    SLSA Build Levels are 0–3; there is no Level 4. The schema encodes this as
+    minimum/maximum. Any drift between the two surfaces causes readers to emit
+    values that the schema rejects with a validation error rather than a message
+    explaining that the level does not exist (issue #172).
+    """
+    slsa_schema = BUILD_PROVENANCE["properties"]["slsa_level"]
+    lo, hi = _trust_levels_slsa_range()
+    assert lo == slsa_schema["minimum"], (
+        f"trust-levels.md lower bound {lo} != schema minimum {slsa_schema['minimum']}"
+    )
+    assert hi == slsa_schema["maximum"], (
+        f"trust-levels.md upper bound {hi} != schema maximum {slsa_schema['maximum']}"
+    )

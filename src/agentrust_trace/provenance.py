@@ -21,7 +21,14 @@ import re
 import time
 from typing import Any
 
-from agentrust_trace.sign import _canonical_bytes, _pubkey_from_jwk, key_to_jwk
+from agentrust_trace.sign import (
+    RevocationStore,
+    _canonical_bytes,
+    _check_not_revoked,
+    _pubkey_from_jwk,
+    jwk_thumbprint,
+    key_to_jwk,
+)
 
 __all__ = [
     "FORMAT",
@@ -212,12 +219,56 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     return {**payload, "signature": sig}
 
 
-def verify_record(record: dict[str, Any], trusted_jwk: dict[str, Any]) -> None:
+def _check_seconds(name: str, value: Any, *, optional: bool = False) -> None:
+    """Reject a malformed policy input instead of silently acting on it.
+
+    A verifier's age policy is configuration, and a wrong one fails in the
+    direction that matters: ``max_age_seconds=-1`` is not a stricter bound, it
+    classifies every record ever issued as stale, and a caller who meant to
+    disable the bound would see a uniform refusal rather than an error naming
+    the cause. ``bool`` is excluded explicitly because it is a subclass of
+    ``int`` in Python, so ``True`` would otherwise pass as one second.
+    """
+    if optional and value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ProvenanceError(f"{name} must be an integer, got {type(value).__name__}")
+    if value < 0:
+        raise ProvenanceError(f"{name} must be non-negative, got {value}")
+
+
+def verify_record(
+    record: dict[str, Any],
+    trusted_jwk: dict[str, Any],
+    *,
+    revocation: RevocationStore | None = None,
+    max_age_seconds: int | None = None,
+    max_future_skew_seconds: int = 300,
+) -> None:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
 
     *trusted_jwk* is required and is never taken from the record. Verifying a
     document against a key it supplies proves only that it is internally
     consistent, which is what a forged record is.
+
+    ``revocation`` is consulted before the signature is checked, with exactly the
+    semantics :func:`sign.verify_record` documents: a container of revoked
+    identifiers or a callable, matched against the trusted key's RFC 7638
+    thumbprint *and* its ``kid``. Both a revoked key and an unreachable store fail
+    closed. ``None`` skips the check and keeps verification offline; offline
+    verification cannot prove non-revocation.
+
+    ``max_age_seconds`` bounds how old ``issued_at`` may be. It defaults to
+    ``None``, unlike the 86400 of a Trust Record, because a provenance record
+    describes an artifact by immutable digest and those are conventionally valid
+    indefinitely. A record carrying ``endpoint`` identity is the case where that
+    reasoning does not hold — a URL and an SPKI digest decay — so a consumer
+    relying on ``endpoint`` should pass a bound.
+
+    ``max_future_skew_seconds`` (default 300) is enforced whether or not an age
+    bound is set. Without it a far-future ``issued_at`` stays inside any later
+    ``max_age_seconds`` window until that time arrives, which is the defect
+    #155 fixed for Trust Records.
 
     **This does not check the server.** It checks the paper. Call
     :func:`check_tool_catalog` with the tools the server actually offered.
@@ -247,16 +298,55 @@ def verify_record(record: dict[str, Any], trusted_jwk: dict[str, Any]) -> None:
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
 
+    # Freshness. `issued_at` has been required and type-checked since the format
+    # existed, with an error message explaining that a record with no issue time
+    # cannot be aged; this is the step that reads it. `_check_structure` above has
+    # already established it is a non-negative int.
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
+    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
+    age = time.time() - int(record["issued_at"])
+    if age < -max_future_skew_seconds:
+        raise ProvenanceError(
+            f"record is dated {int(-age)}s in the future, exceeds "
+            f"max_future_skew_seconds={max_future_skew_seconds}"
+        )
+    if max_age_seconds is not None and age > max_age_seconds:
+        raise ProvenanceError(
+            f"record is stale: issued_at is {int(age)}s old, exceeds "
+            f"max_age_seconds={max_age_seconds}"
+        )
+
+    # Revocation, before the signature rather than after. A signature made by a
+    # revoked key stays cryptographically valid for ever, so the verifier is the
+    # only place the fact can be applied.
+    if revocation is not None:
+        try:
+            _check_not_revoked(trusted_jwk, revocation)
+        except ValueError as exc:
+            raise ProvenanceError(str(exc)) from exc
+
     signature = record.get("signature")
     if not signature:
         raise ProvenanceError("record carries no signature")
 
     embedded = (record.get("cnf") or {}).get("jwk")
-    if embedded and embedded != trusted_jwk:
-        raise ProvenanceError(
-            "the record's embedded key is not the trusted key. A record signed by some "
-            "other key is a record about a server somebody else is describing."
-        )
+    if embedded:
+        # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
+        # its key material; `kid`, `use` and `alg` are optional members that carry none
+        # of it, and a key resolved from a JWKS endpoint normally has `kid` while
+        # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
+        # and rejected records signed by exactly the right key.
+        from hmac import compare_digest
+
+        try:
+            matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+        except ValueError as exc:
+            raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
+        if not matched:
+            raise ProvenanceError(
+                "the record's embedded key is not the trusted key. A record signed by "
+                "some other key is a record about a server somebody else is describing."
+            )
 
     pub = _pubkey_from_jwk(trusted_jwk)
     body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
