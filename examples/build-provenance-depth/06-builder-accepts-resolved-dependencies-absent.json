@@ -1,6 +1,6 @@
 {
-  "name": "builder-chain-accepts-resolved-dependencies-absent",
-  "description": "The attestation binds subject and builder but declares no build inputs. A verifier that walks resolvedDependencies accepts vacuously: the loop has nothing to check. Dependency-chain assurance cannot be met by an attestation that enumerates nothing.",
+  "name": "builder-accepts-resolved-dependencies-absent",
+  "description": "The attestation binds subject and builder but declares no build inputs. A verifier that walks resolvedDependencies accepts vacuously: the loop has nothing to check. `transitive` assurance cannot be met by an attestation that enumerates nothing, so the evidence never resolves and the verifier records `builder`.",
   "profile": "trace.build_provenance.depth.v0",
   "context": {
     "artifact_digest": "sha256:361044e7e99a17fef9f0d4d454286b1c888a28819ad0fb756d05deb0b1a272e8",
@@ -53,15 +53,21 @@
   "expected": {
     "surface": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "surface",
+      "failures": [],
+      "unresolved": []
     },
-    "builder_chain": {
+    "builder": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "builder",
+      "failures": [],
+      "unresolved": []
     },
-    "dependency_chain": {
-      "outcome": "reject",
-      "failures": [
+    "transitive": {
+      "outcome": "accept",
+      "verified_depth": "builder",
+      "failures": [],
+      "unresolved": [
         "resolved_dependencies_absent"
       ]
     }

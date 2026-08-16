@@ -118,15 +118,21 @@
   "expected": {
     "surface": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "surface",
+      "failures": [],
+      "unresolved": []
     },
-    "builder_chain": {
+    "builder": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "builder",
+      "failures": [],
+      "unresolved": []
     },
-    "dependency_chain": {
+    "transitive": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "transitive",
+      "failures": [],
+      "unresolved": []
     }
   }
 }

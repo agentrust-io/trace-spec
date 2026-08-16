@@ -261,7 +261,21 @@ Any party — browser, CLI, in-cluster verifier, third-party auditor — verifie
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
-#### 3.3.1 External execution evidence (optional)
+#### 3.3.1 Build provenance verification depth
+
+`build_provenance.provenance_depth` declares the supply-chain depth the issuer claims to have walked. A verifier MUST record the depth it actually checked in `appraisal.provenance_depth_verified`. The ordered depth values are `surface`, `builder`, and `transitive`; a record that omits `provenance_depth` MUST be treated as `surface`.
+
+At `surface`, the verifier MUST confirm that `digest` matches the independently held workload artifact and that `builder` belongs to its configured trusted-builder set. At `builder`, it MUST also fetch `provenance_uri`, verify the SLSA attestation signature, and confirm that the attestation subject and builder identity match the record. At `transitive`, it MUST additionally enumerate the attestation's materials or `resolvedDependencies` and attempt to verify a publisher attestation for every enumerated input.
+
+When evidence required for an attempted depth is absent, unreachable, or otherwise cannot be resolved, the verifier MAY stop at the preceding depth. It MUST record that lower verified depth and identify the unresolved evidence. It MUST NOT record a depth higher than it executed. There is no downgrade below `surface`.
+
+When evidence resolves and contradicts the record, the verifier MUST fail the appraisal and MUST NOT downgrade to suppress the contradiction. Examples include an attestation whose subject or builder differs from the record and a dependency attestation signed by an issuer outside the configured trusted set.
+
+A deployment profile MAY set a minimum acceptable verified depth. If `appraisal.provenance_depth_verified` is below that floor, the verifier MUST set `appraisal.status` to `contraindicated`.
+
+Until dependency discovery and evidence resolution are standardized, `transitive` records a floor on verification effort rather than a claim that independent verifiers covered identical dependency sets.
+
+#### 3.3.2 External execution evidence (optional)
 
 Some deployments attach independent, out-of-band receipts to individual audit-chain entries — for example, a signed assertion from a safety controller confirming or rejecting an actuation request. The TRACE Trust Record commits the audit chain by hash; the receipts live inside that chain, not inside the Trust Record itself. This section defines how a verifier treats them.
 
@@ -279,7 +293,7 @@ A verifier configured with the issuer key that fails any of these three checks M
 
 **Trust boundary.** External execution evidence is only as trustworthy as the issuer key and the PKI behind it. TRACE binds the receipt into the audit chain — it does not certify that a physical action occurred, that it was executed safely, or that any functional-safety standard was met. Those claims belong to the issuer and its certification body, not to TRACE.
 
-#### 3.3.2 Action receipts for embodied workflows (informative)
+#### 3.3.3 Action receipts for embodied workflows (informative)
 
 Embodied-agent profiles need to keep three evidence layers separate:
 

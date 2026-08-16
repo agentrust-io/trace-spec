@@ -118,19 +118,25 @@
   "expected": {
     "surface": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "surface",
+      "failures": [],
+      "unresolved": []
     },
-    "builder_chain": {
+    "builder": {
       "outcome": "reject",
+      "verified_depth": "builder",
       "failures": [
         "attestation_builder_mismatch"
-      ]
+      ],
+      "unresolved": []
     },
-    "dependency_chain": {
+    "transitive": {
       "outcome": "reject",
+      "verified_depth": "transitive",
       "failures": [
         "attestation_builder_mismatch"
-      ]
+      ],
+      "unresolved": []
     }
   }
 }
