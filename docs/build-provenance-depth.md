@@ -66,9 +66,9 @@ Nor does it assure the artifact was built from the source you think. A trusted b
 |---|---|---|
 | Surface | The artifact digest and a trusted-builder list | Nothing. It always runs. |
 | Builder-chain | Attestation retrieval at verification time, or a cached bundle | A record whose `provenance_uri` is absent or unresolvable cannot be verified past surface |
-| Dependency-chain | A publisher attestation per input, and ecosystem coverage for those inputs | Inputs from ecosystems without attestation coverage fail, benign ones included |
+| Dependency-chain | A publisher attestation per input, and ecosystem coverage for those inputs | Inputs from ecosystems without attestation coverage cannot be verified past builder, benign ones included |
 
-Deeper is not free, and the honest reason deployments stop early is usually not laziness. Dependency-chain verification fails closed on unattested inputs, and attestation coverage across package ecosystems is uneven, so a strict verifier rejects a lot of software that is fine.
+Deeper is not free, and the honest reason deployments stop early is usually not laziness. An unattested input is unverifiable rather than incriminating, so [verification.md](verification.md) has the verifier record `builder` and name what it could not fetch; a deployment whose floor is `transitive` then treats that record as `contraindicated`. Attestation coverage across package ecosystems is uneven, so such a deployment turns away a lot of software that is fine — the strictness lives in the floor, not in a finding against the record.
 
 That trade-off is a legitimate choice. Picking Surface because it was the cheapest to implement, without recording that "trusted builder" is then a claim nobody checked, is not the same choice.
 

@@ -1,5 +1,5 @@
 {
-  "name": "builder-chain-accepts-dependency-publisher-untrusted",
+  "name": "builder-accepts-dependency-publisher-untrusted",
   "description": "Every resolved input carries an attestation, so a verifier checking only for presence accepts. One was signed under an OIDC issuer the verifier does not trust, so the input's publisher is unverified rather than verified-and-wrong.",
   "profile": "trace.build_provenance.depth.v0",
   "context": {
@@ -31,6 +31,12 @@
               },
               "resolvedDependencies": [
                 {
+                  "uri": "pkg:npm/%40example-org/telemetry@0.4.7",
+                  "digest": {
+                    "sha256": "3b6f7d63eeee3e1a792c0fa54e5dbb581ba3a651cfc20672fb6ca2af3fea0fb3"
+                  }
+                },
+                {
                   "uri": "pkg:npm/%40example-org/agent-core@1.8.2",
                   "digest": {
                     "sha256": "fb6bfb2c7ffab3de12cbac5639014ae049aafb4dbb36390f251c82f63cf2d2cb"
@@ -40,12 +46,6 @@
                   "uri": "pkg:pypi/requests@2.32.3",
                   "digest": {
                     "sha256": "a30964f520316ef09eb682027001f6f142547f350fadaeef8be4bb1b48f6d49c"
-                  }
-                },
-                {
-                  "uri": "pkg:npm/%40example-org/telemetry@0.4.7",
-                  "digest": {
-                    "sha256": "3b6f7d63eeee3e1a792c0fa54e5dbb581ba3a651cfc20672fb6ca2af3fea0fb3"
                   }
                 }
               ]
@@ -149,17 +149,23 @@
   "expected": {
     "surface": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "surface",
+      "failures": [],
+      "unresolved": []
     },
-    "builder_chain": {
+    "builder": {
       "outcome": "accept",
-      "failures": []
+      "verified_depth": "builder",
+      "failures": [],
+      "unresolved": []
     },
-    "dependency_chain": {
+    "transitive": {
       "outcome": "reject",
+      "verified_depth": "transitive",
       "failures": [
         "dependency_publisher_untrusted"
-      ]
+      ],
+      "unresolved": []
     }
   }
 }

@@ -13,7 +13,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
-- **`build_provenance` now declares verification depth.** A new optional `provenance_depth` (`surface`, `builder`, `transitive`) says how far down the supply chain the issuer claims to have walked, and a new optional `appraisal.provenance_depth_verified` records how far the verifier actually walked. Spec section 3.3 step 7 previously left three stopping points equally conformant, so two verifiers could reach opposite conclusions on the same record with no way to say why. Both fields are optional and a record omitting `provenance_depth` is read as `surface`, so existing records keep their meaning. Resolves [#50](https://github.com/agentrust-io/trace-spec/issues/50).
+- **`build_provenance` now declares verification depth.** A new optional `provenance_depth` (`surface`, `builder`, `transitive`) says how far down the supply chain the issuer claims to have walked, and a new optional `appraisal.provenance_depth_verified` records how far the verifier actually walked. Spec section 3.3 step 7 previously left three stopping points equally conformant, so two verifiers could reach opposite conclusions on the same record with no way to say why. Both fields are optional and a record omitting `provenance_depth` is read as `surface`, so existing records keep their meaning. Evidence that does not resolve and evidence that resolves and contradicts the record are separate outcomes: the first downgrades the recorded depth and names what was missing, the second fails the appraisal and cannot be downgraded away. Resolves [#50](https://github.com/agentrust-io/trace-spec/issues/50).
 
 ### Security
 
