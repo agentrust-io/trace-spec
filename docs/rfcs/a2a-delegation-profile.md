@@ -282,6 +282,45 @@ independent support for D-9 belonging on this surface at all — open question 2
 cA2A credentials carry no validity window, so D-8 has no counterpart there; an authority
 that cannot expire is the same family of gap as the two that issue #66 has already named.
 
+**The reverse direction passes.** Everything above pushes this corpus outward, which only
+shows that cA2A rejects what the profile rejects. The harder question is whether a chain the
+*ecosystem produces* verifies here. `ca2a/examples/trace-dag/demo.py` emits a signed
+three-hop TRACE DAG through cA2A's own `trace_binding`; run against it, all three records are
+schema-valid, both links match the §4.1 preimage exactly, all three signatures verify under
+D-1, and the chain returns `verified` with no codes and no adjustment to the walk. The
+profile describes what is already being emitted rather than something invented alongside it.
+
+Worth recording while it was found: `examples/trace-dag/` commits a README and a demo but no
+vectors — the DAG is produced at runtime and not kept. That is the gap this corpus fills from
+the trace-spec side, and it is why §7's step 1 is a cross-reference table rather than a
+request that cA2A publish one.
+
+Also worth recording, as a hazard for anyone writing a parser: cA2A uses the field name
+`parent_record_hash` in two different formats. In a TRACE record it is the schema's
+`sha256:`/`sha384:`-prefixed digest; in cA2A's own provenance DAG — `ca2a verify-dag`, and the
+committed `examples/*/dag.json` — it is a bare hex digest with no prefix, on a record with
+no TRACE fields at all. Both are deliberate and neither is wrong; the collision is in the
+name.
+
+**agent-manifest already treats unverifiable as a first-class outcome, on this exact
+surface.** Its corpus declares results as data in the vector files, over a vocabulary of
+`VALID`, `MISMATCH`, `UNVERIFIABLE`, `EXPIRED`, `REVOKED`, `SIGNATURE_MISSING`, `INCOMPLETE`,
+`INCOMPATIBLE_VERSION`, `ATTESTATION_UNAVAILABLE` — and `AM-VEC-012` reads:
+
+```json
+{"result": "UNVERIFIABLE", "fields_verified": {"delegation_chain": "UNVERIFIABLE"}}
+```
+
+The case is a delegation chain with no public keys: evidence the verifier lacks what it needs
+to check, recorded as unreadable rather than as a finding against the chain. That is §4.3,
+on the delegation surface, in a second implementation, arrived at independently.
+
+Which puts the sha384 divergence in a different light than a matter of taste. Two of the
+three implementations distinguish "could not be read" from "contradicts"; cA2A's TRACE DAG
+verifier collapses the two and reports tampering. The per-field shape of `fields_verified` is
+also prior art this proposal does not have and probably should consider: a verdict per field
+says more than one verdict per chain.
+
 **One claim, checked and upheld.** `ca2a_runtime/canonical.py` hand-implements RFC 8785
 rather than taking a library, and states that this makes cA2A signatures cross-verifiable
 with agent-manifest. Run against `examples/canonicalization-boundary/`, which exists to
