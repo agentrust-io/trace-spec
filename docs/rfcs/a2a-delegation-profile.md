@@ -214,9 +214,8 @@ independently written verifiers.
 
 Both exist. `agentrust-io/ca2a` verifies delegation DAGs offline in `ca2a_verify`;
 `agentrust-io/agent-manifest` exports `verify_delegation_chain`, `DelegationHopSigner` and
-`delegation_depth_exceeded` from its public API. `ca2a/src/ca2a_runtime/delegation/credential.py`
-states that its credentials are "cross-verifiable with agent-manifest". Nothing in any of the
-three repositories tests that claim.
+`delegation_depth_exceeded` from its public API. This corpus has been run against the first
+of them; what came back is in §7.1, and it is the reason this section is the load-bearing one.
 
 The proposal for the next step, which is not this document's to decide:
 
@@ -231,6 +230,66 @@ The proposal for the next step, which is not this document's to decide:
 The same corpus would also close a gap on the agent-manifest side: of its 21 vectors, two
 touch delegation and both are single-hop, so its own narrowing and depth logic has no vector
 coverage at all.
+
+### 7.1 What running it against cA2A actually returned
+
+Measured against `ca2a_verify.verify_trace_dag` at ca2a `5dd77b2`. Thirteen of the 23
+vectors exercise the record-linkage surface that function covers; the other ten are
+credential defects, which its own docstring assigns to `ca2a_runtime.delegation.verify_chain`.
+
+**The digest decision in §4.1 is confirmed independently.** `ca2a_runtime.trace_binding.trace_record_hash`
+computes `"sha256:" + sha256(rfc8785.dumps(signed_record))` — the complete record, signature
+included, byte-identical to what this profile specifies. That was arrived at separately, in
+another repository, and it is the strongest evidence available that §4.1 chose the reading
+the ecosystem is already built on rather than the one that was convenient here. Vector 05,
+the body-digest link, is rejected by cA2A as a broken parent link.
+
+**Vectors 01–07 agree.** Valid chains are accepted, the absent parent and the body-digest
+link are rejected as broken links, and both signature vectors are rejected as bad
+signatures. Same verdict, same reason, two implementations.
+
+**Vectors 22 and 23 disagree, exactly as §4.3 predicts.** cA2A's block validator accepts a
+`sha384:` link, then compares it against a hash it only ever computes as `sha256:`, and
+reports `ProvenanceLinkBroken` with the detail *"a tampered or reparented record was
+detected"*. A chain that is intact and simply addressed under the other permitted algorithm
+is reported as tampering. This is the difference between unreadable and contradicted,
+observed rather than argued, and it is the clearest single reason the distinction needs to
+be written down somewhere normative.
+
+**The trust contract differs and cannot be normalised away.** `verify_trace_dag` requires
+every record's `cnf.jwk` to be in the trusted set; this profile anchors on the root's key and
+lets the chain carry the rest. Run under this profile's contract — only the declared root
+trusted — cA2A rejects every chain longer than one record, valid ones included. Neither is
+wrong: cA2A's model fits a workflow whose orchestrator knows every participant, and this
+one fits the cross-organisation case where that knowledge is exactly what is missing. It is
+worth noting that cA2A itself uses the root-anchored model on its other surface, where
+`verify_chain` takes `trusted_root_issuers`.
+
+**The credential surfaces cannot be compared at all, and that is the finding.** Three
+repositories, three delegation models, no conversion between them:
+
+| | this profile | cA2A `DelegationCredential` | agent-manifest hop |
+|---|---|---|---|
+| issuer / subject | record `subject` (SPIFFE) | raw Ed25519 public key hex | `principal_id` |
+| scope | `data_class` + supplied lattice | `scope: frozenset[str]` | tools, `data_classifications`, constraints, `ttl_seconds` |
+| validity window | `not_before` / `not_after` vs hop `iat` | **absent** | `ttl_seconds`, narrowing |
+| depth bound | verifier context | on each credential, default 8 | `max_delegation_depth` on the root hop |
+| trust anchor | root record's key | `trusted_root_issuers` | `public_keys` map of every principal |
+| replay binding | — | `parent_id` chaining, unique ids | `manifest_id` in the signature pre-image |
+
+Two things follow. agent-manifest already narrows on `data_classifications`, which is
+independent support for D-9 belonging on this surface at all — open question 2 above. And
+cA2A credentials carry no validity window, so D-8 has no counterpart there; an authority
+that cannot expire is the same family of gap as the two that issue #66 has already named.
+
+**One claim, checked and upheld.** `ca2a_runtime/canonical.py` hand-implements RFC 8785
+rather than taking a library, and states that this makes cA2A signatures cross-verifiable
+with agent-manifest. Run against `examples/canonicalization-boundary/`, which exists to
+separate a conforming serializer from a carefully configured `json.dumps`, that
+implementation is byte-identical to the reference on all four vectors — including both
+UTF-16 key-order cases, which is where near-misses fail. The claim is narrower than
+"the two verifiers agree on a chain": it is about the signed byte string, and on that axis
+it holds.
 
 ## 8. Open questions
 
