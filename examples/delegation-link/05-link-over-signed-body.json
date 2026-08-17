@@ -1,0 +1,134 @@
+{
+  "id": "TRACE-DELEG-005",
+  "name": "link-over-signed-body",
+  "description": "Every record is present and correctly signed; the leaf's `parent_record_hash` is a digest of its parent's signed body with `signature` removed, rather than of the complete record. This is the one vector that separates the two readings of \"digest of the parent hop's Trust Record\": under the profile's reading the link resolves to nothing, under the rejected reading the whole chain verifies.",
+  "spec": "docs/rfcs/a2a-delegation-profile.md",
+  "profile": "trace.a2a.delegation-link.v0",
+  "context": {
+    "leaf": "sha256:169845502881464187359f61e4857aa1b663f8614c6764d1a3c890ee018d180f",
+    "now": 1785000000,
+    "max_depth": 4,
+    "supported_digest_algorithms": [
+      "sha256"
+    ],
+    "data_class_lattice": [
+      "public",
+      "internal",
+      "confidential",
+      "restricted"
+    ],
+    "trusted_root_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+      }
+    ],
+    "credentials": {
+      "cred:orchestrator-to-planner": {
+        "issuer": "spiffe://acme.example/agent/orchestrator",
+        "holder": "spiffe://acme.example/agent/planner",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:planner-to-executor": {
+        "issuer": "spiffe://acme.example/agent/planner",
+        "holder": "spiffe://acme.example/agent/executor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:executor-to-courier": {
+        "issuer": "spiffe://acme.example/agent/executor",
+        "holder": "spiffe://acme.example/agent/courier",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:courier-to-auditor": {
+        "issuer": "spiffe://acme.example/agent/courier",
+        "holder": "spiffe://acme.example/agent/auditor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/planner",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "confidential",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:90bfc2c5fb7a2e082252400055f450d252e6d2a8deb6129868bc0820b415069c",
+        "credential_id": "cred:orchestrator-to-planner"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "W2BsRtHZW8BVdiCsCxrNxvv4LOfgBhuS_2v7TU7TyHU"
+        }
+      },
+      "signature": "hPdHyrSkbMdYwothvxKKg9-PbyH0f0IErsHQx060sf3jeWicXwd99j4N-YZUbEIxgbizQ5TTaEtEYN80myKJCA"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/orchestrator",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "restricted",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+        }
+      },
+      "signature": "m3TAE_Z_chc0gs8HMh1KAN4NECFLP09kiqyQPBDz9w9G0_iYoQ5-I94gpptC1a4xiRloSFLyTdprEmr9CFD_DA"
+    }
+  ],
+  "expected": {
+    "classification": "provenance-invalid",
+    "codes": [
+      "parent_not_found"
+    ]
+  }
+}

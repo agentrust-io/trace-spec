@@ -1,0 +1,210 @@
+{
+  "id": "TRACE-DELEG-019",
+  "name": "data-class-widened-mid-chain",
+  "description": "Widening at the first hop, inside a chain whose leaf is narrower than its root. Comparing the leaf against the root shows narrowing and reports nothing; the rule is per hop, and this is the vector that says so.",
+  "spec": "docs/rfcs/a2a-delegation-profile.md",
+  "profile": "trace.a2a.delegation-link.v0",
+  "context": {
+    "leaf": "sha256:0ac3e0a7eac8cc5a7f5c504b2259110094fd220a7042774fe99e058f74b74c74",
+    "now": 1785000000,
+    "max_depth": 4,
+    "supported_digest_algorithms": [
+      "sha256"
+    ],
+    "data_class_lattice": [
+      "public",
+      "internal",
+      "confidential",
+      "restricted"
+    ],
+    "trusted_root_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+      }
+    ],
+    "credentials": {
+      "cred:orchestrator-to-planner": {
+        "issuer": "spiffe://acme.example/agent/orchestrator",
+        "holder": "spiffe://acme.example/agent/planner",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:planner-to-executor": {
+        "issuer": "spiffe://acme.example/agent/planner",
+        "holder": "spiffe://acme.example/agent/executor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:executor-to-courier": {
+        "issuer": "spiffe://acme.example/agent/executor",
+        "holder": "spiffe://acme.example/agent/courier",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:courier-to-auditor": {
+        "issuer": "spiffe://acme.example/agent/courier",
+        "holder": "spiffe://acme.example/agent/auditor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/courier",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "public",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:cde925006e1ac25ca66c3b615c51ebc97c953ca10efae9c6e116baea1ebfcac4",
+        "credential_id": "cred:executor-to-courier"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "KSw3ZhDAmsf7DDzqMDLU-sVSw2Ns525oP-SMpU-FzQY"
+        }
+      },
+      "signature": "85dbWZVZkFrGFqMtCBIEIzrFwCTL-yVLA2HxwcK_mM9MNaCxEbJUEhvqyMuhIkDI3LG3dS91ppsAB07uX1KTCA"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/executor",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:5d7653249cc8e3ffcd994aa02c7068cd06198eace3689f265f663eccb705a826",
+        "credential_id": "cred:planner-to-executor"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "9m_aNMvOSk_seLmEY-fD0lZZgQMjASQ-ILQUnJwtJ3A"
+        }
+      },
+      "signature": "zepjJsVAEZ5YC1yvwIlf6fGH-bSMeC2y1v4GjSv_0WlRpKQtD_xnbCURbRTAnNLCxFPVKpTHNNhJ3qs7EwhYAg"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/planner",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "restricted",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:20d2a1b91f90bedc4513b0d7518ea18d380d6ebbfd010dbcad496d536c73acf3",
+        "credential_id": "cred:orchestrator-to-planner"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "W2BsRtHZW8BVdiCsCxrNxvv4LOfgBhuS_2v7TU7TyHU"
+        }
+      },
+      "signature": "ifBTLAif-3ndswuVAFfiaoHE3Lj73fm3MWeleYMhHfzYNgwpG_F1jc3fxW5nbwpsQmBEPtxeq6-w3qhGKd_3Bg"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/orchestrator",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "confidential",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+        }
+      },
+      "signature": "Xpe0aEdxpjj_mvm-TUUaai9JIvEViB_-BcXq3a-ox2EoTxdId3lswf79CVi681BX8siMO4pM6hF8RZp22wviAw"
+    }
+  ],
+  "expected": {
+    "classification": "authorization-invalid",
+    "codes": [
+      "data_class_widened"
+    ]
+  }
+}

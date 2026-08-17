@@ -1,0 +1,172 @@
+{
+  "id": "TRACE-DELEG-007",
+  "name": "intermediate-signed-by-other-key",
+  "description": "The same defect one hop up, built in before the child committed to it, so the link still resolves and only the signature is wrong. A verifier that checks the leaf and trusts the rest of the chain because 'the hashes match' passes this and fails vector 06.",
+  "spec": "docs/rfcs/a2a-delegation-profile.md",
+  "profile": "trace.a2a.delegation-link.v0",
+  "context": {
+    "leaf": "sha256:bb857be837d7c7043a047ed627508ee0d604e7234aff8c6dce3e7c65df546fff",
+    "now": 1785000000,
+    "max_depth": 4,
+    "supported_digest_algorithms": [
+      "sha256"
+    ],
+    "data_class_lattice": [
+      "public",
+      "internal",
+      "confidential",
+      "restricted"
+    ],
+    "trusted_root_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+      }
+    ],
+    "credentials": {
+      "cred:orchestrator-to-planner": {
+        "issuer": "spiffe://acme.example/agent/orchestrator",
+        "holder": "spiffe://acme.example/agent/planner",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:planner-to-executor": {
+        "issuer": "spiffe://acme.example/agent/planner",
+        "holder": "spiffe://acme.example/agent/executor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:executor-to-courier": {
+        "issuer": "spiffe://acme.example/agent/executor",
+        "holder": "spiffe://acme.example/agent/courier",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:courier-to-auditor": {
+        "issuer": "spiffe://acme.example/agent/courier",
+        "holder": "spiffe://acme.example/agent/auditor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/executor",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "confidential",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:8536dcabc3df38275f477505d997303eda99b5bd2415ab7d7c692808b005921d",
+        "credential_id": "cred:planner-to-executor"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "9m_aNMvOSk_seLmEY-fD0lZZgQMjASQ-ILQUnJwtJ3A"
+        }
+      },
+      "signature": "zr4_ISnv0Lhz0cP2vx07e_jr7wLd_BmU5MQtOLcIlnnnppJhL6Z4Lsrn9er9P0JHKU9VUTKg7vYEuU-GQKYNBA"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/planner",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "restricted",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:b1d65c65d7191e1c6f57f8902548475671edad51035f1542f76a4e45337052b6",
+        "credential_id": "cred:orchestrator-to-planner"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "W2BsRtHZW8BVdiCsCxrNxvv4LOfgBhuS_2v7TU7TyHU"
+        }
+      },
+      "signature": "boX6sOSimP9il6rQX-jXE3pB0dms_GIPYKAOaPNOCZEcfEBnmiUo1eiRqtZcX-rThGGqWJ_GBXi9-jGnovr4Aw"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/orchestrator",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "restricted",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+        }
+      },
+      "signature": "m3TAE_Z_chc0gs8HMh1KAN4NECFLP09kiqyQPBDz9w9G0_iYoQ5-I94gpptC1a4xiRloSFLyTdprEmr9CFD_DA"
+    }
+  ],
+  "expected": {
+    "classification": "provenance-invalid",
+    "codes": [
+      "record_signature_invalid"
+    ]
+  }
+}
