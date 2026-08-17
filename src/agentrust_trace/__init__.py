@@ -93,3 +93,6 @@ __all__ = [*__all__, "provenance"]
 from agentrust_trace import content_marking as content_marking  # noqa: E402
 
 __all__ = [*__all__, "content_marking"]
+from agentrust_trace import intent_bridge as intent_bridge  # noqa: E402
+
+__all__ = [*__all__, "intent_bridge"]
