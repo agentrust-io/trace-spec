@@ -11,6 +11,26 @@ implementation; this file is informative until its rules are adopted, at which p
 become uppercase in `spec/` and this file becomes a pointer to where they went. A proposal
 that writes itself in the imperative is a specification nobody agreed to.
 
+**Why the corpus was built before the rules.** The three decisions in §4 were not read out of
+the existing text. They were hit, because no vector could be written without settling them, and
+in each case the text supports both branches. A reader passes over all three without noticing;
+someone building a fixture cannot get to the end of one. That order — corpus first, and let it
+interrogate the text — is the part of this document worth keeping if the rules themselves are
+replaced, because it produces a measurement the repository does not otherwise have.
+
+Not *do the tests cover the rules*, which measures an implementation. **Do two independent
+readings of the same normative text produce the same rules**, which measures the
+specification. Where two readings agree, the text is doing its job; where they diverge, the
+text is under-specified, and the divergence names the sentence that is missing. §7.1 is that
+measurement run once, on two implementations that were written without reference to this
+document: on the digest preimage they agree with §4.1 and with each other, and on the
+unresolvable-algorithm question they split — one treats it as unreadable and one as tampering.
+The first is the text working. The second is a missing sentence, located, in one line, and it
+took no argument to find because two implementations were asked the same question.
+
+A single reading measures nothing. That is the case for a second profile design rather than
+against one.
+
 ---
 
 ## 1. What exists today
