@@ -204,6 +204,14 @@ first time either side adds a case. §7 proposes a cross-reference table instead
   of the two gaps issue #66 has already named on the approval-shaped surface; it needs a
   field this schema does not have.
 - **No authority-epoch staleness**, the other #66 gap, for the same reason.
+- **No mutual case.** `ROADMAP.md:21` scopes the v0.3 A2A profile as "binding rules over the
+  `delegation` block now that A2A is stable at v1.x, **including the mutual case**". Nothing
+  here covers mutual delegation: every rule below walks one chain in one direction, from a leaf
+  towards a root, and the `delegation` block as it stands names one parent and no peer. Two
+  agents each holding authority delegated by the other is a shape this walk cannot express,
+  and pretending otherwise by calling it "two chains" would be deciding the question rather
+  than raising it. This is the largest distance between the roadmap's line and this document,
+  and it is stated here rather than left to be discovered.
 - **No cross-verifier agreement.** This is the load-bearing omission and §7 is about it.
 
 ## 7. The part that makes this worth doing
@@ -332,6 +340,16 @@ it holds.
 
 ## 8. Open questions
 
+The first one is not about the design.
+
+0. **Is this document the v0.3 profile, or an input to it?** `ROADMAP.md:21` places the
+   normative A2A profile at v0.3 and names cA2A as the reference implementation. It does not
+   say who writes the binding rules, and this was written without asking. Both answers are
+   fine and they lead to different documents: the profile itself would need the mutual case,
+   a credential model and a ratification path; an input would stay what it is, a set of rules
+   that already have executable material behind them and can be lifted, argued with, or
+   discarded a rule at a time. The corpus is useful either way, which is the reason it was
+   built first.
 1. **Is the credential registry the right shape?** It is modelled here as verifier context
    because nothing in the schema describes a credential. The alternative — a credential
    object in the record — is a schema change and a much larger proposal.
