@@ -224,14 +224,29 @@ first time either side adds a case. §7 proposes a cross-reference table instead
   of the two gaps issue #66 has already named on the approval-shaped surface; it needs a
   field this schema does not have.
 - **No authority-epoch staleness**, the other #66 gap, for the same reason.
-- **No mutual case.** `ROADMAP.md:21` scopes the v0.3 A2A profile as "binding rules over the
-  `delegation` block now that A2A is stable at v1.x, **including the mutual case**". Nothing
-  here covers mutual delegation: every rule below walks one chain in one direction, from a leaf
-  towards a root, and the `delegation` block as it stands names one parent and no peer. Two
-  agents each holding authority delegated by the other is a shape this walk cannot express,
-  and pretending otherwise by calling it "two chains" would be deciding the question rather
-  than raising it. This is the largest distance between the roadmap's line and this document,
-  and it is stated here rather than left to be discovered.
+- **No mutual case — and it is not clear the delegation block is where it belongs.**
+  `ROADMAP.md:21` scopes the v0.3 A2A profile as "binding rules over the `delegation` block now
+  that A2A is stable at v1.x, **including the mutual case**". In the reference implementation
+  the mutual case is mutual *attestation*, not mutual delegation: `ca2a/docs/spec/mutual-attestation.md`
+  describes a callee-issued challenge and a caller offer bound to it, so each side establishes
+  what the other is running before a payload opens. That document separates the two concerns in
+  as many words — it "establishes what each side is running", while "the delegation chain
+  remains the thing that says what it is allowed to ask for" — and it does not mention a Trust
+  Record anywhere. Neither does cA2A's own `docs/spec/trace-a2a-profile.md`, whose A2A profile
+  is the delegation-link block and nothing else.
+
+  So the roadmap asks the A2A profile to cover something that today has no record
+  representation at all, in either repository, and which sits at the transport layer rather
+  than on this surface. That is a scoping question rather than a hole in these rules: either
+  mutual attestation gains a binding into the record — which is a schema question, not a
+  verification one — or the v0.3 profile is two profiles. Raised here because a reader
+  comparing this document against that roadmap line will otherwise conclude the gap is a
+  coverage failure, and it is not the same thing.
+
+  Bidirectional *delegation*, if that reading were ever intended, is separately unreachable:
+  A's block would have to carry a digest covering B's block and B's a digest covering A's,
+  which is the same hash collision §4.2 rules out for cycles. Recorded so the two readings do
+  not get merged later.
 - **No cross-verifier agreement.** This is the load-bearing omission and §7 is about it.
 
 ## 7. The part that makes this worth doing
