@@ -93,7 +93,13 @@ print(f"✓ Appraisal: {status}")
 
 The five steps above are self-contained: given the record and a trusted key, they run with no network. That is the property TRACE is built for, and it has exactly one gap. A signature is valid forever, so a record signed by a key that was later compromised and revoked still passes every offline step. Nothing inside the record can withdraw the key that signed it.
 
-[§3.2.1 of the spec](../spec/trace-v0.2.md) therefore requires the online half: *"Verifiers MUST consult current revocation status at verification time."*
+[§3.2.3 of the spec](../spec/trace-v0.2.md) closes that gap without giving up offline verification. Two things are worth knowing before reading the code below.
+
+**The boundary is a log entry ID, not a time.** The intuitive rule is to reject a record from a revoked key when its `iat` falls after the compromise. A compromised record-signing key also signs `iat`, so whoever holds it backdates the record and the rule passes. §3.2.3 anchors to the SCITT inclusion entry ID instead, because entry IDs are monotonic and bound to the Merkle structure, so ordering survives the compromise of the signing key in a way a timestamp does not. In §3.2.3's words, a record from a revoked key is valid *"if and only if its SCITT inclusion entry ID is less than or equal to `last_valid_entry_id`"*, on the log named in the statement.
+
+**Offline is a state you report, not a check you skip.** Revocation statements are anchored in the same transparency log as the records they govern, and verifiers cache a signed bundle carrying `valid_until`. A verifier offline says what it checked against, "verified against revocation bundle valid at T", rather than reporting an affirming appraisal it did not earn. §3.2.3 states that an expired bundle *"MUST report the record as unverified for revocation rather than as verified"*, and that a verifier with no bundle *"MUST report that it performed no revocation check"*.
+
+A record with no usable inclusion entry ID has no anchor to place it before or after the compromise, so §3.2.3 falls back to binary revocation for it: *"a verifier MUST reject every record signed by the revoked key"*. That fallback is what the current `verify_record()` store implements, and it is the correct behaviour for deployments carrying no receipts.
 
 `verify_record()` takes a `revocation` store to do this. Pass a container of revoked identifiers, or a callable that performs a live lookup:
 
@@ -122,6 +128,8 @@ Both failure modes raise `ValueError`, including a store that cannot answer:
 | No `revocation` passed | Check skipped; verification is offline and proves nothing about current key status |
 
 The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted".
+
+What the store does not yet do is entry-ID-scoped revocation. It answers "is this key revoked", which is the §3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced §3.2.3, and the schemas the bundle format needs are published at [`schema/trace-revocation.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-revocation.json) and [`schema/trace-revocation-bundle.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-revocation-bundle.json).
 
 ## Verifying hardware-rooted records
 
