@@ -39,16 +39,16 @@
 <a id=__codelineno-2-2 name=__codelineno-2-2 href=#__codelineno-2-2></a><span class=kn>from</span><span class=w> </span><span class=nn>agentrust_trace</span><span class=w> </span><span class=kn>import</span> <span class=n>sign_record</span><span class=p>,</span> <span class=n>generate_key</span>
 <a id=__codelineno-2-3 name=__codelineno-2-3 href=#__codelineno-2-3></a>
 <a id=__codelineno-2-4 name=__codelineno-2-4 href=#__codelineno-2-4></a><span class=n>adapter</span> <span class=o>=</span> <span class=n>TraceAGTAdapter</span><span class=p>(</span>
-<a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>    <span class=n>model_provider</span><span class=o>=</span><span class=s2>&quot;anthropic&quot;</span><span class=p>,</span>
-<a id=__codelineno-2-6 name=__codelineno-2-6 href=#__codelineno-2-6></a>    <span class=n>model_id</span><span class=o>=</span><span class=s2>&quot;claude-sonnet-4-6&quot;</span><span class=p>,</span>
-<a id=__codelineno-2-7 name=__codelineno-2-7 href=#__codelineno-2-7></a>    <span class=n>model_version</span><span class=o>=</span><span class=s2>&quot;20251001&quot;</span><span class=p>,</span>
-<a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>    <span class=n>build_provenance_digest</span><span class=o>=</span><span class=s2>&quot;sha256:e5f6a7b8...&quot;</span><span class=p>,</span>
-<a id=__codelineno-2-9 name=__codelineno-2-9 href=#__codelineno-2-9></a>    <span class=n>transparency</span><span class=o>=</span><span class=s2>&quot;https://registry.agentrust-io.com/claim/...&quot;</span><span class=p>,</span>
+<a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>    <span class=n>model_provider</span><span class=o>=</span><span class=s2>"anthropic"</span><span class=p>,</span>
+<a id=__codelineno-2-6 name=__codelineno-2-6 href=#__codelineno-2-6></a>    <span class=n>model_id</span><span class=o>=</span><span class=s2>"claude-sonnet-4-6"</span><span class=p>,</span>
+<a id=__codelineno-2-7 name=__codelineno-2-7 href=#__codelineno-2-7></a>    <span class=n>model_version</span><span class=o>=</span><span class=s2>"20251001"</span><span class=p>,</span>
+<a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>    <span class=n>build_provenance_digest</span><span class=o>=</span><span class=s2>"sha256:e5f6a7b8..."</span><span class=p>,</span>
+<a id=__codelineno-2-9 name=__codelineno-2-9 href=#__codelineno-2-9></a>    <span class=n>transparency</span><span class=o>=</span><span class=s2>"https://registry.agentrust-io.com/claim/..."</span><span class=p>,</span>
 <a id=__codelineno-2-10 name=__codelineno-2-10 href=#__codelineno-2-10></a><span class=p>)</span>
 <a id=__codelineno-2-11 name=__codelineno-2-11 href=#__codelineno-2-11></a>
 <a id=__codelineno-2-12 name=__codelineno-2-12 href=#__codelineno-2-12></a><span class=n>session</span> <span class=o>=</span> <span class=n>AGTSessionResult</span><span class=p>(</span>
-<a id=__codelineno-2-13 name=__codelineno-2-13 href=#__codelineno-2-13></a>    <span class=n>agent_did</span><span class=o>=</span><span class=s2>&quot;spiffe://trust.example.org/agent/my-agent&quot;</span><span class=p>,</span>
-<a id=__codelineno-2-14 name=__codelineno-2-14 href=#__codelineno-2-14></a>    <span class=n>policy_bundle_bytes</span><span class=o>=</span><span class=n>Path</span><span class=p>(</span><span class=s2>&quot;policy.cedar&quot;</span><span class=p>)</span><span class=o>.</span><span class=n>read_bytes</span><span class=p>(),</span>
+<a id=__codelineno-2-13 name=__codelineno-2-13 href=#__codelineno-2-13></a>    <span class=n>agent_did</span><span class=o>=</span><span class=s2>"spiffe://trust.example.org/agent/my-agent"</span><span class=p>,</span>
+<a id=__codelineno-2-14 name=__codelineno-2-14 href=#__codelineno-2-14></a>    <span class=n>policy_bundle_bytes</span><span class=o>=</span><span class=n>Path</span><span class=p>(</span><span class=s2>"policy.cedar"</span><span class=p>)</span><span class=o>.</span><span class=n>read_bytes</span><span class=p>(),</span>
 <a id=__codelineno-2-15 name=__codelineno-2-15 href=#__codelineno-2-15></a>    <span class=n>audit_entries</span><span class=o>=</span><span class=n>govern_fn</span><span class=o>.</span><span class=n>get_audit_entries</span><span class=p>(),</span>
 <a id=__codelineno-2-16 name=__codelineno-2-16 href=#__codelineno-2-16></a>    <span class=n>merkle_chain_tip</span><span class=o>=</span><span class=n>govern_fn</span><span class=o>.</span><span class=n>chain_tip</span><span class=p>,</span>
 <a id=__codelineno-2-17 name=__codelineno-2-17 href=#__codelineno-2-17></a><span class=p>)</span>
@@ -59,29 +59,29 @@
 <a id=__codelineno-3-2 name=__codelineno-3-2 href=#__codelineno-3-2></a><span class=kn>from</span><span class=w> </span><span class=nn>agentmesh.governance.trace_sink</span><span class=w> </span><span class=kn>import</span> <span class=n>TraceConfig</span>
 <a id=__codelineno-3-3 name=__codelineno-3-3 href=#__codelineno-3-3></a>
 <a id=__codelineno-3-4 name=__codelineno-3-4 href=#__codelineno-3-4></a><span class=n>trace_config</span> <span class=o>=</span> <span class=n>TraceConfig</span><span class=p>(</span>
-<a id=__codelineno-3-5 name=__codelineno-3-5 href=#__codelineno-3-5></a>    <span class=n>output_path</span><span class=o>=</span><span class=s2>&quot;session.trace.json&quot;</span><span class=p>,</span>
-<a id=__codelineno-3-6 name=__codelineno-3-6 href=#__codelineno-3-6></a>    <span class=n>model_provider</span><span class=o>=</span><span class=s2>&quot;anthropic&quot;</span><span class=p>,</span>
-<a id=__codelineno-3-7 name=__codelineno-3-7 href=#__codelineno-3-7></a>    <span class=n>model_id</span><span class=o>=</span><span class=s2>&quot;claude-sonnet-4-6&quot;</span><span class=p>,</span>
-<a id=__codelineno-3-8 name=__codelineno-3-8 href=#__codelineno-3-8></a>    <span class=n>model_version</span><span class=o>=</span><span class=s2>&quot;20251001&quot;</span><span class=p>,</span>
-<a id=__codelineno-3-9 name=__codelineno-3-9 href=#__codelineno-3-9></a>    <span class=n>data_class</span><span class=o>=</span><span class=s2>&quot;confidential&quot;</span><span class=p>,</span>
+<a id=__codelineno-3-5 name=__codelineno-3-5 href=#__codelineno-3-5></a>    <span class=n>output_path</span><span class=o>=</span><span class=s2>"session.trace.json"</span><span class=p>,</span>
+<a id=__codelineno-3-6 name=__codelineno-3-6 href=#__codelineno-3-6></a>    <span class=n>model_provider</span><span class=o>=</span><span class=s2>"anthropic"</span><span class=p>,</span>
+<a id=__codelineno-3-7 name=__codelineno-3-7 href=#__codelineno-3-7></a>    <span class=n>model_id</span><span class=o>=</span><span class=s2>"claude-sonnet-4-6"</span><span class=p>,</span>
+<a id=__codelineno-3-8 name=__codelineno-3-8 href=#__codelineno-3-8></a>    <span class=n>model_version</span><span class=o>=</span><span class=s2>"20251001"</span><span class=p>,</span>
+<a id=__codelineno-3-9 name=__codelineno-3-9 href=#__codelineno-3-9></a>    <span class=n>data_class</span><span class=o>=</span><span class=s2>"confidential"</span><span class=p>,</span>
 <a id=__codelineno-3-10 name=__codelineno-3-10 href=#__codelineno-3-10></a>    <span class=n>build_provenance_slsa_level</span><span class=o>=</span><span class=mi>2</span><span class=p>,</span>
-<a id=__codelineno-3-11 name=__codelineno-3-11 href=#__codelineno-3-11></a>    <span class=n>build_provenance_digest</span><span class=o>=</span><span class=s2>&quot;sha256:e5f6a7b8...&quot;</span><span class=p>,</span>
+<a id=__codelineno-3-11 name=__codelineno-3-11 href=#__codelineno-3-11></a>    <span class=n>build_provenance_digest</span><span class=o>=</span><span class=s2>"sha256:e5f6a7b8..."</span><span class=p>,</span>
 <a id=__codelineno-3-12 name=__codelineno-3-12 href=#__codelineno-3-12></a><span class=p>)</span>
 <a id=__codelineno-3-13 name=__codelineno-3-13 href=#__codelineno-3-13></a>
 <a id=__codelineno-3-14 name=__codelineno-3-14 href=#__codelineno-3-14></a><span class=n>config</span> <span class=o>=</span> <span class=n>GovernanceConfig</span><span class=p>(</span>
-<a id=__codelineno-3-15 name=__codelineno-3-15 href=#__codelineno-3-15></a>    <span class=n>policy_path</span><span class=o>=</span><span class=s2>&quot;policy.cedar&quot;</span><span class=p>,</span>
+<a id=__codelineno-3-15 name=__codelineno-3-15 href=#__codelineno-3-15></a>    <span class=n>policy_path</span><span class=o>=</span><span class=s2>"policy.cedar"</span><span class=p>,</span>
 <a id=__codelineno-3-16 name=__codelineno-3-16 href=#__codelineno-3-16></a>    <span class=n>trace</span><span class=o>=</span><span class=n>trace_config</span><span class=p>,</span>
 <a id=__codelineno-3-17 name=__codelineno-3-17 href=#__codelineno-3-17></a><span class=p>)</span>
 <a id=__codelineno-3-18 name=__codelineno-3-18 href=#__codelineno-3-18></a>
 <a id=__codelineno-3-19 name=__codelineno-3-19 href=#__codelineno-3-19></a><span class=n>governed_fn</span> <span class=o>=</span> <span class=n>govern</span><span class=p>(</span>
 <a id=__codelineno-3-20 name=__codelineno-3-20 href=#__codelineno-3-20></a>    <span class=n>my_tool</span><span class=p>,</span>
-<a id=__codelineno-3-21 name=__codelineno-3-21 href=#__codelineno-3-21></a>    <span class=n>agent_did</span><span class=o>=</span><span class=s2>&quot;spiffe://trust.example.org/agent/my-agent&quot;</span><span class=p>,</span>
+<a id=__codelineno-3-21 name=__codelineno-3-21 href=#__codelineno-3-21></a>    <span class=n>agent_did</span><span class=o>=</span><span class=s2>"spiffe://trust.example.org/agent/my-agent"</span><span class=p>,</span>
 <a id=__codelineno-3-22 name=__codelineno-3-22 href=#__codelineno-3-22></a>    <span class=n>config</span><span class=o>=</span><span class=n>config</span><span class=p>,</span>
 <a id=__codelineno-3-23 name=__codelineno-3-23 href=#__codelineno-3-23></a><span class=p>)</span>
 <a id=__codelineno-3-24 name=__codelineno-3-24 href=#__codelineno-3-24></a>
 <a id=__codelineno-3-25 name=__codelineno-3-25 href=#__codelineno-3-25></a><span class=n>result</span> <span class=o>=</span> <span class=n>governed_fn</span><span class=p>(</span><span class=nb>input</span><span class=p>)</span>
 <a id=__codelineno-3-26 name=__codelineno-3-26 href=#__codelineno-3-26></a><span class=n>path</span> <span class=o>=</span> <span class=n>governed_fn</span><span class=o>.</span><span class=n>close_session</span><span class=p>()</span>
-<a id=__codelineno-3-27 name=__codelineno-3-27 href=#__codelineno-3-27></a><span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;Trust Record written to: </span><span class=si>{</span><span class=n>path</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
+<a id=__codelineno-3-27 name=__codelineno-3-27 href=#__codelineno-3-27></a><span class=nb>print</span><span class=p>(</span><span class=sa>f</span><span class=s2>"Trust Record written to: </span><span class=si>{</span><span class=n>path</span><span class=si>}</span><span class=s2>"</span><span class=p>)</span>
 </code></pre></div> <h2 id=key-management>Key management<a class=headerlink href=#key-management title="Permanent link">&para;</a></h2> <p>Key material is managed entirely by <code>agentrust_trace.load_signing_key()</code>. AGT does not hold keys directly.</p> <div class=highlight><pre><span></span><code><a id=__codelineno-4-1 name=__codelineno-4-1 href=#__codelineno-4-1></a><span class=c1># Set the signing key path via environment variable</span>
 <a id=__codelineno-4-2 name=__codelineno-4-2 href=#__codelineno-4-2></a><span class=nb>export</span><span class=w> </span><span class=nv>AGENTRUST_TRACE_KEY_PATH</span><span class=o>=</span>/run/secrets/trace-signing-key.pem
 </code></pre></div> <p>For production, store the key in a secrets manager (AWS Secrets Manager, HashiCorp Vault, Kubernetes Secret) and inject via environment variable or volume mount.</p> <h2 id=verifying-the-emitted-record>Verifying the emitted record<a class=headerlink href=#verifying-the-emitted-record title="Permanent link">&para;</a></h2> <div class=highlight><pre><span></span><code><a id=__codelineno-5-1 name=__codelineno-5-1 href=#__codelineno-5-1></a>agentrust-trace<span class=w> </span>verify<span class=w> </span>session.trace.json<span class=w> </span>--pubkey<span class=w> </span>trace-key.pem.pub

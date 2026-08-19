@@ -63,30 +63,30 @@
 <a id=__codelineno-1-8 name=__codelineno-1-8 href=#__codelineno-1-8></a><span class=w>  </span>ghcr.io/agentrust-io/cmcp:latest
 </code></pre></div> <p>Your agent points at <code>https://localhost:8443</code> instead of the upstream MCP server. Zero code change.</p> <h2 id=cedar-policy-example>Cedar policy example<a class=headerlink href=#cedar-policy-example title="Permanent link">&para;</a></h2> <div class=highlight><pre><span></span><code><a id=__codelineno-2-1 name=__codelineno-2-1 href=#__codelineno-2-1></a>// Allow credit-risk agent to call financial tools — deny if data class is secret
 <a id=__codelineno-2-2 name=__codelineno-2-2 href=#__codelineno-2-2></a>permit(
-<a id=__codelineno-2-3 name=__codelineno-2-3 href=#__codelineno-2-3></a>  principal == Agent::&quot;spiffe://trust.example.org/agent/credit-risk&quot;,
-<a id=__codelineno-2-4 name=__codelineno-2-4 href=#__codelineno-2-4></a>  action == Action::&quot;call_tool&quot;,
-<a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>  resource in Tools::&quot;financial&quot;
+<a id=__codelineno-2-3 name=__codelineno-2-3 href=#__codelineno-2-3></a>  principal == Agent::"spiffe://trust.example.org/agent/credit-risk",
+<a id=__codelineno-2-4 name=__codelineno-2-4 href=#__codelineno-2-4></a>  action == Action::"call_tool",
+<a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>  resource in Tools::"financial"
 <a id=__codelineno-2-6 name=__codelineno-2-6 href=#__codelineno-2-6></a>)
 <a id=__codelineno-2-7 name=__codelineno-2-7 href=#__codelineno-2-7></a>when {
-<a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>  context.data_class != &quot;secret&quot;
+<a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>  context.data_class != "secret"
 <a id=__codelineno-2-9 name=__codelineno-2-9 href=#__codelineno-2-9></a>};
 </code></pre></div> <p>Cedar policies are versioned, code-reviewable, and their SHA-256 hash is bound into the TRACE record at the TEE measurement step — before any code runs.</p> <h2 id=connect-an-mcp-compatible-agent>Connect an MCP-compatible agent<a class=headerlink href=#connect-an-mcp-compatible-agent title="Permanent link">&para;</a></h2> <div class=highlight><pre><span></span><code><a id=__codelineno-3-1 name=__codelineno-3-1 href=#__codelineno-3-1></a><span class=kn>import</span><span class=w> </span><span class=nn>anthropic</span>
 <a id=__codelineno-3-2 name=__codelineno-3-2 href=#__codelineno-3-2></a>
 <a id=__codelineno-3-3 name=__codelineno-3-3 href=#__codelineno-3-3></a><span class=c1># Point at cMCP gateway instead of your MCP server</span>
 <a id=__codelineno-3-4 name=__codelineno-3-4 href=#__codelineno-3-4></a><span class=n>client</span> <span class=o>=</span> <span class=n>anthropic</span><span class=o>.</span><span class=n>Anthropic</span><span class=p>()</span>
 <a id=__codelineno-3-5 name=__codelineno-3-5 href=#__codelineno-3-5></a><span class=n>response</span> <span class=o>=</span> <span class=n>client</span><span class=o>.</span><span class=n>beta</span><span class=o>.</span><span class=n>messages</span><span class=o>.</span><span class=n>create</span><span class=p>(</span>
-<a id=__codelineno-3-6 name=__codelineno-3-6 href=#__codelineno-3-6></a>    <span class=n>model</span><span class=o>=</span><span class=s2>&quot;claude-sonnet-4-6&quot;</span><span class=p>,</span>
+<a id=__codelineno-3-6 name=__codelineno-3-6 href=#__codelineno-3-6></a>    <span class=n>model</span><span class=o>=</span><span class=s2>"claude-sonnet-4-6"</span><span class=p>,</span>
 <a id=__codelineno-3-7 name=__codelineno-3-7 href=#__codelineno-3-7></a>    <span class=n>max_tokens</span><span class=o>=</span><span class=mi>1024</span><span class=p>,</span>
 <a id=__codelineno-3-8 name=__codelineno-3-8 href=#__codelineno-3-8></a>    <span class=n>tools</span><span class=o>=</span><span class=p>[{</span>
-<a id=__codelineno-3-9 name=__codelineno-3-9 href=#__codelineno-3-9></a>        <span class=s2>&quot;type&quot;</span><span class=p>:</span> <span class=s2>&quot;mcp&quot;</span><span class=p>,</span>
-<a id=__codelineno-3-10 name=__codelineno-3-10 href=#__codelineno-3-10></a>        <span class=s2>&quot;server_url&quot;</span><span class=p>:</span> <span class=s2>&quot;https://localhost:8443&quot;</span><span class=p>,</span>  <span class=c1># cMCP gateway</span>
+<a id=__codelineno-3-9 name=__codelineno-3-9 href=#__codelineno-3-9></a>        <span class=s2>"type"</span><span class=p>:</span> <span class=s2>"mcp"</span><span class=p>,</span>
+<a id=__codelineno-3-10 name=__codelineno-3-10 href=#__codelineno-3-10></a>        <span class=s2>"server_url"</span><span class=p>:</span> <span class=s2>"https://localhost:8443"</span><span class=p>,</span>  <span class=c1># cMCP gateway</span>
 <a id=__codelineno-3-11 name=__codelineno-3-11 href=#__codelineno-3-11></a>    <span class=p>}],</span>
-<a id=__codelineno-3-12 name=__codelineno-3-12 href=#__codelineno-3-12></a>    <span class=n>messages</span><span class=o>=</span><span class=p>[{</span><span class=s2>&quot;role&quot;</span><span class=p>:</span> <span class=s2>&quot;user&quot;</span><span class=p>,</span> <span class=s2>&quot;content&quot;</span><span class=p>:</span> <span class=s2>&quot;Analyze this credit application&quot;</span><span class=p>}],</span>
-<a id=__codelineno-3-13 name=__codelineno-3-13 href=#__codelineno-3-13></a>    <span class=n>betas</span><span class=o>=</span><span class=p>[</span><span class=s2>&quot;mcp-client-2025-04-04&quot;</span><span class=p>],</span>
+<a id=__codelineno-3-12 name=__codelineno-3-12 href=#__codelineno-3-12></a>    <span class=n>messages</span><span class=o>=</span><span class=p>[{</span><span class=s2>"role"</span><span class=p>:</span> <span class=s2>"user"</span><span class=p>,</span> <span class=s2>"content"</span><span class=p>:</span> <span class=s2>"Analyze this credit application"</span><span class=p>}],</span>
+<a id=__codelineno-3-13 name=__codelineno-3-13 href=#__codelineno-3-13></a>    <span class=n>betas</span><span class=o>=</span><span class=p>[</span><span class=s2>"mcp-client-2025-04-04"</span><span class=p>],</span>
 <a id=__codelineno-3-14 name=__codelineno-3-14 href=#__codelineno-3-14></a><span class=p>)</span>
 </code></pre></div> <h2 id=retrieve-the-trace-record>Retrieve the TRACE record<a class=headerlink href=#retrieve-the-trace-record title="Permanent link">&para;</a></h2> <p>After the session, fetch the TRACE record from the gateway:</p> <div class=highlight><pre><span></span><code><a id=__codelineno-4-1 name=__codelineno-4-1 href=#__codelineno-4-1></a><span class=kn>import</span><span class=w> </span><span class=nn>httpx</span>
 <a id=__codelineno-4-2 name=__codelineno-4-2 href=#__codelineno-4-2></a>
-<a id=__codelineno-4-3 name=__codelineno-4-3 href=#__codelineno-4-3></a><span class=n>record</span> <span class=o>=</span> <span class=n>httpx</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;https://localhost:8443/trace/latest&quot;</span><span class=p>)</span><span class=o>.</span><span class=n>json</span><span class=p>()</span>
+<a id=__codelineno-4-3 name=__codelineno-4-3 href=#__codelineno-4-3></a><span class=n>record</span> <span class=o>=</span> <span class=n>httpx</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>"https://localhost:8443/trace/latest"</span><span class=p>)</span><span class=o>.</span><span class=n>json</span><span class=p>()</span>
 <a id=__codelineno-4-4 name=__codelineno-4-4 href=#__codelineno-4-4></a><span class=c1># → full TRACE v0.1 Trust Record, Level 2, signed by TEE-bound key</span>
 </code></pre></div> <p>Or let cMCP push it to the transparency registry automatically:</p> <div class=highlight><pre><span></span><code><a id=__codelineno-5-1 name=__codelineno-5-1 href=#__codelineno-5-1></a><span class=c1># cmcp.yaml</span>
 <a id=__codelineno-5-2 name=__codelineno-5-2 href=#__codelineno-5-2></a><span class=nt>trace</span><span class=p>:</span>
