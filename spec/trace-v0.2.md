@@ -221,7 +221,7 @@ A Trust Record normally describes an execution and is produced by the runtime th
 - **JWT contexts (RFC 7515):** `ES256`, `ES384`, or `EdDSA` (Ed25519). Composite chains across silicon-root and workload segments are expressed as nested JWTs with `x5c` chains or `kid` resolving into vendor RIM directories.
 - **CBOR-COSE contexts (RFC 9052/9053):** `COSE_Sign1` for single-signer records; `COSE_Sign` for multi-signer records.
 - **Key hierarchy:** silicon root key (vendor-managed, hardware-bound) → platform attestation key (e.g., Intel TDX Quote signing key, AMD VCEK/VLEK, NVIDIA NRAS) → workload attestation key (TEE-bound, ephemeral) → record-signing key (per workload, optionally per session).
-- **Revocation:** silicon-root revocation is consumed from existing vendor channels. Workload-level keys SHOULD rotate at TEE-image boundaries. Verifiers MUST consult current revocation status at verification time.
+- **Revocation:** silicon-root revocation is consumed from existing vendor channels. Workload-level keys SHOULD rotate at TEE-image boundaries. Record-signing key revocation is defined in section 3.2.3, which anchors to transparency-log entry ordering rather than to a status callback, so it does not withdraw the offline-verification property of section 3.3.
 - **Hash agility:** SHA-256 minimum; SHA-384 required for FIPS-aligned profiles. Algorithm signaled in the EAT envelope per RFC 9711 §6.
 
 #### 3.2.2 Mandatory signature and freshness binding
@@ -249,6 +249,39 @@ Each profile MUST declare which binding form it uses. A record with no verifiabl
 
 **Conformance alignment.** The TRACE conformance suite (trace-tests) already enforces both rules: records without a verifiable signature fail at conformance level 1 and above, and the default 24-hour max-age is enforced.
 
+#### 3.2.3 Revocation of record-signing keys
+
+A signature stays valid forever. A record signed by a key that was later compromised passes every check in section 3.3, and nothing inside the record can withdraw the key that signed it. What a verifier needs is not "is this key trusted now" but "was this key trusted when this record was made", and the record cannot answer that about itself.
+
+**Why `iat` cannot carry the boundary.** The obvious rule is to reject a record from a revoked key when its `iat` is later than the compromise time. A compromised record-signing key also signs the `iat` field, so an attacker holding the key backdates it and the rule passes. Any revocation rule anchored to a timestamp the compromised key controls is defeated by the compromise it is meant to contain. This is not a clock-skew problem and no tolerance setting fixes it.
+
+**Anchor: transparency-log entry ordering.** Entry IDs in the log named by the record's SCITT receipt are monotonic and cryptographically bound to the Merkle structure. The attacker cannot choose an entry ID for a record submitted after the log has moved past it, and cannot reorder entries already committed. Ordering therefore survives the compromise of the record-signing key, which a timestamp does not.
+
+`TraceRevocation/1.0` claim type:
+
+```json
+{
+  "type": "TraceRevocation/1.0",
+  "compromised_key_id": "<RFC 7638 JWK thumbprint or kid of the revoked key>",
+  "last_valid_entry_id": "<SCITT log entry ID>",
+  "revoked_after_entry": "<the next entry ID>",
+  "log_id": "<identifier of the transparency log the entry IDs refer to>",
+  "reason": "key compromise | superseded | operator request | ...",
+  "revocation_key_id": "<thumbprint of the key signing this statement>",
+  "sig": { "alg": "ed25519", "value": "<base64url, no padding>" }
+}
+```
+
+**Verifier rule.** A record signed by a revoked key is valid if and only if its SCITT inclusion entry ID is less than or equal to `last_valid_entry_id` in the applicable revocation statement, and that entry ID is on the log named by `log_id`. A record whose entry ID is greater MUST be rejected. Entry IDs from a different log are not comparable and MUST NOT be used to satisfy the rule.
+
+**Fallback for records with no usable receipt.** A record without a SCITT inclusion entry ID on the named log has no external anchor, so there is no reliable way to place it before or after the compromise. Revocation for such records is binary: a verifier MUST reject every record signed by the revoked key. This is a fallback rather than a lesser mode; it is what the absence of an anchor costs, and it is the existing behaviour for deployments that carry no receipts.
+
+**Signing-key independence.** A revocation statement for key K MUST be signed by a key at a higher level in the section 3.2.1 hierarchy than K, or by a designated organisational recovery key whose compromise domain is independent of K. A statement K could sign for itself lets whoever holds a compromised key issue a revocation naming a `last_valid_entry_id` of their choosing, which converts the mechanism into a tool for the attacker.
+
+**Distribution, offline-verifiable.** Revocation statements are anchored in the same transparency log as the records they govern, which preserves the no-callback property of section 3.3: a verifier that can resolve receipts can resolve revocations. Verifiers cache a signed revocation *bundle* carrying a `valid_until` field, under the same maximum-age model as section 3.2.2. A verifier operating offline states what it checked against: "verified against revocation bundle valid at T". This deliberately replaces a well-known status endpoint, which would require a callback at verification time and withdraw the property section 3.3 is built on.
+
+An expired bundle is not a pass. A verifier whose newest bundle is older than the profile's maximum age MUST report the record as unverified for revocation rather than as verified, and a verifier with no bundle at all MUST report that it performed no revocation check. Neither may be reported as an affirming appraisal.
+
 ### 3.3 Verification
 
 Any party — browser, CLI, in-cluster verifier, third-party auditor — verifies:
@@ -260,6 +293,7 @@ Any party — browser, CLI, in-cluster verifier, third-party auditor — verifie
 5. Policy hash matches the policy bundle the verifier expects.
 6. SCITT receipt resolves on the named transparency log.
 7. SLSA provenance resolves to a trusted builder.
+8. The record-signing key is not revoked as of the entry the record was logged at, per section 3.2.3. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
