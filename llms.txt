@@ -6,7 +6,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 
 ## Getting started
 
-- [Home](https://trace.agentrust-io.com/docs/index.md)
+- [Home](https://trace.agentrust-io.com/index.md)
 - [Quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md)
 - [Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)
 - [Verification](https://trace.agentrust-io.com/docs/verification/index.md)
