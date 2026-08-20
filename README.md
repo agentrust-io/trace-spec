@@ -14,7 +14,6 @@
   <a href="spec/trace-v0.2.md">Specification</a> &nbsp;|&nbsp;
   <a href="schema/trace-claim.json">Schema</a> &nbsp;|&nbsp;
   <a href="examples/">Examples</a> &nbsp;|&nbsp;
-  <a href="https://github.com/agentrust-io/trace-registry">Registry</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/trace-tests">Test Suite</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/cmcp">Reference Impl</a>
 </p>
@@ -72,7 +71,7 @@ signed = sign_record(record, key=signing_key)
 | 🔍 Schema | [schema/trace-claim.json](schema/trace-claim.json) |
 | 📦 PyPI | [agentrust-trace](https://pypi.org/project/agentrust-trace/) |
 | 🧪 Test suite | [trace-tests](https://github.com/agentrust-io/trace-tests) |
-| 🗂 Registry | [trace-registry](https://github.com/agentrust-io/trace-registry) |
+| 🗂 Registry | `trace-registry` (not public yet) |
 | 🔗 Reference implementation | [cmcp](https://github.com/agentrust-io/cmcp) |
 | 💬 Discussions | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions) |
 | 📋 Changelog | [CHANGELOG.md](CHANGELOG.md) |
