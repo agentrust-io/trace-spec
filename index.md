@@ -1,6 +1,6 @@
 # TRACE: Trust, Runtime Attestation, and Compliance Evidence
 
-[Specification](https://trace.agentrust-io.com/spec/trace-v0.2.md)  |  [Schema](https://trace.agentrust-io.com/schema/trace-claim.json)  |  [Examples](https://trace.agentrust-io.com/examples/index.md)  |  [Registry](https://github.com/agentrust-io/trace-registry)  |  [Test Suite](https://github.com/agentrust-io/trace-tests)  |  [Reference Impl](https://github.com/agentrust-io/cmcp)
+[Specification](https://trace.agentrust-io.com/spec/trace-v0.2.md)  |  [Schema](https://trace.agentrust-io.com/schema/trace-claim.json)  |  [Examples](https://trace.agentrust-io.com/examples/index.md)  |  [Test Suite](https://github.com/agentrust-io/trace-tests)  |  [Reference Impl](https://github.com/agentrust-io/cmcp)
 
 > **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026.
 
@@ -48,7 +48,7 @@ signed = sign_record(record, key=signing_key)
 | 🔍 Schema                   | [schema/trace-claim.json](https://trace.agentrust-io.com/schema/trace-claim.json) |
 | 📦 PyPI                     | [agentrust-trace](https://pypi.org/project/agentrust-trace/)                      |
 | 🧪 Test suite               | [trace-tests](https://github.com/agentrust-io/trace-tests)                        |
-| 🗂 Registry                  | [trace-registry](https://github.com/agentrust-io/trace-registry)                  |
+| 🗂 Registry                  | `trace-registry` (not public yet)                                                 |
 | 🔗 Reference implementation | [cmcp](https://github.com/agentrust-io/cmcp)                                      |
 | 💬 Discussions              | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions)            |
 | 📋 Changelog                | [CHANGELOG.md](https://trace.agentrust-io.com/CHANGELOG/index.md)                 |
