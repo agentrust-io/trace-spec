@@ -28,7 +28,7 @@ Status as of August 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](spec/
 
 ## Later — v1.0 standard (2027)
 
-- TSC governance under "TRACE Specification, a Series of LF Projects, LLC" (formation in progress, see [#127](https://github.com/agentrust-io/trace-spec/pull/127); §6.1 of the spec still names the superseded CoSAI plus LF-MCP-entity plan and is corrected there)
+- TSC governance under "TRACE Specification, a Series of LF Projects, LLC" (formation with LF Projects, LLC complete; the TSC transition under [CHARTER.md](CHARTER.md) is the remaining step)
 - All §7 open questions resolved
 - Complete conformance certification program
 - Post-quantum signature profile (ML-DSA, tracking NIST SP 800-208)

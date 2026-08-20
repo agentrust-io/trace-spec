@@ -25,6 +25,10 @@
 [![CI](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white&style=flat)](https://discord.gg/grgzFEHgkj)
 
+<p align="center">
+  <strong>TRACE Specification is an <a href="https://www.linuxfoundation.org/">LF Project</a></strong>, hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC".
+</p>
+
 > **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026.
 
 An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
@@ -78,7 +82,7 @@ signed = sign_record(record, key=signing_key)
 
 ## Standards alignment
 
-Being formed at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC". Related standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
+Hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). Related standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
 
 ## Frequently asked questions
 
