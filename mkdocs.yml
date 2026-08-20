@@ -13,7 +13,12 @@ exclude_docs: |
   node_modules/
   src/
   tests/
-  schema/
+  # schema/ is published, not excluded, but only the file whose $id points at
+  # this host. The others declare an agentrust-io.com $id and are served there;
+  # serving a second copy here would give the same document two URLs.
+  schema/trace-claim.json
+  schema/trace-revocation.json
+  schema/trace-revocation-bundle.json
   LICENSE
   NOTICE
   ANTITRUST.md

@@ -112,7 +112,7 @@ Relying parties set the minimum acceptable level in their Cedar policy. Records 
 
 ## Related
 
-- [Trust Levels in the test suite](https://tests.agentrust-io.com/levels)
+- [Trust Levels in the test suite](https://tests.agentrust-io.com/docs/levels/)
 - [TRACE Specification — Section 4: Trust Levels](../spec/trace-v0.2.md)
 - [Hardware Attestation Platforms](tutorials/hardware-attestation-platforms.md)
 - [Glossary](glossary.md)
