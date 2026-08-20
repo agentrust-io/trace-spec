@@ -32,6 +32,19 @@ An open specification for hardware-attested AI agent governance records. TRACE d
 
 A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can verify without trusting the operator.
 
+## What a Trust Record proves
+
+Each question maps to a claim a third party can check for themselves.
+
+| Question | TRACE claim |
+|---|---|
+| What model ran? | `model.model_id` + `model.weights_digest` |
+| Where did it run? | `runtime.platform` + `runtime.measurement` |
+| Under which policy? | `policy.bundle_hash` + `policy.enforcement_mode` |
+| What data did it touch? | `data_class` |
+| Which tools were called? | `tool_transcript.hash` + `tool_transcript.call_count` |
+| Is the record independently anchored? | `anchoring.receipt_uri` (SCITT) |
+
 ## Quick start
 
 ```bash

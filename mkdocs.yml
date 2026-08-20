@@ -83,7 +83,7 @@ plugins:
         conformance suite.
       sections:
         Getting started:
-          - docs/index.md
+          - README.md
           - docs/quickstart.md
           - docs/trust-levels.md
           - docs/verification.md
@@ -179,7 +179,7 @@ extra_css:
   - https://agentrust-io.com/design-system.css
 
 nav:
-  - Home: docs/index.md
+  - Home: README.md
   - Getting Started:
       - Quickstart: docs/quickstart.md
       - Trust Levels: docs/trust-levels.md
