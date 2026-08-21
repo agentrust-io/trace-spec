@@ -12,7 +12,9 @@
 {% block extrahead %}
   {{ super() }}
 
-  {% set page_title = page.title ~ " - " ~ config.site_name if page and page.title else config.site_name %}
+  {# page.title is the nav label ("Home"); page.meta.title is the front matter. #}
+  {% set page_name = (page.meta.title if page and page.meta and page.meta.title else (page.title if page else None)) %}
+  {% set page_title = page_name ~ " - " ~ config.site_name if page_name else config.site_name %}
   {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
 
