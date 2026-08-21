@@ -20,7 +20,7 @@
 
 [![Specification: Community Specification License 1.0](https://img.shields.io/badge/Specification-Community_Specification_License_1.0-blue.svg)](Governance/COMMUNITY-SPECIFICATION-LICENSE.md)
 [![Code: Apache 2.0](https://img.shields.io/badge/Code-Apache_2.0-lightgrey.svg)](LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.2.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.2-0ea5e9)](spec/trace-v0.2.md)
 [![PyPI](https://img.shields.io/pypi/v/agentrust-trace)](https://pypi.org/project/agentrust-trace/)
 [![CI](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white&style=flat)](https://discord.gg/grgzFEHgkj)
@@ -29,7 +29,7 @@
   <strong>TRACE Specification is an <a href="https://www.linuxfoundation.org/">LF Project</a></strong>, hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC".
 </p>
 
-> **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026.
+> **Developer Preview.** Launched at Confidential Computing Summit, 23 June 2026. Spec v0.2 is current. See [LIMITATIONS.md](LIMITATIONS.md) before relying on it in production.
 
 An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
 

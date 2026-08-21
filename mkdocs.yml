@@ -21,12 +21,10 @@ exclude_docs: |
   schema/trace-revocation-bundle.json
   LICENSE
   NOTICE
+  README.md
   ANTITRUST.md
   ADOPTERS.md
-  MAINTAINERS.md
   SECURITY.md
-  CHARTER.md
-  CODE_OF_CONDUCT.md
   pyproject.toml
 
 theme:
@@ -88,7 +86,7 @@ plugins:
         conformance suite.
       sections:
         Getting started:
-          - README.md
+          - index.md
           - docs/quickstart.md
           - docs/trust-levels.md
           - docs/verification.md
@@ -184,7 +182,7 @@ extra_css:
   - https://agentrust-io.com/design-system.css
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - Getting Started:
       - Quickstart: docs/quickstart.md
       - Trust Levels: docs/trust-levels.md
@@ -221,6 +219,8 @@ nav:
       - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
       - Acta Decision Receipts: docs/crosswalks/acta-decision-receipts.md
   - Test Suite: https://tests.agentrust-io.com
+  - Method:
+      - How the conformance vectors are built: docs/conformance-method.md
   - RFCs:
       - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
   - Project:
@@ -228,6 +228,9 @@ nav:
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
+      - Technical Charter: CHARTER.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Maintainers: MAINTAINERS.md
       - Roadmap: ROADMAP.md
       - Privacy: PRIVACY.md
       - Scope: Governance/Scope.md
