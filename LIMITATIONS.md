@@ -30,6 +30,12 @@ Signature validity is permanent; trust is not. Nothing inside a record can retra
 
 ## Platform state is not appraised
 
+<!-- This is the source copy of the marked block. cmcp and ca2a carry it
+     verbatim and their limitations-parity workflows check it against this
+     file, so a change here has to land before theirs. The paragraph after
+     the end marker is TRACE's own and is not shared. -->
+
+<!-- shared:platform-state-appraisal begin -->
 The SEV-SNP path here establishes that a report is authentic and which workload it
 describes: report signature, the VCEK to ASK to ARK chain with the ARK pinned by the
 operator, and measurement binding. Those are the right four checks and they are not
@@ -39,17 +45,22 @@ in dispute.
 report carries that separately in `PLATFORM_INFO` at offset 0x40: whether SMT is on,
 whether ECC is enabled, whether ciphertext hiding is enforced, and whether the
 firmware completed its boot-time DRAM alias check, which is AMD's mitigation for
-BadRAM (security bulletin SB-3015). A TRACE claim's runtime block carries the measurement and the evidence, and has no field for platform state, so a verifier reading a conformant claim cannot appraise it even where the producer checked it.
+BadRAM (security bulletin SB-3015).
 
 The practical consequence: a report from a machine with SMT enabled and the alias
 check never completed verifies exactly as cleanly as one from a machine with neither
 condition. If that distinction matters to your deployment, it has to be asserted
-explicitly, and today the spec does not assert it for you.
+explicitly.
 
 Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195),
 where the reference verifier's own platform-info policy field is documented as a
 ceiling while four of its seven fields are enforced as minimums. Worth reading before
 writing any policy over these bits.
+<!-- shared:platform-state-appraisal end -->
+
+**In TRACE.** A TRACE claim's runtime block carries the measurement and the evidence
+and has no field for platform state, so a verifier reading a conformant claim cannot
+appraise it even where the producer checked it. The spec does not assert it for you.
 
 ## What Level 0 does not provide
 
