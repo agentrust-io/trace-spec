@@ -173,8 +173,9 @@ adapter = TraceAGTAdapter(
 
 The Level 0 record from `TraceAGTAdapter` remains valid — it is evidence of policy enforcement at the software layer. The Level 2 record from cMCP adds hardware attestation on top.
 
-→ [Deploy on Azure](deploy-azure.md) — `Standard_DC2as_v5` (SEV-SNP) or `Standard_DC2es_v6` (TDX)  
-→ [Deploy on GCP](deploy-gcp.md) — `n2d-standard-4` (SEV-SNP) or `c3-standard-4` (TDX)
+→ [Deploy on Azure](https://cmcp.agentrust-io.com/tutorials/deploy-azure/) — `Standard_DC2as_v5` (SEV-SNP) or `Standard_DC2es_v6` (TDX)  
+→ [Deploy on GCP](https://cmcp.agentrust-io.com/tutorials/deploy-gcp/) — `n2d-standard-4` (SEV-SNP) or `c3-standard-4` (TDX)  
+→ Platform detail: [AMD SEV-SNP](../platforms/amd-sev-snp.md) · [Intel TDX](../platforms/intel-tdx.md)
 
 ---
 

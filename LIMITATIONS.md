@@ -28,6 +28,40 @@ If the TRACE signing key is compromised after records are issued, existing recor
 **Pure offline verification cannot prove non-revocation**
 Signature validity is permanent; trust is not. Nothing inside a record can retract the key that signed it, so a record signed by a since-revoked key verifies offline forever. Spec §3.2.1 accordingly requires verifiers to consult current revocation status at verification time, which is by definition an online step. `verify_record()` takes a `revocation` store, either a container of revoked identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. It rejects a listed key, and fails closed when the store cannot answer. Without that store, verification is offline and its result means "this record was validly signed by this key", not "this key is still trusted".
 
+## Platform state is not appraised
+
+<!-- This is the source copy of the marked block. cmcp and ca2a carry it
+     verbatim and their limitations-parity workflows check it against this
+     file, so a change here has to land before theirs. The paragraph after
+     the end marker is TRACE's own and is not shared. -->
+
+<!-- shared:platform-state-appraisal begin -->
+The SEV-SNP path here establishes that a report is authentic and which workload it
+describes: report signature, the VCEK to ASK to ARK chain with the ARK pinned by the
+operator, and measurement binding. Those are the right four checks and they are not
+in dispute.
+
+**What none of them ask is what kind of machine the report came from.** A SEV-SNP
+report carries that separately in `PLATFORM_INFO` at offset 0x40: whether SMT is on,
+whether ECC is enabled, whether ciphertext hiding is enforced, and whether the
+firmware completed its boot-time DRAM alias check, which is AMD's mitigation for
+BadRAM (security bulletin SB-3015).
+
+The practical consequence: a report from a machine with SMT enabled and the alias
+check never completed verifies exactly as cleanly as one from a machine with neither
+condition. If that distinction matters to your deployment, it has to be asserted
+explicitly.
+
+Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195),
+where the reference verifier's own platform-info policy field is documented as a
+ceiling while four of its seven fields are enforced as minimums. Worth reading before
+writing any policy over these bits.
+<!-- shared:platform-state-appraisal end -->
+
+**In TRACE.** A TRACE claim's runtime block carries the measurement and the evidence
+and has no field for platform state, so a verifier reading a conformant claim cannot
+appraise it even where the producer checked it. The spec does not assert it for you.
+
 ## What Level 0 does not provide
 
 Level 0 (software-only signing) is suitable for development, internal audit trails, and staging environments. It does not satisfy:

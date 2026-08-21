@@ -14,23 +14,39 @@
   <a href="spec/trace-v0.2.md">Specification</a> &nbsp;|&nbsp;
   <a href="schema/trace-claim.json">Schema</a> &nbsp;|&nbsp;
   <a href="examples/">Examples</a> &nbsp;|&nbsp;
-  <a href="https://github.com/agentrust-io/trace-registry">Registry</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/trace-tests">Test Suite</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/cmcp">Reference Impl</a>
 </p>
 
 [![Specification: Community Specification License 1.0](https://img.shields.io/badge/Specification-Community_Specification_License_1.0-blue.svg)](Governance/COMMUNITY-SPECIFICATION-LICENSE.md)
 [![Code: Apache 2.0](https://img.shields.io/badge/Code-Apache_2.0-lightgrey.svg)](LICENSE)
-[![Spec](https://img.shields.io/badge/Spec-v0.1-0ea5e9)](spec/trace-v0.2.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.2-0ea5e9)](spec/trace-v0.2.md)
 [![PyPI](https://img.shields.io/pypi/v/agentrust-trace)](https://pypi.org/project/agentrust-trace/)
 [![CI](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/agentrust-io/trace-spec/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white&style=flat)](https://discord.gg/grgzFEHgkj)
 
-> **Developer Preview.** Launching at Confidential Computing Summit, June 23 2026.
+<p align="center">
+  <strong>TRACE Specification is an <a href="https://www.linuxfoundation.org/">LF Project</a></strong>, hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC".
+</p>
+
+> **Developer Preview.** Launched at Confidential Computing Summit, 23 June 2026. Spec v0.2 is current. See [LIMITATIONS.md](LIMITATIONS.md) before relying on it in production.
 
 An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
 
 A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can verify without trusting the operator.
+
+## What a Trust Record proves
+
+Each question maps to a claim a third party can check for themselves.
+
+| Question | TRACE claim |
+|---|---|
+| What model ran? | `model.model_id` + `model.weights_digest` |
+| Where did it run? | `runtime.platform` + `runtime.measurement` |
+| Under which policy? | `policy.bundle_hash` + `policy.enforcement_mode` |
+| What data did it touch? | `data_class` |
+| Which tools were called? | `tool_transcript.hash` + `tool_transcript.call_count` |
+| Is the record independently anchored? | `anchoring.receipt_uri` (SCITT) |
 
 ## Quick start
 
@@ -59,14 +75,14 @@ signed = sign_record(record, key=signing_key)
 | 🔍 Schema | [schema/trace-claim.json](schema/trace-claim.json) |
 | 📦 PyPI | [agentrust-trace](https://pypi.org/project/agentrust-trace/) |
 | 🧪 Test suite | [trace-tests](https://github.com/agentrust-io/trace-tests) |
-| 🗂 Registry | [trace-registry](https://github.com/agentrust-io/trace-registry) |
+| 🗂 Registry | `trace-registry` (not public yet) |
 | 🔗 Reference implementation | [cmcp](https://github.com/agentrust-io/cmcp) |
 | 💬 Discussions | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions) |
 | 📋 Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 ## Standards alignment
 
-Being formed at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC". Related standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
+Hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). Related standardization track in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai). Builds on [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711), [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334), and SCITT draft-22.
 
 ## Frequently asked questions
 

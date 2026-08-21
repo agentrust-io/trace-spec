@@ -13,15 +13,18 @@ exclude_docs: |
   node_modules/
   src/
   tests/
-  schema/
+  # schema/ is published, not excluded, but only the file whose $id points at
+  # this host. The others declare an agentrust-io.com $id and are served there;
+  # serving a second copy here would give the same document two URLs.
+  schema/trace-claim.json
+  schema/trace-revocation.json
+  schema/trace-revocation-bundle.json
   LICENSE
   NOTICE
+  README.md
   ANTITRUST.md
   ADOPTERS.md
-  MAINTAINERS.md
   SECURITY.md
-  CHARTER.md
-  CODE_OF_CONDUCT.md
   pyproject.toml
 
 theme:
@@ -31,18 +34,18 @@ theme:
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
   palette:
-    - scheme: slate
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/brightness-7
-        name: Switch to light mode
     - scheme: default
       primary: custom
       accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
   features:
     - navigation.instant
     - navigation.instant.progress
@@ -83,7 +86,7 @@ plugins:
         conformance suite.
       sections:
         Getting started:
-          - docs/index.md
+          - index.md
           - docs/quickstart.md
           - docs/trust-levels.md
           - docs/verification.md
@@ -173,10 +176,13 @@ extra:
           note: Thanks for your feedback — open an issue to let us know.
 
 extra_css:
-  - docs/stylesheets/extra.css
+  # Shared AgenTrust editorial design system. Deliberately the only stylesheet:
+  # a local override here is how this site drifted to the Material default
+  # violet last time. Change the shared file instead.
+  - https://agentrust-io.com/design-system.css
 
 nav:
-  - Home: docs/index.md
+  - Home: index.md
   - Getting Started:
       - Quickstart: docs/quickstart.md
       - Trust Levels: docs/trust-levels.md
@@ -191,16 +197,19 @@ nav:
       - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
       - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
       - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
+      - AGT adapter: docs/tutorials/agt-adapter.md
   - Specification:
       - TRACE v0.2: spec/trace-v0.2.md
       - Registry Anchor Format v1: spec/registry-anchor-v1.md
       - MCP Server Provenance v1: spec/server-provenance-v1.md
       - Content Marking v1: spec/content-marking-v1.md
+      - TRACE v0.1 (superseded): spec/trace-v0.1.md
   - Integration:
       - AGT: docs/integration/agt.md
       - NVIDIA OpenShell: docs/integration/openshell.md
       - cMCP: docs/integration/cmcp.md
       - Sandboxed agent runtimes: docs/integration/sandbox-runtime.md
+      - PIC/TRACE authorization bridge: docs/integration/pic-trace-bridge-v1.md
   - Platforms:
       - Overview: docs/platforms/index.md
       - AMD SEV-SNP: docs/platforms/amd-sev-snp.md
@@ -210,12 +219,25 @@ nav:
       - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
       - Acta Decision Receipts: docs/crosswalks/acta-decision-receipts.md
   - Test Suite: https://tests.agentrust-io.com
+  - Method:
+      - How the conformance vectors are built: docs/conformance-method.md
+  - RFCs:
+      - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
   - Project:
       - Limitations: LIMITATIONS.md
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
+      - Technical Charter: CHARTER.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Maintainers: MAINTAINERS.md
       - Roadmap: ROADMAP.md
+      - Privacy: PRIVACY.md
+      - Scope: Governance/Scope.md
+      - Contributor License Agreement: Governance/CLA.md
+      - Licenses: Governance/License.md
+      - Community Specification License: Governance/COMMUNITY-SPECIFICATION-LICENSE.md
+      - Notices: Governance/Notices.md
 
 extra_javascript:
   # Shared cross-project top navigation (TRACE / Manifest / cMCP / cA2A / ...)

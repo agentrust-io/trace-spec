@@ -62,7 +62,12 @@ def test_tampering_is_rejected(field: str) -> None:
     if field == "authorization":
         tampered["authorization"]["decision"] = "deny"
     else:
-        tampered["signature"] = "A" + tampered["signature"][1:]
+        # Substitute a character the signature does not already start with. A fixed
+        # "A" is a no-op whenever it is already the first character, which is one
+        # signature in 64: the "tampered" bridge then verifies and the test fails
+        # having never tampered with anything.
+        head = tampered["signature"][0]
+        tampered["signature"] = ("B" if head == "A" else "A") + tampered["signature"][1:]
     with pytest.raises(IntentBridgeError):
         verify_bridge(
             tampered, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,

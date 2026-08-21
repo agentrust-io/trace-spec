@@ -6,6 +6,9 @@ on:
     paths:
       - "docs/**"
       - "spec/**"
+      - "schema/**"
+      - "Governance/**"
+      - "PRIVACY.md"
       - "overrides/**"
       - "robots.txt"
       - "mkdocs.yml"
@@ -59,8 +62,12 @@ jobs:
           if [ -d docs ]; then cp -r docs $BUILD/docs; fi
           if [ -d spec ]; then cp -r spec $BUILD/spec; fi
           if [ -d examples ]; then cp -r examples $BUILD/examples; fi
+          if [ -d Governance ]; then cp -r Governance $BUILD/Governance; fi
+          # schema/ carries pic-trace-bridge-v1.json, whose $id points at this
+          # host. exclude_docs drops the three that are served from the apex.
+          if [ -d schema ]; then cp -r schema $BUILD/schema; fi
 
-          for fname in README.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md ROADMAP.md LIMITATIONS.md CNAME robots.txt; do
+          for fname in index.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md CHARTER.md CODE_OF_CONDUCT.md MAINTAINERS.md ROADMAP.md LIMITATIONS.md PRIVACY.md CNAME robots.txt; do
             if [ -f "$fname" ]; then cp "$fname" "$BUILD/$fname"; fi
           done
 
