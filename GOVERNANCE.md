@@ -137,6 +137,10 @@ Draft specifications are exempt: see [Draft](#draft).
 
 Maintainers must disclose commercial interest in a proposal before participating in its review. Disclosed conflicts do not disqualify a Maintainer from voting but must be on record in the PR or issue.
 
+## Sponsorship
+
+Sponsors are recognized in [SPONSORS.md](SPONSORS.md). Sponsorship and participant affiliations are informational and do not confer specification authority, additional decision rights, preferential conformance treatment, or endorsement of a sponsor's implementation. Project decisions follow the consensus and due-process rules in this document regardless of sponsorship.
+
 ## Vendor annexes
 
 Vendor-co-authored platform-mapping annexes (§4.4 of the spec) are informative. They are reviewed by the vendor author and one TRACE Maintainer. Annexes do not require the full spec-change process.

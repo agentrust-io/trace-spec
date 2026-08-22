@@ -4,7 +4,7 @@
 
 | Name | Affiliation | GitHub | Contact |
 |---|---|---|---|
-| Imran Siddique | OPAQUE Systems | @imran-siddique | imran.siddique@opaque.co |
+| Imran Siddique | AgenTrust-io | @imran-siddique | maintainers@agentrust-io.com |
 
 The Project Lead has final decision authority on specification changes, AAIF/CoSAI submission scope, conformance requirements, and Maintainer appointments.
 
@@ -21,7 +21,9 @@ The Project Lead has final decision authority on specification changes, AAIF/CoS
 
 **Maintainer**: Active Reviewer for 60+ days, 5+ merged PRs, demonstrated judgment on spec design questions. Nominated by any Maintainer, confirmed by Project Lead.
 
-We are actively recruiting Maintainers from organizations outside OPAQUE Systems, particularly from silicon vendors, cloud providers, and regulated-industry deployers. If you are contributing to TRACE and want to take on a formal role, open an issue tagged `maintainer-interest`.
+We are actively recruiting Maintainers across independent organizations, particularly from silicon vendors, cloud providers, and regulated-industry deployers. If you are contributing to TRACE and want to take on a formal role, open an issue tagged `maintainer-interest`.
+
+Affiliations identify each maintainer's professional context. They do not give an affiliated organization ownership or additional governance rights. See [GOVERNANCE.md](GOVERNANCE.md) and [SPONSORS.md](SPONSORS.md).
 
 ## Emeritus
 
