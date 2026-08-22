@@ -238,6 +238,51 @@
       },
       "additionalProperties": false
     },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Facts outside this record that it points at. Spec section 3.1.2. An entry is a pointer, not evidence: the signature attests that this record points there, not the truth of what it points at. The block is assurance-neutral and does not affect runtime.platform. Two further rules in 3.1.2 bind verifiers rather than records, so this schema cannot express them: a verifier MUST NOT reject a record because an entry cannot be resolved, and MUST NOT treat a resolved entry as attested evidence.",
+      "items": {
+        "type": "object",
+        "required": [
+          "rel",
+          "id",
+          "resolver"
+        ],
+        "properties": {
+          "rel": {
+            "type": "string",
+            "enum": [
+              "authorized-intent",
+              "approval-outcome",
+              "behavior-trace"
+            ],
+            "description": "authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence."
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identifier of the referenced fact within the resolver's system."
+          },
+          "resolver": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identifier of the party obliged to resolve id. A producer that cannot name one omits the entry. Which identifiers are self-asserted is not decidable from the record, so this constrains the field's presence and not its value."
+          },
+          "retention": {
+            "type": "string",
+            "pattern": "^P(\\d+W|(\\d+Y(\\d+M)?(\\d+D)?|\\d+M(\\d+D)?|\\d+D)(T(\\d+H(\\d+M)?(\\d+S)?|\\d+M(\\d+S)?|\\d+S))?|T(\\d+H(\\d+M)?(\\d+S)?|\\d+M(\\d+S)?|\\d+S))$",
+            "description": "Period for which resolver undertakes to keep id resolvable, as an ISO 8601 duration. An undertaking only: nothing in this specification enforces it."
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+            "description": "SHA-256 or SHA-384 digest of the referenced object, when the producer holds it at issue time."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "build_provenance": {
       "type": "object",
       "description": "SLSA provenance for the workload (agent code + container image).",
