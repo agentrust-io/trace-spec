@@ -16,6 +16,7 @@ JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`]
 | `tool_transcript` | object | **yes** | Tool-call audit summary |
 | `delegation` | object | no | A2A profile: link to the delegating hop's Trust Record |
 | `origin` | object | no | Where the evidence came from, when that is not this runtime |
+| `references` | array | no | Facts outside this record that it points at. Assurance-neutral |
 | `build_provenance` | object | **yes** | Build-time artifact provenance |
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
@@ -98,6 +99,22 @@ It exists because `runtime.platform: "software-only"` is ambiguous on its own: i
 | `ingested_at` | integer | no | Unix time the evidence was ingested; `iat` is when this record was issued |
 
 A record whose `kind` is not `self` **must** carry `runtime.platform: "software-only"`. An importer holding someone else's log has no quote to present, so a hardware platform on such a record is untrue rather than stronger. Both the reference model and `schema/trace-claim.json` reject the combination.
+
+## `references`
+
+An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace. What the signature attests is that this record points there, not the truth of what it points at.
+
+`origin` records where evidence *came from* and can lower assurance. `references` records what a record *points at* and cannot. Before the block existed, a record that needed to name something external had to use `origin` and take `runtime.platform: "software-only"` with it, which said something untrue about how the evidence was obtained.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rel` | string | **yes** | `authorized-intent`, `approval-outcome`, or `behavior-trace` |
+| `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
+| `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
+| `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
+| `digest` | string | no | `sha256:` or `sha384:` digest of the referenced object, when the producer holds it at issue time |
+
+Spec section 3.1.2 also binds verifiers: one **must not** reject a record because an entry cannot be resolved, and **must not** treat a resolved entry as attested evidence. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold. Both are verifier behaviour, so neither the schema nor the reference model can enforce them; they are conformance-suite rules. What the schema and the model do enforce is the shape, and that a producer who cannot name a `resolver` cannot emit an empty one.
 
 ## `build_provenance`
 
