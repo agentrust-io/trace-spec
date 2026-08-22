@@ -101,9 +101,23 @@ def _depth_boundary(v: Vector) -> tuple[str, ...]:
     return (v.boundary,) if v.boundary else ()
 
 
+
+def delegation_link() -> list[Vector]:
+    """The delegation-link set, graded by the same criteria as every other set here.
+
+    Its boundaries are its failure codes: `tests/delegation_margins.json` records the
+    two-vector margin per code, and `tests/test_delegation_completeness.py` holds each
+    rule to being load-bearing for both of them, so the default mapping is the set's
+    own unit rather than an assumption made here.
+    """
+    return _load("delegation-link",
+                 lambda e: e["classification"], lambda e: list(e.get("codes") or []))
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "canonicalization-boundary": (canonicalization_boundary, None),
+    "delegation-link": (delegation_link, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
