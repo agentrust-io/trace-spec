@@ -291,13 +291,19 @@ the body-digest link, is rejected by cA2A as a broken parent link.
 link are rejected as broken links, and both signature vectors are rejected as bad
 signatures. Same verdict, same reason, two implementations.
 
-**Vectors 22 and 23 disagree, exactly as §4.3 predicts.** cA2A's block validator accepts a
-`sha384:` link, then compares it against a hash it only ever computes as `sha256:`, and
-reports `ProvenanceLinkBroken` with the detail *"a tampered or reparented record was
-detected"*. A chain that is intact and simply addressed under the other permitted algorithm
-is reported as tampering. This is the difference between unreadable and contradicted,
-observed rather than argued, and it is the clearest single reason the distinction needs to
-be written down somewhere normative.
+**Vectors 22 and 23 disagreed, exactly as §4.3 predicts, and the disagreement is closed.**
+cA2A's block validator accepted a `sha384:` link, compared it against a hash it only ever
+computes as `sha256:`, and reported `ProvenanceLinkBroken` with the detail *"a tampered or
+reparented record was detected"*: a chain that is intact, and simply addressed under the
+other permitted algorithm, reported as tampering.
+
+[agentrust-io/ca2a#119](https://github.com/agentrust-io/ca2a/pull/119) carried the fix. At
+ca2a `52141e8`, `src/ca2a_verify/dag.py` raises `TraceDigestUnsupported` with the detail
+*"the chain is unverifiable here, not invalid"* before the link comparison is reached, so
+the two vectors now describe fixed behaviour and agree with the implementation as well as
+with the ruling. The case is kept here because of what it establishes rather than as a
+defect report: a corpus written to argue a rule found the case, the other implementation
+changed, and the shape it changed to is the one §4.3 asks for.
 
 **The trust contract differs and cannot be normalised away.** `verify_trace_dag` requires
 every record's `cnf.jwk` to be in the trusted set; this profile anchors on the root's key and
@@ -358,9 +364,10 @@ The case is a delegation chain with no public keys: evidence the verifier lacks 
 to check, recorded as unreadable rather than as a finding against the chain. That is §4.3,
 on the delegation surface, in a second implementation, arrived at independently.
 
-Which puts the sha384 divergence in a different light than a matter of taste. Two of the
-three implementations distinguish "could not be read" from "contradicts"; cA2A's TRACE DAG
-verifier collapses the two and reports tampering. The per-field shape of `fields_verified` is
+Which puts the sha384 case in a different light than a matter of taste. All three
+implementations now distinguish "could not be read" from "contradicts"; cA2A's TRACE DAG
+verifier collapsed the two until #119, and what it changed to is the distinction §4.3 asks
+for. The per-field shape of `fields_verified` is
 also prior art this proposal does not have and probably should consider: a verdict per field
 says more than one verdict per chain.
 
