@@ -122,6 +122,7 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `data_class`       | Classification of inputs and outputs                                                                                                                                                                                                                                                            | Classification label bound to per-call execution        |
 | `tool_transcript`  | MCP / A2A tool calls invoked, parameters classified, responses filtered                                                                                                                                                                                                                         | MCP / A2A protocol transcripts bound to TEE measurement |
 | `origin`           | OPTIONAL. Where the evidence came from, when that is not this runtime. See §3.1.1.                                                                                                                                                                                                              | —                                                       |
+| `references`       | OPTIONAL. Facts outside this record that it points at. Assurance-neutral: see §3.1.2.                                                                                                                                                                                                           | —                                                       |
 | `build_provenance` | How the running code and model were built                                                                                                                                                                                                                                                       | SLSA Provenance v1.0                                    |
 | `appraisal`        | Verifier's appraisal of evidence                                                                                                                                                                                                                                                                | EAR (EAT Attestation Results)                           |
 | `transparency`     | Inclusion proof on append-only log                                                                                                                                                                                                                                                              | SCITT Receipt URI                                       |
@@ -156,6 +157,34 @@ A Trust Record normally describes an execution and is produced by the runtime th
 `origin` is absent on every hardware profile in this specification and on every record a TEE-backed runtime produces. Absence means `self`.
 
 **This block does not launder assurance in either direction.** It cannot raise a record: nothing about naming your producer makes unattested evidence attested. It cannot lower one either: a record with a hardware platform and a verified quote is what it is, whether or not it says `origin: self`.
+
+#### 3.1.2 `references`: facts this record points at
+
+`origin` records where evidence *came from* and can lower assurance. `references` records what a record *points at* and cannot. Those are different questions and the spec previously had only the first, so any record that needed to reference something external had to use `origin` and take `runtime.platform: "software-only"` with it.
+
+A `references` entry is a pointer, not evidence. What the signature attests is that this record points there, not the truth of what it points at. The pointer is produced inside the boundary that produced the record; the target is not.
+
+| Field       | Required | Meaning                                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------------------- |
+| `rel`       | yes      | Relationship type. Registered set, see below.                                            |
+| `id`        | yes      | Identifier of the referenced fact within the resolver's system.                          |
+| `resolver`  | yes      | Identifier of the party obliged to resolve `id`.                                         |
+| `retention` | no       | Period for which `resolver` undertakes to keep `id` resolvable, as an ISO 8601 duration. |
+| `digest`    | no       | Digest of the referenced object, when the producer holds it at issue time.               |
+
+Registered `rel` values:
+
+- **`authorized-intent`**. An authorization decided before execution, held in another system.
+- **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
+- **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
+- `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
+- The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
+- A verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence.
+- A producer that cannot name a `resolver` MUST omit the entry rather than emit one with an empty or self-asserted resolver.
+
+Rule 3 is what makes the block safe to add. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold, and a reference that counted as evidence would be the assurance laundering §3.1.1 exists to prevent.
+
+**Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together.
 
 ### 3.2 Wire format
 
