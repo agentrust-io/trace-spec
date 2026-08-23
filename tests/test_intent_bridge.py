@@ -131,3 +131,57 @@ def test_invalid_expiry_order_and_unknown_fields_are_rejected() -> None:
             pic_intent_digest=intent, pic_args_digest=args,
             tool_call=tool_call, transcript=transcript, now=150,
         )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("authorization_id", ""),
+        ("authorizer", ""),
+        ("authorizer_key_id", ""),
+        ("authorized_at", -1),
+        ("expires_at", -1),
+    ],
+)
+def test_runtime_verifier_enforces_schema_scalar_constraints(field: str, value: object) -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    bridge["authorization"][field] = value
+    bridge = sign_bridge(bridge["authorization"], key)
+    trusted = {**key_to_jwk(key), "kid": "" if field == "authorizer_key_id" else "key-7"}
+    with pytest.raises(IntentBridgeError):
+        verify_bridge(
+            bridge, trusted, declaration=declaration, pic_intent_digest=intent,
+            pic_args_digest=args, tool_call=tool_call, transcript=transcript, now=0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tools", ["send_invoice", "send_invoice"]),
+        ("tools", [""]),
+        ("impacts", ["external-side-effect", "external-side-effect"]),
+        ("impacts", [""]),
+    ],
+)
+def test_runtime_verifier_enforces_schema_scope_constraints(field: str, value: list[str]) -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    bridge["authorization"]["scope"][field] = value
+    bridge = sign_bridge(bridge["authorization"], key)
+    with pytest.raises(IntentBridgeError):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript=transcript, now=150,
+        )
+
+
+@pytest.mark.parametrize("bad_now", [-1, True, 150.0, "150"])
+def test_verifier_time_override_must_be_a_non_negative_integer(bad_now: object) -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    with pytest.raises(IntentBridgeError, match="now"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript=transcript, now=bad_now,  # type: ignore[arg-type]
+        )
