@@ -4,7 +4,7 @@
 
 Contact for Code of Conduct issues or inquiries:
 
-- Imran Siddique, Project Lead — imran.siddique@opaque.co
+- TRACE Project Maintainers — maintainers@agentrust-io.com
 
 Reports are handled under the project [Code of Conduct](../CODE_OF_CONDUCT.md).
 

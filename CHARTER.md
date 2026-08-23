@@ -28,7 +28,7 @@ Out of scope: runtime policy enforcement engines, TEE platform SDKs, AI model go
 
 Upon host organization acceptance, governance transitions from the current Project Lead model to a Technical Steering Committee (TSC).
 
-**Composition**: 3–9 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique, OPAQUE Systems) holds one founding seat for the v1.0 ratification cycle.
+**Composition**: 3–9 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique) holds one founding seat for the v1.0 ratification cycle.
 
 **Election**: TSC members are elected annually by active contributors (at least one merged PR or accepted spec change in the preceding 12 months). Each contributor has one vote.
 
@@ -86,3 +86,7 @@ TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming pr
 ## 9. Amendments
 
 Amendments to this charter require a two-thirds TSC majority and a 30-day public comment period. Before host organization acceptance, amendments require Project Lead approval and 14-day notice to contributors.
+
+## 10. Sponsors
+
+Organizations providing financial, engineering, infrastructure, or other material support are recognized in [SPONSORS.md](SPONSORS.md). Sponsorship is separate from project governance and does not confer specification authority, additional voting rights, preferential conformance treatment, or endorsement of a sponsor's implementation.
