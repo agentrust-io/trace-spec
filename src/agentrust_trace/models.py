@@ -5,6 +5,15 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+# ISO 8601 duration, spelled out by alternation rather than with a negative
+# lookahead so that the same pattern string can be used here and in the JSON
+# Schema: pydantic's default regex engine (Rust) has no look-around, so a
+# lookahead form builds in JSON Schema and raises here, and the two files would
+# have to disagree. What the alternation buys: at least one component ("P" and
+# "PT" alone are rejected), components in order, and the week form standalone.
+_DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
+_DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
+_DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
 
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
@@ -140,6 +149,48 @@ class Origin(BaseModel):
     ingested_at: Annotated[int, Field(ge=1700000000)] | None = None
 
 
+class Reference(BaseModel):
+    """A fact outside this record that the record points at. Spec section 3.1.2.
+
+    ``origin`` records where evidence *came from* and can lower assurance.
+    ``references`` records what a record *points at* and cannot. Before this
+    block existed, a record that needed to name something external had to use
+    ``origin`` and take ``runtime.platform: "software-only"`` with it, which said
+    something untrue about how the evidence was obtained.
+
+    An entry is a pointer, not evidence. What the signature attests is that this
+    record points there, not the truth of what it points at. The pointer is
+    produced inside the boundary that produced the record; the target is not.
+    Two consequences the spec states as MUST NOT are verifier behaviour and so
+    are not expressible here: a verifier does not reject a record because an
+    entry cannot be resolved, and it does not treat a resolved entry as attested
+    evidence. Both live in the conformance suite. This model fixes the shape.
+
+    ``rel`` is open, unlike ``Origin.kind``. Section 3.1.1 says of ``kind`` that it
+    is closed "because the value of the field is that a verifier can key on it";
+    section 3.1.2 deliberately does not say that of ``rel``, and calls its values a
+    registry. Closing it here would make every new relation a schema change and a
+    spec change at once. The registered values are named in the schema description
+    and in docs/schema.md, and are documented rather than enforced.
+
+    ``resolver`` names the party obliged to resolve ``id``. The specification
+    requires a producer that cannot name one to omit the entry rather than emit a
+    self-asserted resolver, and whether an identifier is self-asserted is not
+    decidable from the record, so the constraint here is presence and not value.
+
+    ``retention`` states an undertaking that nothing in the specification
+    enforces. It is validated as an ISO 8601 duration and nothing more.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    rel: Annotated[str, Field(min_length=1)]
+    id: Annotated[str, Field(min_length=1)]
+    resolver: Annotated[str, Field(min_length=1)]
+    retention: Annotated[str, Field(pattern=_DURATION_RE)] | None = None
+    digest: DigestStr | None = None
+
+
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -220,6 +271,7 @@ class TrustRecord(BaseModel):
     tool_transcript: ToolTranscript | None = None
     delegation: Delegation | None = None
     origin: Origin | None = None
+    references: list[Reference] | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None
