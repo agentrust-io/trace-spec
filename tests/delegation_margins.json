@@ -1,0 +1,12 @@
+{
+  "credential_holder_mismatch": 2,
+  "credential_issuer_mismatch": 2,
+  "credential_unknown": 2,
+  "credential_window": 2,
+  "data_class_widened": 2,
+  "depth_exceeded": 2,
+  "digest_algorithm_unsupported": 2,
+  "parent_not_found": 2,
+  "record_signature_invalid": 2,
+  "root_key_untrusted": 2
+}
