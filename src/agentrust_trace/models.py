@@ -184,7 +184,7 @@ class Reference(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    rel: str
+    rel: Annotated[str, Field(min_length=1)]
     id: Annotated[str, Field(min_length=1)]
     resolver: Annotated[str, Field(min_length=1)]
     retention: Annotated[str, Field(pattern=_DURATION_RE)] | None = None

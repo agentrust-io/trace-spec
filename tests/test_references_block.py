@@ -89,6 +89,11 @@ CASES: list[tuple[str, object, bool]] = [
     ("resolver absent", [{"rel": "behavior-trace", "id": "x"}], False),
     # An empty resolver is the self-asserted entry rule 4 tells a producer to
     # omit; an empty id is a pointer that points nowhere. Both look populated.
+    # `rel` is open but not absent. An empty string is not a future registered
+    # relation, it carries no relation at all, so it is rejected the same way an
+    # empty `id` or `resolver` is. Checked against both artifacts by this table,
+    # which is what keeps minLength and min_length from drifting apart.
+    ("empty rel", [_entry(rel="")], False),
     ("empty resolver", [_entry(resolver="")], False),
     ("empty id", [_entry(id="")], False),
     ("malformed digest", [_entry(digest="sha256:zz")], False),
@@ -270,6 +275,7 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
     assert "enum" not in rel, (
         "rel is a registry; closing it makes every new relation a schema change too"
     )
+    assert rel["minLength"] == 1, "open is not the same as absent; an empty rel names nothing"
 
     doc = (Path(__file__).resolve().parents[1] / "docs" / "schema.md").read_text(encoding="utf-8")
     section = doc.split("## `references`", 1)[1].split("\n## ", 1)[0]

@@ -108,7 +108,7 @@ An array of pointers to facts held outside this record: an authorization decided
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`. A registry rather than a closed set, so the schema does not constrain it |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`. A registry rather than a closed set, so the schema does not restrict which relation is named — only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |

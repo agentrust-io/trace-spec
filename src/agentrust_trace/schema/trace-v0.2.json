@@ -251,6 +251,7 @@
         "properties": {
           "rel": {
             "type": "string",
+            "minLength": 1,
             "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence."
           },
           "id": {
