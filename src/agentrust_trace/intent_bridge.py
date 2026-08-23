@@ -65,6 +65,24 @@ def _digest(value: Any, field: str) -> str:
     return value
 
 
+def _nonempty_string(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise IntentBridgeError(f"{field} must be a non-empty string")
+    return value
+
+
+def _unique_nonempty_strings(value: Any, field: str) -> list[str]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, str) and item for item in value)
+    ):
+        raise IntentBridgeError(f"{field} must be a non-empty array of non-empty strings")
+    if len(value) != len(set(value)):
+        raise IntentBridgeError(f"{field} must not contain duplicates")
+    return value
+
+
 def verify_bridge(
     bridge: dict[str, Any], trusted_authorizer_jwk: dict[str, Any], *,
     declaration: dict[str, Any], pic_intent_digest: str, pic_args_digest: str,
@@ -93,6 +111,8 @@ def verify_bridge(
     missing = fields - set(authorization)
     if missing:
         raise IntentBridgeError(f"authorization is missing fields: {sorted(missing)}")
+    for field in ("authorization_id", "authorizer", "authorizer_key_id"):
+        _nonempty_string(authorization[field], f"authorization.{field}")
 
     try:
         _pubkey_from_jwk(trusted_authorizer_jwk).verify(
@@ -106,8 +126,15 @@ def verify_bridge(
     if authorization["decision"] != "allow":
         raise AuthorizationDenied("the signed decision is not allow")
     for field in ("authorized_at", "expires_at"):
-        if not isinstance(authorization[field], int) or isinstance(authorization[field], bool):
-            raise IntentBridgeError(f"{field} must be an integer Unix timestamp")
+        if (
+            not isinstance(authorization[field], int)
+            or isinstance(authorization[field], bool)
+            or authorization[field] < 0
+        ):
+            raise IntentBridgeError(f"{field} must be a non-negative integer Unix timestamp")
+    invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
+    if invalid_now_type or (now is not None and now < 0):
+        raise IntentBridgeError("now must be a non-negative integer Unix timestamp")
     instant = int(time.time()) if now is None else now
     if instant < authorization["authorized_at"]:
         raise IntentBridgeError("authorization is not yet valid")
@@ -117,11 +144,8 @@ def verify_bridge(
         raise IntentBridgeError("authorization has expired")
 
     scope = _object(authorization["scope"], "authorization.scope", {"tools", "impacts"})
-    tools, impacts = scope.get("tools"), scope.get("impacts")
-    if not isinstance(tools, list) or not tools or not all(isinstance(v, str) for v in tools):
-        raise IntentBridgeError("authorization.scope.tools must be a non-empty string array")
-    if not isinstance(impacts, list) or not impacts or not all(isinstance(v, str) for v in impacts):
-        raise IntentBridgeError("authorization.scope.impacts must be a non-empty string array")
+    tools = _unique_nonempty_strings(scope.get("tools"), "authorization.scope.tools")
+    impacts = _unique_nonempty_strings(scope.get("impacts"), "authorization.scope.impacts")
     if not isinstance(tool_call, dict):
         raise IntentBridgeError("tool_call must be an object")
     if tool_call.get("name") not in tools:
