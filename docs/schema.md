@@ -108,11 +108,13 @@ An array of pointers to facts held outside this record: an authorization decided
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | `authorized-intent`, `approval-outcome`, or `behavior-trace` |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`. A registry rather than a closed set, so the schema does not constrain it |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
 | `digest` | string | no | `sha256:` or `sha384:` digest of the referenced object, when the producer holds it at issue time |
+
+`rel` is open where `origin.kind` is closed. Section 3.1.1 says `kind` is a closed set "because the value of the field is that a verifier can key on it"; section 3.1.2 calls `rel`'s values a registry and does not say that, so a new relation is a spec change and not also a schema change.
 
 Spec section 3.1.2 also binds verifiers: one **must not** reject a record because an entry cannot be resolved, and **must not** treat a resolved entry as attested evidence. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold. Both are verifier behaviour, so neither the schema nor the reference model can enforce them; they are conformance-suite rules. What the schema and the model do enforce is the shape, and that a producer who cannot name a `resolver` cannot emit an empty one.
 

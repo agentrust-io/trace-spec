@@ -81,8 +81,9 @@ CASES: list[tuple[str, object, bool]] = [
     ("rel approval-outcome", [_entry(rel="approval-outcome")], True),
     ("rel behavior-trace", [_entry(rel="behavior-trace")], True),
     ("sha384 digest", [_entry(digest="sha384:" + "b" * 96)], True),
-    # rel is closed: an unregistered value is the case the enum exists for.
-    ("unregistered rel", [_entry(rel="policy-decision")], False),
+    # rel is a registry rather than a closed set (spec 3.1.2, unlike 3.1.1 on kind),
+    # so a value this schema has never heard of is accepted rather than rejected.
+    ("unregistered rel", [_entry(rel="policy-decision")], True),
     ("rel absent", [{"id": "x", "resolver": "y"}], False),
     ("id absent", [{"rel": "behavior-trace", "resolver": "y"}], False),
     ("resolver absent", [{"rel": "behavior-trace", "id": "x"}], False),
@@ -93,8 +94,10 @@ CASES: list[tuple[str, object, bool]] = [
     ("malformed digest", [_entry(digest="sha256:zz")], False),
     ("uppercase digest hex", [_entry(digest="sha256:" + "A" * 64)], False),
     ("unknown member in entry", [_entry(note="human comment")], False),
-    # An empty array is a record that says it points at something and does not.
-    ("empty array", [], False),
+    # Rule 4 tells a producer to omit the entry, not the block, and nothing in 3.1.2
+    # says the array must be non-empty. The schema does not get to assert what the
+    # normative text does not, which is this PR's own argument pointed the other way.
+    ("empty array", [], True),
     ("object instead of array", _entry(), False),
     ("string instead of entry", ["req-9f2c41"], False),
 ]
@@ -252,14 +255,35 @@ def test_the_model_and_the_schema_share_the_pattern_strings() -> None:
     assert entry["digest"]["pattern"] == _DIGEST_RE
 
 
-def test_registered_rel_values_are_the_same_set_in_both() -> None:
-    from agentrust_trace import SCHEMA
-    from agentrust_trace.models import Reference
+def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None:
+    """`rel` is open, so nothing enforces the registry. Documentation is all there is.
 
-    schema_rels = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]["enum"]
-    model_rels = Reference.model_fields["rel"].annotation.__args__
-    assert sorted(schema_rels) == sorted(model_rels)
-    assert sorted(schema_rels) == ["approval-outcome", "authorized-intent", "behavior-trace"]
+    The enum is gone deliberately: section 3.1.2 calls these values a registry, and
+    section 3.1.1 says of the neighbouring `kind` that it is closed *because* a verifier
+    keys on it — a distinction the two sections draw on purpose. What replaces the
+    enum as a guard is that the three values cannot quietly stop being written down.
+    """
+    from agentrust_trace import SCHEMA
+
+    registered = ("authorized-intent", "approval-outcome", "behavior-trace")
+    rel = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]
+    assert "enum" not in rel, (
+        "rel is a registry; closing it makes every new relation a schema change too"
+    )
+
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "schema.md").read_text(encoding="utf-8")
+    section = doc.split("## `references`", 1)[1].split("\n## ", 1)[0]
+    for value in registered:
+        assert value in rel["description"], f"{value} is not named in the schema description"
+        assert value in section, f"{value} is not named in docs/schema.md"
+
+
+def test_the_block_does_not_require_a_non_empty_array() -> None:
+    """`minItems` is gone: nothing in 3.1.2 says the array must be non-empty, and a schema
+    asserting what the normative text does not is the drift this file exists to prevent."""
+    from agentrust_trace import SCHEMA
+
+    assert "minItems" not in SCHEMA["properties"]["references"]
 
 
 def _doc_table() -> dict[str, bool]:

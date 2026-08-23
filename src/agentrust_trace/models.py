@@ -166,8 +166,12 @@ class Reference(BaseModel):
     entry cannot be resolved, and it does not treat a resolved entry as attested
     evidence. Both live in the conformance suite. This model fixes the shape.
 
-    ``rel`` is closed for the same reason ``Origin.kind`` is: the value of the
-    field is that a consumer can key on it.
+    ``rel`` is open, unlike ``Origin.kind``. Section 3.1.1 says of ``kind`` that it
+    is closed "because the value of the field is that a verifier can key on it";
+    section 3.1.2 deliberately does not say that of ``rel``, and calls its values a
+    registry. Closing it here would make every new relation a schema change and a
+    spec change at once. The registered values are named in the schema description
+    and in docs/schema.md, and are documented rather than enforced.
 
     ``resolver`` names the party obliged to resolve ``id``. The specification
     requires a producer that cannot name one to omit the entry rather than emit a
@@ -180,7 +184,7 @@ class Reference(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    rel: Literal["authorized-intent", "approval-outcome", "behavior-trace"]
+    rel: str
     id: Annotated[str, Field(min_length=1)]
     resolver: Annotated[str, Field(min_length=1)]
     retention: Annotated[str, Field(pattern=_DURATION_RE)] | None = None
@@ -267,7 +271,7 @@ class TrustRecord(BaseModel):
     tool_transcript: ToolTranscript | None = None
     delegation: Delegation | None = None
     origin: Origin | None = None
-    references: Annotated[list[Reference], Field(min_length=1)] | None = None
+    references: list[Reference] | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None

@@ -240,7 +240,6 @@
     },
     "references": {
       "type": "array",
-      "minItems": 1,
       "description": "Facts outside this record that it points at. Spec section 3.1.2. An entry is a pointer, not evidence: the signature attests that this record points there, not the truth of what it points at. The block is assurance-neutral and does not affect runtime.platform. Two further rules in 3.1.2 bind verifiers rather than records, so this schema cannot express them: a verifier MUST NOT reject a record because an entry cannot be resolved, and MUST NOT treat a resolved entry as attested evidence.",
       "items": {
         "type": "object",
@@ -252,12 +251,7 @@
         "properties": {
           "rel": {
             "type": "string",
-            "enum": [
-              "authorized-intent",
-              "approval-outcome",
-              "behavior-trace"
-            ],
-            "description": "authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence."
+            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence."
           },
           "id": {
             "type": "string",
