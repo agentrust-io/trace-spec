@@ -4,7 +4,7 @@
 
 | Name | Affiliation | GitHub | Contact |
 |---|---|---|---|
-| Imran Siddique | AgenTrust-io | @imran-siddique | maintainers@agentrust-io.com |
+| Imran Siddique | AgenTrust-io | @imran-siddique | imransiddique@live.com |
 
 The Project Lead has final decision authority on specification changes, AAIF/CoSAI submission scope, conformance requirements, and Maintainer appointments.
 
