@@ -134,41 +134,51 @@ def test_invalid_expiry_order_and_unknown_fields_are_rejected() -> None:
 
 
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("field", "value", "message"),
     [
-        ("authorization_id", ""),
-        ("authorizer", ""),
-        ("authorizer_key_id", ""),
-        ("authorized_at", -1),
-        ("expires_at", -1),
+        ("authorization_id", "", "authorization_id must be a non-empty string"),
+        ("authorizer", "", "authorizer must be a non-empty string"),
+        ("authorizer_key_id", "", "authorizer_key_id must be a non-empty string"),
+        ("authorized_at", -1, "authorized_at must be a non-negative integer"),
+        ("expires_at", -1, "expires_at must be a non-negative integer"),
     ],
 )
-def test_runtime_verifier_enforces_schema_scalar_constraints(field: str, value: object) -> None:
+def test_runtime_verifier_enforces_schema_scalar_constraints(
+    field: str, value: object, message: str
+) -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     bridge["authorization"][field] = value
     bridge = sign_bridge(bridge["authorization"], key)
     trusted = {**key_to_jwk(key), "kid": "" if field == "authorizer_key_id" else "key-7"}
-    with pytest.raises(IntentBridgeError):
+    with pytest.raises(IntentBridgeError, match=message):
         verify_bridge(
             bridge, trusted, declaration=declaration, pic_intent_digest=intent,
-            pic_args_digest=args, tool_call=tool_call, transcript=transcript, now=0,
+            pic_args_digest=args, tool_call=tool_call, transcript=transcript, now=150,
         )
 
 
+_DUPLICATES = "must not contain duplicates"
+_NONEMPTY = "must be a non-empty array of non-empty strings"
+
+
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("field", "value", "message"),
     [
-        ("tools", ["send_invoice", "send_invoice"]),
-        ("tools", [""]),
-        ("impacts", ["external-side-effect", "external-side-effect"]),
-        ("impacts", [""]),
+        ("tools", ["send_invoice", "send_invoice"], _DUPLICATES),
+        ("tools", [""], _NONEMPTY),
+        ("tools", [], _NONEMPTY),
+        ("impacts", ["external-side-effect", "external-side-effect"], _DUPLICATES),
+        ("impacts", [""], _NONEMPTY),
+        ("impacts", [], _NONEMPTY),
     ],
 )
-def test_runtime_verifier_enforces_schema_scope_constraints(field: str, value: list[str]) -> None:
+def test_runtime_verifier_enforces_schema_scope_constraints(
+    field: str, value: list[str], message: str
+) -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     bridge["authorization"]["scope"][field] = value
     bridge = sign_bridge(bridge["authorization"], key)
-    with pytest.raises(IntentBridgeError):
+    with pytest.raises(IntentBridgeError, match=message):
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
