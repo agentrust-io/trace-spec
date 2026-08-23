@@ -1,0 +1,11 @@
+# Normalise text files in this repository to LF.
+#
+# Without this, an editor on Windows converts a whole file on save and a
+# one-line edit arrives as hundreds of line-ending changes. That happened on
+# #184, where a single CHANGELOG entry showed as +265-264 with 259 lines of
+# blame rewritten, and on two listing PRs in awesome-ai-governance before it.
+*.md    text eol=lf
+*.json  text eol=lf
+*.py    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
