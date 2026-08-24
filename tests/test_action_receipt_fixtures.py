@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import ast
 import pytest
 import rfc8785
 from cryptography.exceptions import InvalidSignature
@@ -289,7 +290,39 @@ def _verify_fixture(fixture: dict[str, Any], rules: Sequence[Rule] = RULES) -> R
 # The conformance run
 # ---------------------------------------------------------------------------
 
-FIXTURE_PATHS = sorted(FIXTURE_DIR.glob("*.json"))
+def discover_fixtures(root: Path) -> list[Path]:
+    """Every fixture under *root*, at any depth.
+
+    Recursive, because a fixture one directory down was previously discovered by
+    nothing: this module did not run it, and `test_vector_completeness` did not
+    grade it. A vector expecting a code no registered rule can emit passed the
+    whole suite from there, which is the one thing a conformance corpus cannot
+    afford to be quiet about.
+
+    Shared with `test_vector_completeness` so the two cannot disagree about what
+    the corpus contains. `test_fixture_set_is_complete` still names every file, so
+    a nested fixture is an explicit decision rather than an accident.
+
+    Machine-written directories are skipped. Widening the walk without bounding it
+    sweeps in `__pycache__` and anything under a dot-directory, neither of which a
+    person ever put there as a vector, and a corpus that grades build output is
+    worse than one that misses a directory.
+
+    The skip is judged on the path *below* `root`, not on the absolute path: judging
+    the whole path discards every fixture whenever the checkout itself sits under a
+    dot-directory, which is a plausible place to keep one.
+    """
+    return sorted(
+        path
+        for path in root.rglob("*.json")
+        if not any(
+            part == "__pycache__" or part.startswith(".")
+            for part in path.relative_to(root).parts
+        )
+    )
+
+
+FIXTURE_PATHS = discover_fixtures(FIXTURE_DIR)
 
 
 def test_fixture_set_is_complete() -> None:
@@ -343,3 +376,97 @@ def test_action_receipt_conformance_fixture(fixture_path: Path) -> None:
     assert result.controller_outcome == fixture["expected"]["controller_outcome"]
     assert result.failures == fixture["expected"]["failures"]
     assert result.warnings == fixture["expected"]["warnings"]
+
+
+def test_discovery_reaches_a_nested_fixture(tmp_path: Path) -> None:
+    """The scope of `discover_fixtures`, asserted without depending on the corpus.
+
+    A guard that only checked the committed tree would pass today whatever the glob
+    said, since nothing is nested right now. Built here instead, so it fails under a
+    flat glob no matter what the corpus happens to contain.
+    """
+    (tmp_path / "01-top.json").write_text("{}", encoding="utf-8")
+    nested = tmp_path / "candidate-set"
+    nested.mkdir()
+    (nested / "01-nested.json").write_text("{}", encoding="utf-8")
+
+    found = {path.name for path in discover_fixtures(tmp_path)}
+    assert found == {"01-top.json", "01-nested.json"}, (
+        f"discover_fixtures found {sorted(found)}. A fixture one directory down must "
+        "be discovered, or it is graded by nothing and says so to no one."
+    )
+
+
+def test_discovery_skips_machine_written_directories(tmp_path: Path) -> None:
+    """The bound on the walk, and the reason it is measured below `root`.
+
+    Recursion without a bound grades `__pycache__`. Bounding it on the absolute path
+    instead discards everything whenever the checkout sits under a dot-directory,
+    which is where both of these went wrong in turn while this was written.
+    """
+    root = tmp_path / ".checkout" / "repo"
+    for relative in ("01-real.json", "nested/02-real.json",
+                     "__pycache__/03-generated.json", ".git/04-internal.json"):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+
+    found = {path.relative_to(root).as_posix() for path in discover_fixtures(root)}
+    assert found == {"01-real.json", "nested/02-real.json"}, (
+        f"discover_fixtures found {sorted(found)} under a checkout inside a "
+        "dot-directory. Real fixtures at any depth are in; machine-written "
+        "directories are out; the path above `root` is not the walk's business."
+    )
+
+
+@pytest.mark.parametrize(
+    ("module", "binding"),
+    [
+        ("test_action_receipt_fixtures.py", "FIXTURE_PATHS"),
+        ("test_vector_completeness.py", "FIXTURES"),
+    ],
+)
+def test_both_corpus_readers_go_through_the_shared_discovery(
+    module: str, binding: str
+) -> None:
+    """Neither module may narrow its own view of the corpus.
+
+    Read out of the source, because comparing the two file lists is vacuous while
+    nothing is nested: a flat glob and a recursive one then return identical files, so
+    the check would pass in exactly the state it exists to detect. That was the first
+    version, and a mutation caught it.
+
+    Parsed rather than matched line by line, because the second version read the
+    assignment as a line and failed on `BINDING = (` with the call underneath, and on
+    an annotated assignment. Both are legal, both are what a formatter or this
+    repository's own style produce, and neither is the defect.
+    """
+
+    def bound_value(node: ast.stmt) -> ast.expr | None:
+        """The value assigned to *binding* by this statement, in either spelling."""
+        if isinstance(node, ast.Assign):
+            names = [t for t in node.targets if isinstance(t, ast.Name)]
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            names = [node.target] if isinstance(node.target, ast.Name) else []
+        else:
+            return None
+        return node.value if any(name.id == binding for name in names) else None
+
+    tree = ast.parse((Path(__file__).parent / module).read_text(encoding="utf-8"))
+    bound = [value for node in tree.body if (value := bound_value(node)) is not None]
+
+    assert len(bound) == 1, (
+        f"{module} assigns {binding} at module level {len(bound)} times. Renaming or "
+        "duplicating it would leave this check with nothing to read, so the count is "
+        "asserted rather than assumed."
+    )
+    value = bound[0]
+    assert (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id == "discover_fixtures"
+    ), (
+        f"{module} binds {binding} to {type(value).__name__} rather than to a "
+        "discover_fixtures call. The two readers then disagree about what the corpus "
+        "contains, which is how a nested fixture came to be graded by neither."
+    )
