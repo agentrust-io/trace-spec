@@ -64,13 +64,14 @@ from tests.test_action_receipt_fixtures import (
     _sha256_jcs,
     _trusted_jwk,
     _verify_fixture,
+    discover_fixtures,
 )
 
 TESTS_DIR = Path(__file__).parent
 VERIFIER_MODULE = TESTS_DIR / "test_action_receipt_fixtures.py"
 FIXTURE_DIR = TESTS_DIR.parent / "examples" / "action-receipts" / "conformance"
 MARGINS_FILE = TESTS_DIR / "vector_margins.json"
-FIXTURES = sorted(FIXTURE_DIR.glob("*.json"))
+FIXTURES = discover_fixtures(FIXTURE_DIR)
 
 RULE_CODES = tuple(rule.code for rule in RULES)
 
