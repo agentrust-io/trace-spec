@@ -1,6 +1,6 @@
 # Schema Reference
 
-JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
+JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
 
 ## Top-level fields
 
@@ -41,7 +41,7 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `platform` | string | **yes** | One of: `amd-sev-snp`, `azure-cvm-sev-snp`, `intel-tdx`, `nvidia-h100`, `nvidia-blackwell`, `tpm-2.0`, `software-only` |
+| `platform` | string | **yes** | One of: `intel-tdx`, `amd-sev-snp`, `azure-cvm-sev-snp`, `nvidia-h100`, `nvidia-blackwell`, `aws-nitro`, `arm-cca`, `google-confidential-space`, `tpm2`, `software-only` |
 | `measurement` | string | **yes** | Hardware measurement hash (`sha384:` for SEV-SNP/TDX, `sha256:` for TPM) |
 | `rim_uri` | string | no | Reference Integrity Manifest URI for hardware verification |
 | `firmware_version` | string | no | TEE firmware version |
@@ -144,7 +144,7 @@ Verifier judgment on the evidence in this record.
 
 ## `transparency`
 
-String. URI of the SCITT transparency log entry anchoring this record. Empty string (`""`) if not anchored at issuance — anchoring may happen asynchronously.
+String. URI of the SCITT transparency log entry anchoring this record. Omitted, or `null`, when the record is not anchored at issuance — anchoring may happen asynchronously. Never an empty string: the reference model rejects one (`min_length=1`).
 
 ## `cnf`
 
@@ -158,7 +158,7 @@ For TEE-issued records, this key was generated inside the measured enclave and i
 
 ## Wire formats
 
-TRACE v0.1 supports two wire formats:
+TRACE v0.2 supports two wire formats:
 
 **JSON** (primary): signed JSON object with `signature` as a top-level field.
 
