@@ -105,7 +105,7 @@ After the session, fetch the TRACE record from the gateway:
 import httpx
 
 record = httpx.get("https://localhost:8443/trace/latest").json()
-# → full TRACE v0.1 Trust Record, Level 2, signed by TEE-bound key
+# → full TRACE v0.2 Trust Record, Level 2, signed by TEE-bound key
 ```
 
 Or let cMCP push it to the transparency registry automatically:

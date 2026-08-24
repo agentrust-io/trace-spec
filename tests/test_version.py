@@ -93,3 +93,62 @@ def test_module_version_matches_pyproject() -> None:
         )
 
     assert agentrust_trace.__version__ == _declared_version()
+
+
+# --- the record format's version, which is a different number in the same shape ------
+#
+# `__version__` above is the package's. This is the Trust Record's, and it drifted the
+# same way: the docstring on `TrustRecord` said v0.1 from the commit that introduced the
+# package through every release since, on a class whose `eat_profile` is
+# `Literal[...trace-v0.2]` and which therefore cannot hold a v0.1 record. `docs/schema.md`
+# said it twice more, four lines above a table requiring the v0.2 profile URI.
+#
+# Nothing failed, because nothing compared the label against the thing it labels. These
+# read the version out of the packaged schema, which is the artifact that decides it.
+
+_SCHEMA_DIR = _ROOT / "src" / "agentrust_trace" / "schema"
+_DOCS = _ROOT / "docs"
+
+# Surfaces that describe the *current* record and so must name the current version.
+# Documents scoped to an earlier version on purpose are not listed and are not the
+# subject: `docs/crosswalks/` is written against v0.1 deliberately.
+_CURRENT_RECORD_SURFACES = (
+    pathlib.Path("src") / "agentrust_trace" / "models.py",
+    pathlib.Path("docs") / "schema.md",
+    pathlib.Path("docs") / "integration" / "cmcp.md",
+)
+
+
+def _record_version() -> str:
+    """`"v0.2"`, read from the profile URI the packaged schema pins."""
+    import json
+
+    schema = json.loads((_SCHEMA_DIR / "trace-v0.2.json").read_text(encoding="utf-8"))
+    const = schema["properties"]["eat_profile"]["const"]
+    match = re.search(r"trace-(v\d+\.\d+)$", const)
+    assert match, f"the packaged schema's eat_profile const is not a profile URI: {const!r}"
+    return match.group(1)
+
+
+def test_the_packaged_schema_names_a_version() -> None:
+    """Guards the guard. If this returns nothing the checks below pass vacuously."""
+    assert _record_version() == "v0.2"
+
+
+@pytest.mark.parametrize("relative", _CURRENT_RECORD_SURFACES, ids=str)
+def test_no_current_surface_labels_the_record_with_a_superseded_version(
+    relative: pathlib.Path,
+) -> None:
+    current = _record_version()
+    text = (_ROOT / relative).read_text(encoding="utf-8")
+    stale = sorted(
+        {
+            m.group(0)
+            for m in re.finditer(r"TRACE (v\d+\.\d+)", text)
+            if m.group(1) != current
+        }
+    )
+    assert not stale, (
+        f"{relative} calls the record {stale}, but the packaged schema pins {current}. "
+        "Either the label is stale or the schema moved; they cannot both be right."
+    )

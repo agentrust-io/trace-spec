@@ -257,7 +257,7 @@ class ConfirmationKey(BaseModel):
 
 
 class TrustRecord(BaseModel):
-    """TRACE v0.1 Trust Record — hardware-attested governance evidence for an AI agent execution."""
+    """TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution."""
 
     model_config = ConfigDict(extra="forbid")
 
