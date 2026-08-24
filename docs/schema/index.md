@@ -1,6 +1,6 @@
 # Schema Reference
 
-JSON Schema for the TRACE v0.1 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
+JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
 
 ## Top-level fields
 
@@ -158,7 +158,7 @@ For TEE-issued records, this key was generated inside the measured enclave and i
 
 ## Wire formats
 
-TRACE v0.1 supports two wire formats:
+TRACE v0.2 supports two wire formats:
 
 **JSON** (primary): signed JSON object with `signature` as a top-level field.
 
