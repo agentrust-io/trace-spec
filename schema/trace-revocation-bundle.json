@@ -27,11 +27,13 @@
     "issued_at": {
       "type": "integer",
       "minimum": 1700000000,
+      "maximum": 9007199254740991,
       "description": "When the bundle was assembled, Unix epoch seconds."
     },
     "valid_until": {
       "type": "integer",
       "minimum": 1700000000,
+      "maximum": 9007199254740991,
       "description": "The horizon this bundle may be relied on to. Past it, a verifier reports the record as unverified for revocation rather than verified: an expired bundle is not evidence a key is still trusted, and spec section 3.2.3 forbids reporting it as an affirming appraisal."
     },
     "statements": {

@@ -15,6 +15,12 @@ _DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
 _DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
 _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
 
+# The JCS safe-integer range, RFC 8785 Appendix B note 1, raised to a MUST by spec
+# section 3.2.2. Mirrored here because these models are the other artifact a producer
+# builds against, and a model that accepts what the schema rejects sends the failure
+# downstream to whichever canonicalizer the producer happens to be using.
+JCS_SAFE_INTEGER = 9007199254740991
+
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
 
@@ -90,7 +96,7 @@ class ToolTranscript(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     hash: DigestStr
-    call_count: Annotated[int, Field(ge=0)] | None = None
+    call_count: Annotated[int, Field(ge=0, le=JCS_SAFE_INTEGER)] | None = None
     transcript_uri: str | None = None
 
 
@@ -146,7 +152,7 @@ class Origin(BaseModel):
     kind: Literal["self", "third-party-control-plane", "log-import"]
     producer: Annotated[str, Field(min_length=1)]
     source_event_id: Annotated[str, Field(min_length=1)] | None = None
-    ingested_at: Annotated[int, Field(ge=1700000000)] | None = None
+    ingested_at: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)] | None = None
 
 
 class Reference(BaseModel):
@@ -209,7 +215,7 @@ class Appraisal(BaseModel):
     status: Literal["affirming", "warning", "contraindicated", "none"]
     verifier: str
     policy_ref: str | None = None
-    timestamp: int | None = None
+    timestamp: Annotated[int, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
 
@@ -262,7 +268,7 @@ class TrustRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
-    iat: Annotated[int, Field(ge=1700000000)]
+    iat: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
     subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
     model: ModelInfo
     runtime: RuntimeInfo

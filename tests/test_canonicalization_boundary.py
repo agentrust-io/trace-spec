@@ -10,6 +10,11 @@ canonicalizer is one of the ad-hoc forms below.
 Each fixture declares ``diverges_under``. The declaration is recomputed here, not
 trusted: a vector that stopped diverging would otherwise keep documenting a
 distinction it no longer makes.
+
+RFC 8785's third divergence, number serialization, is in
+``tests/test_safe_integer_range.py``. No vector can carry it: a positive vector is
+a schema-valid record, and the records that reach that divergence are exactly the
+ones the schema rejects.
 """
 
 from __future__ import annotations
@@ -128,32 +133,3 @@ def test_every_adhoc_form_is_caught_by_at_least_two_vectors() -> None:
         f"separated by a single vector: {thin}. One vector is coverage until that "
         "vector changes; two are required per boundary."
     )
-
-
-def test_number_divergence_is_still_unreachable() -> None:
-    """No schema field is typed ``number``, so RFC 8785's IEEE 754 serialization
-    cannot diverge inside a schema-valid record and no vector exercises it.
-
-    This pins the claim. The day a numeric field enters the schema, this fails, and
-    the correct response is a number-formatting vector in this set, not an edit here.
-    """
-    schema = json.loads(
-        (REPO_ROOT / "schema" / "trace-claim.json").read_text(encoding="utf-8")
-    )
-
-    def types(node: Any) -> set[str]:
-        found: set[str] = set()
-        if isinstance(node, dict):
-            declared = node.get("type")
-            if isinstance(declared, str):
-                found.add(declared)
-            elif isinstance(declared, list):
-                found.update(t for t in declared if isinstance(t, str))
-            for value in node.values():
-                found |= types(value)
-        elif isinstance(node, list):
-            for item in node:
-                found |= types(item)
-        return found
-
-    assert "number" not in types(schema)

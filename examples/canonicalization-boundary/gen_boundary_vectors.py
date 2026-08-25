@@ -23,9 +23,11 @@ The ad-hoc forms make a ladder, each rung needing a sharper vector to expose:
   sorts str by code point, and the two orders differ exactly when a key contains a
   supplementary-plane character.
 
-There is no vector for RFC 8785's IEEE 754 number serialization: the v0.2 schema types
-no field as ``number``, so the divergence is unreachable in a schema-valid record. The
-test suite pins that fact so a future numeric field demands a vector here.
+There is no vector for RFC 8785's IEEE 754 number serialization. No v0.2 field is typed
+``number``, every integer field is held to the range RFC 8785 Appendix B note 1 names,
+and the members a JWK may carry without this schema naming them are held to the same
+range, so a record that reaches the number divergence is schema-invalid and no positive
+vector can carry it. ``tests/test_canonicalization_boundary.py`` pins all three.
 
 Deterministic key, so the set regenerates byte-for-byte. Public test material.
 """
@@ -175,9 +177,12 @@ def main() -> None:
     # fails this one, which is the second, distinct defect #124 asks a boundary to have.
     #
     # The margin this adds is positional rather than mechanistic. Key ordering is the
-    # only RFC 8785 divergence this schema can reach at all, since no field is typed
-    # `number` and IEEE 754 serialization is therefore unreachable, which
-    # `test_number_divergence_is_still_unreachable` pins.
+    # only RFC 8785 divergence this schema can reach at all: no field is typed `number`,
+    # and integers are held to the safe-integer range whether the schema names the field
+    # or not, so the number serialization rule has nothing schema-valid to act on. The
+    # `cnf.jwk` members these two vectors add are subject to that same constraint, which
+    # is why they are strings. All of it is pinned in
+    # `tests/test_canonicalization_boundary.py`.
     r["cnf"] = {"jwk": {"zmeta": {
         "zk\U0001f600": "sorts-first-under-rfc-8785",
         "zk\ufffd": "sorts-second-under-rfc-8785",

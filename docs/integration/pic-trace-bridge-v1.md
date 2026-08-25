@@ -13,9 +13,13 @@ resolved by the verifier's trust configuration. The artifact contains an
 never carries a public key or trust anchor. A plugin, runtime, or gateway cannot
 bootstrap its own authority by embedding a key in the signed object.
 
-The signature covers `profile` and the complete `authorization` object. Unknown
-fields are rejected so an implementation cannot silently ignore a new security
-meaning. A decision other than `allow`, an authorization outside its validity
+The signature covers `profile` and the complete `authorization` object.
+Unknown fields are rejected so an implementation cannot silently ignore a new
+security meaning. `authorized_at` and `expires_at` are bounded to the JCS
+safe-integer range for the same reason every integer in a signed TRACE object
+is: the signature is over RFC 8785 canonical bytes, and outside that range two
+distinct values share a pre-image and therefore a signature. See spec section
+3.2.2. A decision other than `allow`, an authorization outside its validity
 window, an expired authorization, or an invalid signature is not usable as
 authorization evidence.
 

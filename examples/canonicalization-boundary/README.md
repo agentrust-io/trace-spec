@@ -62,12 +62,46 @@ with `iat`'s instant supplied as "now". `gen_boundary_vectors.py` regenerates th
 
 ## What there is deliberately no vector for
 
-RFC 8785's IEEE 754 number serialization (the other divergence the spec warns about)
-is **unreachable in a schema-valid v0.2 record**: no field in `schema/trace-claim.json`
-is typed `number`, and integers up to 2^53 serialize identically everywhere. The test
-suite pins this with `test_number_divergence_is_still_unreachable`, which fails the day
-a numeric field enters the schema — at which point the correct response is a
-number-formatting vector here, not an edit to the test.
+RFC 8785's IEEE 754 number serialization is the other divergence the spec warns about.
+There is no vector for it, and the reason is different for each half of the surface.
+
+The integer half was reachable, and an earlier version of this note said it was not.
+Integers up to 2^53 do serialize identically everywhere, which is true and was never the
+whole claim: `iat`, `origin.ingested_at`, `tool_transcript.call_count` and
+`appraisal.timestamp` were typed `integer` with no upper bound, so a value above 2^53 was
+schema-valid. Two independent RFC 8785 implementations disagree on such a value and
+neither is safe to rely on: `rfc8785` 0.1.4 refuses it, and `canonicalize` 4.0.0 emits for
+it the same bytes it emits for the integer next to it, so one signature stands for two
+records and nothing raises. Those fields now carry the range RFC 8785 Appendix B note 1
+names, which section 3.2.2 raises from that note's SHOULD to a MUST.
+
+The `number` half was reachable too, through the same door vector `03` uses. `cnf.jwk` is
+open because RFC 7517 permits members this schema does not name, and its
+`additionalProperties` was absent, which means true. A float, or a colliding integer, went
+in as an undeclared member, was covered by the signature like everything else, and met no
+constraint at all. Undeclared members are now held recursively to
+`#/$defs/canonicalizableValue`, which admits strings, booleans, null, arrays, objects and
+integers inside the range, and no `number`.
+
+One surface stays out of reach of any schema, and out of reach of a vector for the same
+reason: `digest_jcs` and `SandboxAdapter.transcript_hash` canonicalize objects a caller
+supplies and nothing validates. Two declarations differing only in an integer above the
+range produce one digest under `canonicalize` 4.0.0. Section 3.2.2 states the rule for any
+object canonicalized under it, and here `rfc8785` refuses the value, which is pinned as
+behaviour rather than assumed.
+
+So neither half is reachable now, and neither can be carried by a vector here: a positive
+vector is a schema-valid record, and these cases are exactly the records the schema
+rejects. The tests in this directory carry them instead, structurally and behaviourally.
+If a `number` field is ever wanted, `test_no_schema_field_is_typed_number` is the place to
+argue for it, and a number-formatting vector here is what the argument has to come with.
+
+`number_divergence_repro.py` reproduces the number divergence itself, on the standard
+library alone: run `python examples/canonicalization-boundary/number_divergence_repro.py`.
+It first checks its own canonicalizer against `rfc8785` on every record in `examples/`,
+then shows two records reaching one canonical form and one signature, why the bound is
+2^53 - 1 rather than 2^53, and that the schema now refuses both. Exit code 0 means every
+step reproduced.
 
 These vectors exercise accepted normative text (the section 3.2.2 MUST), not a
 proposal; they carry no proposal marker.

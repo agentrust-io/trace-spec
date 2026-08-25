@@ -16,7 +16,6 @@ another one.
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 import time
 from typing import Any
@@ -24,6 +23,7 @@ from typing import Any
 from agentrust_trace.sign import (
     RevocationStore,
     _canonical_bytes,
+    anchor_bytes,
     _check_not_revoked,
     _pubkey_from_jwk,
     jwk_thumbprint,
@@ -93,11 +93,11 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     )
     # Sorted-key JSON, matching the anchor format rather than JCS. The two
     # canonicalizations at two layers are described in registry-anchor-v1.md §0;
-    # this is the anchoring layer.
-    canonical = json.dumps(
-        normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-    ).encode("ascii")
-    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+    # this is the anchoring layer. `anchor_bytes` refuses the values §1 puts
+    # outside the profile: an `input_schema` is ordinary JSON Schema and a
+    # `maximum` in it is ordinary content, so this is reachable without anyone
+    # doing anything strange.
+    return "sha256:" + hashlib.sha256(anchor_bytes(normalized)).hexdigest()
 
 
 def _check_structure(
