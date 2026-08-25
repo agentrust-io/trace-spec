@@ -130,7 +130,7 @@ class TraceAGTAdapter:
             session: AGT session data collected after ``govern_fn.close_session()``.
 
         Returns:
-            A plain JSON-serialisable dict conforming to the TRACE v0.1 schema.
+            A plain JSON-serialisable dict conforming to the TRACE v0.2 schema.
             The ``cnf.jwk`` placeholder carries no key material until ``sign_record()``
             populates it from the signing key.
         """

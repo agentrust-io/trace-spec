@@ -116,6 +116,8 @@ _CURRENT_RECORD_SURFACES = (
     pathlib.Path("src") / "agentrust_trace" / "models.py",
     pathlib.Path("docs") / "schema.md",
     pathlib.Path("docs") / "integration" / "cmcp.md",
+    pathlib.Path("src") / "agentrust_trace" / "adapters" / "agt.py",
+    pathlib.Path("docs") / "tutorials" / "verifying-a-trust-record.md",
 )
 
 
