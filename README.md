@@ -65,7 +65,7 @@ record = {
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/payments-processor",
     "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
-    "runtime": {"platform": "amd-sev-snp", "measurement": "sha256:" + "0" * 64},
+    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
     "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
     "data_class": "confidential",
     "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
