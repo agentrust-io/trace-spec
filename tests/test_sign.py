@@ -374,15 +374,46 @@ def test_verify_record_accepts_record_within_default_future_skew():
     verify_record(record, key_to_jwk(key))
 
 
-def test_verify_record_future_skew_is_deployment_configurable():
-    key = generate_key()
-    record = _minimal_record()
-    record["iat"] = int(time.time()) + 601
-    record = sign_record(record, key)
+def test_verify_record_future_skew_is_deployment_configurable(monkeypatch):
+    """The future-skew bound, asserted at exactly its edge under a frozen clock.
 
+    This test used to set ``iat`` from ``int(time.time())``, which truncates,
+    while ``verify_record`` compares against an unrounded ``time.time()``. Writing
+    the true setup time as ``k + f`` and ``d`` for everything that elapses before
+    the comparison, ``age = f + d - 601``, so it raised only while ``f + d < 1``.
+    The margin was not one second out of six hundred, it was whatever remained of
+    the current second minus the test's own runtime, and the per-run failure
+    probability was ``d`` rather than anything fixed (#183).
+
+    Freezing rather than widening is deliberate. Moving the assertion to ``+660``
+    would remove the race by removing the test: an implementation whose comparison
+    is off by a few seconds would pass either way, and this is a security-relevant
+    freshness bound. With the clock frozen there is no race left, so the boundary
+    is pinned on both sides instead.
+
+    ``verify_record`` does a local ``import time``, which binds the same module
+    object, so patching the attribute here reaches it.
+    """
+    frozen = 1_800_000_000.0
+    monkeypatch.setattr(time, "time", lambda: frozen)
+
+    key = generate_key()
+
+    # 601s into the future is outside a 600s bound.
+    beyond = _minimal_record()
+    beyond["iat"] = int(frozen) + 601
+    beyond = sign_record(beyond, key)
     with pytest.raises(ValueError, match="max_future_skew_seconds=600"):
-        verify_record(record, key_to_jwk(key), max_future_skew_seconds=600)
-    verify_record(record, key_to_jwk(key), max_future_skew_seconds=602)
+        verify_record(beyond, key_to_jwk(key), max_future_skew_seconds=600)
+
+    # ...and inside a bound configured above it.
+    verify_record(beyond, key_to_jwk(key), max_future_skew_seconds=602)
+
+    # 600s into the future is exactly at the bound, and accepted.
+    at_edge = _minimal_record()
+    at_edge["iat"] = int(frozen) + 600
+    at_edge = sign_record(at_edge, key)
+    verify_record(at_edge, key_to_jwk(key), max_future_skew_seconds=600)
 
 
 def test_disabling_max_age_does_not_disable_future_bound():
