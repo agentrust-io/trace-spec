@@ -779,22 +779,26 @@ def test_the_anchor_layer_refuses_what_its_profile_excludes() -> None:
 
 
 def test_the_two_transcript_hashes_now_agree_on_the_same_input() -> None:
-    """The adapters disagreed with each other, and one of them was already right.
+    """The adapters disagreed with each other, and now they don't.
 
-    Both hash a caller-supplied decision log into a record. The sandbox adapter
-    canonicalizes with `rfc8785`, which refuses an out-of-range integer, so it
-    already failed closed. The AGT adapter used sorted-key JSON with no check and
-    produced a digest no peer in another language could reproduce. On the same
-    input, one raised and one returned. This is realistic input rather than a
-    constructed one: nanosecond timestamps and 64-bit request ids are what a
-    governance framework's audit entries carry.
+    Both hash a caller-supplied decision log into the same record field,
+    `tool_transcript.hash`. The sandbox adapter canonicalizes with `rfc8785`
+    (JCS), matching what docs/schema.md and docs/integration/agt.md both call
+    "canonical JSON" for this field. The AGT adapter used the registry-anchor
+    sorted-key format instead -- a different, narrower profile reserved for the
+    `transparency` anchor leaf (spec/registry-anchor-v1.md §0) -- which produced
+    a different digest for the same entries *and* rejected ordinary floats
+    (a timestamp, a latency, a risk score) that JCS handles without complaint.
+    Governance-framework audit entries carry both floats and 64-bit integers
+    routinely, so this was not a constructed edge case.
 
-    Refusing in the AGT adapter is a behaviour change, and it is the direction its
-    sibling was already going.
+    The AGT adapter now uses the same `rfc8785` canonicalization as its
+    sibling, so the two genuinely agree: same bytes hashed, same digest, same
+    exception on the same out-of-range input -- not just "both happen to
+    refuse."
     """
     import agentrust_trace.adapters.agt as agt_module
     import agentrust_trace.adapters.sandbox as sandbox_module
-    from agentrust_trace.sign import UnanchorableValue
 
     entries = [{
         "tool": "transfer",
@@ -811,20 +815,21 @@ def test_the_two_transcript_hashes_now_agree_on_the_same_input() -> None:
         if isinstance(v, type) and hasattr(v, "transcript_hash")
     )
 
-    with pytest.raises(UnanchorableValue) as caught:
+    with pytest.raises(rfc8785.IntegerDomainError):
         agt_adapter._transcript_hash(entries)
-    # The message has to say what to do, not only what is wrong: a caller reading
-    # it is holding a timestamp they cannot simply drop.
-    assert "Carry the value as a JSON string" in str(caught.value)
-    assert "ts_ns" in str(caught.value)
 
     with pytest.raises(rfc8785.IntegerDomainError):
         sandbox_adapter.transcript_hash(entries)
 
-    # And both still work on the same entries with the value in range.
+    # In range, the two now produce the identical digest for identical input.
     in_range = [{**entries[0], "ts_ns": 1785000000, "request_id": SAFE_INTEGER}]
-    assert agt_adapter._transcript_hash(in_range).startswith("sha256:")
-    assert sandbox_adapter.transcript_hash(in_range).startswith("sha256:")
+    assert agt_adapter._transcript_hash(in_range) == sandbox_adapter.transcript_hash(in_range)
+
+    # And a float -- routine in a real audit entry, out of scope for this test's
+    # integer focus but the other half of why anchor_bytes was wrong here --
+    # no longer breaks the AGT adapter either.
+    with_float = [{**entries[0], "ts_ns": 1785000000, "request_id": SAFE_INTEGER, "risk": 0.5}]
+    assert agt_adapter._transcript_hash(with_float).startswith("sha256:")
 
 
 def test_the_reproduction_script_runs_and_reproduces() -> None:

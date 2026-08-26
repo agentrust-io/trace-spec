@@ -1,9 +1,9 @@
 # Technical Charter — TRACE
 
-**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". This supersedes the earlier proposal to split the technical workstream to CoSAI and the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol. CoSAI participates as a technical-liaison partner for WS4 interoperability, not as a host.  
-**Status**: Draft — formation with LF Projects, LLC is in progress; effective when the Technical Charter takes effect.
+**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026. The technical workstream is hosted by the Coalition for Secure AI (CoSAI). This supersedes the earlier proposal to split the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol.  
+**Status**: Draft. The Linux Foundation has accepted the contribution; the Technical Charter and Project Contribution Agreement are still being executed with LF Projects, LLC. This charter is effective when the Technical Charter takes effect.
 
-> **Note for external contributors:** This charter is a working draft and has not yet been accepted by a host organization. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
+> **Note for external contributors:** The Linux Foundation has accepted TRACE, but this charter is still a working draft and the Technical Charter has not yet taken effect. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
 **Version**: 0.1 (aligned with spec v0.1)
 
 ---
