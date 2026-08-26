@@ -181,6 +181,64 @@ def test_format_constant_matches_the_spec() -> None:
     assert FORMAT == "agentrust-io/mcp-server-provenance/1"
 
 
+def test_format_constant_matches_the_spec() -> None:
+    assert FORMAT == "agentrust-io/mcp-server-provenance/1"
+
+
+# malformed records fail closed with ProvenanceError, not a crash
+#
+# `record.get(field) or {}` looks like it defaults a missing block to `{}`, but
+# a present, truthy, non-dict value (a string, a list, a number, `True`) is not
+# caught by the `or`, and the first `.get()` call on it raised an unhandled
+# `AttributeError`. verify_record's docstring promises `ProvenanceError` for
+# "every other rejection"; a caller that only catches ProvenanceError, exactly
+# as documented, would not catch that, and an adversarial record could crash
+# the caller's verification path instead of being rejected by it.
+
+
+def _signed(record):
+    key = generate_key()
+    signed = sign_record(record, key)
+    return signed, key_to_jwk(key)
+
+
+def test_non_object_identity_is_refused_not_a_crash() -> None:
+    record, jwk = _signed({**_record(), "identity": "not-an-object"})
+    with pytest.raises(ProvenanceError, match="identity must be an object"):
+        verify_record(record, jwk)
+
+
+def test_non_object_identity_artifact_is_refused_not_a_crash() -> None:
+    record, jwk = _signed({**_record(), "identity": {"artifact": "not-an-object"}})
+    with pytest.raises(ProvenanceError, match="identity.artifact must be an object"):
+        verify_record(record, jwk)
+
+
+def test_non_object_identity_endpoint_is_refused_not_a_crash() -> None:
+    record, jwk = _signed({**_record(), "identity": {"endpoint": 12345}})
+    with pytest.raises(ProvenanceError, match="identity.endpoint must be an object"):
+        verify_record(record, jwk)
+
+
+def test_non_object_tool_catalog_is_refused_not_a_crash() -> None:
+    record, jwk = _signed({**_record(), "tool_catalog": ["not", "an", "object"]})
+    with pytest.raises(ProvenanceError, match="tool_catalog must be an object"):
+        verify_record(record, jwk)
+
+
+def test_null_identity_and_tool_catalog_still_behave_like_absent() -> None:
+    """`None` is not malformed -- it is how JSON spells an absent block, and the
+    "identifies nothing" / digest-format errors below it are the right rejection,
+    not a type error."""
+    record, jwk = _signed({**_record(), "identity": None})
+    with pytest.raises(ProvenanceError, match="neither an artifact nor an endpoint"):
+        verify_record(record, jwk)
+
+    record, jwk = _signed({**_record(), "tool_catalog": None})
+    with pytest.raises(ProvenanceError, match="not a sha256"):
+        verify_record(record, jwk)
+
+
 # --- the step that catches a live attack -----------------------------------
 
 

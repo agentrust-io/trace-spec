@@ -57,6 +57,15 @@ class ProvenanceError(ValueError):
     """A provenance record is malformed, unsigned, or signed by the wrong key."""
 
 
+def _as_object(value: Any, field: str) -> dict[str, Any]:
+    """Return *value* as a dict, or raise ``ProvenanceError`` naming *field*."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ProvenanceError(f"{field} must be an object, got {type(value).__name__}")
+    return value
+
+
 class ToolCatalogMismatch(ProvenanceError):
     """The server offered a tool set the record does not describe.
 
@@ -120,6 +129,10 @@ def _check_structure(
     matters is the one on the consumer side.
     """
     if artifact is not None:
+        if not isinstance(artifact, dict):
+            raise ProvenanceError(
+                f"identity.artifact must be an object, got {type(artifact).__name__}"
+            )
         if not artifact.get("package"):
             raise ProvenanceError("artifact.package is required (a Package URL)")
         if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
@@ -129,6 +142,10 @@ def _check_structure(
                 "server on a host shares one interpreter digest."
             )
     if endpoint is not None:
+        if not isinstance(endpoint, dict):
+            raise ProvenanceError(
+                f"identity.endpoint must be an object, got {type(endpoint).__name__}"
+            )
         if not endpoint.get("url"):
             raise ProvenanceError("endpoint.url is required when endpoint is present")
         if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
@@ -284,7 +301,7 @@ def verify_record(
         raise ProvenanceError(f"unknown kind {record.get('kind')!r}")
     if not _PUBLISHER_RE.match(str(record.get("publisher", ""))):
         raise ProvenanceError("publisher must be a DID or SPIFFE URI")
-    identity = record.get("identity") or {}
+    identity = _as_object(record.get("identity"), "identity")
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
     _check_structure(
@@ -294,7 +311,7 @@ def verify_record(
         attestation=record.get("attestation"),
         issued_at=record.get("issued_at"),
     )
-    catalog = record.get("tool_catalog") or {}
+    catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
 
