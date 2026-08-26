@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import json
+import rfc8785
 
 import pytest
 from pydantic import ValidationError
