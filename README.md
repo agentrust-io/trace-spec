@@ -74,7 +74,7 @@ record = {
 
 signed = sign_record(record, key)
 ```
-See the [Quickstart guide](https://trace.agentrust-io.com/quickstart/) for key persistence, validation, and anchoring the record to a transparency log.
+See the [Quickstart guide](https://trace.agentrust-io.com/docs/quickstart/) for key persistence, validation, and anchoring the record to a transparency log.
 
 ## Resources
 
