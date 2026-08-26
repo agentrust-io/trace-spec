@@ -20,15 +20,24 @@ pip install agentrust-trace
 ```
 
 ```python
-from agentrust_trace import TrustRecord, sign_record
+import time
+from agentrust_trace import generate_key, sign_record
 
-record = TrustRecord(
-    subject="spiffe://trust.example.org/agent/payments-processor",
-    model_id="claude-sonnet-4-6",
-    platform="amd-sev-snp",
-    policy_hash="sha256:b2c3d4...",
-)
-signed = sign_record(record, key=signing_key)
+key = generate_key()
+
+record = {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": int(time.time()),
+    "subject": "spiffe://trust.example.org/agent/payments-processor",
+    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
+    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
+    "data_class": "confidential",
+    "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
+    "appraisal": {"status": "none", "verifier": "https://verifier.example.org"},
+}
+
+signed = sign_record(record, key)
 ```
 
 ## What a Trust Record proves
@@ -42,7 +51,7 @@ Each question maps to a claim a third party can check without asking you.
 | Under which policy? | `policy.bundle_hash` + `policy.enforcement_mode` |
 | What data did it touch? | `data_class` |
 | Which tools were called? | `tool_transcript.hash` + `tool_transcript.call_count` |
-| Is the record independently anchored? | `anchoring.receipt_uri` (SCITT) |
+| Is the record independently anchored? | `transparency` (SCITT receipt URI) |
 
 ## Where to start
 
