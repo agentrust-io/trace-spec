@@ -87,9 +87,40 @@ def test_policy_bundle_hash_correct() -> None:
 # ---------------------------------------------------------------------------
 
 def test_transcript_hash_correct() -> None:
-    canonical = json.dumps(AUDIT_ENTRIES, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    expected = "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
+    expected = "sha256:" + hashlib.sha256(rfc8785.dumps(AUDIT_ENTRIES)).hexdigest()
     record = _make_adapter().build_trust_record(_make_session())
+    assert record["tool_transcript"]["hash"] == expected
+
+
+def test_transcript_hash_matches_sandbox_adapter_canonicalization() -> None:
+    """The two adapters must hash the same field the same way.
+
+    Before this fix, TraceAGTAdapter used the registry-anchor sorted-key format
+    and TraceSandboxAdapter used JCS for what is structurally the same
+    `tool_transcript.hash` field -- so the "same" AGT session, re-emitted
+    through the sandbox adapter's hashing rule, produced a different digest.
+    """
+    from agentrust_trace.adapters import TraceSandboxAdapter
+
+    agt_hash = _make_adapter().build_trust_record(_make_session())["tool_transcript"]["hash"]
+    assert agt_hash == TraceSandboxAdapter.transcript_hash(AUDIT_ENTRIES)
+
+
+def test_transcript_hash_handles_audit_entries_with_floats() -> None:
+    """A real Cedar/AGT audit entry routinely carries a float (a timestamp with
+    fractional seconds, a decision latency, a risk score). The registry-anchor
+    format used before this fix rejects any non-integer number outright
+    (`UnanchorableValue`), so building a record from such a session raised
+    instead of producing a Trust Record. JCS has no such restriction.
+    """
+    session = _make_session(
+        audit_entries=[
+            {"entry_id": 1, "tool": "crm.get_customer", "decision": "permit",
+             "decided_at": 1750000000.482, "risk_score": 0.13},
+        ]
+    )
+    record = _make_adapter().build_trust_record(session)  # must not raise
+    expected = "sha256:" + hashlib.sha256(rfc8785.dumps(session.audit_entries)).hexdigest()
     assert record["tool_transcript"]["hash"] == expected
 
 

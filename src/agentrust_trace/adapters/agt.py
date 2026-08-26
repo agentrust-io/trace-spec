@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentrust_trace.sign import anchor_bytes
+import rfc8785
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
@@ -187,10 +187,9 @@ class TraceAGTAdapter:
 
     @staticmethod
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
-        # Anchor format, not JCS: registry-anchor-v1.md §0. `anchor_bytes` refuses
-        # the values §1 puts outside the profile, so a digest this returns is one
-        # an implementation in another language can reproduce.
-        return "sha256:" + hashlib.sha256(anchor_bytes(audit_entries)).hexdigest()
+        # RFC 8785 (JCS) — same canonicalization TraceSandboxAdapter already uses
+        # for the same field, and what docs/schema.md calls "canonical JSON".
+        return "sha256:" + hashlib.sha256(rfc8785.dumps(audit_entries)).hexdigest()
 
     @staticmethod
     def _measurement(merkle_chain_tip: str) -> str:
