@@ -181,10 +181,6 @@ def test_format_constant_matches_the_spec() -> None:
     assert FORMAT == "agentrust-io/mcp-server-provenance/1"
 
 
-def test_format_constant_matches_the_spec() -> None:
-    assert FORMAT == "agentrust-io/mcp-server-provenance/1"
-
-
 # malformed records fail closed with ProvenanceError, not a crash
 #
 # `record.get(field) or {}` looks like it defaults a missing block to `{}`, but
