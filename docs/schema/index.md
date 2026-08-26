@@ -2,6 +2,8 @@
 
 JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
 
+Every field typed `integer` here is bounded to -9007199254740991 through 9007199254740991, and no field is typed `number`. That is not a size limit on the data; it is what spec section 3.2.2 can canonicalize unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and two integers outside that range can share one. A value that needs to be larger is carried as a string. The same bound applies to members a `cnf.jwk` carries that this schema does not name.
+
 ## Top-level fields
 
 | Field              | Type    | Required | Description                                                                                                                                |
