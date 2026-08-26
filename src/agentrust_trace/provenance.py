@@ -385,11 +385,17 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
     needs something ``verify_record`` does not have: what the server said to
     *you*. A verifier that never obtains that has checked a document against
     itself.
+
+    Raises :class:`ToolCatalogMismatch` on a mismatch, and :class:`ProvenanceError`
+    if ``record["tool_catalog"]`` is present but is not an object -- the same
+    contract :func:`verify_record` makes, since this can run against a record
+    ``verify_record`` has not (yet) seen.
     """
     actual = tool_catalog_hash(tools)
-    expected = (record.get("tool_catalog") or {}).get("hash")
+    catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
+    expected = catalog.get("hash")
     if actual != expected:
-        declared_count = (record.get("tool_catalog") or {}).get("tool_count")
+        declared_count = catalog.get("tool_count")
         raise ToolCatalogMismatch(
             f"the server offered a tool set this record does not describe: computed "
             f"{actual}, record says {expected} "

@@ -239,6 +239,23 @@ def test_null_identity_and_tool_catalog_still_behave_like_absent() -> None:
         verify_record(record, jwk)
 
 
+def test_check_tool_catalog_also_refuses_a_non_object_tool_catalog() -> None:
+    """The same crash existed a second time: check_tool_catalog() is callable on
+    its own, independent of verify_record(), and read tool_catalog with the same
+    unguarded `(record.get(...) or {}).get(...)` pattern."""
+    signed, _ = _signed({**_record(), "tool_catalog": "not-an-object"})
+    with pytest.raises(ProvenanceError, match="tool_catalog must be an object"):
+        check_tool_catalog(signed, TOOLS)
+
+
+def test_check_tool_catalog_null_tool_catalog_still_behaves_like_absent() -> None:
+    """Control test, mirroring the one above: a genuinely absent tool_catalog is
+    a mismatch (there is nothing to match against), not a type error."""
+    signed, _ = _signed({**_record(), "tool_catalog": None})
+    with pytest.raises(ToolCatalogMismatch, match="about the server, not the document"):
+        check_tool_catalog(signed, TOOLS)
+
+
 # --- the step that catches a live attack -----------------------------------
 
 
