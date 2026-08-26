@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import json
 import os
 import warnings
 from collections.abc import Callable, Container
@@ -203,6 +204,63 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
     verification, so a conformant library is used instead.
     """
     return rfc8785.dumps(d)
+
+
+# The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
+# raises to a MUST for anything canonicalized under it.
+JCS_SAFE_INTEGER = 9007199254740991
+
+
+class UnanchorableValue(ValueError):
+    """A value the registry-anchor profile excludes, found before it was hashed."""
+
+
+def _reject_unanchorable(value: Any, path: str = "$") -> None:
+    if isinstance(value, bool):
+        return
+    if isinstance(value, float):
+        raise UnanchorableValue(
+            f"{path} is a non-integer number ({value!r}). registry-anchor-v1 section 1 "
+            "puts these outside the profile: cross-language float serialization is not "
+            "canonical, so the digest would depend on which language computed it."
+        )
+    if isinstance(value, int) and abs(value) > JCS_SAFE_INTEGER:
+        raise UnanchorableValue(
+            f"{path} is {value}, outside -{JCS_SAFE_INTEGER} to {JCS_SAFE_INTEGER}. "
+            "registry-anchor-v1 section 1 puts these outside the profile: an "
+            "implementation of the same four rules in a language whose only number "
+            "type is the IEEE 754 double writes one value for two distinct integers, "
+            "so two different claims would share a leaf. Carry the value as a JSON "
+            "string. Nanosecond timestamps and 64-bit identifiers land here, and a "
+            "digest over one is not reproducible by a peer, which is what anchoring "
+            "is for."
+        )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _reject_unanchorable(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _reject_unanchorable(item, f"{path}[{index}]")
+
+
+def anchor_bytes(value: Any) -> bytes:
+    """Sorted-key JSON per registry-anchor-v1 section 1. Deliberately not JCS.
+
+    Section 0 of that document exists because these two canonicalizations are
+    easy to confuse, so the one that is not JCS lives next to the one that is.
+    They differ on non-ASCII strings, on non-integer numbers, on integers outside
+    the safe-integer range, and on key order above the Basic Multilingual Plane.
+
+    Section 1 puts the first two of those outside the profile. Nothing enforced
+    that, and the failure it produces is the one section 0 calls out as giving no
+    useful diagnostic: a peer in another language recomputes a different digest
+    and the only symptom is that a proof does not verify. Refusing the value here,
+    by name, is that diagnostic.
+    """
+    _reject_unanchorable(value)
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode("ascii")
 
 
 def _b64url_decode(value: str, *, field: str) -> bytes:

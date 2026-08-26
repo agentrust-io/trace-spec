@@ -7,11 +7,11 @@ single method call. Level 0 (software-only) only; for Level 2 deploy inside cMCP
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentrust_trace.sign import anchor_bytes
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
@@ -187,10 +187,10 @@ class TraceAGTAdapter:
 
     @staticmethod
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
-        canonical = json.dumps(
-            audit_entries, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-        )
-        return "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
+        # Anchor format, not JCS: registry-anchor-v1.md §0. `anchor_bytes` refuses
+        # the values §1 puts outside the profile, so a digest this returns is one
+        # an implementation in another language can reproduce.
+        return "sha256:" + hashlib.sha256(anchor_bytes(audit_entries)).hexdigest()
 
     @staticmethod
     def _measurement(merkle_chain_tip: str) -> str:

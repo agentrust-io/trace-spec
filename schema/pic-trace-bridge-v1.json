@@ -15,8 +15,8 @@
         "decision": {"enum": ["allow", "deny"]},
         "authorizer": {"type": "string", "minLength": 1},
         "authorizer_key_id": {"type": "string", "minLength": 1},
-        "authorized_at": {"type": "integer", "minimum": 0},
-        "expires_at": {"type": "integer", "minimum": 0},
+        "authorized_at": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "expires_at": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "scope": {"type": "object", "additionalProperties": false, "required": ["tools", "impacts"], "properties": {
           "tools": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "impacts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}

@@ -51,6 +51,7 @@
     "revoked_at": {
       "type": "integer",
       "minimum": 1700000000,
+      "maximum": 9007199254740991,
       "description": "When the revocation was issued, Unix epoch seconds. Informational only. It is deliberately NOT the boundary: see the description of this schema."
     },
     "revocation_key_id": {
