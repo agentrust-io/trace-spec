@@ -1,6 +1,6 @@
 # Platform: Intel TDX
 
-Intel TDX (Trust Domain Extensions) provides hardware-isolated Trust Domains (TDs) — VMs with encrypted memory, isolated register state, and hardware-signed attestation. TRACE Level 2 on TDX is supported on GCP Confidential VM (N2D-TDX) and select on-premises Intel Xeon Scalable deployments.
+Intel TDX (Trust Domain Extensions) provides hardware-isolated Trust Domains (TDs): VMs with encrypted memory, isolated register state, and hardware-signed attestation. TRACE Level 2 on TDX is supported on GCP Confidential VM (N2D-TDX) and select on-premises Intel Xeon Scalable deployments.
 
 ## What Intel TDX provides
 
@@ -9,7 +9,7 @@ Intel TDX (Trust Domain Extensions) provides hardware-isolated Trust Domains (TD
 | Memory encryption | AES-256-XTS per-TD |
 | Attestation report | TD Quote, signed by Intel's QE (Quoting Enclave) |
 | Measurement | SHA-384 MRTD (TD measurement register) |
-| Extensible registers | RTMR0–3 for measuring additional components |
+| Extensible registers | RTMR0 to 3 for measuring additional components |
 
 ## TRACE fields populated by TDX
 
@@ -25,9 +25,9 @@ Intel TDX (Trust Domain Extensions) provides hardware-isolated Trust Domains (TD
 }
 ```
 
-- `measurement` — SHA-384 of the TDX TD Quote's MRTD field
-- `rim_uri` — Intel Trust Authority / PCCS URL for TDX certificate chain
-- `firmware_version` — TDX firmware version from the TD Quote header
+- `measurement`: SHA-384 of the TDX TD Quote's MRTD field
+- `rim_uri`: Intel Trust Authority / PCCS URL for TDX certificate chain
+- `firmware_version`: TDX firmware version from the TD Quote header
 
 ## Verification flow
 
@@ -53,7 +53,7 @@ The verifier:
 
 ## On-premises deployment
 
-For on-premises Intel TDX (e.g., Supermicro SYS-121H with Xeon Scalable 4th Gen), the cMCP gateway runs as a TD and uses Intel's PCCS (Platform Certificate Caching Service) or the Intel Trust Authority for attestation verification. No cloud dependency is required — deploy PCCS locally to air-gap the attestation path. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
+For on-premises Intel TDX (e.g., Supermicro SYS-121H with Xeon Scalable 4th Gen), the cMCP gateway runs as a TD and uses Intel's PCCS (Platform Certificate Caching Service) or the Intel Trust Authority for attestation verification. No cloud dependency is required: deploy PCCS locally to air-gap the attestation path. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
 
 ```yaml
 # cmcp.yaml (on-premises TDX)

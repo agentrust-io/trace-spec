@@ -1,4 +1,4 @@
-# Technical Charter — TRACE
+# Technical Charter: TRACE
 
 **Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026. The technical workstream is hosted by the Coalition for Secure AI (CoSAI). This supersedes the earlier proposal to split the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol.  
 **Status**: Draft. The Linux Foundation has accepted the contribution; the Technical Charter and Project Contribution Agreement are still being executed with LF Projects, LLC. This charter is effective when the Technical Charter takes effect.
@@ -10,17 +10,17 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party — without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 
 The project includes:
 
-- **The TRACE Specification** — normative text defining the Trust Record schema, wire format, signing and key management protocol, verification rules, hardware root profiles, and conformance requirements.
-- **JSON Schema** — machine-readable schema for Trust Record validation.
-- **Conformance test suite** — the canonical tests validating compliance (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
-- **Vendor platform annexes** — informative, vendor-co-authored claim-mapping documents for each silicon and cloud attestation surface.
-- **Reference examples** — example Trust Records for each supported hardware platform.
+- **The TRACE Specification**: normative text defining the Trust Record schema, wire format, signing and key management protocol, verification rules, hardware root profiles, and conformance requirements.
+- **JSON Schema**: machine-readable schema for Trust Record validation.
+- **Conformance test suite**: the canonical tests validating compliance (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+- **Vendor platform annexes**: informative, vendor-co-authored claim-mapping documents for each silicon and cloud attestation surface.
+- **Reference examples**: example Trust Records for each supported hardware platform.
 
 Out of scope: runtime policy enforcement engines, TEE platform SDKs, AI model governance beyond execution evidence, and hardware side-channel mitigations.
 
@@ -28,7 +28,7 @@ Out of scope: runtime policy enforcement engines, TEE platform SDKs, AI model go
 
 Upon host organization acceptance, governance transitions from the current Project Lead model to a Technical Steering Committee (TSC).
 
-**Composition**: 3–9 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique) holds one founding seat for the v1.0 ratification cycle.
+**Composition**: 3 to 9 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique) holds one founding seat for the v1.0 ratification cycle.
 
 **Election**: TSC members are elected annually by active contributors (at least one merged PR or accepted spec change in the preceding 12 months). Each contributor has one vote.
 
@@ -63,13 +63,13 @@ Test suite changes that would invalidate previously conformant implementations r
 
 TRACE profiles, and does not replace:
 
-- **RATS / EAT (RFC 9711)** — wire envelope
-- **SLSA** — build provenance
-- **SPIFFE / SPIRE** — workload identity
-- **SCITT** — transparency anchoring
-- **EAR (draft-ietf-rats-ar4si)** — verifier appraisal
-- **MCP / A2A** — agent execution surface
-- **AIBOM (SPDX 3.0, CycloneDX 1.7)** — model component inventory
+- **RATS / EAT (RFC 9711)**: wire envelope
+- **SLSA**: build provenance
+- **SPIFFE / SPIRE**: workload identity
+- **SCITT**: transparency anchoring
+- **EAR (draft-ietf-rats-ar4si)**: verifier appraisal
+- **MCP / A2A**: agent execution surface
+- **AIBOM (SPDX 3.0, CycloneDX 1.7)**: model component inventory
 
 TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming profile, not a competing standard.
 
@@ -77,7 +77,7 @@ TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming pr
 
 | Milestone | Target |
 |---|---|
-| v0.1 draft — CC Summit announcement | June 2026 |
+| v0.1 draft: CC Summit announcement | June 2026 |
 | LF Projects series formation | Q3 2026 |
 | MCP profile and A2A profile (v0.2) | Q3 2026 |
 | Host organization submission | Q3 2026 |

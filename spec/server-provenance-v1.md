@@ -108,7 +108,7 @@ claim about the deployment rather than about the code, and is only as good as th
 
 Signing follows TRACE v0.2 §3.2 exactly, including the canonicalization. **Anchoring
 follows [Registry Anchor Format v1](registry-anchor-v1.md), whose leaf uses sorted-key
-JSON rather than JCS** — the two canonicalizations at two layers described in §0 of that
+JSON rather than JCS**: the two canonicalizations at two layers described in §0 of that
 document. This format inherits the trap; implementers should read that section before
 writing either half.
 

@@ -1,4 +1,4 @@
-"""agentrust-trace — TRACE Trust Record models, validation, and signing."""
+"""agentrust-trace: TRACE Trust Record models, validation, and signing."""
 
 from importlib import metadata as _metadata
 

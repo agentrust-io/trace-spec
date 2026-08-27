@@ -4,7 +4,7 @@
 
 Contact for Code of Conduct issues or inquiries:
 
-- TRACE Project Maintainers — imransiddique@live.com
+- TRACE Project Maintainers: imransiddique@live.com
 
 Reports are handled under the project [Code of Conduct](../CODE_OF_CONDUCT.md).
 

@@ -33,7 +33,7 @@ At the end of each MCP session, cMCP:
 3. Signs the record internally using the TEE-sealed key
 4. Writes the signed `RuntimeClaim` to the path in `CMCP_TRACE_OUTPUT_PATH`
 
-The resulting file is a `RuntimeClaim` — a cMCP-specific envelope that wraps a TRACE `GatewayTrace` under the `trace` key, alongside gateway metadata and a top-level `signature`. A `RuntimeClaim` is not the same shape as a standalone `TrustRecord`; field access goes through `record["trace"]["subject"]`, `record["trace"]["policy"]`, and so on.
+The resulting file is a `RuntimeClaim`: a cMCP-specific envelope that wraps a TRACE `GatewayTrace` under the `trace` key, alongside gateway metadata and a top-level `signature`. A `RuntimeClaim` is not the same shape as a standalone `TrustRecord`; field access goes through `record["trace"]["subject"]`, `record["trace"]["policy"]`, and so on.
 
 ---
 
@@ -104,7 +104,7 @@ If `CMCP_TRACE_OUTPUT_PATH` is not set, cMCP emits the record to stdout as newli
 
 ## Verify the Record Structure
 
-The `agentrust-trace` library's `validate_json()` and `verify_record()` functions operate on standalone `TrustRecord` objects — the flat schema produced by `sign_record()`. A cMCP `RuntimeClaim` has a different envelope (TRACE fields nested under `trace`, plus top-level `signature`, `gateway`, and `cmcp_version`) and will fail `validate_json()` with schema errors if passed directly.
+The `agentrust-trace` library's `validate_json()` and `verify_record()` functions operate on standalone `TrustRecord` objects: the flat schema produced by `sign_record()`. A cMCP `RuntimeClaim` has a different envelope (TRACE fields nested under `trace`, plus top-level `signature`, `gateway`, and `cmcp_version`) and will fail `validate_json()` with schema errors if passed directly.
 
 To verify a cMCP-issued `RuntimeClaim`, use `cmcp-verify`. It validates the RuntimeClaim envelope directly and handles the full chain.
 
@@ -131,7 +131,7 @@ with open("/var/run/cmcp/session.trace.json") as f:
 # ApprovedHashes carries the expected hashes pinned at deployment time.
 # Compute policy_bundle_hash from your Cedar policy archive.
 # Compute tool_catalog_hash as sha256(json.dumps(catalog, sort_keys=True, separators=(',', ':')))
-# on the sorted-by-tool-name catalog — canonical JSON, not raw file bytes.
+# on the sorted-by-tool-name catalog: canonical JSON, not raw file bytes.
 approved = ApprovedHashes(
     policy_bundle_hash="sha256:<expected-cedar-policy-hash>",
     tool_catalog_hash="sha256:<expected-tool-catalog-hash>",
@@ -157,13 +157,13 @@ print(result.status.value)  # "verified" | "partially_verified" | "unverified"
 | Policy audit chain | Not in scope | Handled |
 | SCITT transparency receipt | Not in scope | Planned |
 
-Use `agentrust-trace` directly when signing or verifying standalone `TrustRecord` objects. Use `cmcp-verify` when working with cMCP-issued `RuntimeClaim` files — the envelope schema is different and `agentrust-trace` functions cannot process it directly.
+Use `agentrust-trace` directly when signing or verifying standalone `TrustRecord` objects. Use `cmcp-verify` when working with cMCP-issued `RuntimeClaim` files: the envelope schema is different and `agentrust-trace` functions cannot process it directly.
 
 ---
 
 ## Summary
 
-cMCP generates a `RuntimeClaim` at the end of each session, signed with an Ed25519 key that was generated inside the TEE and never exported. TRACE fields are nested under `trace` in the envelope; top-level field access (e.g. `record["subject"]`) will fail — use `record["trace"]["subject"]` instead. The CRYPTO-001 nonce binding ties the key to the TEE attestation report. The signed claim is written to `CMCP_TRACE_OUTPUT_PATH`. Use `cmcp-verify` for all verification of cMCP-issued records — the `RuntimeClaim` envelope is incompatible with the standalone `validate_json()` and `verify_record()` helpers in `agentrust-trace`.
+cMCP generates a `RuntimeClaim` at the end of each session, signed with an Ed25519 key that was generated inside the TEE and never exported. TRACE fields are nested under `trace` in the envelope; top-level field access (e.g. `record["subject"]`) will fail, use `record["trace"]["subject"]` instead. The CRYPTO-001 nonce binding ties the key to the TEE attestation report. The signed claim is written to `CMCP_TRACE_OUTPUT_PATH`. Use `cmcp-verify` for all verification of cMCP-issued records, the `RuntimeClaim` envelope is incompatible with the standalone `validate_json()` and `verify_record()` helpers in `agentrust-trace`.
 
 Related tutorials:
 

@@ -1,4 +1,4 @@
-"""TraceSandboxAdapter — maps a sandboxed agent runtime's session output to a Trust Record.
+"""TraceSandboxAdapter: maps a sandboxed agent runtime's session output to a Trust Record.
 
 A sandboxed agent runtime confines one agent on one machine: filesystem, process and
 network isolation at the kernel, an egress policy, and credentials injected without the

@@ -2,11 +2,11 @@
 
 [AGT (Agent Governance Toolkit)](https://github.com/microsoft/agent-governance-toolkit) is the most widely adopted agent governance framework (4,100+ stars, 100+ contributors). It provides Cedar policy enforcement, SPIFFE/SVID identity, and Merkle-chained audit logs for any agent framework.
 
-AGT emits TRACE v0.1 Trust Records via `TRACEAuditSink` in its latest release (`agent-governance-toolkit-core` 5.0.0) — see [ADR 0032](https://github.com/microsoft/agent-governance-toolkit/blob/main/docs/adr/0032-agt-emits-trace-v01-trust-records.md) for the full design. AGT's `main` branch has already moved to v0.2, but that change has not shipped in a release yet, and the linked ADR still describes the v0.1 design.
+AGT emits TRACE v0.1 Trust Records via `TRACEAuditSink` in its latest release (`agent-governance-toolkit-core` 5.0.0): see [ADR 0032](https://github.com/microsoft/agent-governance-toolkit/blob/main/docs/adr/0032-agt-emits-trace-v01-trust-records.md) for the full design. AGT's `main` branch has already moved to v0.2, but that change has not shipped in a release yet, and the linked ADR still describes the v0.1 design.
 
 ## What AGT emits
 
-AGT emits **Level 0 (software-only)** TRACE records. The record is signed with an Ed25519 key held in the operator's key store — not a TEE-bound key. For Level 2 hardware-rooted records, deploy AGT inside [cMCP](cmcp.md) or another TEE runtime.
+AGT emits **Level 0 (software-only)** TRACE records. The record is signed with an Ed25519 key held in the operator's key store, not a TEE-bound key. For Level 2 hardware-rooted records, deploy AGT inside [cMCP](cmcp.md) or another TEE runtime.
 
 | TRACE field | Source in AGT |
 |---|---|
@@ -63,7 +63,7 @@ signed = sign_record(record, generate_key())  # or load_signing_key() for produc
 
 ## Manual wiring (legacy)
 
-The following is the raw field-mapping approach — kept for reference. Prefer `TraceAGTAdapter` for new integrations.
+The following is the raw field-mapping approach: kept for reference. Prefer `TraceAGTAdapter` for new integrations.
 
 ```python
 from agentmesh.governance import govern, GovernanceConfig
@@ -120,7 +120,7 @@ Deploy your AGT-governed agent inside cMCP. The cMCP runtime:
 2. Generates a TEE-bound key for the TRACE record
 3. Emits a Level 2 record that supersedes AGT's Level 0 record for the same session
 
-The two records are linked by a shared `subject` and `tool_transcript.hash` — AGT's record and cMCP's record are mutually verifiable.
+The two records are linked by a shared `subject` and `tool_transcript.hash`: AGT's record and cMCP's record are mutually verifiable.
 
 → [Integration guide: cMCP](cmcp.md)
 
