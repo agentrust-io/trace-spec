@@ -33,7 +33,7 @@
     }
   },
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -405,7 +405,7 @@
     },
     "cnf": {
       "type": "object",
-      "description": "Confirmation key (RFC 8747) — binds the Trust Record to the TEE-held signing key.",
+      "description": "Confirmation key (RFC 8747) that binds the Trust Record to the TEE-held signing key.",
       "required": [
         "jwk"
       ],
