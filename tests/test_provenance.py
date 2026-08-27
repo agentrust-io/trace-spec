@@ -56,6 +56,39 @@ def test_hash_is_stable_and_order_independent() -> None:
     assert tool_catalog_hash(TOOLS) == tool_catalog_hash(list(reversed(TOOLS)))
 
 
+# --- tools is the untrusted party's own claim about itself ------------------
+#
+# check_tool_catalog() passes *tools* through to tool_catalog_hash() unchanged.
+# It is "what the server actually offered you" -- the module's own docstring
+# calls this "the step that catches a live attack" -- so a malformed entry
+# here is not a hypothetical caller mistake, it is the shape a malicious or
+# simply broken server's response takes. t.get(...) on each entry, and
+# iteration over *tools* itself, both assumed a well-formed shape with no
+# check, so either one crashed with AttributeError/TypeError instead of the
+# documented ProvenanceError.
+
+
+@pytest.mark.parametrize("bad_tools", ["not-a-list", None, 42, {"a": 1}])
+def test_non_list_tools_is_refused_not_a_crash(bad_tools) -> None:
+    with pytest.raises(ProvenanceError, match="tools must be a list"):
+        tool_catalog_hash(bad_tools)
+
+
+@pytest.mark.parametrize("bad_entry", ["not-a-dict-tool", None, 42, ["nested", "list"]])
+def test_non_object_tool_entry_is_refused_not_a_crash(bad_entry) -> None:
+    with pytest.raises(ProvenanceError, match=r"tools\[1\] must be an object"):
+        tool_catalog_hash([TOOLS[0], bad_entry])
+
+
+def test_check_tool_catalog_also_refuses_malformed_tools() -> None:
+    """The same crash, reached through the actual security-critical entry
+    point: check_tool_catalog(record, tools), where tools is the server's own
+    response."""
+    signed = sign_record(_record(), generate_key())
+    with pytest.raises(ProvenanceError, match="tools must be a list"):
+        check_tool_catalog(signed, "not-a-list")
+
+
 def test_description_change_changes_the_hash() -> None:
     """The rug-pull this exists to catch.
 

@@ -88,7 +88,19 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     Output schemas, annotations and vendor extensions are excluded. They change
     for reasons that are not security-relevant, and a hash that churns is a hash
     nobody compares.
+
+    Raises :class:`ProvenanceError` if *tools* is not a list, or contains
+    anything other than an object. This is the input :func:`check_tool_catalog`
+    passes through unchanged from whatever the server just returned -- the
+    untrusted party that function exists to check -- so a malformed entry here
+    is not a hypothetical, it is the shape a live attack, or simply a broken
+    server, takes.
     """
+    if not isinstance(tools, list):
+        raise ProvenanceError(f"tools must be a list, got {type(tools).__name__}")
+    for index, t in enumerate(tools):
+        if not isinstance(t, dict):
+            raise ProvenanceError(f"tools[{index}] must be an object, got {type(t).__name__}")
     normalized = sorted(
         (
             {
