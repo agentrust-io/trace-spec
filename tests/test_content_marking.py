@@ -16,6 +16,7 @@ from agentrust_trace.content_marking import (
     ASSERTION_LABEL,
     ContentMarkingError,
     RecordMismatch,
+    _digest,
     build_assertion,
     verify_assertion,
 )
@@ -150,6 +151,49 @@ def test_malformed_hash_is_refused() -> None:
     a["data"]["record"]["hash"] = "sha256:placeholder"
     with pytest.raises(ContentMarkingError, match="not a sha256"):
         verify_assertion(a, _bytes(_record()))
+
+
+
+# --- record_bytes that are valid JSON but not an object --------------------
+#
+# json.loads(record_bytes).get(...) assumed the decoded value is a dict. Valid
+# JSON is not always an object -- an array, a string, a number, null, and a
+# bool are all valid top-level JSON -- and record_bytes is exactly the kind of
+# externally-sourced input (served at a URL, in verify_assertion's case) that
+# is not guaranteed to be shaped the way a caller expects.
+
+
+@pytest.mark.parametrize("bad_json", [b"[1,2,3]", b'"just a string"', b"42", b"null", b"true"])
+def test_build_assertion_refuses_non_object_json_instead_of_crashing(bad_json) -> None:
+    with pytest.raises(ContentMarkingError, match="must decode to a JSON object"):
+        build_assertion(bad_json, url=URL)
+
+
+def test_verify_assertion_refuses_non_object_record_at_the_url() -> None:
+    """The record at the URL matches the declared hash but is not an object.
+
+    Not reachable through this module's own build_assertion, which now refuses
+    to build an assertion over non-object bytes -- but verify_assertion is
+    written against the spec, not against this module's own producer, and a
+    peer implementation, or a corrupted/misconfigured server response, can
+    still bring a hash-matching non-object body here.
+    """
+    bad_json = b"[1,2,3]"
+    a = build_assertion(_bytes(_record()), url=URL)
+    a["data"]["record"]["hash"] = _digest(bad_json, "sha256")
+
+    with pytest.raises(ContentMarkingError, match="must decode to a JSON object"):
+        verify_assertion(a, bad_json)
+
+
+def test_verify_assertion_refuses_invalid_json_at_the_url() -> None:
+    """The bytes at the URL match the declared hash but are not JSON at all."""
+    garbage = b"not json at all {{{"
+    a = build_assertion(_bytes(_record()), url=URL)
+    a["data"]["record"]["hash"] = _digest(garbage, "sha256")
+
+    with pytest.raises(ContentMarkingError, match="is not JSON"):
+        verify_assertion(a, garbage)
 
 
 # --- optional anchor -------------------------------------------------------

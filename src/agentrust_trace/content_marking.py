@@ -86,6 +86,11 @@ def build_assertion(
         record = json.loads(record_bytes)
     except ValueError as exc:
         raise ContentMarkingError(f"record_bytes is not JSON: {exc}") from exc
+    if not isinstance(record, dict):
+        raise ContentMarkingError(
+            f"record_bytes must decode to a JSON object, got {type(record).__name__}. A "
+            "Trust Record is always an object; anything else is not a record to bind to."
+        )
 
     subject = record.get("subject")
     profile = record.get("eat_profile")
@@ -153,7 +158,17 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
             "the URL is serving a different one."
         )
 
-    record: dict[str, Any] = json.loads(record_bytes)
+    record: dict[str, Any]
+    try:
+        record = json.loads(record_bytes)
+    except ValueError as exc:
+        raise ContentMarkingError(f"record at {ref['url']} is not JSON: {exc}") from exc
+    if not isinstance(record, dict):
+        raise ContentMarkingError(
+            f"the record at {ref['url']} must decode to a JSON object, got "
+            f"{type(record).__name__}. It matched the declared hash, so this is what the "
+            "record actually is at that URL, not a mismatch to report as RecordMismatch."
+        )
     if record.get("subject") != data.get("subject"):
         raise RecordMismatch(
             f"assertion names subject {data.get('subject')!r} and the record says "
