@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives import serialization
 
 key = generate_key()
 
-# Save private key — keep secure, never commit or log
+# Save private key: keep secure, never commit or log
 pem_private = key.private_bytes(
     encoding=serialization.Encoding.PEM,
     format=serialization.PrivateFormat.PKCS8,
@@ -29,7 +29,7 @@ pem_private = key.private_bytes(
 with open("trace-key.pem", "wb") as f:
     f.write(pem_private)
 
-# Save public key — safe to distribute to verifiers
+# Save public key: safe to distribute to verifiers
 pem_public = key.public_key().public_bytes(
     encoding=serialization.Encoding.PEM,
     format=serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -87,7 +87,7 @@ with open("session.trace.json", "w") as f:
     json.dump(signed, f, indent=2)
 ```
 
-This produces a valid Level 0 record. For hardware-attested (Level 1+) records, use cMCP as the runtime — it handles TEE key generation and measurement automatically.
+This produces a valid Level 0 record. For hardware-attested (Level 1+) records, use cMCP as the runtime: it handles TEE key generation and measurement automatically.
 
 ## Emit with a persistent key
 
@@ -152,7 +152,7 @@ with open("session.trace.json") as f:
 # Schema check
 validate_json(signed_record)  # raises jsonschema.ValidationError if malformed
 
-# Signature check — verify against a pinned trusted key in production.
+# Signature check: verify against a pinned trusted key in production.
 # allow_embedded_key=True trusts the cnf.jwk in the record itself, which
 # only proves internal consistency, not that the record came from a trusted issuer.
 try:
@@ -177,7 +177,7 @@ Signature valid (Ed25519)
   appraisal:   none
 ```
 
-`verify_record()` raises `cryptography.exceptions.InvalidSignature` if the record was tampered with after signing. `appraisal.status` is `none` here because no external verifier was contacted — see [Verification Protocol](verification.md) for the full five-step flow.
+`verify_record()` raises `cryptography.exceptions.InvalidSignature` if the record was tampered with after signing. `appraisal.status` is `none` here because no external verifier was contacted: see [Verification Protocol](verification.md) for the full five-step flow.
 
 ## What you now have
 
@@ -187,16 +187,16 @@ Signature valid (Ed25519)
 | `tool_transcript.hash` | Merkle-chained audit log of every tool invocation |
 | `subject` | Workload identity (SPIFFE or DID) |
 | `appraisal.status` | Verifier judgment: affirming / contraindicated |
-| `signature` | Ed25519 over the full record — verifiable offline |
+| `signature` | Ed25519 over the full record: verifiable offline |
 
 ## Add hardware attestation (Level 2)
 
-For TEE-rooted records (AMD SEV-SNP, Intel TDX, NVIDIA H100), use cMCP as the runtime — it issues Level 2 TRACE records with a TEE-bound key and a SCITT transparency anchor automatically.
+For TEE-rooted records (AMD SEV-SNP, Intel TDX, NVIDIA H100), use cMCP as the runtime: it issues Level 2 TRACE records with a TEE-bound key and a SCITT transparency anchor automatically.
 
 → [Integration guide: cMCP](integration/cmcp.md)
 
 ## Next steps
 
-- [Full Specification](../spec/trace-v0.2.md) — all claims, wire formats, conformance
-- [Verification Protocol](verification.md) — five-step offline verification
-- [Schema Reference](schema.md) — JSON Schema with field descriptions
+- [Full Specification](../spec/trace-v0.2.md): all claims, wire formats, conformance
+- [Verification Protocol](verification.md): five-step offline verification
+- [Schema Reference](schema.md): JSON Schema with field descriptions

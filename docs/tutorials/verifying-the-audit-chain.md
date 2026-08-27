@@ -19,11 +19,11 @@ class ToolTranscript(BaseModel):
 
 `hash` is the binding between the Trust Record (which is signed) and the full transcript (which is stored externally). When the Trust Record signature verifies, the `hash` inside it is signed. When the hash matches the transcript you retrieve from `transcript_uri`, you know the transcript has not been altered since the record was signed.
 
-The full transcript is NOT embedded in the Trust Record — it lives at `transcript_uri`. This keeps records small enough to sign and transmit while still committing all call-level evidence.
+The full transcript is NOT embedded in the Trust Record: it lives at `transcript_uri`. This keeps records small enough to sign and transmit while still committing all call-level evidence.
 
 ---
 
-## Step 1 — Retrieve and verify the record signature
+## Step 1: Retrieve and verify the record signature
 
 Start by checking the Trust Record signature with the issuer's public key:
 
@@ -42,11 +42,11 @@ result = verify_record(record, public_key_or_jwk=public_key)
 # returns True on success
 ```
 
-`verify_record` confirms that the signed content of the record has not been altered. This includes the `tool_transcript.hash` field — if the signature is valid, you have a trusted copy of the hash.
+`verify_record` confirms that the signed content of the record has not been altered. This includes the `tool_transcript.hash` field: if the signature is valid, you have a trusted copy of the hash.
 
 ---
 
-## Step 2 — Retrieve the transcript
+## Step 2: Retrieve the transcript
 
 The full transcript lives at `tool_transcript.transcript_uri`. Retrieve it and hold the raw bytes for hashing:
 
@@ -57,16 +57,16 @@ transcript_uri = record["tool_transcript"]["transcript_uri"]
 response = requests.get(transcript_uri, timeout=30)
 response.raise_for_status()
 
-# Hold raw bytes — hash must be computed over the exact bytes served
+# Hold raw bytes: hash must be computed over the exact bytes served
 transcript_bytes = response.content
 ```
 
 !!! warning "Hash bytes, not parsed content"
-    The `tool_transcript.hash` is computed over the raw bytes of the transcript as stored. Do not decode, re-encode, or reformat before hashing — JSON parsing and re-serialization changes whitespace and key order, which changes the hash.
+    The `tool_transcript.hash` is computed over the raw bytes of the transcript as stored. Do not decode, re-encode, or reformat before hashing: JSON parsing and re-serialization changes whitespace and key order, which changes the hash.
 
 ---
 
-## Step 3 — Verify the transcript hash
+## Step 3: Verify the transcript hash
 
 Parse the `hash` field to determine the algorithm, then compute and compare:
 
@@ -99,7 +99,7 @@ If this check passes, the transcript at `transcript_uri` is byte-for-byte what w
 
 ---
 
-## Step 4 — Inspect individual call records
+## Step 4: Inspect individual call records
 
 The transcript is a JSON array of tool call records. Each entry captures one call:
 
@@ -116,7 +116,7 @@ The transcript is a JSON array of tool call records. Each entry captures one cal
 ]
 ```
 
-The inputs and outputs are themselves hashed — the raw argument and response values are not in the transcript by default. This protects sensitive tool arguments while still committing the content:
+The inputs and outputs are themselves hashed: the raw argument and response values are not in the transcript by default. This protects sensitive tool arguments while still committing the content:
 
 ```python
 import json
@@ -142,7 +142,7 @@ if call_count is not None and len(calls) != call_count:
 
 ## External execution receipts
 
-For high-assurance scenarios, individual calls may carry external execution receipts — signed by a third-party (the caller, an orchestrator, or a notary) rather than the agent that produced the Trust Record.
+For high-assurance scenarios, individual calls may carry external execution receipts: signed by a third-party (the caller, an orchestrator, or a notary) rather than the agent that produced the Trust Record.
 
 The spec (§3.3.1) defines the receipt structure:
 
@@ -179,7 +179,7 @@ def verify_external_receipt(call, receipt, issuer_public_key):
 ```
 
 !!! info "No SDK helper for receipt verification"
-    The `agentrust_trace` SDK does not include an issuer key resolver or receipt chain verifier. Resolution of `issuer` URIs to public keys is application-specific — typically a DID document or a published JWK Set at a well-known endpoint.
+    The `agentrust_trace` SDK does not include an issuer key resolver or receipt chain verifier. Resolution of `issuer` URIs to public keys is application-specific: typically a DID document or a published JWK Set at a well-known endpoint.
 
 ---
 
@@ -206,13 +206,13 @@ def verify_audit_chain(record_path, public_key_path):
 
     tt = record.get("tool_transcript")
     if not tt:
-        print("No tool_transcript — nothing further to verify")
+        print("No tool_transcript: nothing further to verify")
         return
 
     # Step 2: Retrieve transcript
     uri = tt.get("transcript_uri")
     if not uri:
-        print("No transcript_uri — cannot retrieve transcript")
+        print("No transcript_uri: cannot retrieve transcript")
         return
 
     transcript_bytes = requests.get(uri, timeout=30).content

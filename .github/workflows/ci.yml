@@ -28,6 +28,13 @@ jobs:
       - name: Lint
         run: ruff check src tests scripts
 
+      # House style is no em dashes in what we publish. The rule was already
+      # stated and the repository still carried 601 of them, because prose
+      # review does not catch a dash in a workflow comment or a table cell.
+      # examples/ and spec/ are exempt for now; see tools/check_dashes.py.
+      - name: House style (no em dashes)
+        run: python tools/check_dashes.py
+
       - name: Type check
         run: mypy src/agentrust_trace
 

@@ -226,7 +226,7 @@ _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
 
 
 class JWK(BaseModel):
-    # JWK params vary by key type (EC, OKP, RSA) — allow unknown members per RFC 7517
+    # JWK params vary by key type (EC, OKP, RSA): allow unknown members per RFC 7517
     model_config = ConfigDict(extra="allow")
 
     kty: str
@@ -263,7 +263,7 @@ class ConfirmationKey(BaseModel):
 
 
 class TrustRecord(BaseModel):
-    """TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution."""
+    """TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution."""
 
     model_config = ConfigDict(extra="forbid")
 

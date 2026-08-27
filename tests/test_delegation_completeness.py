@@ -7,8 +7,8 @@ floor: two load-bearing vectors per rule, and at least one declared implementati
 defect that tells the two apart.
 
 The method is unchanged and the reason is unchanged. Mutation targets named rule
-hooks — a rule is deleted by rebuilding the registry without its entry, or weakened
-by substituting its check — never by pattern-matching source text, so the mutation
+hooks: a rule is deleted by rebuilding the registry without its entry, or weakened
+by substituting its check: never by pattern-matching source text, so the mutation
 cannot drift away from the code under test. `DEFECTS` is fail-closed: registering a
 rule without declaring what its second vector adds fails this suite, so the
 question "what bug would your second vector catch that your first would not?" is
@@ -20,15 +20,15 @@ asserting margin and stopping:
 
   `anchor_on_any_trusted_key` is why vector 09 exists in its present form. The
   first version put an untrusted root three hops down and no declared defect could
-  separate it from vector 08 — both were simply "the root is not trusted", twice.
+  separate it from vector 08: both were simply "the root is not trusted", twice.
   The vector that separates them had to place a *trusted* key partway up the
   chain, which is the shortcut an implementation actually takes.
 
   `off_by_one` on the depth bound could not deviate anything while the walk
   repeated the depth comparison in its own break condition. A weakened bound never
   got to walk further than a correct one, so both depth vectors moved together
-  under every mutation. The walk now breaks for one reason — an unresolvable
-  parent — and terminates on a visited set instead.
+  under every mutation. The walk now breaks for one reason: an unresolvable
+  parent, and terminates on a visited set instead.
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def _first_link_algorithm_only(hop: Hop) -> bool:
 def _resolves_over_signed_body(hop: Hop) -> bool:
     """Index parents by the digest of their signed body as well as the record.
 
-    The other reading of "digest of the parent hop's Trust Record" — and an
+    The other reading of "digest of the parent hop's Trust Record", and an
     implementation being liberal about which one it accepts ends up accepting both.
     """
     if hop.link_algorithm not in hop.context["supported_digest_algorithms"]:
@@ -371,7 +371,7 @@ def test_vectors_for_each_rule_are_independent(code: str) -> None:
     assert separations, (
         f"no declared defect separates the vectors for {code!r}: every weakening "
         f"either fools all of {sorted(bearing)} or none of them. The vectors are "
-        "mutually redundant — author one that catches a defect the others miss, or "
+        "mutually redundant: author one that catches a defect the others miss, or "
         "declare a defect that tells them apart."
     )
 

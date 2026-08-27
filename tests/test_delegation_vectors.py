@@ -9,7 +9,7 @@ one numbered requirement in the RFC, and every vector under
 The registry is the same shape as `test_action_receipt_fixtures.RULES`, for the
 same reason: a check that is not registered never runs, so it cannot exist quietly
 outside the inventory that `test_delegation_completeness.py` mutates. Nothing here
-is exported from `agentrust_trace` — the package gains no public API for rules
+is exported from `agentrust_trace`: the package gains no public API for rules
 that are not yet normative.
 
 Two orderings in the walk carry weight and are not incidental:
@@ -82,7 +82,7 @@ def _canonical(value: dict[str, Any]) -> bytes:
 def _digest(record: dict[str, Any], alg: str) -> str:
     """The profile's preimage: the complete record, signature included.
 
-    The alternative reading — the signed body alone — is what vector 05 is built
+    The alternative reading, the signed body alone, is what vector 05 is built
     on, and the RFC states why it is rejected: a body digest does not bind the
     parent's signer, so anyone may re-sign identical bytes and satisfy the child's
     commitment.
@@ -156,7 +156,7 @@ class Hop:
 @dataclass(frozen=True)
 class Rule:
     """One named obligation. ``check`` returns True when the defect it guards
-    against is observed at this hop — True means the code is emitted."""
+    against is observed at this hop: True means the code is emitted."""
 
     code: str
     severity: str  # "failure" | "warning"
@@ -330,13 +330,13 @@ def verify_chain(vector: dict[str, Any], rules: Sequence[Rule] = RULES) -> Chain
         # followed; it does not decide whether one was. Deriving the control flow
         # from "did any rule fire" instead couples the walk to the registry's
         # contents, and the completeness suite's whole method is to run this
-        # function with rules removed — under which that walk stepped off the end
+        # function with rules removed: under which that walk stepped off the end
         # of the index and raised, rather than reporting a changed outcome.
         # One reason only: the parent could not be resolved. The depth bound is
         # deliberately *not* repeated here. Repeating it stops the walk at the same
         # record whether or not `depth_exceeded` is registered, so a weakened bound
         # never gets to walk further than a correct one, and the two depth vectors
-        # move together under every mutation — margin without independence, which
+        # move together under every mutation: margin without independence, which
         # is exactly what #124 says a second vector must not be.
         parent = None
         if hop.link_algorithm in context["supported_digest_algorithms"]:
@@ -440,7 +440,7 @@ def test_every_vector_is_emitted_leaf_first() -> None:
 def test_each_vector_holds_exactly_one_root() -> None:
     """Two roots is two chains, and a walk that reaches either would be judging a
     record set nobody meant to present. Vector 04 drops a record from the middle,
-    which leaves the root intact and the chain broken — the defect it is for."""
+    which leaves the root intact and the chain broken: the defect it is for."""
     for path in VECTOR_PATHS:
         vector = _load(path)
         roots = [r for r in vector["records"] if "delegation" not in r]
@@ -479,7 +479,7 @@ def test_vector_ids_are_unique_and_ordered() -> None:
 def test_every_record_is_schema_valid(path: Path) -> None:
     """A defect the schema already rejects is not a profile defect.
 
-    Every record in every vector — including the ones built to fail — validates
+    Every record in every vector, including the ones built to fail, validates
     against `trace-claim.json`. Otherwise a rule here could be "passing" only
     because its vector is malformed in some louder, unrelated way.
     """
@@ -514,7 +514,7 @@ def test_outcome_is_independent_of_record_order(path: Path) -> None:
 
     Every vector is emitted leaf-first already, so this reverses it back to
     root-first and rotates it, and asserts the walk is unmoved. A verifier that
-    reads position — `records[0]` as the root, or the next element as the parent —
+    reads position, `records[0]` as the root, or the next element as the parent,
     passes the corpus in one ordering and fails in another, and which one it met
     first is not a property of the implementation.
     """

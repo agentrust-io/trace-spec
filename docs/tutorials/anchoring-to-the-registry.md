@@ -35,7 +35,7 @@ Where present, it identifies the registry entry anchoring the record. At Level 2
 
 ---
 
-## Step 1 — Sign the record
+## Step 1: Sign the record
 
 Sign as normal. You do not need a placeholder for `transparency`; leave it unset until you have an anchor.
 
@@ -65,7 +65,7 @@ signed = sign_record(record, key)
 
 ---
 
-## Step 2 — Submit the record
+## Step 2: Submit the record
 
 Producers submit signed records to the registry's staging area, one JSON file per record. The anchor pipeline runs on a schedule, groups pending records by producer, builds one Merkle batch per group, and writes both the registry entry and one inclusion proof per record.
 
@@ -73,7 +73,7 @@ You do not have to use the reference registry. Anything implementing [Anchor For
 
 ---
 
-## Step 3 — Retrieve your inclusion proof
+## Step 3: Retrieve your inclusion proof
 
 The pipeline writes one proof per submitted record:
 
@@ -85,7 +85,7 @@ The pipeline writes one proof per submitted record:
 
 ---
 
-## Step 4 — Verify the proof yourself
+## Step 4: Verify the proof yourself
 
 This is the step that matters, and the one most likely to be skipped. A proof you have never checked is a receipt, not evidence.
 
@@ -105,7 +105,7 @@ The verifier is standard library only and small enough to read in one sitting. R
 
 ---
 
-## Step 5 — Set `transparency`
+## Step 5: Set `transparency`
 
 Once anchored, set `transparency` to the entry that anchors your record and re-sign, so the signature covers the anchor reference.
 
