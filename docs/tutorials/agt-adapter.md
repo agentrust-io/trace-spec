@@ -158,23 +158,23 @@ adapter = TraceAGTAdapter(
 )
 ```
 
-`enforce` (default) means policy decisions are binding — tool calls blocked by a `forbid` rule do not execute. `advisory` means decisions are logged but not enforced. The mode appears in `policy.enforcement_mode` in the TRACE record so verifiers know what the policy actually did.
+`enforce` (default) means policy decisions are binding: tool calls blocked by a `forbid` rule do not execute. `advisory` means decisions are logged but not enforced. The mode appears in `policy.enforcement_mode` in the TRACE record so verifiers know what the policy actually did.
 
 ---
 
 ## Upgrading to Level 2 (hardware-rooted)
 
-`TraceAGTAdapter` produces Level 0 records — `runtime.platform` is `software-only` and the signing key is not TEE-bound. For Level 2:
+`TraceAGTAdapter` produces Level 0 records: `runtime.platform` is `software-only` and the signing key is not TEE-bound. For Level 2:
 
 1. Deploy your AGT-governed agent inside cMCP on an Azure DCasv5 (SEV-SNP) or DCesv6 (TDX) VM, or GCP N2D (SEV-SNP) or C3 (TDX)
 2. cMCP measures the Cedar policy bundle into the TEE hardware at startup
 3. The cMCP runtime generates a TEE-bound key and emits a Level 2 TRACE record that supersedes the Level 0 record for the same session
 4. Both records share `subject` and `tool_transcript.hash` and are mutually verifiable
 
-The Level 0 record from `TraceAGTAdapter` remains valid — it is evidence of policy enforcement at the software layer. The Level 2 record from cMCP adds hardware attestation on top.
+The Level 0 record from `TraceAGTAdapter` remains valid: it is evidence of policy enforcement at the software layer. The Level 2 record from cMCP adds hardware attestation on top.
 
-→ [Deploy on Azure](https://cmcp.agentrust-io.com/tutorials/deploy-azure/) — `Standard_DC2as_v5` (SEV-SNP) or `Standard_DC2es_v6` (TDX)  
-→ [Deploy on GCP](https://cmcp.agentrust-io.com/tutorials/deploy-gcp/) — `n2d-standard-4` (SEV-SNP) or `c3-standard-4` (TDX)  
+→ [Deploy on Azure](https://cmcp.agentrust-io.com/tutorials/deploy-azure/): `Standard_DC2as_v5` (SEV-SNP) or `Standard_DC2es_v6` (TDX)  
+→ [Deploy on GCP](https://cmcp.agentrust-io.com/tutorials/deploy-gcp/): `n2d-standard-4` (SEV-SNP) or `c3-standard-4` (TDX)  
 → Platform detail: [AMD SEV-SNP](../platforms/amd-sev-snp.md) · [Intel TDX](../platforms/intel-tdx.md)
 
 ---

@@ -5,7 +5,7 @@ This document describes what TRACE does not do, and where layered defenses are n
 ## What a TRACE claim does not prevent
 
 **Operator-forged software-only records**
-A TRACE claim at Level 0 (software-only signing) is signed by a key held in software. A privileged operator with root access can produce a valid-looking Level 0 record for a run that never happened, or that violated policy. Level 0 is suitable for development and audit-trail tooling only — not for third-party verification.
+A TRACE claim at Level 0 (software-only signing) is signed by a key held in software. A privileged operator with root access can produce a valid-looking Level 0 record for a run that never happened, or that violated policy. Level 0 is suitable for development and audit-trail tooling only, not for third-party verification.
 
 **Replay of a valid past record**
 A TRACE claim proves a specific run happened; it does not prevent a verifier from being shown a valid record from an earlier run. Verifiers that rely on recency must bound `iat` in both directions (maximum age and allowed future clock skew), check `exp` when present, require nonce binding to a challenge, or anchor records to a public transparency log and check for freshness.
@@ -23,7 +23,7 @@ The call graph summary uses temporal adjacency to approximate data flow between 
 Hardware attestation proves the TRACE signing key and policy engine were measured in silicon before execution. It does not protect against side-channel attacks (cache timing, power analysis) targeting the TEE itself. TEE-level side-channel defense is the responsibility of the TEE platform vendor.
 
 **Revocation of the signing key after issuance**
-If the TRACE signing key is compromised after records are issued, existing records remain cryptographically valid. Key monitoring, rapid revocation, and transparency log integration are the required controls — TRACE provides the anchoring mechanism but cannot detect compromise itself.
+If the TRACE signing key is compromised after records are issued, existing records remain cryptographically valid. Key monitoring, rapid revocation, and transparency log integration are the required controls: TRACE provides the anchoring mechanism but cannot detect compromise itself.
 
 **Pure offline verification cannot prove non-revocation**
 Signature validity is permanent; trust is not. Nothing inside a record can retract the key that signed it, so a record signed by a since-revoked key verifies offline forever. Spec §3.2.1 accordingly requires verifiers to consult current revocation status at verification time, which is by definition an online step. `verify_record()` takes a `revocation` store, either a container of revoked identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. It rejects a listed key, and fails closed when the store cannot answer. Without that store, verification is offline and its result means "this record was validly signed by this key", not "this key is still trusted".
@@ -66,17 +66,17 @@ appraise it even where the producer checked it. The spec does not assert it for 
 
 Level 0 (software-only signing) is suitable for development, internal audit trails, and staging environments. It does not satisfy:
 
-- EU AI Act Art. 12 (tamper-evident logging) — requires Level 1+
-- DORA Art. 9 (ICT risk management) — requires Level 1+ with transparency log anchoring
-- Any claim of hardware-rooted trust — the signing key is held in software and can be extracted by a privileged operator
+- EU AI Act Art. 12 (tamper-evident logging): requires Level 1+
+- DORA Art. 9 (ICT risk management): requires Level 1+ with transparency log anchoring
+- Any claim of hardware-rooted trust: the signing key is held in software and can be extracted by a privileged operator
 
 ## What the SDK does not do
 
-- **Evaluate Cedar policy** — the SDK includes the Cedar policy field in the claim; evaluation requires the Cedar engine (included in AGT or cMCP)
-- **Store or index records** — the SDK produces and verifies TRACE claim documents; storage, rotation, and retrieval are the caller's responsibility
-- **Anchor to a transparency log** — the SDK generates records suitable for SCITT anchoring; submission to a transparency log requires a separate SCITT client
-- **Replace a secrets manager** — signing private keys must be stored in a secrets manager (Azure Key Vault, AWS Secrets Manager, HSM); do not store them on disk without protection
-- **Provide an authoritative verification service** — the self-hosted verifier confirms cryptographic validity against the issuer's key; authoritative third-party verification with SLA is a separate commercial service
+- **Evaluate Cedar policy**: the SDK includes the Cedar policy field in the claim; evaluation requires the Cedar engine (included in AGT or cMCP)
+- **Store or index records**: the SDK produces and verifies TRACE claim documents; storage, rotation, and retrieval are the caller's responsibility
+- **Anchor to a transparency log**: the SDK generates records suitable for SCITT anchoring; submission to a transparency log requires a separate SCITT client
+- **Replace a secrets manager**: signing private keys must be stored in a secrets manager (Azure Key Vault, AWS Secrets Manager, HSM); do not store them on disk without protection
+- **Provide an authoritative verification service**: the self-hosted verifier confirms cryptographic validity against the issuer's key; authoritative third-party verification with SLA is a separate commercial service
 
 ## Performance
 
@@ -85,8 +85,8 @@ Hardware attestation adds latency at the point of claim generation (not per-tool
 | Provider | Typical claim signing latency |
 |---|---|
 | Software (Level 0) | < 1 ms |
-| TPM | 50–200 ms |
-| SEV-SNP | 10–50 ms |
-| TDX | 10–50 ms |
+| TPM | 50 to 200 ms |
+| SEV-SNP | 10 to 50 ms |
+| TDX | 10 to 50 ms |
 
 Claim verification (signature check + schema validation) is < 5 ms in all cases.

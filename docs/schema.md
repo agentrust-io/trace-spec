@@ -26,7 +26,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `build_provenance` | object | **yes** | Build-time artifact provenance |
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
-| `cnf` | object | **yes** | Confirmation method — contains the `jwk` signing key |
+| `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
 | `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
 ## `model`
@@ -51,7 +51,7 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 | `measurement` | string | **yes** | Hardware measurement hash (`sha384:` for SEV-SNP/TDX, `sha256:` for TPM) |
 | `rim_uri` | string | no | Reference Integrity Manifest URI for hardware verification |
 | `firmware_version` | string | no | TEE firmware version |
-| `nonce` | string | no | Freshness nonce — ties this record to a specific attestation challenge |
+| `nonce` | string | no | Freshness nonce: ties this record to a specific attestation challenge |
 
 ## `policy`
 
@@ -114,7 +114,7 @@ An array of pointers to facts held outside this record: an authorization decided
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`. A registry rather than a closed set, so the schema does not restrict which relation is named — only that one is: the value must be non-empty |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
@@ -130,7 +130,7 @@ Build-time provenance binding the deployed artifact.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `slsa_level` | integer | **yes** | SLSA provenance level (0–3) |
+| `slsa_level` | integer | **yes** | SLSA provenance level (0 to 3) |
 | `builder` | string | no | Builder identity URI (e.g., GitHub Actions SLSA generator) |
 | `digest` | string | **yes** | `sha256:` digest of the built artifact |
 | `provenance_uri` | string | no | URI to the SLSA provenance document (e.g., Rekor entry) |
@@ -150,7 +150,7 @@ Verifier judgment on the evidence in this record.
 
 ## `transparency`
 
-String. URI of the SCITT transparency log entry anchoring this record. Omitted, or `null`, when the record is not anchored at issuance — anchoring may happen asynchronously. Never an empty string: the reference model rejects one (`min_length=1`).
+String. URI of the SCITT transparency log entry anchoring this record. Omitted, or `null`, when the record is not anchored at issuance: anchoring may happen asynchronously. Never an empty string: the reference model rejects one (`min_length=1`).
 
 ## `cnf`
 
@@ -168,9 +168,9 @@ TRACE v0.2 supports two wire formats:
 
 **JSON** (primary): signed JSON object with `signature` as a top-level field.
 
-**CBOR-COSE** (constrained devices): COSE_Sign1 structure with TRACE claims as the payload. Defined in §3.2 of the spec — deferred to a future profile for constrained-device deployments.
+**CBOR-COSE** (constrained devices): COSE_Sign1 structure with TRACE claims as the payload. Defined in §3.2 of the spec: deferred to a future profile for constrained-device deployments.
 
-## Example — AMD SEV-SNP
+## Example: AMD SEV-SNP
 
 ```json
 {

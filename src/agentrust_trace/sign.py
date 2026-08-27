@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 TRACE_PROFILE_V0_2 = "tag:agentrust-io.com,2026:trace-v0.2"
-"""The profile URI this build implements — the only one ``verify_record`` accepts."""
+"""The profile URI this build implements: the only one ``verify_record`` accepts."""
 
 _TRACE_PROFILE_V0_1 = "tag:agentrust.io,2026:trace-v0.1"
 """The superseded identifier, minted under a domain the project does not own.
@@ -357,7 +357,7 @@ def verify_record(
     Trust anchoring (fail closed):
         Without a trusted key, the record cannot vouch for itself, so verification
         is refused. Set ``allow_embedded_key=True`` to opt in to verifying against
-        ``record["cnf"]["jwk"]`` — this only proves internal consistency, not
+        ``record["cnf"]["jwk"]``: this only proves internal consistency, not
         authenticity, and emits a loud ``UserWarning``.
 
     Freshness (fail closed):
@@ -400,7 +400,7 @@ def verify_record(
             raise ValueError(
                 f"record carries the superseded v0.1 profile {profile!r}. "
                 "spec/trace-v0.2.md section 2: the cutover is cutover, not "
-                "coexistence — a v0.2 verifier rejects the v0.1 identifier, which "
+                "coexistence: a v0.2 verifier rejects the v0.1 identifier, which "
                 "was minted under a domain the project does not own."
             )
         raise ValueError(

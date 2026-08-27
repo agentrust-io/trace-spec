@@ -8,7 +8,7 @@
 4. Signs the TRACE Trust Record with a TEE-bound Ed25519 key
 5. Anchors the record in the TRACE transparency registry (optional)
 
-The result: a hardware-verifiable governance record for every agent session — signed by silicon, not by an operator process.
+The result: a hardware-verifiable governance record for every agent session: signed by silicon, not by an operator process.
 
 ## Architecture
 
@@ -65,7 +65,7 @@ Your agent points at `https://localhost:8443` instead of the upstream MCP server
 ## Cedar policy example
 
 ```cedar
-// Allow credit-risk agent to call financial tools — deny if data class is secret
+// Allow credit-risk agent to call financial tools: deny if data class is secret
 permit(
   principal == Agent::"spiffe://trust.example.org/agent/credit-risk",
   action == Action::"call_tool",
@@ -76,7 +76,7 @@ when {
 };
 ```
 
-Cedar policies are versioned, code-reviewable, and their SHA-256 hash is bound into the TRACE record at the TEE measurement step — before any code runs.
+Cedar policies are versioned, code-reviewable, and their SHA-256 hash is bound into the TRACE record at the TEE measurement step: before any code runs.
 
 ## Connect an MCP-compatible agent
 
@@ -126,7 +126,7 @@ trace:
 | Intel TDX | ✓ GA |
 | NVIDIA H100 Confidential | ✓ GA (demonstrated at GTC Berlin) |
 | NVIDIA Blackwell | Preview |
-| TPM 2.0 (software-only TEE) | ✓ GA — development mode, no memory encryption |
+| TPM 2.0 (software-only TEE) | ✓ GA: development mode, no memory encryption |
 | Azure CVM (SEV-SNP) | ✓ GA |
 | GCP Confidential VM (TDX) | ✓ GA |
 | AWS Nitro Enclave | Preview |

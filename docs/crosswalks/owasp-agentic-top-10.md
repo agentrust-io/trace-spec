@@ -6,7 +6,7 @@
 
 ## Purpose
 
-OWASP's Agentic AI Top 10 (ASI01–ASI10) names the principal risk categories for autonomous AI agents. TRACE is an evidence and attestation layer: it does not prevent these risks, but it produces verifiable, hardware-rooted records that support audit, incident review, and governance verification after or during execution.
+OWASP's Agentic AI Top 10 (ASI01 to ASI10) names the principal risk categories for autonomous AI agents. TRACE is an evidence and attestation layer: it does not prevent these risks, but it produces verifiable, hardware-rooted records that support audit, incident review, and governance verification after or during execution.
 
 This page answers a concrete question for each OWASP risk: which TRACE Trust Record claims carry relevant evidence, what that evidence actually proves, and where TRACE v0.2 leaves a gap that a future profile would need to close.
 

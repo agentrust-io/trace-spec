@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** Verification rules for the existing `delegation` block. No schema change.
 **Target:** `spec/trace-v0.2.md` §3.1 surface, for the v0.3 A2A profile named in `ROADMAP.md`.
-**Conformance material:** `examples/delegation-link/` — 23 vectors, generator, published key.
+**Conformance material: ** `examples/delegation-link/`: 23 vectors, generator, published key.
 
 Requirement keywords are lowercase throughout this document, deliberately. `CONTRIBUTING.md`
 draws the line that normative text lives in the specifications and informative text binds no
@@ -14,8 +14,8 @@ that writes itself in the imperative is a specification nobody agreed to.
 **Why the corpus was built before the rules.** The three decisions in §4 were not read out of
 the existing text. They were hit, because no vector could be written without settling them, and
 in each case the text supports both branches. A reader passes over all three without noticing;
-someone building a fixture cannot get to the end of one. That order — corpus first, and let it
-interrogate the text — is the part of this document worth keeping if the rules themselves are
+someone building a fixture cannot get to the end of one. That order: corpus first, and let it
+interrogate the text: is the part of this document worth keeping if the rules themselves are
 replaced, because it produces a measurement the repository does not otherwise have.
 
 Not *do the tests cover the rules*, which measures an implementation. **Do two independent
@@ -24,7 +24,7 @@ specification. Where two readings agree, the text is doing its job; where they d
 text is under-specified, and the divergence names the sentence that is missing. §7.1 is that
 measurement run once, on two implementations that were written without reference to this
 document: on the digest preimage they agree with §4.1 and with each other, and on the
-unresolvable-algorithm question they split — one treats it as unreadable and one as tampering.
+unresolvable-algorithm question they split: one treats it as unreadable and one as tampering.
 The first is the text working. The second is a missing sentence, located, in one line, and it
 took no argument to find because two implementations were asked the same question.
 
@@ -64,7 +64,7 @@ parent, is reading a property of its input channel rather than of the evidence.
 
 The verifier walks from the leaf towards the root, resolving each `parent_record_hash`
 against the digests of the records it holds. The walk ends at a record with no `delegation`
-block — the root — or at a link it could not follow.
+block, the root, or at a link it could not follow.
 
 Context is what a verifier knows that no record can tell it, and it is enumerated rather
 than assumed:
@@ -125,15 +125,15 @@ dangling links under the other, and neither side has a diagnostic that says so.
 
 This profile takes the complete record, because the alternative does not bind the parent's
 signer. Under the body reading, a child's `parent_record_hash` commits to bytes that any
-holder of any key can re-sign. Two records with different signatures — one genuine, one
-issued by an attacker — satisfy the same commitment, and a verifier walking the chain
+holder of any key can re-sign. Two records with different signatures: one genuine, one
+issued by an attacker: satisfy the same commitment, and a verifier walking the chain
 resolves to whichever it was handed. The child would have committed to *what its parent
 said* and not to *who said it*, which is the entire content of a provenance link.
 
 The complete-record reading has a consequence worth stating, because it changes what an
 attacker can reach: every ancestor's bytes are committed to by its child, so no record on a
 chain can be altered in place except the leaf. An ancestor with an invalid signature is
-still reachable — it has to be built that way before its child signs — which is why D-1
+still reachable, it has to be built that way before its child signs, which is why D-1
 applies to every record on the walk and not only to the leaf. Vector 07 is that case, and
 vector 06 is the leaf case; an implementation that verifies the leaf and takes the rest on
 the strength of the hashes passes one and fails the other.
@@ -146,7 +146,7 @@ whose only defect is that its link was computed over the parent's signed body.
 A delegation cycle would need record A's block to carry a digest of B while B's block
 carries a digest of A. Each digest covers the block holding the other, so constructing the
 pair is a hash collision. Cycles are not forbidden by this profile; they are unreachable,
-and a rule against them would be untestable by construction — there is no vector that could
+and a rule against them would be untestable by construction: there is no vector that could
 demonstrate an implementation lacking it.
 
 The reachable analogue is an *unbounded* chain, which is trivially constructible, and a walk
@@ -161,7 +161,7 @@ bound tested only from below rejects legitimate chains at the limit.
 ### 4.3 A link that cannot be read is unverifiable, not invalid
 
 The schema permits `sha384:` links. A verifier that implements only `sha256:` cannot resolve
-such a link — and reporting `parent_not_found` for it would be a finding nobody made. The
+such a link, and reporting `parent_not_found` for it would be a finding nobody made. The
 verifier did not fail to find the parent; it did not look.
 
 This follows the semantics already merged in `docs/verification.md`: evidence that resolves
@@ -187,7 +187,7 @@ freshness policy on top of this profile; no rule here reads it.
 the verifier context to judge it under, and the classification and codes it expects, so a
 third party can score an implementation without running anything from this repository.
 
-Every record in every vector — including the ones built to fail — validates against
+Every record in every vector, including the ones built to fail, validates against
 `schema/trace-claim.json`. A defect the schema already rejects is not a profile defect, and a
 rule that appears covered only because its vector is malformed in some louder way is not
 covered.
@@ -199,8 +199,8 @@ seed by role label; the generator regenerates every byte; `tests/test_generators
 adopted here from the first vector rather than retrofitted.
 
 Coverage is held to the discipline argued in #124 and executed in
-`tests/test_vector_completeness.py`: two load-bearing vectors per rule, and — the part that
-is not satisfied by writing the same vector twice — at least one declared implementation
+`tests/test_vector_completeness.py`: two load-bearing vectors per rule, and: the part that
+is not satisfied by writing the same vector twice: at least one declared implementation
 defect that one vector catches and the other misses. `tests/test_delegation_completeness.py`
 declares those defects, all ten of them modelling a real shortcut: verifying the leaf only,
 anchoring on any trusted key found, an off-by-one bound, case-insensitive identifier lookup,
@@ -224,22 +224,22 @@ first time either side adds a case. §7 proposes a cross-reference table instead
   of the two gaps issue #66 has already named on the approval-shaped surface; it needs a
   field this schema does not have.
 - **No authority-epoch staleness**, the other #66 gap, for the same reason.
-- **No mutual case — and it is not clear the delegation block is where it belongs.**
+- **No mutual case, and it is not clear the delegation block is where it belongs.**
   `ROADMAP.md:21` scopes the v0.3 A2A profile as "binding rules over the `delegation` block now
   that A2A is stable at v1.x, **including the mutual case**". In the reference implementation
   the mutual case is mutual *attestation*, not mutual delegation: `ca2a/docs/spec/mutual-attestation.md`
   describes a callee-issued challenge and a caller offer bound to it, so each side establishes
   what the other is running before a payload opens. That document separates the two concerns in
-  as many words — it "establishes what each side is running", while "the delegation chain
-  remains the thing that says what it is allowed to ask for" — and it does not mention a Trust
+  as many words: it "establishes what each side is running", while "the delegation chain
+  remains the thing that says what it is allowed to ask for", and it does not mention a Trust
   Record anywhere. Neither does cA2A's own `docs/spec/trace-a2a-profile.md`, whose A2A profile
   is the delegation-link block and nothing else.
 
   So the roadmap asks the A2A profile to cover something that today has no record
   representation at all, in either repository, and which sits at the transport layer rather
   than on this surface. That is a scoping question rather than a hole in these rules: either
-  mutual attestation gains a binding into the record — which is a schema question, not a
-  verification one — or the v0.3 profile is two profiles. Raised here because a reader
+  mutual attestation gains a binding into the record, which is a schema question, not a
+  verification one, or the v0.3 profile is two profiles. Raised here because a reader
   comparing this document against that roadmap line will otherwise conclude the gap is a
   coverage failure, and it is not the same thing.
 
@@ -265,7 +265,7 @@ The proposal for the next step, which is not this document's to decide:
 1. A cross-reference table between `TRACE-DELEG-*` here and ca2a's `ACTION-*` group, so an
    implementation scored under one can be read against the other.
 2. A harness running these vectors through both verifiers and asserting agreement on the
-   shared surface — signature validity, hop continuity, scope narrowing, depth.
+   shared surface: signature validity, hop continuity, scope narrowing, depth.
 3. Divergences are the output. Each is either an ambiguity in this text, which comes back
    here as a vector and a paragraph, or a defect in one implementation, which is filed
    where it lives.
@@ -281,13 +281,13 @@ vectors exercise the record-linkage surface that function covers; the other ten 
 credential defects, which its own docstring assigns to `ca2a_runtime.delegation.verify_chain`.
 
 **The digest decision in §4.1 is confirmed independently.** `ca2a_runtime.trace_binding.trace_record_hash`
-computes `"sha256:" + sha256(rfc8785.dumps(signed_record))` — the complete record, signature
+computes `"sha256: " + sha256(rfc8785.dumps(signed_record))`: the complete record, signature
 included, byte-identical to what this profile specifies. That was arrived at separately, in
 another repository, and it is the strongest evidence available that §4.1 chose the reading
 the ecosystem is already built on rather than the one that was convenient here. Vector 05,
 the body-digest link, is rejected by cA2A as a broken parent link.
 
-**Vectors 01–07 agree.** Valid chains are accepted, the absent parent and the body-digest
+**Vectors 01 to 07 agree.** Valid chains are accepted, the absent parent and the body-digest
 link are rejected as broken links, and both signature vectors are rejected as bad
 signatures. Same verdict, same reason, two implementations.
 
@@ -307,8 +307,8 @@ changed, and the shape it changed to is the one §4.3 asks for.
 
 **The trust contract differs and cannot be normalised away.** `verify_trace_dag` requires
 every record's `cnf.jwk` to be in the trusted set; this profile anchors on the root's key and
-lets the chain carry the rest. Run under this profile's contract — only the declared root
-trusted — cA2A rejects every chain longer than one record, valid ones included. Neither is
+lets the chain carry the rest. Run under this profile's contract: only the declared root
+trusted: cA2A rejects every chain longer than one record, valid ones included. Neither is
 wrong: cA2A's model fits a workflow whose orchestrator knows every participant, and this
 one fits the cross-organisation case where that knowledge is exactly what is missing. It is
 worth noting that cA2A itself uses the root-anchored model on its other surface, where
@@ -324,10 +324,10 @@ repositories, three delegation models, no conversion between them:
 | validity window | `not_before` / `not_after` vs hop `iat` | **absent** | `ttl_seconds`, narrowing |
 | depth bound | verifier context | on each credential, default 8 | `max_delegation_depth` on the root hop |
 | trust anchor | root record's key | `trusted_root_issuers` | `public_keys` map of every principal |
-| replay binding | — | `parent_id` chaining, unique ids | `manifest_id` in the signature pre-image |
+| replay binding |: | `parent_id` chaining, unique ids | `manifest_id` in the signature pre-image |
 
 Two things follow. agent-manifest already narrows on `data_classifications`, which is
-independent support for D-9 belonging on this surface at all — open question 2 above. And
+independent support for D-9 belonging on this surface at all: open question 2 above. And
 cA2A credentials carry no validity window, so D-8 has no counterpart there; an authority
 that cannot expire is the same family of gap as the two that issue #66 has already named.
 
@@ -340,21 +340,21 @@ D-1, and the chain returns `verified` with no codes and no adjustment to the wal
 profile describes what is already being emitted rather than something invented alongside it.
 
 Worth recording while it was found: `examples/trace-dag/` commits a README and a demo but no
-vectors — the DAG is produced at runtime and not kept. That is the gap this corpus fills from
+vectors: the DAG is produced at runtime and not kept. That is the gap this corpus fills from
 the trace-spec side, and it is why §7's step 1 is a cross-reference table rather than a
 request that cA2A publish one.
 
 Also worth recording, as a hazard for anyone writing a parser: cA2A uses the field name
 `parent_record_hash` in two different formats. In a TRACE record it is the schema's
-`sha256:`/`sha384:`-prefixed digest; in cA2A's own provenance DAG — `ca2a verify-dag`, and the
-committed `examples/*/dag.json` — it is a bare hex digest with no prefix, on a record with
+`sha256: `/`sha384: `-prefixed digest; in cA2A's own provenance DAG: `ca2a verify-dag`, and the
+committed `examples/*/dag.json`: it is a bare hex digest with no prefix, on a record with
 no TRACE fields at all. Both are deliberate and neither is wrong; the collision is in the
 name.
 
 **agent-manifest already treats unverifiable as a first-class outcome, on this exact
 surface.** Its corpus declares results as data in the vector files, over a vocabulary of
 `VALID`, `MISMATCH`, `UNVERIFIABLE`, `EXPIRED`, `REVOKED`, `SIGNATURE_MISSING`, `INCOMPLETE`,
-`INCOMPATIBLE_VERSION`, `ATTESTATION_UNAVAILABLE` — and `AM-VEC-012` reads:
+`INCOMPATIBLE_VERSION`, `ATTESTATION_UNAVAILABLE`, and `AM-VEC-012` reads:
 
 ```json
 {"result": "UNVERIFIABLE", "fields_verified": {"delegation_chain": "UNVERIFIABLE"}}
@@ -375,7 +375,7 @@ says more than one verdict per chain.
 rather than taking a library, and states that this makes cA2A signatures cross-verifiable
 with agent-manifest. Run against `examples/canonicalization-boundary/`, which exists to
 separate a conforming serializer from a carefully configured `json.dumps`, that
-implementation is byte-identical to the reference on all four vectors — including both
+implementation is byte-identical to the reference on all four vectors: including both
 UTF-16 key-order cases, which is where near-misses fail. The claim is narrower than
 "the two verifiers agree on a chain": it is about the signed byte string, and on that axis
 it holds.
@@ -393,15 +393,15 @@ The first one is not about the design.
    discarded a rule at a time. The corpus is useful either way, which is the reason it was
    built first.
 1. **Is the credential registry the right shape?** It is modelled here as verifier context
-   because nothing in the schema describes a credential. The alternative — a credential
-   object in the record — is a schema change and a much larger proposal.
+   because nothing in the schema describes a credential. The alternative: a credential
+   object in the record: is a schema change and a much larger proposal.
 2. **Should `data_class` narrowing be in this profile at all?** It is the only scope-like
    comparison the current fields support, and it may belong with a general scope model
    rather than with delegation.
 3. **Is `max_depth` a profile constant or deployment context?** Context here, on the grounds
    that a bound is a deployment decision, but a fixed floor would make chains portable
    between verifiers in a way this does not.
-4. **Where should the cross-verifier harness live** — ca2a's tests, agent-manifest's, or a
+4. **Where should the cross-verifier harness live**: ca2a's tests, agent-manifest's, or a
    neutral repository? Each choice makes one implementation the host of the corpus that
    scores it.
 5. **Does the leaf need to be named at all?** It is context here. A record set with two

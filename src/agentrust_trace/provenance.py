@@ -262,7 +262,7 @@ def verify_record(
     ``None``, unlike the 86400 of a Trust Record, because a provenance record
     describes an artifact by immutable digest and those are conventionally valid
     indefinitely. A record carrying ``endpoint`` identity is the case where that
-    reasoning does not hold — a URL and an SPKI digest decay — so a consumer
+    reasoning does not hold, a URL and an SPKI digest decay, so a consumer
     relying on ``endpoint`` should pass a bound.
 
     ``max_future_skew_seconds`` (default 300) is enforced whether or not an age

@@ -1,4 +1,4 @@
-"""TraceAGTAdapter — maps AGT govern() session output to a TRACE Trust Record.
+"""TraceAGTAdapter: maps AGT govern() session output to a TRACE Trust Record.
 
 Replaces ~50 lines of manual field wiring (see docs/integration/agt.md) with a
 single method call. Level 0 (software-only) only; for Level 2 deploy inside cMCP.
@@ -187,7 +187,7 @@ class TraceAGTAdapter:
 
     @staticmethod
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
-        # RFC 8785 (JCS) — same canonicalization TraceSandboxAdapter already uses
+        # RFC 8785 (JCS): same canonicalization TraceSandboxAdapter already uses
         # for the same field, and what docs/schema.md calls "canonical JSON".
         return "sha256:" + hashlib.sha256(rfc8785.dumps(audit_entries)).hexdigest()
 

@@ -6,7 +6,7 @@ keywords.*
 A conformance suite makes a promise: an implementation that passes it has done the
 things the specification asks for. That promise is only as good as the suite's
 coverage, and coverage is usually assumed rather than established. A suite that never
-exercises a rule certifies implementations that skip that rule entirely — silently,
+exercises a rule certifies implementations that skip that rule entirely: silently,
 and with a green badge.
 
 This page describes how the action-receipt vectors in
@@ -23,7 +23,7 @@ conformant verifier must produce:
 {
   "context":  { /* what the verifier is told: session, call, freshness policy */ },
   "action":   { /* the action and its canonical reference */ },
-  "trusted_issuer_keys": { /* the pinned key set — nothing self-authenticates */ },
+  "trusted_issuer_keys": { /* the pinned key set: nothing self-authenticates */ },
   "receipt":  { /* the artifact under test, genuinely signed */ },
   "expected": { "status": "...", "failures": [...], "warnings": [...] }
 }
@@ -56,8 +56,8 @@ and the vector was left behind.
 **Is every rule exercised?** For each code the verifier can emit, is there a vector that
 expects it? A rule with no vector is a check an implementation can omit while passing.
 
-**Is every rule load-bearing — twice?** The strongest form: *delete the rule and count
-the vectors that notice.* A rule can be named by a vector and still not be load-bearing —
+**Is every rule load-bearing: twice?** The strongest form: *delete the rule and count
+the vectors that notice.* A rule can be named by a vector and still not be load-bearing:
 if another rule fires on the same input, removing it changes no outcome and nothing
 distinguishes an implementation that performs the check from one that skips it. And one
 load-bearing vector is existence, not margin: any change that weakens or retires that
@@ -68,7 +68,7 @@ anything above the floor from quietly decaying back toward it.
 **Are the two vectors different tests, or two copies?** Two identical vectors have
 margin two and prove nothing extra. #124's definition: vectors are independent if a
 single implementation defect causes one to pass and the other to fail. That is made
-executable by declaring, for every rule, at least one *weakened* variant of its check —
+executable by declaring, for every rule, at least one *weakened* variant of its check:
 a plausible implementation shortcut: comparing digest prefixes, case-normalising
 identifiers, granting clock tolerance, validating signature structure without
 cryptography. The suite fails unless some declared defect deviates one of the rule's
@@ -85,7 +85,7 @@ The obvious implementation is a list of rules kept next to the tests. That list 
 guaranteed to drift: it is correct only until someone adds a rule and forgets it, and
 the failure is silent in exactly the direction that matters.
 
-The first replacement recovered the inventory from the verifier's source with `ast` —
+The first replacement recovered the inventory from the verifier's source with `ast`:
 every string literal appended to a failure or warning list. The
 [#124 review](https://github.com/agentrust-io/trace-spec/issues/124) identified that
 this has the mirror failure mode: a rule written as `extend([...])`, `+=`, an f-string
@@ -95,7 +95,7 @@ over an inventory that is quietly missing entries.
 The resolution, from the same review: the verifier itself consumes an explicit registry
 of named rules, and the registry *is* the inventory. A check that is not registered
 never runs, so it cannot exist outside the inventory; a residual guard fails on any
-code that would emit around the registry. Mutation follows the same principle — a rule
+code that would emit around the registry. Mutation follows the same principle: a rule
 is deleted by rebuilding the registry without its entry, or weakened by substituting
 its check, never by pattern-matching source text. If no vector's outcome changes under
 a deletion, that rule has no vector standing behind it.
@@ -112,7 +112,7 @@ So every signature is re-derived through a path that shares no code with either:
 imports nothing from the library, reuses no helper from the vector modules, and
 reconstructs each signing input from the JSON directly. Any vector whose signature is
 not re-derived by that path is a failure unless it is explicitly declared
-signature-free with a reason — the "missing receipt" case is the only one, since the
+signature-free with a reason: the "missing receipt" case is the only one, since the
 absence of a receipt is the thing it tests.
 
 ## 4. What this found
@@ -131,10 +131,10 @@ Seven rules in the receipt verifier had no vector at all:
 
 Each is a check a conforming implementation could have omitted entirely while passing
 the published suite. Two are load-bearing for the trust model rather than merely tidy:
-without `issuer_key_unknown` a receipt authenticates itself — a signature verifies
+without `issuer_key_unknown` a receipt authenticates itself: a signature verifies
 against whatever key it names, and only the pinned set says which keys the verifier can
 check, so a receipt under an unpinned key is surfaced as unverified rather than valid or
-invalid — and without `evidence_hash_mismatch` the signature covers a digest whose
+invalid, and without `evidence_hash_mismatch` the signature covers a digest whose
 document may have been replaced.
 
 ## 5. The checker's own false positives
@@ -149,7 +149,7 @@ none: it converts attention into noise, and the next person stops reading it.
 | A real outcome reported as unreachable | The scanner walked an entire conditional expression and collected the literal being *compared against* as if it were an outcome. |
 | A real warning reported as emitted by no rule | It scanned inline `failures=[...]` arguments but not `warnings=[...]`. |
 
-The pattern in all three: the check failed *open* — it reported a problem where there
+The pattern in all three: the check failed *open*: it reported a problem where there
 was none, which is survivable, rather than passing where there was one, which is not.
 That direction was not designed in, and a checker of this kind should be built so that
 its own breakage is loud. Hence the guard that asserts the inventory was non-empty
@@ -170,8 +170,8 @@ before any conclusion is drawn from it.
   pair may still share. The declaration requirement makes the blind spot enumerable,
   not empty.
 
-The method answers one question — *could an implementation skip this check and still
-pass?* — and answers it mechanically. That is narrower than "is the suite good", and it
+The method answers one question: *could an implementation skip this check and still
+pass?*, and answers it mechanically. That is narrower than "is the suite good", and it
 is the part that was previously left to assumption.
 
 ## Reproducing

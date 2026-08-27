@@ -13,7 +13,7 @@ both treat it as optional. That drift is what this test exists to catch the
 next time.
 
 ``docs/trust-levels.md`` is also checked: the displayed slsa_level range must
-agree with the schema minimum and maximum. The original drift (0–4 vs max 3)
+agree with the schema minimum and maximum. The original drift (0 to 4 vs max 3)
 was reported in #172 and would have caused a reader to emit slsa_level: 4,
 which the schema and the pydantic model both reject.
 """
@@ -40,7 +40,7 @@ RFC_2119 = re.compile(
     r"\b(MUST|SHALL|SHOULD|MAY|REQUIRED|RECOMMENDED|OPTIONAL)\b",
 )
 
-_SLSA_RANGE_RE = re.compile(r"\((\d+)[-–](\d+)\)")
+_SLSA_RANGE_RE = re.compile(r"\((\d+)[-, ](\d+)\)")
 
 
 def _schema_doc_required() -> dict[str, bool]:
@@ -86,7 +86,7 @@ def _trust_levels_slsa_range() -> tuple[int, int]:
     """Extract the slsa_level numeric range from docs/trust-levels.md.
 
     Looks for the table row that documents build_provenance.slsa_level and
-    parses the (low–high) range stated there. Raises AssertionError if the
+    parses the (low to high) range stated there. Raises AssertionError if the
     row is absent or carries no range in that format, so the test fails loudly
     if the prose is restructured rather than silently passing on a missing row.
     """
@@ -95,7 +95,7 @@ def _trust_levels_slsa_range() -> tuple[int, int]:
             continue
         m = _SLSA_RANGE_RE.search(line)
         assert m, (
-            f"slsa_level row found in trust-levels.md but no (low–high) range: {line!r}"
+            f"slsa_level row found in trust-levels.md but no (low to high) range: {line!r}"
         )
         return int(m.group(1)), int(m.group(2))
     raise AssertionError(
@@ -106,7 +106,7 @@ def _trust_levels_slsa_range() -> tuple[int, int]:
 def test_trust_levels_slsa_range_matches_schema():
     """docs/trust-levels.md must agree with the schema on the valid slsa_level range.
 
-    SLSA Build Levels are 0–3; there is no Level 4. The schema encodes this as
+    SLSA Build Levels are 0 to 3; there is no Level 4. The schema encodes this as
     minimum/maximum. Any drift between the two surfaces causes readers to emit
     values that the schema rejects with a validation error rather than a message
     explaining that the level does not exist (issue #172).

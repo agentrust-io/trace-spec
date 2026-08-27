@@ -4,24 +4,24 @@
 how far a verifier walks. Three stopping points are all conformant today, and they are
 the `build_provenance.provenance_depth` values:
 
-1. **`surface`** — `build_provenance.digest` matches the artifact, `builder` is trusted.
-2. **`builder`** — also resolve `provenance_uri` and check the attestation binds to
+1. **`surface`**: `build_provenance.digest` matches the artifact, `builder` is trusted.
+2. **`builder`**: also resolve `provenance_uri` and check the attestation binds to
    that digest and names that builder.
-3. **`transitive`** — also walk `resolvedDependencies` to a publisher attestation
+3. **`transitive`**: also walk `resolvedDependencies` to a publisher attestation
    per build input.
 
 Two outcomes are kept apart, because they are the same event only if you never fetched
-the evidence. Evidence that **does not resolve** — no `provenance_uri`, a URI that 404s,
-an input with no publisher attestation — leaves the check unrun, so the verifier records
+the evidence. Evidence that **does not resolve**: no `provenance_uri`, a URI that 404s,
+an input with no publisher attestation: leaves the check unrun, so the verifier records
 the depth it did reach and says which evidence was missing. Evidence that **resolves and
-contradicts** the record — an attestation naming another subject or another builder, an
-input signed under an untrusted issuer — is a rejection, and no shallower reading of the
+contradicts** the record: an attestation naming another subject or another builder, an
+input signed under an untrusted issuer: is a rejection, and no shallower reading of the
 same record makes it go away. `verify` returns both: `unresolved` caps `verified_depth`,
 `failures` sets the outcome.
 
 A vector that all three depths reject separates nothing: it is satisfied by any verifier
 strict enough to reject it, whatever depth it stopped at. The set here is the other kind
-— each vector passes the depth below with nothing to report, and the depth named in its
+: each vector passes the depth below with nothing to report, and the depth named in its
 filename is the first one that says something: a rejection, or a recorded depth lower
 than the one it attempted. Either way a verifier's stopping point is observable from its
 own output, which is the property the set exists for.
@@ -31,8 +31,8 @@ satisfiable by a verifier that rejects unconditionally, and the separations mean
 
 Scope. Every vector assumes signature verification already succeeded: a bad signature
 rejects at every depth, so it cannot separate depths, and it is the case implementers
-write first. What varies here is *binding* — subject, builder identity, and per-input
-publisher — which is where a shallower verifier silently accepts. The cases an
+write first. What varies here is *binding*: subject, builder identity, and per-input
+publisher, which is where a shallower verifier silently accepts. The cases an
 implementer writes naturally (no `provenance_uri`, a URI that does not resolve) are
 exercised by mutating the accepting control rather than by fixtures, so the fixture set
 stays the non-obvious ones.
@@ -62,7 +62,7 @@ DEPTHS: tuple[str, ...] = ("surface", "builder", "transitive")
 DEPTH_INDEX = {depth: index for index, depth in enumerate(DEPTHS)}
 
 # What a fired rule does to the appraisal. The two are disjoint, and what separates
-# them is whether the evidence resolved — not how serious the finding is.
+# them is whether the evidence resolved, not how serious the finding is.
 FAILS = "fails"  # evidence resolved and contradicts the record
 DOWNGRADES = "downgrades"  # evidence did not resolve, so the check could not run
 
@@ -71,7 +71,7 @@ DOWNGRADES = "downgrades"  # evidence did not resolve, so the check could not ru
 class Rule:
     """One check, owned by the shallowest depth that can run it.
 
-    ``check`` returns True when the defect is present — i.e. when the code is emitted.
+    ``check`` returns True when the defect is present: i.e. when the code is emitted.
 
     ``effect`` separates the two things a defect can mean. A rule that ``FAILS`` has
     evidence in hand that contradicts the record, and no shallower reading makes that
@@ -298,7 +298,7 @@ def test_verified_depth_never_exceeds_the_depth_attempted(
 def test_a_downgrade_is_never_silent(name: str, vector: dict[str, Any]) -> None:
     """Recording a shallower depth than attempted is a claim about missing evidence, so
     the evidence has to be named. A verifier that downgrades without saying which check it
-    could not run is indistinguishable from one that never attempted the depth at all —
+    could not run is indistinguishable from one that never attempted the depth at all:
     and that is the whole failure this vector set exists to make visible."""
     for depth in DEPTHS:
         result = verify(vector, depth)
@@ -472,8 +472,8 @@ def test_unresolvable_control_mutation_downgrades_rather_than_rejects(
     """The other half of the same control, and the pair is the point.
 
     Nothing about the record changed except whether its evidence can be fetched. The
-    contradicting mutations above reject; these two record `surface` — the depth actually
-    reached — and name the evidence that never arrived. A verifier that rejects here is
+    contradicting mutations above reject; these two record `surface`: the depth actually
+    reached, and name the evidence that never arrived. A verifier that rejects here is
     failing a record for the state of someone else's transparency log, which is what
     `provenance_depth_verified` exists to avoid.
     """
@@ -534,7 +534,7 @@ def test_a_verifier_that_stops_early_in_the_dependency_list_is_caught(count: int
 
     Both dependency vectors once placed their defect last, so a verifier reading any
     proper prefix of the list accepted both while still rejecting the absent-list vector
-    — presenting as a `dependency_chain` verifier having read one dependency of three.
+: presenting as a `dependency_chain` verifier having read one dependency of three.
     At least one vector must therefore fail for a verifier that stops early.
     """
     weakened = _checking_only_first(count)

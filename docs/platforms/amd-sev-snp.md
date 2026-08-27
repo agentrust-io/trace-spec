@@ -25,10 +25,10 @@ AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) is the prim
 }
 ```
 
-- `measurement` — SHA-384 of the SNP attestation report's `measurement` field (the VM image digest)
-- `rim_uri` — AMD Key Distribution Service URL for VCEK certificate chain verification
-- `firmware_version` — SNP firmware version embedded in the attestation report
-- `nonce` — replay-protection nonce from the attestation challenge
+- `measurement`: SHA-384 of the SNP attestation report's `measurement` field (the VM image digest)
+- `rim_uri`: AMD Key Distribution Service URL for VCEK certificate chain verification
+- `firmware_version`: SNP firmware version embedded in the attestation report
+- `nonce`: replay-protection nonce from the attestation challenge
 
 ## Verification flow
 
@@ -53,12 +53,12 @@ agentrust-trace verify-hardware session.trace.json \
 |---|---|
 | Azure | DCasv5, ECasv5, DCadsv5, ECadsv5 |
 | GCP | C3 (with AMD SEV-SNP enabled) |
-| AWS | Not supported (AWS uses Nitro — separate profile) |
+| AWS | Not supported (AWS uses Nitro: separate profile) |
 | On-premises | Any server with EPYC Genoa / Bergamo or newer |
 
 ## On-premises deployment
 
-For on-premises SEV-SNP (e.g., Supermicro H13 with EPYC Genoa), OPAQUE ships the verifier with the platform — same cryptographic guarantees as cloud deployments, no cloud attestation service dependency. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
+For on-premises SEV-SNP (e.g., Supermicro H13 with EPYC Genoa), OPAQUE ships the verifier with the platform: same cryptographic guarantees as cloud deployments, no cloud attestation service dependency. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
 
 ## Example record
 
