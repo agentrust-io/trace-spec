@@ -19,7 +19,7 @@ A trust record is conformant if it passes all test cases required at its declare
 
 ---
 
-**EAT — Entity Attestation Token**
+**EAT: Entity Attestation Token**
 A JWT-based format for conveying evidence about a hardware or software entity. TRACE records use the EAT `eat_profile` claim to identify the specific TRACE profile version. Defined in IETF draft-ietf-rats-eat.
 
 ---
@@ -29,22 +29,22 @@ A cMCP claim embedded in a TRACE trust record that binds the record to a specifi
 
 ---
 
-**JCS — JSON Canonicalization Scheme**
+**JCS: JSON Canonicalization Scheme**
 RFC 8785. A deterministic serialization of JSON objects: Unicode code-point-ordered keys, no whitespace, IEEE 754 double-precision number encoding. TRACE uses JCS to canonicalize the record before computing the Ed25519 signature.
 
 ---
 
-**RIM — Reference Integrity Manifest**
+**RIM: Reference Integrity Manifest**
 A signed document describing the expected firmware and software measurements for a TEE environment. During Level 1 appraisal, the verifier compares the TEE's runtime measurements against the RIM. The `runtime.rim_uri` field optionally points to a RIM.
 
 ---
 
-**RATS — Remote Attestation Procedures**
+**RATS: Remote Attestation Procedures**
 The IETF working group and architecture (RFC 9334) that defines the roles and flows for remote attestation: Attester (the hardware), Verifier (checks evidence against RIM), Relying Party (consumes the resulting attestation result). TRACE Level 1 and 2 follow the RATS architecture.
 
 ---
 
-**SCITT — Supply Chain Integrity, Transparency, and Trust**
+**SCITT: Supply Chain Integrity, Transparency, and Trust**
 An IETF draft standard for append-only transparency logs of software and attestation artifacts. TRACE Level 2 records include a SCITT receipt URI in the `transparency` field, anchoring the record to a public or shared log.
 
 ---

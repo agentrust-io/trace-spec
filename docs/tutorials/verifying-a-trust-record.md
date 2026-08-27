@@ -46,7 +46,7 @@ try:
     verify_record(record, trusted_jwk)
     print("signature valid")
 except InvalidSignature:
-    print("signature invalid — record may have been tampered with")
+    print("signature invalid: record may have been tampered with")
 except ValueError as e:
     print(f"verification failed: {e}")
 ```
@@ -151,7 +151,7 @@ elif status == "warning":
     pass
 elif status == "contraindicated":
     # Evidence failed. Treat the session output as untrusted.
-    raise RuntimeError("appraisal contraindicated — do not process agent output")
+    raise RuntimeError("appraisal contraindicated: do not process agent output")
 elif status == "none":
     # No appraisal performed (software-only Level 0 record).
     # Acceptable for development; not acceptable for production.
@@ -208,7 +208,7 @@ def verify_trust_record(path: str, trusted_jwk: dict) -> dict:
     with open(path) as f:
         record = json.load(f)
 
-    # 1. Schema validation first — reject malformed records early
+    # 1. Schema validation first: reject malformed records early
     errors = iter_errors(record)
     if errors:
         messages = [e.message for e in errors]
@@ -218,7 +218,7 @@ def verify_trust_record(path: str, trusted_jwk: dict) -> dict:
     try:
         verify_record(record, trusted_jwk)
     except InvalidSignature:
-        raise RuntimeError("signature invalid — record tampered or wrong key")
+        raise RuntimeError("signature invalid: record tampered or wrong key")
     except ValueError as e:
         raise RuntimeError(f"record malformed: {e}")
 
@@ -229,7 +229,7 @@ def verify_trust_record(path: str, trusted_jwk: dict) -> dict:
     # 4. Appraisal
     status = record["appraisal"]["status"]
     if status == "contraindicated":
-        raise RuntimeError("appraisal contraindicated — do not process agent output")
+        raise RuntimeError("appraisal contraindicated: do not process agent output")
 
     return record
 ```

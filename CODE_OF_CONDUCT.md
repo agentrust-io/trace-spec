@@ -30,7 +30,7 @@ Project maintainers are responsible for clarifying and enforcing our standards o
 
 ## Scope
 
-This Code of Conduct applies within all project spaces — GitHub issues, pull requests, discussions, and any official project communication channels.
+This Code of Conduct applies within all project spaces: GitHub issues, pull requests, discussions, and any official project communication channels.
 
 ## Enforcement
 

@@ -3,13 +3,13 @@
 The verifier consumes an explicit registry of named rules (``RULES``) rather than
 emitting failure codes inline. The registry is the inventory: every obligation this
 verifier enforces is one ``Rule`` entry, and the completeness suite in
-`test_vector_completeness.py` mutates registry entries by name — removing or weakening
-one hook at a time — to prove each rule is load-bearing for at least two independent
+`test_vector_completeness.py` mutates registry entries by name: removing or weakening
+one hook at a time: to prove each rule is load-bearing for at least two independent
 fixtures.
 
 That shape is the review outcome of #124: recovering the rule inventory from this
 module's source (by AST-walking for string literals appended to failure lists) stays
-blind to ``append`` vs ``extend``, constants, f-strings and refactors — a source-derived
+blind to ``append`` vs ``extend``, constants, f-strings and refactors: a source-derived
 inventory can silently under-count. A registry the verifier itself consumes turns "add
 a rule without adding it to the inventory" from heuristically detectable into
 structurally difficult: a check that is not registered is a check that never runs, and
@@ -117,7 +117,7 @@ def _signature_invalid(signed: dict[str, Any], trusted_jwk: dict[str, str]) -> b
 @dataclass(frozen=True)
 class Rule:
     """One named obligation. ``check`` returns True when the defect it guards against
-    is observed in the fixture — i.e. True means the code is emitted."""
+    is observed in the fixture: i.e. True means the code is emitted."""
 
     code: str
     severity: str  # "failure" | "warning"
@@ -346,7 +346,7 @@ def test_fixture_set_is_complete() -> None:
         "15-receipt-from-future.json",
         "16-decision-not-in-enum.json",
         # 17-30 are the second vector for every rule (#124: two independent vectors
-        # each), placed against implementation shortcuts the first set cannot detect —
+        # each), placed against implementation shortcuts the first set cannot detect:
         # prefix-true digests, case-variant identifiers, one-second boundaries,
         # structural-but-wrong signatures, an explicit-null receipt.
         "17-missing-receipt-explicit-null.json",

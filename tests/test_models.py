@@ -159,7 +159,7 @@ def test_jwk_with_private_key_material_rejected() -> None:
         "kty": "OKP",
         "crv": "Ed25519",
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
-        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",  # private scalar — must not be stored
+        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",  # private scalar: must not be stored
     }
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)

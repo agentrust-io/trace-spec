@@ -19,7 +19,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **The `references` block is now in the schema and the model.** Spec section 3.1.2 landed the block in [#198](https://github.com/agentrust-io/trace-spec/pull/198) as text only, and text alone did not make it usable: `schema/trace-claim.json` sets `additionalProperties: false` at the top level and `TrustRecord` is `extra="forbid"`, so a record carrying the field the specification permits was rejected by both artifacts a producer validates against. `references` is an array of entries with required `rel`, `id` and `resolver`, and optional `retention` (ISO 8601 duration) and `digest`. `rel` is a registry rather than a closed set: `authorized-intent`, `approval-outcome` and `behavior-trace` are the values section 3.1.2 registers today, and the schema holds `rel` to being non-empty rather than to that list, so a new relation is a spec change and not also a schema change. The array itself may be empty; rule 4 tells a producer to omit the entry, not the block.
 
-  Two of the four rules in section 3.1.2 are properties of a record and are tested here: a record carrying `references` and no `origin` keeps the hardware `runtime.platform` it earned, and the signature covers the block, so rewriting any member of any entry in transit fails verification. The other two — a verifier MUST NOT reject a record for an entry it cannot resolve, and MUST NOT treat a resolved entry as attested evidence — are verifier behaviour that no schema can express, and belong to the conformance suite.
+  Two of the four rules in section 3.1.2 are properties of a record and are tested here: a record carrying `references` and no `origin` keeps the hardware `runtime.platform` it earned, and the signature covers the block, so rewriting any member of any entry in transit fails verification. The other two, a verifier MUST NOT reject a record for an entry it cannot resolve, and MUST NOT treat a resolved entry as attested evidence, are verifier behaviour that no schema can express, and belong to the conformance suite.
 
   `resolver` is constrained on presence and not on value: section 3.1.2 requires a producer that cannot name a resolver to omit the entry rather than emit a self-asserted one, and whether an identifier is self-asserted is not decidable from the record.
 
@@ -28,7 +28,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   Distribution keeps section 3.3's no-callback property: statements are anchored in the same log as the records they govern, and verifiers cache a signed bundle carrying `valid_until`. An expired bundle is not a pass, and a verifier with none reports that it performed no revocation check rather than reporting an affirming appraisal. A revocation statement MUST be signed by a key above the revoked one in the section 3.2.1 hierarchy, or by a recovery key with an independent compromise domain, because a statement the compromised key could sign for itself is a tool for whoever stole it. Records with no usable inclusion entry ID fall back to binary revocation, which is the existing behaviour. Schemas: `schema/trace-revocation.json`, `schema/trace-revocation-bundle.json`. Resolves [#67](https://github.com/agentrust-io/trace-spec/issues/67).
 
   Section 3.2.1 previously required verifiers to "consult current revocation status at verification time", which contradicted the offline-verification property in the same document. It now points at 3.2.3.
-- **A verification profile is proposed for the `delegation` block, with the conformance material to argue it against.** The block is normative in v0.2 and nothing says what a verifier does with a chain of them: `spec/trace-v0.2.md` never mentions `parent_record_hash` or `credential_id`, and the one descriptive sentence in `docs/schema.md` leaves every operative term open, so two conforming implementations can agree on nothing. [`docs/rfcs/a2a-delegation-profile.md`](docs/rfcs/a2a-delegation-profile.md) proposes ten rules over the fields that already exist — no schema change — and `examples/delegation-link/` carries 23 vectors that score an implementation against them. Three forks in the current text had to be settled before any vector could be written, and each is stated with the reason rather than assumed: the digest covers the complete parent record including its signature, because a digest of the signed body alone does not bind the parent's signer; there is no cycle rule, because a delegation cycle is a hash collision and the reachable analogue is an unbounded chain, which is what the depth bound is for; and a link naming a digest algorithm the verifier cannot compute makes the chain unverifiable rather than invalid, which is the delegation-surface instance of the semantics already merged in `docs/verification.md`. Nothing here binds an implementation until the profile is adopted. Targets the v0.3 A2A profile named in [`ROADMAP.md`](ROADMAP.md).
+- **A verification profile is proposed for the `delegation` block, with the conformance material to argue it against.** The block is normative in v0.2 and nothing says what a verifier does with a chain of them: `spec/trace-v0.2.md` never mentions `parent_record_hash` or `credential_id`, and the one descriptive sentence in `docs/schema.md` leaves every operative term open, so two conforming implementations can agree on nothing. [`docs/rfcs/a2a-delegation-profile.md`](docs/rfcs/a2a-delegation-profile.md) proposes ten rules over the fields that already exist, no schema change, and `examples/delegation-link/` carries 23 vectors that score an implementation against them. Three forks in the current text had to be settled before any vector could be written, and each is stated with the reason rather than assumed: the digest covers the complete parent record including its signature, because a digest of the signed body alone does not bind the parent's signer; there is no cycle rule, because a delegation cycle is a hash collision and the reachable analogue is an unbounded chain, which is what the depth bound is for; and a link naming a digest algorithm the verifier cannot compute makes the chain unverifiable rather than invalid, which is the delegation-surface instance of the semantics already merged in `docs/verification.md`. Nothing here binds an implementation until the profile is adopted. Targets the v0.3 A2A profile named in [`ROADMAP.md`](ROADMAP.md).
 
 - **`build_provenance` now declares verification depth.** A new optional `provenance_depth` (`surface`, `builder`, `transitive`) says how far down the supply chain the issuer claims to have walked, and a new optional `appraisal.provenance_depth_verified` records how far the verifier actually walked. Spec section 3.3 step 7 previously left three stopping points equally conformant, so two verifiers could reach opposite conclusions on the same record with no way to say why. Both fields are optional and a record omitting `provenance_depth` is read as `surface`, so existing records keep their meaning. Evidence that does not resolve and evidence that resolves and contradicts the record are separate outcomes: the first downgrades the recorded depth and names what was missing, the second fails the appraisal and cannot be downgraded away. Resolves [#50](https://github.com/agentrust-io/trace-spec/issues/50).
 
@@ -54,13 +54,13 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **Integer fields and undeclared JWK members are now bounded to the JCS safe-integer domain.** Section 3.2.2 serializes numbers as IEEE 754 doubles, and `iat`, `origin.ingested_at`, `tool_transcript.call_count` and `appraisal.timestamp` were typed `integer` with no upper bound, as were `issued_at` and `valid_until` in the revocation bundle, `revoked_at` in a revocation statement, and `authorized_at` and `expires_at` in the PIC/TRACE bridge, whose `sign_bridge` and `verify_bridge` call the same `_canonical_bytes` as everything else. A record carrying a value above 2^53 was therefore schema-valid and had no canonical form to sign: `9007199254740992` and `9007199254740993` are distinct integers that the mandated algorithm maps to the same bytes, so one signature stands for two records. Measured on two independent RFC 8785 implementations, which disagree: `canonicalize` 4.0.0 (npm) applies the algorithm as written and emits identical bytes for the pair, while `rfc8785` 0.1.4 (PyPI, pinned here) refuses both. `cnf.jwk` needed the same treatment for a different reason: RFC 7517 lets a JWK carry members this schema does not name, the signature covers them, and `additionalProperties` was absent, so bounding the declared fields left the collision reachable through an undeclared one. RFC 8785 Appendix B note 1 names the range -9007199254740991 to 9007199254740991 as a SHOULD on values interpreted as true integers, and section 3.2.2 now raises it to a MUST, on the grounds that a Trust Record is a signed statement. Every integer field in a schema whose signature is defined over an RFC 8785 canonical form now carries `maximum: 9007199254740991`, undeclared `cnf.jwk` members are held recursively to a new `$defs/canonicalizableValue` that excludes `number` and bounds integers, and section 3.2.2 states the rule. `appraisal.timestamp` had no lower bound either and takes the symmetric floor rather than a calendar one, because what a sensible earliest appraisal time would be is a separate question and this change does not answer it. `spec/registry-anchor-v1.md` §0 carried the same claim about a second canonicalization and had to be corrected with it: it said the anchoring layer and JCS agree on records "whose numbers are integers", which holds only inside the safe-integer range, and it listed three ways they diverge where there are four. The anchor profile is worse off than JCS here, because two implementations of its own four rules disagree with each other: Python's `json.dumps` writes the exact digits and a JavaScript implementation goes through `JSON.stringify` and emits one value for both. Measured on `tool_catalog_hash`, which runs those rules over a tool's `input_schema` where a `maximum` is ordinary content: Python gives two digests for two catalogs and JavaScript gives one, so the tool-description rug-pull that hash exists to catch goes undetected. §1 now excludes the range, as it already excluded non-integer numbers and for the same reason, and the exclusion is executable rather than only written: a new `agentrust_trace.sign.anchor_bytes` performs the sorted-key serialization and refuses a value §1 puts outside the profile with a named `UnanchorableValue`. Both implementations of that format, `tool_catalog_hash` and the AGT adapter's transcript hash, go through it, so the symptom §0 describes as having no useful diagnostic now has one. The AGT adapter's transcript hash now refuses an out-of-range integer where it previously returned a digest; its sibling, the sandbox adapter, already refused one, so the two agree for the first time on input a governance framework really produces, such as an audit entry carrying a nanosecond timestamp. `docs/schema.md`, the field reference a producer reads, states the range under its own heading rather than leaving it to be discovered from the spec. `agentrust_trace.models` mirrors every schema constraint (`ge=0` for `call_count`, `ge=0, le=3` for `slsa_level`), so `iat`, `origin.ingested_at`, `tool_transcript.call_count` and `appraisal.timestamp` carry the bound there too; a producer building against the model no longer gets a record the schema rejects. One surface no schema can reach is covered by the normative sentence alone: `digest_jcs` takes the digest of a caller-supplied declaration or tool-call object, and `SandboxAdapter.transcript_hash` of a decision log, neither of which any schema validates. Measured: two declarations differing only in an integer above the range produce one digest under `canonicalize` 4.0.0. Section 3.2.2 now states the rule for any object canonicalized under it rather than for a Trust Record alone, and a test pins that `digest_jcs` fails closed here. The superseded v0.1 schema is unchanged and is the one file left out: `verify_record` rejects the v0.1 profile identifier, nothing in the repository loads that schema, and a test holds that reason to the tree rather than leaving it as a comment. No record that could ever have been signed by this repository is affected: the canonicalizer it pins already refuses the values the schema now refuses.
 
-## [0.9.0] — 2026-08-09
+## [0.9.0] - 2026-08-09
 
 ### Documentation
 
 - **The security policy now describes the software that is actually released.** It puts the Python signing and verification APIs, schemas, adapters, packaging, and release automation in scope; lists TRACE v0.2 and `agentrust-trace` 0.x as supported; and marks the superseded v0.1 profile unsupported.
 
-## [0.9.0] — 2026-08-09
+## [0.9.0] - 2026-08-09
 
 ### Added
 
@@ -76,7 +76,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
-- **`enforcement_mode: "declared"`.** The three existing modes all assert that *something evaluated the policy*: `enforce` acted on the result, `advisory` did not, `silent` acted with the log lines suppressed. `declared` asserts less — the policy is named and bound into the signed record, and nothing evaluated it.
+- **`enforcement_mode: "declared"`.** The three existing modes all assert that *something evaluated the policy*: `enforce` acted on the result, `advisory` did not, `silent` acted with the log lines suppressed. `declared` asserts less: the policy is named and bound into the signed record, and nothing evaluated it.
 
   That is not a corner case, it is the common one. An agent framework has no policy engine, so a record built by observing a LangChain or LlamaIndex run has a policy the operator declares and no evaluation of it anywhere. With three values, such a record had to claim an evaluation that never happened; both framework adapters refused to default the field and documented the overstatement instead, which is honest and still leaves every framework record marginally untrue.
 
@@ -84,13 +84,13 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
   Additive to a closed enum in both the model and the JSON schema, so unknown values are still rejected. Same one-directional consequence as `origin`: a verifier older than this release rejects a record carrying `declared`.
 
-## [0.8.0] — 2026-08-09
+## [0.8.0] - 2026-08-09
 
 ### Added
 
 - **`agentrust_trace.provenance`: build, sign and verify MCP Server Provenance Records.** Step 2 of the sequence, implementing `spec/server-provenance-v1.md`. In the SDK rather than in cMCP, so a publisher can produce a record without adopting a runtime, which is the only way the format reaches an ecosystem that will not adopt one.
 
-  **`check_tool_catalog()` is a separate call on purpose.** Verifying the signature proves a document is internally consistent and signed by a key you trust, which is exactly what an attacker holding a stolen publisher key can produce. What they cannot do is make the server in front of you offer the tools their record describes. That comparison needs something `verify_record()` does not have — what the server said to *you* — so it is its own obvious call rather than a flag, and it raises its own exception type so a consumer can tell "bad document" from "wrong server".
+  **`check_tool_catalog()` is a separate call on purpose.** Verifying the signature proves a document is internally consistent and signed by a key you trust, which is exactly what an attacker holding a stolen publisher key can produce. What they cannot do is make the server in front of you offer the tools their record describes. That comparison needs something `verify_record()` does not have, what the server said to *you*, so it is its own obvious call rather than a flag, and it raises its own exception type so a consumer can tell "bad document" from "wrong server".
 
   The builder refuses records that cannot mean anything: an identity with neither artifact nor endpoint, a `tee-attested` record with no evidence, evidence attached to a kind that does not claim it (a reader would take it as an attestation that was made), a publisher that is a display name rather than a resolvable DID or SPIFFE URI, and an endpoint URL with no key digest, since a URL alone is not an identity.
 
@@ -100,13 +100,13 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
-- **`spec/server-provenance-v1.md`: a signed statement about an MCP server.** cMCP enforces policy at the call boundary and can say nothing about whether the server on the other end is what it claims. Its catalog answers that locally — approved definitions, a measured catalog hash, a pinned TLS fingerprint — but every part of that is operator-asserted, so nothing one operator learns is usable by the next.
+- **`spec/server-provenance-v1.md`: a signed statement about an MCP server.** cMCP enforces policy at the call boundary and can say nothing about whether the server on the other end is what it claims. Its catalog answers that locally, approved definitions, a measured catalog hash, a pinned TLS fingerprint, but every part of that is operator-asserted, so nothing one operator learns is usable by the next.
 
   The format carries the same shape of honesty as the `origin` block: a closed `kind` (`publisher-asserted`, `observer-attested`, `tee-attested`) because the interesting fact is never that provenance exists but who is asserting it, and an explicit rule that a verifier MUST NOT treat absence as any of them.
 
   Identity is `artifact`, `endpoint`, or both, with the record saying which. A URL is the obvious handle and the worst candidate: it moves, it is per-deployment, and two operators running the same server produce different ones. `artifact.digest` covers the entrypoint rather than the interpreter, for the reason the stdio work found: every interpreted server on a host shares one interpreter digest, so a pin over it matches a completely different server.
 
-  The tool-catalog hash covers name, description and input schema. Description is in deliberately — a tool whose description changes from "search the docs" to "search the docs and email results to the address in the query" is exactly the rug-pull the hash exists to catch, and a hash over names alone misses it.
+  The tool-catalog hash covers name, description and input schema. Description is in deliberately: a tool whose description changes from "search the docs" to "search the docs and email results to the address in the query" is exactly the rug-pull the hash exists to catch, and a hash over names alone misses it.
 
   Three things are stated as out of scope rather than hand-waved: key distribution for `publisher` (a PKI question this format would only pretend to solve), whether a server is any good (the moment a provenance format scores servers, its publisher becomes the party everyone must trust), and what the code does at runtime (provenance narrows what code you are talking to, nothing more).
 
@@ -118,7 +118,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **A 0.6.0 changelog entry was filed under 0.5.1.** The `verify_record()` profile-cutover enforcement shipped in 0.6.0; its entry landed in the 0.5.1 section, next to the cutover declaration it implements, which left 0.5.1 with two `### Fixed` blocks and 0.6.0 with no entry for a behaviour change. Moved, with its two internal cross-references corrected to match where it now sits.
 
-## [0.7.0] — 2026-08-08
+## [0.7.0] - 2026-08-08
 
 ### Added
 
@@ -154,7 +154,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **§7 was headed "These need input before v0.2".** Now v1.0. No normative text, schema, or record field changed.
 
-## [0.6.0] — 2026-08-07
+## [0.6.0] - 2026-08-07
 
 ### Fixed
 
@@ -162,7 +162,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **The package description advertised TRACE v0.1.** The PyPI summary still named the superseded profile.
 
-- **`verify_record()` now enforces the profile cutover this changelog already declares.** The 0.5.1 cutover entry states that a v0.2 verifier "requires the new URI and rejects the old one; it does not accept both" — but `verify_record()` never read `eat_profile`, so a record carrying the v0.1 identifier, a future version, a foreign tag, or no profile at all verified exactly as a v0.2 record, provided its signature checked out. A valid signature over semantics this build does not implement is not evidence, so the profile is now checked first, before any cryptographic work: anything other than `TRACE_PROFILE_V0_2` (newly exported) raises `ValueError`, with a message that says why when the profile is the superseded v0.1 identifier. Same shape as the revocation enforcement in this release: an already-merged spec requirement (`spec/trace-v0.2.md` section 2) that the reference implementation did not carry out. `docs/verification.md` step 4 notes the check is now built in. No normative text, schema, or record field changed.
+- **`verify_record()` now enforces the profile cutover this changelog already declares.** The 0.5.1 cutover entry states that a v0.2 verifier "requires the new URI and rejects the old one; it does not accept both", but `verify_record()` never read `eat_profile`, so a record carrying the v0.1 identifier, a future version, a foreign tag, or no profile at all verified exactly as a v0.2 record, provided its signature checked out. A valid signature over semantics this build does not implement is not evidence, so the profile is now checked first, before any cryptographic work: anything other than `TRACE_PROFILE_V0_2` (newly exported) raises `ValueError`, with a message that says why when the profile is the superseded v0.1 identifier. Same shape as the revocation enforcement in this release: an already-merged spec requirement (`spec/trace-v0.2.md` section 2) that the reference implementation did not carry out. `docs/verification.md` step 4 notes the check is now built in. No normative text, schema, or record field changed.
 
 ### Added
 
@@ -184,7 +184,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 - **`jwk_thumbprint(jwk)`**: RFC 7638 JWK Thumbprint (RFC 8037 §2 for OKP), exported so callers can key a revocation list on the same identifier the verifier derives.
 
-## [0.5.1] — 2026-07-28
+## [0.5.1] - 2026-07-28
 
 ### Fixed
 
@@ -206,13 +206,13 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
-- **`azure-cvm-sev-snp` platform** — Azure confidential VMs run AMD SEV-SNP behind a Hyper-V paravisor: the SNP report is read from the vTPM (the guest does not control `REPORT_DATA`), so the runtime binding rides a vTPM AK-signed quote rather than the SNP `report_data`. Given its own `runtime.platform` value (distinct from `amd-sev-snp`) so a consumer keying on `runtime.platform` knows the root of trust is vTPM-rooted, not direct-silicon. Added to the `RuntimeInfo` model and the JSON schema enum. Hardware-validated on a live Azure SEV-SNP VM via cMCP.
+- **`azure-cvm-sev-snp` platform**: Azure confidential VMs run AMD SEV-SNP behind a Hyper-V paravisor: the SNP report is read from the vTPM (the guest does not control `REPORT_DATA`), so the runtime binding rides a vTPM AK-signed quote rather than the SNP `report_data`. Given its own `runtime.platform` value (distinct from `amd-sev-snp`) so a consumer keying on `runtime.platform` knows the root of trust is vTPM-rooted, not direct-silicon. Added to the `RuntimeInfo` model and the JSON schema enum. Hardware-validated on a live Azure SEV-SNP VM via cMCP.
 
 - `delegation` (optional object): the A2A profile delegation-link block, carrying `parent_record_hash` (digest of the parent hop's Trust Record) and `credential_id` (the delegation credential this hop acted under). A chain of records linked this way forms an offline-verifiable delegation DAG. Backward-compatible: existing records without `delegation` remain valid. This is a MINOR (additive) change and the foundation of the forthcoming A2A profile; A2A is now stable at v1.x, clearing the prior blocker.
 
 ---
 
-## [0.3.0] — 2026-06-30
+## [0.3.0] - 2026-06-30
 
 ### Security
 
@@ -225,7 +225,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ---
 
-## [0.1.0] — 2026-06-23
+## [0.1.0] - 2026-06-23
 
 Initial public draft. Announced at Confidential Computing Summit, San Francisco.
 
@@ -237,7 +237,7 @@ Initial public draft. Announced at Confidential Computing Summit, San Francisco.
 - Verification protocol (§3.3): five-step offline verification, no issuer callback
 - Standards composition (§4): RATS/EAT, SLSA, SPIFFE, SCITT, EAR, MCP, A2A, AIBOM, C2PA
 - Hardware roots (§4.2): NVIDIA H100/Blackwell, Intel TDX, AMD SEV-SNP, Azure MAA, GCP Confidential Space, AWS Nitro
-- Reference implementation (§5): cMCP Phase 1–3 roadmap
+- Reference implementation (§5): cMCP Phase 1 to 3 roadmap
 
 ### Schema
 
@@ -255,7 +255,7 @@ Seven open questions requiring community input before v0.2 are documented in §7
 
 ---
 
-## [0.2.0] — TBD
+## [0.2.0] - TBD
 
 ### Specification
 

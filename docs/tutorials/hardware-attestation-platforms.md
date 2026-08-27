@@ -166,7 +166,7 @@ from agentrust_trace import verify_record, validate_json
 validate_json(record)
 verify_record(record, trusted_jwk)  # trusted_jwk obtained out-of-band
 
-# Step 2 + 3: platform-specific — outside the scope of agentrust-trace
+# Step 2 + 3: platform-specific: outside the scope of agentrust-trace
 # For cMCP-issued records, use cmcp-verify which handles the full chain.
 # cmcp-verify operates on a RuntimeClaim (the cMCP envelope), not on a
 # flat TrustRecord, and requires the expected hashes to verify against:
@@ -188,7 +188,7 @@ The `RuntimeInfo` model accepts exactly these platform values:
 
 | Value | Attestation root |
 |---|---|
-| `software-only` | None — development only |
+| `software-only` | None: development only |
 | `tpm2` | TPM PCR digest |
 | `amd-sev-snp` | AMD SEV-SNP MEASUREMENT field |
 | `intel-tdx` | Intel TDX MRTD field |

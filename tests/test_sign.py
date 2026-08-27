@@ -333,7 +333,7 @@ def test_verify_record_rejects_wrong_trusted_key():
     key_a = generate_key()
     key_b = generate_key()
     record = sign_record(_fresh_record(), key_a)
-    # Signed by A, verified against B's public key — must not verify.
+    # Signed by A, verified against B's public key: must not verify.
     with pytest.raises(ValueError, match=r"cnf\.jwk.*trusted key"):
         verify_record(record, key_to_jwk(key_b))
 

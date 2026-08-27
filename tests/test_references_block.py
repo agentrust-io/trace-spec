@@ -5,7 +5,7 @@ carrying the block is valid. It was not: `additionalProperties: false` at the
 top level rejected `references` outright, and `TrustRecord` is `extra="forbid"`,
 so a record the specification permits was rejected by both of the artifacts a
 producer would test against. That is the failure mode this file exists to keep
-shut, from both directions — a valid entry must be accepted, and each way of
+shut, from both directions: a valid entry must be accepted, and each way of
 getting one wrong must be rejected for its own reason.
 
 The schema and the model are checked against the *same* case table rather than
@@ -17,8 +17,8 @@ copy of the schema.
 Of the four MUST/MUST NOT rules in §3.1.2, two are expressible here. Rule 1
 (`references` MUST NOT affect `runtime.platform`) and rule 2 (the signature MUST
 cover `references`) are properties of a record and are asserted below. Rules 3
-and 4 are verifier behaviour — a verifier MUST NOT reject on an unresolvable
-entry, and MUST NOT treat a resolved one as evidence — and a schema cannot say
+and 4 are verifier behaviour: a verifier MUST NOT reject on an unresolvable
+entry, and MUST NOT treat a resolved one as evidence, and a schema cannot say
 either; they belong to the conformance suite.
 """
 
@@ -265,7 +265,7 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
 
     The enum is gone deliberately: section 3.1.2 calls these values a registry, and
     section 3.1.1 says of the neighbouring `kind` that it is closed *because* a verifier
-    keys on it — a distinction the two sections draw on purpose. What replaces the
+    keys on it: a distinction the two sections draw on purpose. What replaces the
     enum as a guard is that the three values cannot quietly stop being written down.
     """
     from agentrust_trace import SCHEMA

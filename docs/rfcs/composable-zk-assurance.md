@@ -131,9 +131,9 @@ Future normative work will need to address §7 conformance and the `TR-RTE` runt
 
 An assurance composition must distinguish between:
 
-1. **evidence presence** — the record contains or references an assurance artifact;
-2. **evidence verification** — the artifact has been successfully verified under a defined verification policy and context;
-3. **claim support** — the verified artifact is cryptographically and semantically bound to the specific TRACE claim being evaluated.
+1. **evidence presence**: the record contains or references an assurance artifact;
+2. **evidence verification**: the artifact has been successfully verified under a defined verification policy and context;
+3. **claim support**: the verified artifact is cryptographically and semantically bound to the specific TRACE claim being evaluated.
 
 Evidence presence alone does not establish assurance.
 

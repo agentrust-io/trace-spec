@@ -3,7 +3,7 @@
 `CONTRIBUTING.md` draws the line this guard enforces: normative text lives in the
 specifications, and informative text "carries no RFC 2119 keywords and binds no
 implementation". Guides, crosswalks and RFCs are informative. They still need to *state*
-requirements — a crosswalk that cannot quote the requirement it is mapping is useless —
+requirements, a crosswalk that cannot quote the requirement it is mapping is useless,
 so the rule that holds mechanically is not "no keywords" but the weaker, checkable one:
 
     a requirement keyword in an informative document must be attributable to a document
@@ -92,7 +92,7 @@ def test_every_requirement_keyword_under_docs_names_its_source() -> None:
 
 def test_the_corpus_is_not_empty() -> None:
     """A guard that scanned nothing would pass, and would keep passing after `docs/`
-    moved. The count is not pinned — new documents are expected — but zero is a bug in
+    moved. The count is not pinned, new documents are expected, but zero is a bug in
     this file rather than a clean repository."""
     assert list(DOCS.rglob("*.md")), f"no markdown found under {DOCS}"
 

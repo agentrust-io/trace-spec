@@ -14,7 +14,7 @@ TRACE defines three trust levels. Each level adds a stronger guarantee about the
 | 1 | TEE attestation | Record is signed by a key that was generated inside a verified TEE | Staging, regulated production |
 | 2 | Transparency anchoring | Level 1 plus SCITT transparency log entry | Multi-tenant, cross-org audit chains |
 
-## Level 0 — Software-only
+## Level 0: Software-only
 
 Level 0 records are signed with an Ed25519 key held by the agent process. There is no hardware attestation step. The `runtime.platform` field must be `software-only`.
 
@@ -45,7 +45,7 @@ All-zero measurement (`sha256:000...000`) is conventional for software-only deve
 
 ---
 
-## Level 1 — TEE Attestation
+## Level 1: TEE Attestation
 
 Level 1 requires that the signing key be generated inside a verified TEE (AMD SEV-SNP, Intel TDX, NVIDIA H100, or TPM2). The `runtime.platform` field must be one of these values, and `runtime.measurement` must be a non-zero hardware measurement (PCR hash, launch measurement, or equivalent).
 
@@ -67,13 +67,13 @@ The cMCP runtime handles Level 1 record emission automatically when running in a
 
 ---
 
-## Level 2 — Transparency Anchoring
+## Level 2: Transparency Anchoring
 
 Level 2 adds a SCITT transparency log entry to a Level 1 record. The `transparency` field must be a resolvable HTTPS URI that returns a valid reference manifest from a SCITT-compatible log.
 
 **What it proves:** The record has been durably committed to an append-only transparency log that any party can query. This makes post-hoc audit possible without trusting either the agent or its operator.
 
-**What it does not prove:** That every field in the record is correct — only that the specific record at the URI has not been altered since it was logged.
+**What it does not prove: ** That every field in the record is correct: only that the specific record at the URI has not been altered since it was logged.
 
 **Additional required fields over Level 1:**
 
@@ -113,6 +113,6 @@ Relying parties set the minimum acceptable level in their Cedar policy. Records 
 ## Related
 
 - [Trust Levels in the test suite](https://tests.agentrust-io.com/docs/levels/)
-- [TRACE Specification — Section 4: Trust Levels](../spec/trace-v0.2.md)
+- [TRACE Specification: Section 4: Trust Levels](../spec/trace-v0.2.md)
 - [Hardware Attestation Platforms](tutorials/hardware-attestation-platforms.md)
 - [Glossary](glossary.md)

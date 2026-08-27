@@ -68,13 +68,13 @@ Nor does it assure the artifact was built from the source you think. A trusted b
 | Builder-chain | Attestation retrieval at verification time, or a cached bundle | A record whose `provenance_uri` is absent or unresolvable cannot be verified past surface |
 | Dependency-chain | A publisher attestation per input, and ecosystem coverage for those inputs | Inputs from ecosystems without attestation coverage cannot be verified past builder, benign ones included |
 
-Deeper is not free, and the honest reason deployments stop early is usually not laziness. An unattested input is unverifiable rather than incriminating, so [verification.md](verification.md) has the verifier record `builder` and name what it could not fetch; a deployment whose floor is `transitive` then treats that record as `contraindicated`. Attestation coverage across package ecosystems is uneven, so such a deployment turns away a lot of software that is fine — the strictness lives in the floor, not in a finding against the record.
+Deeper is not free, and the honest reason deployments stop early is usually not laziness. An unattested input is unverifiable rather than incriminating, so [verification.md](verification.md) has the verifier record `builder` and name what it could not fetch; a deployment whose floor is `transitive` then treats that record as `contraindicated`. Attestation coverage across package ecosystems is uneven, so such a deployment turns away a lot of software that is fine: the strictness lives in the floor, not in a finding against the record.
 
 That trade-off is a legitimate choice. Picking Surface because it was the cheapest to implement, without recording that "trusted builder" is then a claim nobody checked, is not the same choice.
 
 ## Related
 
-- [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50) — where the depth definition is being decided.
-- [trace-spec#166](https://github.com/agentrust-io/trace-spec/pull/166) — test vectors separating the three depths, each accepted by the depth below it and rejected by the depth in its name.
-- [Verification protocol](verification.md) — the record-level steps this page sits underneath.
-- [Known limitations](../LIMITATIONS.md) — what a TRACE claim does not prevent, at record level.
+- [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50): where the depth definition is being decided.
+- [trace-spec#166](https://github.com/agentrust-io/trace-spec/pull/166): test vectors separating the three depths, each accepted by the depth below it and rejected by the depth in its name.
+- [Verification protocol](verification.md): the record-level steps this page sits underneath.
+- [Known limitations](../LIMITATIONS.md): what a TRACE claim does not prevent, at record level.

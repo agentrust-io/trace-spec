@@ -1,6 +1,6 @@
 # Platform: NVIDIA H100 Confidential Computing
 
-NVIDIA H100 (and Blackwell) GPUs support Confidential Computing — hardware-isolated GPU execution with attestation rooted in NVIDIA's Attestation Root Certificate Authority (NRAS). TRACE Level 2 on NVIDIA CC is the first hardware-verifiable governance record for GPU-based AI inference.
+NVIDIA H100 (and Blackwell) GPUs support Confidential Computing: hardware-isolated GPU execution with attestation rooted in NVIDIA's Attestation Root Certificate Authority (NRAS). TRACE Level 2 on NVIDIA CC is the first hardware-verifiable governance record for GPU-based AI inference.
 
 ## What NVIDIA H100 CC provides
 
@@ -9,7 +9,7 @@ NVIDIA H100 (and Blackwell) GPUs support Confidential Computing — hardware-iso
 | Memory protection | GPU memory encrypted and isolated per VM |
 | Attestation | NVIDIA RIM Service attestation, signed by NVIDIA NRAS |
 | Measurement | GPU firmware + driver measurement |
-| Combined attestation | CPU TEE + GPU CC — one unified attestation report |
+| Combined attestation | CPU TEE + GPU CC: one unified attestation report |
 
 TRACE on H100 is the first open standard to combine CPU TEE attestation and GPU CC attestation into a single signed governance record. This was demonstrated at GTC Berlin.
 
@@ -26,9 +26,9 @@ TRACE on H100 is the first open standard to combine CPU TEE attestation and GPU 
 }
 ```
 
-- `measurement` — Combined CPU+GPU measurement hash
-- `rim_uri` — NVIDIA RIM Service URL for firmware Reference Integrity Manifest
-- `firmware_version` — NVIDIA GPU driver/firmware version
+- `measurement`: Combined CPU+GPU measurement hash
+- `rim_uri`: NVIDIA RIM Service URL for firmware Reference Integrity Manifest
+- `firmware_version`: NVIDIA GPU driver/firmware version
 
 ## Verification flow
 
