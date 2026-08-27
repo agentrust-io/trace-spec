@@ -15,11 +15,13 @@ shrink:
     discipline, not a style edit. Prose in this tree is worth cleaning; do it as
     a deliberate change to the vectors, not as part of a sweep.
 
-``spec/``
-    Normative specification text. Being cleaned separately so the prose changes
-    get read on their own rather than inside a several-hundred-line diff.
+``spec/trace-v0.1.md``
+    A superseded specification, published as a historical document and listed in
+    the docs nav as "TRACE v0.1 (superseded)". Someone citing v0.1 section 3.2
+    should find the text as it was. The current specs are swept; this one is a
+    record, not living prose.
 
-Run it directly, or with --fix to preview what a rewrite would do.
+Run it directly; it takes no arguments beyond an optional --root.
 """
 from __future__ import annotations
 
@@ -33,8 +35,8 @@ SKIP_DIRS = {
 }
 EXTENSIONS = {".md", ".py", ".json", ".yml", ".yaml", ".toml", ".cfg", ".txt", ".html"}
 
-#: Trees not yet swept. Shrink this; do not grow it.
-EXEMPT_PREFIXES = ("examples/", "spec/")
+#: Not swept, and each for a stated reason above. Shrink this; do not grow it.
+EXEMPT_PREFIXES = ("examples/", "spec/trace-v0.1.md")
 
 # Built from code points rather than written as literals. A checker containing
 # the characters it bans reports itself, which sounds like a joke until it is
