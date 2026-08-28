@@ -49,9 +49,9 @@ Moving these into the record would be a schema change, which is out of scope for
 
 ## Open questions
 
-- Rows describing approval-bearing receipts - approval preceding execution, applicable approver authority, scope covering the action taken - depend on profile work routed through [#191](https://github.com/agentrust-io/trace-spec/issues/191) and sit behind the [#116](https://github.com/agentrust-io/trace-spec/pull/116) version boundary. Until that lands, they remain open questions rather than settled guidance.
+- Rows describing approval-bearing receipts - approval preceding execution, applicable approver authority, scope covering the action taken - depend on profile work routed through [#191](https://github.com/agentrust-io/trace-spec/issues/191) and sit behind the [#116](https://github.com/agentrust-io/trace-spec/issues/116) version boundary. Until that lands, they remain open questions rather than settled guidance.
 - Comparability of `transitive` across verifiers stays open until the coverage-URI follow-up named in [verification.md](verification.md#transitive-is-a-floor-on-effort-not-a-comparable-claim) settles. Until then, a `transitive` value supports an effort-floor statement only, not a claim that two verifiers covered identical dependency sets.
-- Whether `appraisal.policy_ref` gains reproducibility guarantees (a digest binding for the referenced appraisal policy) is an unresolved design question tracked in [#187](https://github.com/agentrust-io/trace-spec/issues/187). Until then, a bounded statement cites the appraisal policy by reference, and second-verifier reproduction of an appraisal verdict is not guaranteed.
+- Whether `appraisal.policy_ref` gains reproducibility guarantees (a digest binding for the referenced appraisal policy) is an unresolved design question tracked in [#190](https://github.com/agentrust-io/trace-spec/issues/190). Until then, a bounded statement cites the appraisal policy by reference, and second-verifier reproduction of an appraisal verdict is not guaranteed.
 
 ## Related
 
