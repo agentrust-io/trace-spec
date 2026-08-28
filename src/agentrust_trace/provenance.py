@@ -304,6 +304,15 @@ def verify_record(
     """
     import base64
 
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}. `_as_object` "
+            "holds `identity` and `tool_catalog` to that shape, and neither can be "
+            "reached until the record itself is one: `record.get(...)` on a list or a "
+            "string raises AttributeError, which is not the ProvenanceError this "
+            "function documents and is not caught by a caller written against it."
+        )
+
     if record.get("format") != FORMAT:
         raise ProvenanceError(
             f"unknown format {record.get('format')!r}; expected {FORMAT}. An unknown "
@@ -403,6 +412,13 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
     contract :func:`verify_record` makes, since this can run against a record
     ``verify_record`` has not (yet) seen.
     """
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}. This runs "
+            "against records `verify_record` has not seen, as its docstring says, so it "
+            "cannot assume that function established the shape."
+        )
+
     actual = tool_catalog_hash(tools)
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")

@@ -678,3 +678,34 @@ def test_zero_is_a_bound_and_not_a_falsy_stand_in_for_unset() -> None:
     verify_record(a_moment_ago, key_to_jwk(key))  # None: no age bound
     with pytest.raises(ProvenanceError, match="stale"):
         verify_record(a_moment_ago, key_to_jwk(key), max_age_seconds=0)
+
+
+# --- the record's own type, which no guard on a field inside it can reach ------
+#
+# #225 added _as_object for record["identity"] and record["tool_catalog"]. Neither
+# is reachable until the record itself is a mapping: record.get(...) on a list or
+# a string raises AttributeError, which is not the ProvenanceError verify_record
+# documents and is not caught by a caller written against that contract.
+
+NOT_OBJECTS = [None, 5, 0, "a string", "", [], [1, 2], True, False, b"bytes"]
+
+
+@pytest.mark.parametrize("bad", NOT_OBJECTS)
+def test_verify_record_refuses_a_non_object_record(bad) -> None:
+    key = generate_key()
+    with pytest.raises(ProvenanceError, match="record must be a JSON object"):
+        verify_record(bad, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bad", NOT_OBJECTS)
+def test_check_tool_catalog_refuses_a_non_object_record(bad) -> None:
+    with pytest.raises(ProvenanceError, match="record must be a JSON object"):
+        check_tool_catalog(bad, TOOLS)
+
+
+def test_the_record_type_is_checked_before_the_record_is_read() -> None:
+    """A non-object record is refused for being one, not for a missing `format`."""
+    key = generate_key()
+    with pytest.raises(ProvenanceError) as excinfo:
+        verify_record([], key_to_jwk(key))
+    assert "unknown format" not in str(excinfo.value)

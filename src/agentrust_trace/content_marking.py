@@ -150,6 +150,16 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     if not _DIGEST_RE.match(str(expected or "")):
         raise ContentMarkingError(f"record.hash {expected!r} is not a sha256:/sha384: digest")
 
+    if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
+        raise ContentMarkingError(
+            f"record_bytes must be the bytes retrieved from {ref['url']}, got "
+            f"{type(record_bytes).__name__}. `build_assertion` already refuses this and "
+            "the reason it matters more here is that `bytes(5)` is five zero bytes: an "
+            "int would be hashed, would not match, and the caller would be told the "
+            "record at the URL had changed, which is a specific accusation about "
+            "somebody else's server and would be false."
+        )
+
     actual = _digest(bytes(record_bytes), alg)
     if actual != expected:
         raise RecordMismatch(

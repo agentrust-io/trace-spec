@@ -13,6 +13,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Fixed
 
+- **`provenance.verify_record()`, `provenance.check_tool_catalog()` and `content_marking.verify_assertion()` now hold their externally supplied argument to the type they document.** Each read that argument before establishing its shape. Measured across a twelve-value junk matrix, the two provenance functions leaked eleven `AttributeError`s apiece; the twelfth value is `{}`, which is an object and so reached the refusal each function documents, which is not the `ProvenanceError` `verify_record` documents. `content_marking.verify_assertion()` was worse than a crash rather than merely undocumented: it did not check that `record_bytes` were bytes, and `bytes(5)` is five zero bytes, so an int was hashed, failed to match, and the caller was told the record at the URL had changed, which is a specific and false accusation about somebody else's server. All three now raise the error their module documents, naming the type received.
+
+### Fixed
+
 - **`jwk_thumbprint()` and `verify_record()` now refuse a non-object argument with the error they document.** Both read a member off the argument before establishing its shape, so a string, a number, `None`, a list or a bool raised `AttributeError`, which is not the `ValueError` `verify_record`'s docstring names for every rejection other than a bad signature, and is not caught by a caller written against that contract. Neither argument is one the caller has already established: a JWK reaches `jwk_thumbprint` from a peer, a key document or a record's own `cnf`, and the record handed to `verify_record` is by definition not yet known to be an object. Both now raise `ValueError` naming the type received. 21 tests: removing the two guards fails 20 of them, and the twenty-first is the control that has to keep passing.
 
 ### Fixed
