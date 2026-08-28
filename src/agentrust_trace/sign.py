@@ -179,10 +179,32 @@ def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None
     Both outcomes fail closed. An unreachable revocation source is not evidence
     that a key is unrevoked, so a store that raises is treated as a rejection
     rather than passed over.
+
+    A callable that returns a non-bool has also not determined anything, and is
+    treated the same way. Reading its answer by truthiness would decide the one
+    check here that exists to catch a compromised key, on a value whose truthiness
+    means nothing about revocation. The membership branch needs no such guard:
+    ``in`` yields a real bool whatever ``__contains__`` returns.
     """
     for identifier in _key_identifiers(jwk):
         try:
-            revoked = revocation(identifier) if callable(revocation) else identifier in revocation
+            if callable(revocation):
+                revoked = revocation(identifier)
+                if not isinstance(revoked, bool):
+                    # `RevocationStore` is `Callable[[str], bool]`, and a store that
+                    # answers with anything else has not answered. Truthiness would
+                    # decide it here, and truthiness is unrelated to revocation
+                    # status: `None`, `""`, `0` and `[]` would all read as "not
+                    # revoked", which is the direction that lets a compromised key
+                    # through, while the string "no" would read as revoked. The
+                    # `None` case is not hypothetical. It is what a lookup returns
+                    # when its author handled the 200 and forgot the rest, which is
+                    # exactly the outage this check exists to survive.
+                    raise TypeError(
+                        f"returned {type(revoked).__name__}, not bool"
+                    )
+            else:
+                revoked = identifier in revocation
         except Exception as exc:
             raise ValueError(
                 f"revocation status for key {identifier!r} could not be determined: {exc}. "
@@ -380,8 +402,9 @@ def verify_record(
         revocation status at verification time. Pass a ``revocation`` store, either
         a container of revoked key identifiers or a callable performing a live
         CRL/status/SCITT lookup. The trusted key is rejected if it is listed, or if
-        the store cannot answer. Identifiers are the key's RFC 7638 thumbprint
-        (``jwk_thumbprint``) and its ``kid``.
+        the store cannot answer: a callable that raises has not answered, and so has
+        one that returns anything other than ``True`` or ``False``. Identifiers are
+        the key's RFC 7638 thumbprint (``jwk_thumbprint``) and its ``kid``.
 
         ``revocation=None`` (the default) skips the check and keeps verification
         purely offline. Offline verification cannot prove non-revocation: a
