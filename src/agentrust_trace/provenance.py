@@ -239,7 +239,16 @@ def build_record(
 
 
 def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
-    """Sign per TRACE v0.2 §3.2: Ed25519 over the JCS form with the signature absent."""
+    """Sign per TRACE v0.2 §3.2: Ed25519 over the JCS form with the signature absent.
+
+    Raises ``ProvenanceError`` for a *record* that is not a JSON object. ``{**record}``
+    reads it before its shape is established, so a non-mapping raised a bare
+    ``TypeError`` about dict unpacking, which is not this module's documented refusal.
+    """
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}"
+        )
     payload = {**record, "cnf": {"jwk": key_to_jwk(key)}}
     body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
     import base64

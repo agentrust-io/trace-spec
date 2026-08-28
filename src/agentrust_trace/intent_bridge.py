@@ -8,6 +8,7 @@ import time
 from hmac import compare_digest
 from typing import Any
 
+import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace.sign import _b64url_decode, _canonical_bytes, _pubkey_from_jwk
@@ -33,17 +34,40 @@ class AuthorizationMismatch(IntentBridgeError):
     """Execution evidence does not match the signed authorization."""
 
 
+def _jcs(value: dict[str, Any], what: str) -> bytes:
+    """Canonical bytes for *value*, as ``IntentBridgeError`` when there are none.
+
+    ``_canonical_bytes`` is ``rfc8785.dumps`` and raises by design: a value JCS has
+    no form for has no canonical bytes to return. Its errors are ``ValueError``
+    subclasses, which satisfies ``sign``'s documented contract but not this
+    module's: ``rfc8785.CanonicalizationError`` is not an ``IntentBridgeError``, so
+    a caller written against this module's own exception does not catch it.
+
+    Four of the five values that trip it are ordinary JSON that ``json.loads``
+    accepts, an integer outside the JCS safe range, a non-finite float, and a lone
+    surrogate among them, so an authorization assembled from a parsed document
+    reaches this.
+    """
+    try:
+        return _canonical_bytes(value)
+    except rfc8785.CanonicalizationError as exc:
+        raise IntentBridgeError(
+            f"{what} has no RFC 8785 canonical form, so it cannot be digested or "
+            f"signed: {exc}"
+        ) from exc
+
+
 def digest_jcs(value: dict[str, Any]) -> str:
     """Return the SHA-256 digest of an RFC 8785 canonical JSON object."""
     if not isinstance(value, dict):
         raise IntentBridgeError("a digest input must be a JSON object")
-    return f"sha256:{hashlib.sha256(_canonical_bytes(value)).hexdigest()}"
+    return f"sha256:{hashlib.sha256(_jcs(value, 'the digest input')).hexdigest()}"
 
 
 def sign_bridge(authorization: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
     """Sign the complete authorization; key material is deliberately not embedded."""
     artifact = {"profile": BRIDGE_PROFILE, "authorization": authorization}
-    signature = base64.urlsafe_b64encode(key.sign(_canonical_bytes(artifact))).rstrip(b"=")
+    signature = base64.urlsafe_b64encode(key.sign(_jcs(artifact, "the authorization"))).rstrip(b"=")
     return {**artifact, "signature": signature.decode("ascii")}
 
 
@@ -114,10 +138,14 @@ def verify_bridge(
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
         _nonempty_string(authorization[field], f"authorization.{field}")
 
+    # Hoisted out of the try below. Inside it, an authorization JCS cannot serialize
+    # was reported as "the signature is invalid", which is a different fact and sends
+    # the reader to look at a key. There are no bytes for a signature to be checked
+    # against, so nothing has been learned about the signature at all.
+    body = _jcs({"profile": BRIDGE_PROFILE, "authorization": authorization},
+                "the authorization")
     try:
-        _pubkey_from_jwk(trusted_authorizer_jwk).verify(
-            signature, _canonical_bytes({"profile": BRIDGE_PROFILE, "authorization": authorization})
-        )
+        _pubkey_from_jwk(trusted_authorizer_jwk).verify(signature, body)
     except Exception as exc:
         raise IntentBridgeError("authorization signature is invalid") from exc
     trusted_kid = trusted_authorizer_jwk.get("kid")
