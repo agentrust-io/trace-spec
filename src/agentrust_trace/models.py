@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 # ISO 8601 duration, spelled out by alternation rather than with a negative
@@ -20,6 +20,33 @@ _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME}
 # builds against, and a model that accepts what the schema rejects sends the failure
 # downstream to whichever canonicalizer the producer happens to be using.
 JCS_SAFE_INTEGER = 9007199254740991
+
+
+def _not_a_boolean(value: Any) -> Any:
+    """Reject ``True`` and ``False`` where JSON says integer.
+
+    ``isinstance(True, int)`` is a Python fact and not a JSON one. JSON Schema's
+    ``"type": "integer"`` does not match a boolean, so ``schema/trace-claim.json``
+    rejects ``{"slsa_level": true}`` and these models accepted it, coercing it to
+    ``1``. The record was then a claim of SLSA build level 1, assembled out of a
+    boolean, that no other implementation would have validated.
+
+    The two fields that did not have this hole, ``iat`` and ``origin.ingested_at``,
+    were safe by accident rather than by design: their lower bound is above 1, so
+    the coerced value failed the range check afterwards. ``appraisal.timestamp``
+    allows 1 and turned ``true`` into 1 January 1970.
+    """
+    if isinstance(value, bool):
+        raise ValueError(
+            "expected an integer, got a boolean. JSON Schema type 'integer' does "
+            "not match true or false, so a record carrying one is rejected by "
+            "schema/trace-claim.json and by any implementation validating against it."
+        )
+    return value
+
+
+#: An integer as JSON means it, rather than as Python's type hierarchy means it.
+JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
 
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
@@ -96,7 +123,7 @@ class ToolTranscript(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     hash: DigestStr
-    call_count: Annotated[int, Field(ge=0, le=JCS_SAFE_INTEGER)] | None = None
+    call_count: Annotated[JsonInt, Field(ge=0, le=JCS_SAFE_INTEGER)] | None = None
     transcript_uri: str | None = None
 
 
@@ -152,7 +179,7 @@ class Origin(BaseModel):
     kind: Literal["self", "third-party-control-plane", "log-import"]
     producer: Annotated[str, Field(min_length=1)]
     source_event_id: Annotated[str, Field(min_length=1)] | None = None
-    ingested_at: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)] | None = None
+    ingested_at: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)] | None = None
 
 
 class Reference(BaseModel):
@@ -200,7 +227,7 @@ class Reference(BaseModel):
 class BuildProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    slsa_level: Annotated[int, Field(ge=0, le=3)]
+    slsa_level: Annotated[JsonInt, Field(ge=0, le=3)]
     builder: str | None = None
     digest: DigestStr
     provenance_uri: str | None = None
@@ -215,7 +242,7 @@ class Appraisal(BaseModel):
     status: Literal["affirming", "warning", "contraindicated", "none"]
     verifier: str
     policy_ref: str | None = None
-    timestamp: Annotated[int, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
+    timestamp: Annotated[JsonInt, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
 
@@ -268,7 +295,7 @@ class TrustRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
-    iat: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
+    iat: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
     subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
     model: ModelInfo
     runtime: RuntimeInfo
