@@ -570,6 +570,69 @@ def test_verify_record_fails_closed_when_revocation_source_errors():
         verify_record(record, key_to_jwk(key), revocation=unreachable)
 
 
+@pytest.mark.parametrize("answer", [None, "", 0, [], {}, 0.0])
+def test_verify_record_fails_closed_when_the_store_answers_with_a_non_bool(answer):
+    """A falsy non-bool is not "not revoked". It is no answer at all.
+
+    ``RevocationStore`` is ``Callable[[str], bool]``. Before this, the return value
+    was read by truthiness, so every value here let the key through. ``None`` is the
+    one that matters: it is what a lookup returns when its author handled the 200 and
+    forgot the rest, which is precisely the outage
+    ``test_verify_record_fails_closed_when_revocation_source_errors`` exists to
+    survive. The two cases are one fact, and only the noisier half was covered.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    with pytest.raises(ValueError, match="could not be determined"):
+        verify_record(record, key_to_jwk(key), revocation=lambda _identifier: answer)
+
+
+@pytest.mark.parametrize("answer", ["no", "false", "unrevoked", [0]])
+def test_verify_record_fails_closed_when_a_truthy_non_bool_would_have_read_as_revoked(answer):
+    """The same guard, from the side that would not have been a security hole.
+
+    Truthiness read ``"no"`` as revoked and ``0`` as not revoked, which is not a
+    conservative reading in one direction and a lax one in the other. It is no
+    reading at all: the truth value of a string says nothing about revocation. Both
+    halves have to fail closed or the guard is a coin flip that happens to land
+    safely half the time.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    with pytest.raises(ValueError, match="could not be determined"):
+        verify_record(record, key_to_jwk(key), revocation=lambda _identifier: answer)
+
+
+def test_verify_record_still_accepts_the_two_answers_the_type_allows():
+    """Without this, refusing every callable would pass both tests above."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    verify_record(record, key_to_jwk(key), revocation=lambda _identifier: False)
+
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, key_to_jwk(key), revocation=lambda _identifier: True)
+
+
+def test_the_membership_branch_is_untouched_by_the_bool_guard():
+    """``in`` yields a real bool whatever ``__contains__`` returns, so a container
+    store needs no guard and must not acquire one by accident."""
+
+    class AnswersWithAString:
+        def __contains__(self, _identifier: object) -> bool:
+            return "yes"  # type: ignore[return-value]
+
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    with pytest.raises(ValueError, match="revoked"):
+        verify_record(record, key_to_jwk(key), revocation=AnswersWithAString())
+
+    verify_record(record, key_to_jwk(key), revocation=set())
+
+
 def test_verify_record_revocation_works_with_public_key_object():
     """The trusted key may be an Ed25519PublicKey; its JWK is derived for the check."""
     key = generate_key()
@@ -686,3 +749,42 @@ def test_round_trip_with_non_ascii_payload():
     record["model"]["provider"] = "modèle français \U0001f916"
     signed = sign_record(record, key)
     verify_record(signed, key_to_jwk(key))  # must not raise
+
+
+#: Values a caller can hand a function that documents an object argument. The last
+#: five are the ones a record assembled from parsed JSON can actually carry.
+_NOT_AN_OBJECT = ("a-string", 123, None, [1, 2], True, False, 0, "", b"bytes", 1.5)
+
+
+@pytest.mark.parametrize("value", _NOT_AN_OBJECT)
+def test_jwk_thumbprint_refuses_a_non_object_with_the_error_it_documents(value):
+    """`jwk_thumbprint` documents `ValueError` and read `.get` off its argument first.
+
+    A JWK reaches it from a peer, a key document, or a record's own `cnf`, so its shape
+    is not something the caller has established. Before this it raised `AttributeError`,
+    which a caller written against the documented contract does not catch.
+    """
+    with pytest.raises(ValueError):
+        jwk_thumbprint(value)
+
+
+@pytest.mark.parametrize("value", _NOT_AN_OBJECT)
+def test_verify_record_refuses_a_non_object_record_with_the_error_it_documents(value):
+    """Same shape, on the argument that is by definition untrusted.
+
+    `verify_record`'s docstring says every rejection other than a bad signature is a
+    `ValueError`. A non-object record reached `record.get("eat_profile")` and raised
+    `AttributeError` instead.
+    """
+    key = generate_key()
+    with pytest.raises(ValueError):
+        verify_record(value, key_to_jwk(key))
+
+
+def test_the_guards_do_not_refuse_what_they_should_accept():
+    """Without this, raising unconditionally would pass both tests above."""
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+
+    jwk_thumbprint(key_to_jwk(key))
+    verify_record(record, key_to_jwk(key))

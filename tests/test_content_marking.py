@@ -207,3 +207,42 @@ def test_anchor_is_carried_when_given() -> None:
 def test_anchor_is_omitted_when_absent() -> None:
     """Omitted rather than null: an unanchored record has no entry to name."""
     assert "anchor" not in build_assertion(_bytes(_record()), url=URL)["data"]
+
+
+# --- record_bytes that are not bytes at all -----------------------------------
+#
+# build_assertion validates the type of record_bytes and verify_assertion did
+# not. The int case is the one worth a test of its own: bytes(5) is five zero
+# bytes, so the value was hashed, did not match, and the caller was told the
+# record at the URL had changed. That is a specific accusation about somebody
+# else's server, made confidently and with a digest attached, when the only
+# thing wrong was the argument.
+
+NOT_BYTES = [None, 5, 0, "a string", "", [], ["x"], {"a": 1}, True]
+
+
+@pytest.mark.parametrize("bad", NOT_BYTES)
+def test_verify_assertion_refuses_record_bytes_that_are_not_bytes(bad) -> None:
+    a = build_assertion(_bytes(_record()), url=URL)
+    with pytest.raises(ContentMarkingError, match="record_bytes must be the bytes retrieved"):
+        verify_assertion(a, bad)
+
+
+def test_an_int_no_longer_reports_a_record_mismatch() -> None:
+    """The failure this closes, named on its own so it cannot come back quietly.
+
+    RecordMismatch means "the URL is serving something else". Reporting it for a
+    caller's type error points the reader at the wrong party, and it is worse than
+    a crash for exactly that reason: a crash says the call was wrong.
+    """
+    a = build_assertion(_bytes(_record()), url=URL)
+    with pytest.raises(ContentMarkingError) as excinfo:
+        verify_assertion(a, 5)
+    assert not isinstance(excinfo.value, RecordMismatch)
+    assert "does not match the assertion" not in str(excinfo.value)
+
+
+def test_empty_bytes_are_refused_like_build_assertion_refuses_them() -> None:
+    a = build_assertion(_bytes(_record()), url=URL)
+    with pytest.raises(ContentMarkingError, match="record_bytes must be the bytes retrieved"):
+        verify_assertion(a, b"")

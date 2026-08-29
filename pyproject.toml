@@ -24,6 +24,13 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0",
     "jsonschema>=4.20",
+    # `jsonschema` treats `format` as an annotation unless a checker for that format is
+    # installed. Without this, all eight `"format": "uri"` declarations in
+    # schema/trace-claim.json are inert: `validate_json` builds a `FormatChecker`, the
+    # code reads as though URIs are checked, and "not a uri" validates. The non-GPL
+    # validator is used deliberately: `jsonschema[format]` pulls `rfc3987`, which is
+    # GPLv3, into an Apache-2.0 package's dependency tree.
+    "rfc3986-validator>=0.1.1",
     "cryptography>=42.0",
     "rfc8785>=0.1.2",
 ]

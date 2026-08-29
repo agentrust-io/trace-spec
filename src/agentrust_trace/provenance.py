@@ -239,7 +239,16 @@ def build_record(
 
 
 def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
-    """Sign per TRACE v0.2 §3.2: Ed25519 over the JCS form with the signature absent."""
+    """Sign per TRACE v0.2 §3.2: Ed25519 over the JCS form with the signature absent.
+
+    Raises ``ProvenanceError`` for a *record* that is not a JSON object. ``{**record}``
+    reads it before its shape is established, so a non-mapping raised a bare
+    ``TypeError`` about dict unpacking, which is not this module's documented refusal.
+    """
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}"
+        )
     payload = {**record, "cnf": {"jwk": key_to_jwk(key)}}
     body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
     import base64
@@ -303,6 +312,15 @@ def verify_record(
     :func:`check_tool_catalog` with the tools the server actually offered.
     """
     import base64
+
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}. `_as_object` "
+            "holds `identity` and `tool_catalog` to that shape, and neither can be "
+            "reached until the record itself is one: `record.get(...)` on a list or a "
+            "string raises AttributeError, which is not the ProvenanceError this "
+            "function documents and is not caught by a caller written against it."
+        )
 
     if record.get("format") != FORMAT:
         raise ProvenanceError(
@@ -403,6 +421,13 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
     contract :func:`verify_record` makes, since this can run against a record
     ``verify_record`` has not (yet) seen.
     """
+    if not isinstance(record, dict):
+        raise ProvenanceError(
+            f"record must be a JSON object, got {type(record).__name__}. This runs "
+            "against records `verify_record` has not seen, as its docstring says, so it "
+            "cannot assume that function established the shape."
+        )
+
     actual = tool_catalog_hash(tools)
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")

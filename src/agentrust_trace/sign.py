@@ -53,8 +53,26 @@ def generate_key() -> Ed25519PrivateKey:
 
 
 def load_key(pem: str) -> Ed25519PrivateKey:
-    """Load an Ed25519 private key from a PEM string."""
-    return serialization.load_pem_private_key(pem.encode(), password=None)  # type: ignore[return-value]
+    """Load an Ed25519 private key from a PEM string.
+
+    Raises ``ValueError`` for anything that is not a PEM string this library can
+    read. A PEM arrives from a file, an environment variable or a secret store,
+    so its type is not something the caller has already established: reading
+    ``.encode()`` off it first turned every non-string into an ``AttributeError``
+    and a lone surrogate into a ``UnicodeEncodeError``, neither of which a caller
+    written against this signature catches.
+    """
+    if not isinstance(pem, str):
+        raise ValueError(
+            f"pem must be a PEM string, got {type(pem).__name__}. A key read from a "
+            "file, an environment variable or a secret store can be bytes or None "
+            "before anyone has looked at it."
+        )
+    try:
+        encoded = pem.encode()
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"pem is not encodable as UTF-8: {exc}") from exc
+    return serialization.load_pem_private_key(encoded, password=None)  # type: ignore[return-value]
 
 
 def load_signing_key() -> Ed25519PrivateKey:
@@ -82,7 +100,26 @@ def _okp_jwk(raw_public_bytes: bytes) -> dict[str, str]:
 
 
 def key_to_jwk(key: Ed25519PrivateKey) -> dict[str, str]:
-    """Return the public JWK dict for *key* (OKP / Ed25519)."""
+    """Return the public JWK dict for *key* (OKP / Ed25519).
+
+    Raises ``ValueError`` for anything that is not an ``Ed25519PrivateKey``. A
+    public key is called out separately because it is the plausible mistake here:
+    the name reads as "turn a key into a JWK", the result is the *public* JWK, and
+    a caller holding only the public half will reach for this. It is not a widening
+    this function can make on its own, since ``sign_record`` depends on being handed
+    something that can sign; ``_jwk_from_public_key`` is the path for that half.
+    """
+    if not isinstance(key, Ed25519PrivateKey):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+        if isinstance(key, Ed25519PublicKey):
+            raise ValueError(
+                "key_to_jwk needs the private key, not the public one. It derives the "
+                "public JWK from it, and its callers go on to sign with the same object."
+            )
+        raise ValueError(
+            f"key must be an Ed25519PrivateKey, got {type(key).__name__}"
+        )
     return _okp_jwk(
         key.public_key().public_bytes(
             encoding=serialization.Encoding.Raw,
@@ -137,6 +174,12 @@ def jwk_thumbprint(jwk: dict[str, Any]) -> str:
 
     Raises ``ValueError`` for an unknown ``kty`` or a missing required member.
     """
+    if not isinstance(jwk, dict):
+        raise ValueError(
+            f"jwk must be a JSON object, got {type(jwk).__name__}. A JWK reaches this "
+            "function from a peer, a key document or a record's own `cnf`, so its shape "
+            "is not something the caller has already established."
+        )
     kty = jwk.get("kty")
     if not isinstance(kty, str) or kty not in _THUMBPRINT_MEMBERS:
         raise ValueError(
@@ -173,10 +216,32 @@ def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None
     Both outcomes fail closed. An unreachable revocation source is not evidence
     that a key is unrevoked, so a store that raises is treated as a rejection
     rather than passed over.
+
+    A callable that returns a non-bool has also not determined anything, and is
+    treated the same way. Reading its answer by truthiness would decide the one
+    check here that exists to catch a compromised key, on a value whose truthiness
+    means nothing about revocation. The membership branch needs no such guard:
+    ``in`` yields a real bool whatever ``__contains__`` returns.
     """
     for identifier in _key_identifiers(jwk):
         try:
-            revoked = revocation(identifier) if callable(revocation) else identifier in revocation
+            if callable(revocation):
+                revoked = revocation(identifier)
+                if not isinstance(revoked, bool):
+                    # `RevocationStore` is `Callable[[str], bool]`, and a store that
+                    # answers with anything else has not answered. Truthiness would
+                    # decide it here, and truthiness is unrelated to revocation
+                    # status: `None`, `""`, `0` and `[]` would all read as "not
+                    # revoked", which is the direction that lets a compromised key
+                    # through, while the string "no" would read as revoked. The
+                    # `None` case is not hypothetical. It is what a lookup returns
+                    # when its author handled the 200 and forgot the rest, which is
+                    # exactly the outage this check exists to survive.
+                    raise TypeError(
+                        f"returned {type(revoked).__name__}, not bool"
+                    )
+            else:
+                revoked = identifier in revocation
         except Exception as exc:
             raise ValueError(
                 f"revocation status for key {identifier!r} could not be determined: {exc}. "
@@ -258,9 +323,20 @@ def anchor_bytes(value: Any) -> bytes:
     by name, is that diagnostic.
     """
     _reject_unanchorable(value)
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-    ).encode("ascii")
+    try:
+        return json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("ascii")
+    except TypeError as exc:
+        # `_reject_unanchorable` names the two cases section 1 puts outside the
+        # profile. A type JSON cannot serialize at all is a third, and it reached
+        # `json.dumps` and came back as "Object of type bytes is not JSON
+        # serializable": a message about a serializer, from a function whose stated
+        # purpose is to refuse the value by name.
+        raise UnanchorableValue(
+            f"$ holds a {type(value).__name__}, which is not JSON at all, so it has "
+            f"no anchor form: {exc}"
+        ) from exc
 
 
 def _b64url_decode(value: str, *, field: str) -> bytes:
@@ -288,7 +364,16 @@ def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any
     The returned dict is a plain JSON-serialisable object. Pass it to
     ``json.dumps()`` to get the wire form, or to ``TrustRecord.model_validate()``
     to confirm structural validity before writing.
+
+    Raises ``ValueError`` for a *record* that is not a JSON object. ``{**record}``
+    reads it before anything establishes its shape, so a non-mapping raised a bare
+    ``TypeError`` naming a dict-unpacking failure, which is not the module's
+    documented refusal and tells the caller nothing about which argument was wrong.
     """
+    if not isinstance(record, dict):
+        raise ValueError(
+            f"record must be a JSON object, got {type(record).__name__}"
+        )
     jwk = key_to_jwk(key)
     payload: dict[str, Any] = {**record, "cnf": {"jwk": jwk}}
     body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
@@ -374,8 +459,9 @@ def verify_record(
         revocation status at verification time. Pass a ``revocation`` store, either
         a container of revoked key identifiers or a callable performing a live
         CRL/status/SCITT lookup. The trusted key is rejected if it is listed, or if
-        the store cannot answer. Identifiers are the key's RFC 7638 thumbprint
-        (``jwk_thumbprint``) and its ``kid``.
+        the store cannot answer: a callable that raises has not answered, and so has
+        one that returns anything other than ``True`` or ``False``. Identifiers are
+        the key's RFC 7638 thumbprint (``jwk_thumbprint``) and its ``kid``.
 
         ``revocation=None`` (the default) skips the check and keeps verification
         purely offline. Offline verification cannot prove non-revocation: a
@@ -389,6 +475,12 @@ def verify_record(
 
     # Profile first: refuse semantics this build does not implement before spending
     # any work on the record.
+    if not isinstance(record, dict):
+        raise ValueError(
+            f"record must be a JSON object, got {type(record).__name__}. A Trust Record "
+            "is always an object, and what a verifier is handed is by definition not yet "
+            "established to be one."
+        )
     profile = record.get("eat_profile")
     if not isinstance(profile, str) or not profile:
         raise ValueError(
