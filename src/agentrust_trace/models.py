@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 # ISO 8601 duration, spelled out by alternation rather than with a negative
@@ -21,10 +29,73 @@ _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME}
 # downstream to whichever canonicalizer the producer happens to be using.
 JCS_SAFE_INTEGER = 9007199254740991
 
+
+def _not_a_boolean(value: Any) -> Any:
+    """Reject ``True`` and ``False`` where JSON says integer.
+
+    ``isinstance(True, int)`` is a Python fact and not a JSON one. JSON Schema's
+    ``"type": "integer"`` does not match a boolean, so ``schema/trace-claim.json``
+    rejects ``{"slsa_level": true}`` and these models accepted it, coercing it to
+    ``1``. The record was then a claim of SLSA build level 1, assembled out of a
+    boolean, that no other implementation would have validated.
+
+    The two fields that did not have this hole, ``iat`` and ``origin.ingested_at``,
+    were safe by accident rather than by design: their lower bound is above 1, so
+    the coerced value failed the range check afterwards. ``appraisal.timestamp``
+    allows 1 and turned ``true`` into 1 January 1970.
+    """
+    if isinstance(value, bool):
+        raise ValueError(
+            "expected an integer, got a boolean. JSON Schema type 'integer' does "
+            "not match true or false, so a record carrying one is rejected by "
+            "schema/trace-claim.json and by any implementation validating against it."
+        )
+    return value
+
+
+#: An integer as JSON means it, rather than as Python's type hierarchy means it.
+JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
+
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
 
-class ModelInfo(BaseModel):
+class _TraceModel(BaseModel):
+    """A model whose serialization is a TRACE record, not a Python object dump.
+
+    Pydantic writes every unset optional as an explicit ``null``. The schema permits
+    ``null`` for no named field, so ``TrustRecord.model_validate(record).model_dump()``
+    produced a record that `validate_json` rejects with "None is not of type 'string'",
+    and whose signature no longer verifies, because the added members change the RFC 8785
+    canonical bytes the signature is taken over.
+
+    That is the round trip ``sign_record``'s own docstring points a caller at: pass the
+    record to ``TrustRecord.model_validate()`` to confirm structural validity before
+    writing. A caller who then wrote the model out wrote a broken record, and neither the
+    validator nor the signature check runs at the moment the damage is done.
+
+    Absent optional members are therefore omitted rather than nulled.
+
+    Only *declared* fields are dropped. `JWK` sets ``extra="allow"`` and the schema's
+    ``canonicalizableValue`` permits a null there, so ``cnf.jwk`` may legitimately carry
+    one as data. A first version of this filtered the whole serialized dict and removed
+    it, which is the same defect this exists to fix, moved one level down: the round trip
+    stopped being identity and the signature stopped verifying, for a record the schema
+    accepts. An extra member keeps whatever value it was given.
+    """
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_optionals(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        extras = self.__pydantic_extra__ or {}
+        return {
+            key: value
+            for key, value in handler(self).items()
+            if value is not None or key in extras
+        }
+
+
+class ModelInfo(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     provider: str
@@ -34,7 +105,7 @@ class ModelInfo(BaseModel):
     aibom_uri: str | None = None
 
 
-class RuntimeInfo(BaseModel):
+class RuntimeInfo(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: Literal[
@@ -63,7 +134,7 @@ class RuntimeInfo(BaseModel):
     firmware_version: str | None = None
 
 
-class PolicyInfo(BaseModel):
+class PolicyInfo(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     bundle_hash: DigestStr
@@ -92,15 +163,15 @@ class PolicyInfo(BaseModel):
     policy_uri: str | None = None
 
 
-class ToolTranscript(BaseModel):
+class ToolTranscript(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     hash: DigestStr
-    call_count: Annotated[int, Field(ge=0, le=JCS_SAFE_INTEGER)] | None = None
+    call_count: Annotated[JsonInt, Field(ge=0, le=JCS_SAFE_INTEGER)] | None = None
     transcript_uri: str | None = None
 
 
-class Delegation(BaseModel):
+class Delegation(_TraceModel):
     """A2A profile: links this record to the record of the delegating hop.
 
     Present when this execution acted on authority delegated by another agent.
@@ -116,7 +187,7 @@ class Delegation(BaseModel):
     credential_id: Annotated[str, Field(min_length=1)]
 
 
-class Origin(BaseModel):
+class Origin(_TraceModel):
     """Where the evidence in this record came from, when that is not this runtime.
 
     Absent means the record was produced by the runtime whose execution it
@@ -152,10 +223,10 @@ class Origin(BaseModel):
     kind: Literal["self", "third-party-control-plane", "log-import"]
     producer: Annotated[str, Field(min_length=1)]
     source_event_id: Annotated[str, Field(min_length=1)] | None = None
-    ingested_at: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)] | None = None
+    ingested_at: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)] | None = None
 
 
-class Reference(BaseModel):
+class Reference(_TraceModel):
     """A fact outside this record that the record points at. Spec section 3.1.2.
 
     ``origin`` records where evidence *came from* and can lower assurance.
@@ -197,10 +268,10 @@ class Reference(BaseModel):
     digest: DigestStr | None = None
 
 
-class BuildProvenance(BaseModel):
+class BuildProvenance(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
-    slsa_level: Annotated[int, Field(ge=0, le=3)]
+    slsa_level: Annotated[JsonInt, Field(ge=0, le=3)]
     builder: str | None = None
     digest: DigestStr
     provenance_uri: str | None = None
@@ -209,13 +280,13 @@ class BuildProvenance(BaseModel):
     provenance_depth: Literal["surface", "builder", "transitive"] | None = None
 
 
-class Appraisal(BaseModel):
+class Appraisal(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["affirming", "warning", "contraindicated", "none"]
     verifier: str
     policy_ref: str | None = None
-    timestamp: Annotated[int, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
+    timestamp: Annotated[JsonInt, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
 
@@ -225,7 +296,7 @@ class Appraisal(BaseModel):
 _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
 
 
-class JWK(BaseModel):
+class JWK(_TraceModel):
     # JWK params vary by key type (EC, OKP, RSA): allow unknown members per RFC 7517
     model_config = ConfigDict(extra="allow")
 
@@ -256,19 +327,19 @@ class JWK(BaseModel):
         return self
 
 
-class ConfirmationKey(BaseModel):
+class ConfirmationKey(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
     jwk: JWK
 
 
-class TrustRecord(BaseModel):
+class TrustRecord(_TraceModel):
     """TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution."""
 
     model_config = ConfigDict(extra="forbid")
 
     eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
-    iat: Annotated[int, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
+    iat: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
     subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
     model: ModelInfo
     runtime: RuntimeInfo

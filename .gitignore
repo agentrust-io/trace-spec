@@ -18,3 +18,22 @@ htmlcov/
 .venv/
 venv/
 uv.lock
+
+# What the documentation tells a reader to write into their working tree.
+#
+# docs/quickstart.md writes an unencrypted Ed25519 private key to trace-key.pem, under
+# a comment reading "keep secure, never commit or log". The comment was the whole of the
+# enforcement: a reader following the quickstart inside a clone was one `git add -A`
+# away from committing their signing key. tests/test_the_docs_do_not_leave_a_key_behind.py
+# recovers these paths from the documentation, so a doc that starts writing somewhere
+# new fails rather than quietly widening the gap.
+session.trace.json
+trace-key.pem
+trace-key.pem.pub
+
+# No key material of any kind, whatever it is called. The repository tracks none today
+# and there is no case for the first one arriving unnoticed.
+*.pem
+*.key
+*.p8
+*.pfx
