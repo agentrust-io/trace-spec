@@ -376,7 +376,8 @@ def verify_record(
     if not signature:
         raise ProvenanceError("record carries no signature")
 
-    embedded = (record.get("cnf") or {}).get("jwk")
+    cnf = _as_object(record.get("cnf"), "cnf")
+    embedded = cnf.get("jwk")
     if embedded:
         # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
         # its key material; `kid`, `use` and `alg` are optional members that carry none
