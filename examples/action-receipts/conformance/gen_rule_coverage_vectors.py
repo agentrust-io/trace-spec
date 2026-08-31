@@ -195,7 +195,7 @@ def main() -> None:
     f["evidence"]["terminal_state"] = "rejected"  # after the hash was taken
     fixtures.append(("13-evidence-hash-mismatch.json", f))
 
-    # issuer_key_unknown — the one non-failure in this set. Spec section 3.3.1: a
+    # issuer_key_unknown — the one non-failure in this set. Spec section 3.3.2: a
     # receipt whose issuer key is unknown to the verifier is unverified, not invalid.
     # An unpinned key means the signature cannot be checked, which confers no trust and
     # proves no forgery, so the expected block is written by hand rather than through

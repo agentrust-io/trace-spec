@@ -1,6 +1,6 @@
 # Verification Protocol
 
-TRACE Trust Records are independently verifiable offline — no call to the issuer, no API, no trust-me-the-log-is-real. The one thing offline verification cannot establish is that the signing key is *still* trusted; see [Checking revocation status](#checking-revocation-status).
+TRACE Trust Records are independently verifiable offline: no call to the issuer, no API, no trust-me-the-log-is-real. The one thing offline verification cannot establish is that the signing key is *still* trusted; see [Checking revocation status](#checking-revocation-status).
 
 ## Five-step verification
 
@@ -8,7 +8,7 @@ This is the normative protocol from [§3.3 of the spec](https://trace.agentrust-
 
 Before interpreting any claim, validate the complete object against the canonical v0.2 JSON Schema. A valid signature authenticates every byte but does not make an unknown field, missing required claim, or invalid enum meaningful. The Python `verify_record()` API performs this schema check automatically and fails closed.
 
-### Step 1 — Parse the envelope
+### Step 1: Parse the envelope
 
 A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
 
@@ -23,11 +23,11 @@ payload = {k: v for k, v in record.items() if k != "signature"}
 payload_bytes = rfc8785.dumps(payload)  # JCS canonical bytes, NOT json.dumps
 ```
 
-The pre-image is the RFC 8785 (JCS) canonical form of the record with only `signature` removed. All other top-level fields, including `cnf`, are included. `json.dumps(sort_keys=True)` is **not** JCS-conformant — it diverges for non-ASCII strings and IEEE 754 numbers — so use a JCS library (the spec mandates this in §3.2.2).
+The pre-image is the RFC 8785 (JCS) canonical form of the record with only `signature` removed. All other top-level fields, including `cnf`, are included. `json.dumps(sort_keys=True)` is **not** JCS-conformant, it diverges for non-ASCII strings and IEEE 754 numbers, so use a JCS library (the spec mandates this in §3.2.2).
 
-### Step 2 — Resolve the public key
+### Step 2: Resolve the public key
 
-The `cnf.jwk` field embeds the public key. For TEE-issued records, this key is TEE-bound — its private half never leaves the measured enclave.
+The `cnf.jwk` field embeds the public key. For TEE-issued records, this key is TEE-bound: its private half never leaves the measured enclave.
 
 Resolve trust out of band and require the trusted key and `cnf.jwk` to have the same RFC 7638 thumbprint before verification. Checking the signature with a trusted key while allowing the signed record to name a different confirmation key breaks the binding required by §3.2.2 and can mislead downstream proof-of-possession checks.
 
@@ -42,24 +42,24 @@ pub_key = Ed25519PublicKey.from_public_bytes(
 )
 ```
 
-### Step 3 — Verify the signature
+### Step 3: Verify the signature
 
 ```
 pub_key.verify(sig_bytes, payload_bytes)
-# Raises InvalidSignature if tampered — silent if valid
+# Raises InvalidSignature if tampered: silent if valid
 print("✓ Signature valid")
 ```
 
-### Step 4 — Check the EAT profile
+### Step 4: Check the EAT profile
 
 ```
 assert record["eat_profile"] == "tag:agentrust-io.com,2026:trace-v0.2", "Unknown profile"
 print("✓ eat_profile correct")
 ```
 
-If you verify with `agentrust_trace.verify_record`, this step is enforced for you, before any cryptographic work: a record whose `eat_profile` is missing, superseded (the v0.1 identifier), or anything other than `TRACE_PROFILE_V0_2` raises `ValueError`. The manual assert above is what a from-scratch verifier must do itself — spec section 2 requires a v0.2 verifier to reject everything but the v0.2 identifier, and a valid signature over semantics your build does not implement is not evidence.
+If you verify with `agentrust_trace.verify_record`, this step is enforced for you, before any cryptographic work: a record whose `eat_profile` is missing, superseded (the v0.1 identifier), or anything other than `TRACE_PROFILE_V0_2` raises `ValueError`. The manual assert above is what a from-scratch verifier must do itself: spec section 2 requires a v0.2 verifier to reject everything but the v0.2 identifier, and a valid signature over semantics your build does not implement is not evidence.
 
-### Step 5 — Appraise the claims
+### Step 5: Appraise the claims
 
 Interpret `appraisal.status` against your policy:
 
@@ -67,7 +67,7 @@ Interpret `appraisal.status` against your policy:
 | ----------------- | ---------------------------------------------- |
 | `affirming`       | All evidence passed verifier appraisal         |
 | `warning`         | Evidence passed but with conditions            |
-| `contraindicated` | Evidence failed — treat as untrusted           |
+| `contraindicated` | Evidence failed: treat as untrusted            |
 | `none`            | No appraisal performed (software-only Level 0) |
 
 ```
@@ -126,23 +126,23 @@ For Level 2 records (TEE-issued), additionally verify that the `cnf.jwk` key is 
 1. Compare `runtime.measurement` against the RIM
 1. Verify that `cnf.jwk` was endorsed by the TEE at that measurement
 
-This chain proves the key that signed the TRACE record was generated *inside* the attested enclave — not by an operator process.
+This chain proves the key that signed the TRACE record was generated *inside* the attested enclave, not by an operator process.
 
 ## Verifying build provenance depth
 
 The normative rules are defined by [§3.3.1 of the specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md). `build_provenance.provenance_depth` declares how far down the supply chain the issuer claims to have walked. A verifier records what it actually checked in `appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the record.
 
-| Claimed depth         | Verifier checks                                                                                                                                                                                                               | May downgrade to — evidence does not resolve                                                                                            | Fails — evidence resolves and contradicts                                                                               |
+| Claimed depth         | Verifier checks                                                                                                                                                                                                               | May downgrade to, evidence does not resolve                                                                                             | Fails, evidence resolves and contradicts                                                                                |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `surface` (or absent) | Confirm `digest` matches the workload artifact and `builder` resolves to the configured trusted-builder set.                                                                                                                  | Already the floor.                                                                                                                      | `digest` does not match the artifact the verifier independently holds, or `builder` is outside the trusted-builder set. |
 | `builder`             | All of surface, plus fetch `provenance_uri`, verify the SLSA attestation signature, check the attestation `subject` matches `digest`, and check the attestation `builder.id` matches `builder`.                               | `surface`, when `provenance_uri` is absent or unreachable, or its signature does not resolve.                                           | The attestation resolves and its `subject` does not match `digest`, or its `builder.id` does not match `builder`.       |
 | `transitive`          | All of builder, plus enumerate the SLSA `materials` / `resolvedDependencies` and confirm every entry has a verifiable publisher attestation (npm OIDC, PyPI Trusted Publisher, Sigstore Rekor entry, or platform equivalent). | `builder`, when an input carries no publisher attestation or the attestation declares no inputs at all; or `surface` per the row above. | An input's publisher attestation resolves and was signed under an issuer outside the configured trusted set.            |
 
-The two right-hand columns are disjoint, and which one applies turns on whether the evidence resolved — not on how serious the finding is.
+The two right-hand columns are disjoint, and which one applies turns on whether the evidence resolved, not on how serious the finding is.
 
 **Evidence that does not resolve** leaves a check unrun. The verifier may stop at the depth below, then records that lower depth in `appraisal.provenance_depth_verified`, and does not report the missing evidence as a failure of the record. A record is not defective because someone else's transparency log is unreachable, and a verifier that rejects on this is failing records for the weather.
 
-**Evidence that resolves and contradicts the record** fails the appraisal. A verifier does not downgrade to escape it. Downgrading there would record a narrower claim that is true while suppressing a wider one that is false — the record would pass as `builder` on evidence that positively refutes it at `transitive`, and the appraisal would say nothing about why.
+**Evidence that resolves and contradicts the record** fails the appraisal. A verifier does not downgrade to escape it. Downgrading there would record a narrower claim that is true while suppressing a wider one that is false: the record would pass as `builder` on evidence that positively refutes it at `transitive`, and the appraisal would say nothing about why.
 
 A verifier does not record `provenance_depth_verified` at a depth higher than it executed. Downgrading is how a verifier stays honest when evidence does not resolve; claiming depth it did not run is what the field exists to prevent. This last rule cannot be expressed in JSON Schema: the record is byte-identical whether the verifier walked the chain or merely says it did. The conformance vectors in [`examples/build-provenance-depth/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/build-provenance-depth) hold it instead, against a verifier's own output, and encode the split above vector by vector.
 
@@ -165,7 +165,7 @@ A verifier whose configured floor is not met by `provenance_depth_verified` sets
 
 A SLSA attestation produced by a trusted builder is signature-valid even when a maintainer's CI token has been stolen and used to publish a poisoned build input. Surface verification accepts that record. Transitive verification rejects it, because the poisoned input's publisher attestation does not chain back to the legitimate maintainer. Without a recorded depth, two conformant verifiers reach opposite conclusions on the same record and neither says why, which is the federation gap [section 1](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) names.
 
-That case is a failure and not a downgrade, and it is the sharpest reason the two are kept apart. The poisoned input's attestation resolved: the verifier holds it and can see the issuer is outside the trusted set. A verifier permitted to call that "transitive coverage unavailable" would record `builder`, accept, and report exactly what a verifier that never looked reports — which would make the depth field cover for the attack it was added to expose.
+That case is a failure and not a downgrade, and it is the sharpest reason the two are kept apart. The poisoned input's attestation resolved: the verifier holds it and can see the issuer is outside the trusted set. A verifier permitted to call that "transitive coverage unavailable" would record `builder`, accept, and report exactly what a verifier that never looked reports: which would make the depth field cover for the attack it was added to expose.
 
 ### `transitive` is a floor on effort, not a comparable claim
 
@@ -220,19 +220,19 @@ For action receipts, a verifier should distinguish five common outcomes:
 | `receipt_valid_rejected`   | The receipt is well-formed, trusted, bound to the call, and reports controller or policy rejection. This is valid negative evidence.                                                                                                                         |
 | `receipt_missing_required` | The profile required a receipt, but none was present for the consequential action.                                                                                                                                                                           |
 | `receipt_invalid`          | The receipt is present but fails signature, digest, freshness, ordering, or call-binding checks against a key the verifier holds.                                                                                                                            |
-| `receipt_unverified`       | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.1 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
+| `receipt_unverified`       | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.2 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
 
 The key boundary is that a valid rejection is not malformed evidence. It is evidence that the downstream authority declined the action. A valid acceptance also remains action-level evidence; it does not prove the requested physical or business outcome completed unless a stricter profile defines and trusts that external outcome claim.
 
 ## What verification proves
 
-| Claim verified           | What it means                                                   |
-| ------------------------ | --------------------------------------------------------------- |
-| Signature valid          | The record was not tampered with after issuance                 |
-| `cnf.jwk` hardware-bound | The signing key was generated inside a measured TEE             |
-| `policy.bundle_hash`     | This exact Cedar policy was in force — not an approximate       |
-| `tool_transcript.hash`   | The audit log is intact and matches the record                  |
-| SCITT receipt valid      | The record is in an append-only log — cannot be quietly deleted |
+| Claim verified           | What it means                                                  |
+| ------------------------ | -------------------------------------------------------------- |
+| Signature valid          | The record was not tampered with after issuance                |
+| `cnf.jwk` hardware-bound | The signing key was generated inside a measured TEE            |
+| `policy.bundle_hash`     | This exact Cedar policy was in force, not an approximate       |
+| `tool_transcript.hash`   | The audit log is intact and matches the record                 |
+| SCITT receipt valid      | The record is in an append-only log: cannot be quietly deleted |
 
 ## What verification does NOT prove
 
