@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.0",
-    "jsonschema>=4.20",
+    "jsonschema>=4.26.0",
     # `jsonschema` treats `format` as an annotation unless a checker for that format is
     # installed. Without this, all eight `"format": "uri"` declarations in
     # schema/trace-claim.json are inert: `validate_json` builds a `FormatChecker`, the
