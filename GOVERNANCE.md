@@ -151,9 +151,9 @@ Information disclosed in connection with any Project activity, including but not
 
 ## Linux Foundation hosting
 
-TRACE Specification is hosted at the Linux Foundation as a Series of LF Projects, LLC. The Linux Foundation [announced the contribution of TRACE](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026. The technical workstream is hosted by the Coalition for Secure AI (CoSAI).
+TRACE Specification is hosted at the Linux Foundation as a Series of LF Projects, LLC. The Linux Foundation [announced the contribution of TRACE](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026.
 
-Formation paperwork is still in progress: the Technical Charter and Project Contribution Agreement are being executed with LF Projects, LLC. This document is the governance authority until the Technical Charter takes effect, at which point governance transitions to a Technical Steering Committee as described in [CHARTER.md](CHARTER.md), and the Technical Charter controls where the two differ.
+The technical home for ongoing specification work is not yet settled. Formation paperwork is also still in progress: the Technical Charter and Project Contribution Agreement are being executed with LF Projects, LLC. This document is the governance authority until the Technical Charter takes effect, at which point governance transitions to a Technical Steering Committee as described in [CHARTER.md](CHARTER.md), and the Technical Charter controls where the two differ.
 
 ## Amendments
 
