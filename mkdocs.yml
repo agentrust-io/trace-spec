@@ -1,5 +1,5 @@
 site_name: TRACE
-site_description: Trust Runtime Attestation and Compliance Evidence: open attestation standard for agentic AI governance
+site_description: "Trust Runtime Attestation and Compliance Evidence: open attestation standard for agentic AI governance"
 site_url: https://trace.agentrust-io.com
 repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
@@ -173,7 +173,7 @@ extra:
         - icon: material/emoticon-sad-outline
           name: This page could be improved
           data: 0
-          note: Thanks for your feedback: open an issue to let us know.
+          note: "Thanks for your feedback: open an issue to let us know."
 
 extra_css:
   # Shared AgenTrust editorial design system. Deliberately the only stylesheet:
