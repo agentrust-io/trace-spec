@@ -11,6 +11,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+### Added
+
+- **Section 3.3.4: disclosed gaps in a receipt chain (#117).** Under a profile requiring action receipts, a specification that offers only "complete" and "broken" rewards concealment: an operator who backfills a lost receipt scores better than one who reports the loss. A `GapDisclosure` is a signed chain element stating that receipts which would have occupied its position were never emitted. Coverage is structural rather than asserted: the disclosure links back to the element before the gap, the next element emitted links back to the disclosure, and verification is two link checks a verifier already performs on every ordinary element. No range fields exist, because a hash chain cannot express a range and an emitter cannot know its successor's hash at write time.
+
+  The action-receipt outcome `receipt_missing_required` is narrowed to silent absence, and `receipt_gap_disclosed` is added beside it, distinct by requirement, with acceptance a verifier policy input. It never satisfies a profile requiring independently proven completeness: a disclosed gap does not establish that the missing receipts existed, how many were lost, or that omission was not selective. A disclosure at the live tail, where no successor exists to seal it, is unverified rather than disclosed or invalid: a chain truncated immediately after a disclosure is indistinguishable from an honest tail, so whatever the tail is granted, truncation is granted too. Conformance vectors in `examples/action-receipts/gap-disclosure/`, two per rule with a byte-for-byte generator; the tail case is pinned by its own test. Proposed and authored from production operation of a per-action receipt emitter; carried per the maintainer-carry provision in CONTRIBUTING.
+
+  Two cross-references that predate the renumbering which introduced section 3.3.1 are updated to name section 3.3.2, where the text they cite now lives.
+
 ### Fixed
 
 - **The exported `SCHEMA` was the live object the validator reads.** `_schema()` is `lru_cache`d and `_validator()` is built over whatever it returns, so the name exposed "for downstream tooling that needs the raw dict" and the validator's schema were one object: lowering `SCHEMA["properties"]["iat"]["minimum"]` made a record dated 1970 valid to `validate_json()`, to `iter_errors()`, and to the structural gate inside `sign.verify_record()`, for every later call in the process. Nothing about the call site looks wrong, since adapting the raw dict is the use the comment invites. It is a deep copy now; a shallow one would leave the nested `properties` dicts shared and the same edit would still land.

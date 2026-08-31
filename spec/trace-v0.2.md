@@ -401,7 +401,7 @@ requirement, such as `required`, `optional`, or `none`, without folding action
 evidence into the supply-chain provenance axis.
 
 An action receipt profile can build on the external execution evidence rules in
-section 3.3.1 by requiring the verifier to:
+section 3.3.2 by requiring the verifier to:
 
 1. recompute the receipt's action or evidence digest from the canonical action
    preimage;
@@ -420,6 +420,114 @@ untrusted, stale, out of order, or not bound to the expected call. Conversely, a
 signed acceptance receipt is not proof of physical completion or
 functional-safety certification unless the external issuer and profile
 explicitly make, and the verifier is configured to trust, that stronger claim.
+
+#### 3.3.4 Disclosed gaps in a receipt chain
+
+<!-- CHANGED: #117 - GapDisclosure chain element and the receipt_gap_disclosed outcome -->
+
+Under a profile requiring action receipts, completeness of the receipt chain is the
+load-bearing property. No emitter can be made gap-proof: any writer operating
+asynchronously has a window in which a crash loses a tail of receipts. A specification
+that offers only "complete" and "broken" therefore rewards concealment, because an
+operator who backfills a lost receipt scores better than one who reports the loss.
+
+A `GapDisclosure` is a signed statement, occupying a position in the receipt chain, that
+receipts which would have occupied that position were never emitted. It is negative
+evidence contributed by the emitter about itself. It does not establish that the missing
+receipts ever existed, how many were lost, or that the emitter did not omit them
+selectively; what the splice proves is where the gap sits in the chain, and nothing else.
+
+**Structure.** A `GapDisclosure` is a chain element. It MUST carry:
+
+- `type`, the value `GapDisclosure/1.0`;
+- `previous_receipt_hash`, the digest of the chain element immediately preceding the gap,
+  in the same form and computed the same way as on a receipt;
+- `session_id`, naming the receipt stream the disclosure belongs to;
+- `issuer_key_id`, identifying the key that signed it;
+- `signature`, over the canonical form of the disclosure with the signature field removed.
+
+It MAY carry `cause` and `receipts_lost_estimate`. Both are descriptive self-reports and
+nothing more: the receipts an estimate counts are absent by definition, so nothing in the
+chain corroborates either field. A verifier MUST NOT treat them as established, MUST NOT
+condition any outcome on their values, and MUST NOT reject a disclosure because either
+disagrees with other evidence. They exist to be reported, not relied on.
+
+**Stream binding.** The `session_id` is covered by the signature, and a verifier MUST
+reject a disclosure whose `session_id` does not match the receipt stream under
+verification. Without that comparison, a disclosure honestly signed for one stream is a
+transplantable excuse for a gap in any other: replay, in the position where replay is
+hardest to distinguish from recovery.
+
+**Chain binding.** A `GapDisclosure` MUST be spliced into the receipt chain at the point
+of resumption. Concretely, its `previous_receipt_hash` MUST name a chain element that is
+present, and the next chain element emitted after resumption MUST carry a
+`previous_receipt_hash` naming the disclosure. A disclosure that is not linked from both
+directions has not been sealed into the chain and MUST NOT be treated as covering
+anything.
+
+That requirement has a window in which it cannot be met honestly: at the live tail of
+the chain, after the failure and before resumption, the sealing successor does not exist
+yet. A verifier meeting a tail disclosure whose other checks pass MUST NOT report
+`receipt_gap_disclosed`, and MUST NOT report `receipt_invalid` either: the absence of a
+successor is an inability to check, not evidence of a defect, the same principle as
+section 3.3.2's treatment of unknown issuer keys. It MUST surface the disclosure as
+unverified with a distinct advisory, and re-verification after the chain resumes upgrades
+or impeaches it on the seal that then exists. This matters adversarially: a chain
+truncated immediately after a disclosure is indistinguishable from an honest tail, so
+whatever a verifier grants the honest tail, it grants the truncation.
+
+Gap boundaries MUST NOT be expressed as timestamps or as emitter-assigned sequence
+numbers. Both are signed by the same key that signs the receipts, so neither constrains
+an emitter that is misrepresenting the gap. The chain links are the boundaries.
+
+**Issuer.** A `GapDisclosure` MUST be signed by the key that signed the chain element its
+`previous_receipt_hash` names, or by an ancestor of that key in the hierarchy of
+section 3.2.1. A disclosure signed by any other key MUST be treated as invalid, whether
+or not that key is otherwise trusted. A gap is the moment at which introducing an
+unrelated key is most useful to an adversary and least distinguishable from recovery.
+
+**Consecutive disclosures.** A `GapDisclosure` MAY name another `GapDisclosure` as its
+predecessor, which represents an emitter that failed again before emitting a receipt. A
+verifier MUST report the number of consecutive disclosures. It MUST NOT reject solely on
+that basis: an emitter failing repeatedly and disclosing each time is behaving better
+than one that is silent.
+
+**Verifier outcomes.** The action-receipt outcome `receipt_missing_required` is narrowed,
+and the outcome `receipt_gap_disclosed` is added beside it:
+
+| Outcome | Meaning |
+|---|---|
+| `receipt_gap_disclosed` | Required receipts are absent, and a valid `GapDisclosure` occupies their position in the chain. Emitter-attested negative evidence. |
+| `receipt_missing_required` | Required receipts are absent and no valid disclosure occupies their position. Silent, and treated as presumptively adversarial. |
+
+A verifier MUST report `receipt_gap_disclosed` distinctly from
+`receipt_missing_required`. Collapsing them discards the distinction the disclosure was
+issued to make.
+
+Whether `receipt_gap_disclosed` is accepted or rejected MUST be a verifier policy input,
+not implementation-defined behaviour. A relying party evaluating a payment authorisation
+and one evaluating a telemetry batch will reasonably differ, and neither should have to
+change verifier to express that. One bound on that policy is not negotiable: a profile
+that requires independently proven completeness of the receipt chain MUST NOT accept
+`receipt_gap_disclosed` as satisfying it. A disclosed gap is an attested absence, not a
+proof of completeness, and no policy setting may promote the former into the latter.
+
+A `GapDisclosure` that fails signature verification, is not bound into the chain from
+both directions, names a session other than the stream under verification, is signed by
+a key outside the permitted set, or whose claimed gap is contradicted by chain elements
+that are in fact present, MUST yield `receipt_invalid` rather than falling back to
+`receipt_missing_required`. A forged, transplanted or self-contradictory disclosure is
+worse evidence than no disclosure: it is an attempt to convert silence into attestation,
+and the attempt itself is a finding.
+
+**Reporting.** A verification result MUST report each disclosed gap individually,
+carrying at minimum the linked predecessor, the number of consecutive disclosures, and
+the `cause` when one was supplied. Reducing disclosed gaps to a count or a boolean
+discards exactly the detail a relying party's policy needs.
+
+The conformance vectors for this section are `examples/action-receipts/gap-disclosure/`:
+twenty fixtures, two independent vectors per rule, with a generator that reproduces them
+byte for byte, and the live-tail contrast pinned by a dedicated test.
 
 ### 3.4 Scope
 

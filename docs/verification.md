@@ -264,15 +264,16 @@ Keep the verification results separate:
 | Action issuance evidence | Canonical action digest, receipt signature, trusted issuer key, session or call binding, chain order | Successful physical completion |
 | Outcome evidence | Controller or monitor decision carried by the receipt payload | Functional-safety certification unless the issuer and profile explicitly claim it |
 
-For action receipts, a verifier should distinguish five common outcomes:
+For action receipts, a verifier should distinguish six common outcomes:
 
 | Outcome | Meaning |
 |---|---|
 | `receipt_valid_accepted` | The receipt is well-formed, trusted, bound to the call, and reports acceptance. |
 | `receipt_valid_rejected` | The receipt is well-formed, trusted, bound to the call, and reports controller or policy rejection. This is valid negative evidence. |
-| `receipt_missing_required` | The profile required a receipt, but none was present for the consequential action. |
+| `receipt_missing_required` | The profile required a receipt, and none was present for the consequential action, with no valid `GapDisclosure` occupying its position in the chain. Silent absence, treated as presumptively adversarial (spec section 3.3.4). |
+| `receipt_gap_disclosed` | Required receipts are absent, and a valid `GapDisclosure` occupies their position in the chain: the emitter reported the loss and sealed the report into the chain. Emitter-attested negative evidence, distinct from silence; whether it is accepted is a verifier policy input (spec section 3.3.4). |
 | `receipt_invalid` | The receipt is present but fails signature, digest, freshness, ordering, or call-binding checks against a key the verifier holds. |
-| `receipt_unverified` | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.1 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
+| `receipt_unverified` | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.2 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
 
 The key boundary is that a valid rejection is not malformed evidence. It is
 evidence that the downstream authority declined the action. A valid acceptance

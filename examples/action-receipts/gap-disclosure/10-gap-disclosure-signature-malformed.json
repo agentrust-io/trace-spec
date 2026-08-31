@@ -1,0 +1,72 @@
+{
+  "name": "gap-disclosure-signature-malformed",
+  "description": "The signature is valid base64url of the wrong length. Together with the tampered vector this separates structural validation from verification.",
+  "profile": "trace.action_receipt.conformance.v0",
+  "source": {
+    "issue": "agentrust-io/trace-spec#117",
+    "spec": "spec/trace-v0.2.md section 3.3.4"
+  },
+  "context": {
+    "session_id": "trace-session-2026-07-06T15:22:11Z",
+    "require_receipt": true,
+    "verification_time": "2026-07-06T15:24:00Z",
+    "max_receipt_age_seconds": 300,
+    "expected_previous_receipt_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "chain": {
+      "predecessor_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+      "predecessor_present": true,
+      "predecessor_issuer_key_id": "did:web:factory.example:safety-controller#ed25519-2026q3",
+      "permitted_ancestor_key_ids": [
+        "did:web:factory.example:safety-controller#ed25519-workload-attestation"
+      ],
+      "successor_previous_receipt_hash": "sha256:63a0d2c102e487b710cf8e130d9f680f71803efe9e089d0ffa233b5f41364b70",
+      "successor_present": true,
+      "claimed_absent_but_present": [],
+      "consecutive_disclosures": 1
+    }
+  },
+  "action": {
+    "agent_id": "spiffe://factory.example/agent/ros2-fibonacci/dev",
+    "action_type": "ros2.action.example_interfaces/Fibonacci",
+    "action_scope": "/abort_fibonacci_process",
+    "action_timestamp": "2026-07-06T15:22:13Z",
+    "action_ref": "sha256:e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
+  },
+  "trusted_issuer_keys": {
+    "did:web:factory.example:safety-controller#ed25519-2026q3": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
+    },
+    "did:web:factory.example:safety-controller#ed25519-workload-attestation": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "Kay64UG8yvCyLhqU000LxzYeUm0L_hLIl5S8kyKWbdc"
+    },
+    "did:web:factory.example:safety-controller#ed25519-unrelated-but-trusted": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "XUDXAF07AOpCkKoxJLKnzU4nNa4X8rnk_j3gAv82Rig"
+    }
+  },
+  "gap_disclosure": {
+    "type": "GapDisclosure/1.0",
+    "previous_receipt_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "session_id": "trace-session-2026-07-06T15:22:11Z",
+    "issuer_key_id": "did:web:factory.example:safety-controller#ed25519-2026q3",
+    "cause": "crash",
+    "receipts_lost_estimate": 3,
+    "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  "expected": {
+    "status": "receipt_invalid",
+    "controller_outcome": "unknown",
+    "failures": [
+      "disclosure_signature_invalid"
+    ],
+    "warnings": [],
+    "consecutive_disclosures": 1,
+    "linked_predecessor": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "cause": "crash"
+  }
+}
