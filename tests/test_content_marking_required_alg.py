@@ -34,7 +34,20 @@ def test_null_record_alg_is_refused() -> None:
     assertion = build_assertion(raw, url=URL)
     assertion["data"]["record"]["alg"] = None
 
+    # Pins the plausible near-miss where explicit null is treated as "unset"
+    # and silently replaced with the old SHA-256 default.
     with pytest.raises(ContentMarkingError, match="unsupported digest algorithm None"):
+        verify_assertion(assertion, raw)
+
+
+@pytest.mark.parametrize("bad_alg", [[1], [], {"a": 1}, {}])
+def test_unhashable_record_alg_is_refused_without_type_error(bad_alg) -> None:
+    raw = _record_bytes()
+    assertion = build_assertion(raw, url=URL)
+    assertion["data"]["record"]["alg"] = bad_alg
+    assertion["data"]["record"]["hash"] = "nope"
+
+    with pytest.raises(ContentMarkingError, match="unsupported digest algorithm"):
         verify_assertion(assertion, raw)
 
 
