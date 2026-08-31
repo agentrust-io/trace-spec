@@ -17,6 +17,7 @@ on:
       - "CHANGELOG.md"
       - "CONTRIBUTING.md"
       - "GOVERNANCE.md"
+      - "CHARTER.md"
       - "ROADMAP.md"
       - "LIMITATIONS.md"
       - "CNAME"
