@@ -61,8 +61,8 @@
     },
     "subject": {
       "type": "string",
-      "description": "Workload identity as a SPIFFE SVID URI or DID URI.",
-      "pattern": "^(spiffe://|did:)"
+      "description": "Workload identity as a SPIFFE SVID URI or DID URI. A SPIFFE ID carries a trust domain and a workload path within it; a DID carries a lowercase method name, per DID Core section 3.1, and a method-specific identifier. A prefix alone is not an identity: spiffe://example.org names a trust domain and no workload.",
+      "pattern": "^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
     },
     "model": {
       "type": "object",
