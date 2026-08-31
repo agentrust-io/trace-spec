@@ -48,7 +48,7 @@ class RecordMismatch(ContentMarkingError):
 
     Its own type because it means something different from a malformed
     assertion: the document is well-formed and the thing it points at changed
-    after the asset was signed.
+after the asset was signed.
     """
 
 
@@ -146,6 +146,10 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     if not isinstance(ref, dict) or not ref.get("url"):
         raise ContentMarkingError("assertion carries no record reference")
     alg = ref.get("alg")
+    if not isinstance(alg, str):
+        raise ContentMarkingError(
+            f"unsupported digest algorithm {alg!r}; use sha256 or sha384"
+        )
     expected = ref.get("hash")
     if not _DIGEST_RE.match(str(expected or "")):
         raise ContentMarkingError(f"record.hash {expected!r} is not a sha256:/sha384: digest")
