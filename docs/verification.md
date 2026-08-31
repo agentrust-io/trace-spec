@@ -272,7 +272,7 @@ For action receipts, a verifier should distinguish five common outcomes:
 | `receipt_valid_rejected` | The receipt is well-formed, trusted, bound to the call, and reports controller or policy rejection. This is valid negative evidence. |
 | `receipt_missing_required` | The profile required a receipt, but none was present for the consequential action. |
 | `receipt_invalid` | The receipt is present but fails signature, digest, freshness, ordering, or call-binding checks against a key the verifier holds. |
-| `receipt_unverified` | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.1 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
+| `receipt_unverified` | The receipt names an issuer key the verifier has not pinned, and nothing else failed. Per section 3.3.2 of the spec this is unverified, not invalid: the receipt confers no trust and proves no wrongdoing, surfaced with an advisory rather than a failure. |
 
 The key boundary is that a valid rejection is not malformed evidence. It is
 evidence that the downstream authority declined the action. A valid acceptance

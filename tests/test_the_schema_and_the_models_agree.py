@@ -22,6 +22,15 @@ nobody is thinking about when they change it.
 The remaining four disagreements are one question and are declared below rather than fixed,
 because answering it is a change to the published schema or a break for Python callers, and
 neither is a test's decision to make.
+
+A fifth was found later, by a producer rather than by this file, and is the reason the matrix
+carries four more values. ``subject``'s schema pattern was ``^(spiffe://|did:)``, a test on a
+leading ``spiffe://`` or ``did:``, while the model required a full SPIFFE or DID shape.
+Nothing in the matrix could see it: every value here fails the prefix as well, so both
+validators rejected and agreed. Splitting them needs a value that passes the prefix and fails
+the shape, and ``spiffe://bernstein.run`` is one a real producer wrote. The schema is
+tightened to the model in the same change; the four values stay as the guard that would have
+caught it.
 """
 from __future__ import annotations
 
@@ -54,6 +63,11 @@ MUTANTS: tuple[Any, ...] = (
     10**20, 9007199254740992, "sha256:" + "z" * 64, "sha1:" + "a" * 40,
     "SHA256:" + "a" * 64, " ", "\t", "x" * 5000, "https://", "not-a-uri",
     "sha256:" + "A" * 64, "sha256:" + "a" * 63, "sha256:" + "a" * 65,
+    # A prefix the schema accepted and the model refused. The first matrix could not
+    # reach this class at all: `subject`'s schema pattern was a prefix test, so every
+    # value above failed it too and the two validators agreed by both rejecting. A
+    # value has to pass the prefix and fail on the shape to split them, and none did.
+    "spiffe://bernstein.run", "spiffe://", "did:X:abc", "did:",
 )
 
 #: (path, repr of the value) the two are known to disagree about, and why it is not

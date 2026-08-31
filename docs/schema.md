@@ -14,7 +14,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 |---|---|---|---|
 | `eat_profile` | string | **yes** | EAT profile URI. Must be `tag:agentrust-io.com,2026:trace-v0.2` |
 | `iat` | integer | **yes** | Issued-at timestamp (Unix epoch seconds) |
-| `subject` | string | **yes** | Workload identity. SPIFFE SVID (`spiffe://`) or DID (`did:`) |
+| `subject` | string | **yes** | Workload identity. A SPIFFE SVID naming a trust domain and a workload path within it, or a DID with a lowercase method name and a method-specific identifier. A bare prefix is not an identity |
 | `model` | object | **yes** | Model artifact binding |
 | `runtime` | object | **yes** | Execution environment binding |
 | `policy` | object | **yes** | Governance policy binding |

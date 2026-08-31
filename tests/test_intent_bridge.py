@@ -16,10 +16,14 @@ from agentrust_trace.intent_bridge import (
 from agentrust_trace.sign import key_to_jwk
 
 
-def _fixture() -> tuple[dict, Ed25519PrivateKey, dict, str, str, dict, dict]:
+def _fixture(
+    scope: dict | None = None,
+    tool_call: dict | None = None,
+    declaration: dict | None = None,
+) -> tuple[dict, Ed25519PrivateKey, dict, str, str, dict, dict]:
     key = Ed25519PrivateKey.generate()
-    declaration = {"impact": "external-side-effect", "purpose": "send invoice"}
-    tool_call = {"name": "send_invoice", "arguments": {"invoice_id": "INV-7"}}
+    declaration = declaration or {"impact": "external-side-effect", "purpose": "send invoice"}
+    tool_call = tool_call or {"name": "send_invoice", "arguments": {"invoice_id": "INV-7"}}
     authorization = {
         "authorization_id": "auth-7",
         "decision": "allow",
@@ -27,7 +31,7 @@ def _fixture() -> tuple[dict, Ed25519PrivateKey, dict, str, str, dict, dict]:
         "authorizer_key_id": "key-7",
         "authorized_at": 100,
         "expires_at": 200,
-        "scope": {"tools": ["send_invoice"], "impacts": ["external-side-effect"]},
+        "scope": scope or {"tools": ["send_invoice"], "impacts": ["external-side-effect"]},
         "pic": {
             "profile": "PIC-CJSON/1.0",
             "intent_digest": "sha256:" + "1" * 64,
@@ -94,6 +98,63 @@ def test_deny_and_scope_fail_closed() -> None:
             pic_intent_digest=intent, pic_args_digest=args,
             tool_call=outside, transcript=transcript, now=150,
         )
+
+
+def _verify(
+    bridge: dict, key: Ed25519PrivateKey, declaration: dict,
+    intent: str, args: str, tool_call: dict, transcript: dict,
+) -> None:
+    verify_bridge(
+        bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+        pic_intent_digest=intent, pic_args_digest=args,
+        tool_call=tool_call, transcript=transcript, now=150,
+    )
+
+
+def test_the_baseline_scope_verifies_so_the_two_below_refuse_on_scope_alone() -> None:
+    """The control for the pair that follows. Without it they show only that something failed."""
+    _verify(*_fixture({"tools": ["send_invoice"], "impacts": ["external-side-effect"]}))
+
+
+def test_a_tool_outside_the_authorized_scope_is_refused_on_that_ground() -> None:
+    """This line is the only validation of `tool_call["name"]` in the module.
+
+    It reads as a policy comparison against `scope.tools` and it is one, but there is no
+    `_object` and no `_nonempty_string` on the field anywhere, so it is also the only shape
+    guard on a caller-supplied input. Delete it and a `tool_call` carrying no `name` key at
+    all, digested and signed honestly by the issuer, verifies: every digest matches, the
+    transcript matches, the window is open, and nothing else looks at the field.
+
+    `test_deny_and_scope_fail_closed` cannot stand in for this and should not try. Its
+    record violates three rules at once, so which fires first is not this suite's business,
+    and its input changes the executed call, which changes `tool_call_digest` by
+    construction and so can only ever reach the family the digest already refuses.
+    """
+    with pytest.raises(AuthorizationMismatch, match="outside the authorized tool scope"):
+        _verify(*_fixture({"tools": ["read_invoice"], "impacts": ["external-side-effect"]}))
+
+
+def test_an_impact_outside_the_authorized_scope_is_refused_on_that_ground() -> None:
+    """The same, for `declaration["impact"]`, which is guarded in exactly one place too."""
+    with pytest.raises(AuthorizationMismatch, match="outside the authorized impact scope"):
+        _verify(*_fixture({"tools": ["send_invoice"], "impacts": ["read-only"]}))
+
+
+def test_a_tool_call_with_no_name_at_all_is_refused() -> None:
+    """The shape case, which is what makes this line the only guard on the field.
+
+    Everything here is internally consistent: the issuer digested and signed exactly the
+    call that executed. Nothing else in the module looks at `tool_call["name"]`, so an
+    implementation that skipped the comparison when the key is absent would verify this.
+    """
+    with pytest.raises(AuthorizationMismatch, match="outside the authorized tool scope"):
+        _verify(*_fixture(tool_call={"arguments": {"invoice_id": "INV-7"}}))
+
+
+def test_a_declaration_with_no_impact_at_all_is_refused() -> None:
+    """The same for `declaration["impact"]`."""
+    with pytest.raises(AuthorizationMismatch, match="outside the authorized impact scope"):
+        _verify(*_fixture(declaration={"purpose": "send invoice"}))
 
 
 def test_expiry_and_required_transcript_are_enforced() -> None:

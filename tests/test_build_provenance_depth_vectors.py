@@ -85,8 +85,9 @@ class Rule:
     check: Callable[[dict[str, Any]], bool] = field(compare=False)
 
 
-def _hex(digest: str) -> str:
-    return digest.split(":", 1)[1]
+def _digest_parts(digest: str) -> tuple[str, str]:
+    algorithm, hexadecimal = digest.split(":", 1)
+    return algorithm, hexadecimal
 
 
 def _attestation(vector: dict[str, Any]) -> dict[str, Any] | None:
@@ -138,9 +139,9 @@ def _attestation_subject_mismatch(vector: dict[str, Any]) -> bool:
     statement = _attestation(vector)
     if statement is None:
         return False  # absence is reported by the rule that owns it, once
-    wanted = _hex(vector["build_provenance"]["digest"])
+    algorithm, wanted = _digest_parts(vector["build_provenance"]["digest"])
     subjects = statement.get("subject", [])
-    return not any(entry.get("digest", {}).get("sha256") == wanted for entry in subjects)
+    return not any(entry.get("digest", {}).get(algorithm) == wanted for entry in subjects)
 
 
 def _attestation_builder_mismatch(vector: dict[str, Any]) -> bool:
@@ -261,6 +262,39 @@ def test_control_accepts_at_every_depth() -> None:
     """The floor. A set of rejections alone is passed by a verifier that rejects everything."""
     for depth in DEPTHS:
         assert verify(CONTROL, depth)["outcome"] == "accept"
+
+
+def _sha384_control(*, subject_sha384: str) -> dict[str, Any]:
+    vector = copy.deepcopy(CONTROL)
+    hexadecimal = "a" * 96
+    digest = "sha384:" + hexadecimal
+    vector["build_provenance"]["digest"] = digest
+    vector["context"]["artifact_digest"] = digest
+    statement = _attestation(vector)
+    assert statement is not None
+    statement["subject"][0]["digest"] = {
+        "sha256": "b" * 64,
+        "sha384": subject_sha384,
+    }
+    return vector
+
+
+def test_sha384_subject_binding_selects_the_declared_algorithm() -> None:
+    assert verify(_sha384_control(subject_sha384="a" * 96), "builder") == {
+        "outcome": "accept",
+        "verified_depth": "builder",
+        "failures": [],
+        "unresolved": [],
+    }
+
+
+def test_sha384_subject_binding_rejects_the_wrong_digest() -> None:
+    assert verify(_sha384_control(subject_sha384="c" * 96), "builder") == {
+        "outcome": "reject",
+        "verified_depth": "builder",
+        "failures": ["attestation_subject_mismatch"],
+        "unresolved": [],
+    }
 
 
 @pytest.mark.parametrize("name,vector", FIXTURES, ids=[name for name, _ in FIXTURES])
