@@ -48,7 +48,7 @@ class RecordMismatch(ContentMarkingError):
 
     Its own type because it means something different from a malformed
     assertion: the document is well-formed and the thing it points at changed
-after the asset was signed.
+    after the asset was signed.
     """
 
 
