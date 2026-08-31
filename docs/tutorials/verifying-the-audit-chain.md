@@ -144,7 +144,7 @@ if call_count is not None and len(calls) != call_count:
 
 For high-assurance scenarios, individual calls may carry external execution receipts: signed by a third-party (the caller, an orchestrator, or a notary) rather than the agent that produced the Trust Record.
 
-The spec (§3.3.1) defines the receipt structure:
+The spec (§3.3.2) defines the receipt structure:
 
 | Field | Description |
 |---|---|

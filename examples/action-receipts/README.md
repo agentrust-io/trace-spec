@@ -6,7 +6,7 @@ only: the JSON snippets are not TRACE Trust Records and are not validated by
 `schema/trace-claim.json`.
 
 The examples exercise the boundary from
-[spec section 3.3.2](../../spec/trace-v0.2.md#332-action-receipts-for-embodied-workflows-informative):
+[spec section 3.3.3](../../spec/trace-v0.2.md#333-action-receipts-for-embodied-workflows-informative):
 
 1. session evidence verifies the Trust Record and committed transcript;
 2. action issuance evidence verifies that a consequential action request was
@@ -93,7 +93,7 @@ three operations:
 | `11-call-id-mismatch.json` | `receipt_invalid` | unknown | An authentic receipt bound to a different call. |
 | `12-session-id-mismatch.json` | `receipt_invalid` | unknown | An authentic receipt from a different session. |
 | `13-evidence-hash-mismatch.json` | `receipt_invalid` | unknown | The receipt is authentic but the detached evidence was swapped after signing. |
-| `14-receipt-issuer-key-unknown.json` | `receipt_unverified` with advisory | unknown | The issuer key is not in the verifier's pinned set. Unverifiable is not invalid (spec §3.3.1): no trust is conferred and no forgery is proven, surfaced as an `issuer_key_unknown` advisory. |
+| `14-receipt-issuer-key-unknown.json` | `receipt_unverified` with advisory | unknown | The issuer key is not in the verifier's pinned set. Unverifiable is not invalid (spec §3.3.2): no trust is conferred and no forgery is proven, surfaced as an `issuer_key_unknown` advisory. |
 | `15-receipt-from-future.json` | `receipt_invalid` | unknown | Issued after the verification time, so an upper bound on age never rejects it. |
 | `16-decision-not-in-enum.json` | `receipt_invalid` | unknown | An unrecognised decision verb, which must not read as accept or reject. |
 | `17-missing-receipt-explicit-null.json` | `receipt_missing_required` | unknown | The receipt supplied as an explicit `null`: 03's absence through a different door, misread by presence-checking implementations. |
@@ -116,7 +116,7 @@ previously exercised. Every one was a check a conforming implementation could ha
 omitted entirely while passing this set. Two matter beyond tidiness: without
 `issuer_key_unknown` a receipt authenticates itself — a signature verifies against
 whatever key it names, and only the pinned set decides which keys the verifier can
-check at all; per spec §3.3.1 the outcome is `receipt_unverified`, not
+check at all; per spec §3.3.2 the outcome is `receipt_unverified`, not
 `receipt_invalid`, but a verifier that never consults its pinned set would report such
 a receipt as fully valid, which is what the vector distinguishes. Without
 `evidence_hash_mismatch` the signature covers a digest whose document may have been

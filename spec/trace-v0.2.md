@@ -405,7 +405,7 @@ requirement, such as `required`, `optional`, or `none`, without folding action
 evidence into the supply-chain provenance axis.
 
 An action receipt profile can build on the external execution evidence rules in
-section 3.3.1 by requiring the verifier to:
+section 3.3.2 by requiring the verifier to:
 
 1. recompute the receipt's action or evidence digest from the canonical action
    preimage;
