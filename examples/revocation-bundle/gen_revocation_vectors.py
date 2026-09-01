@@ -395,6 +395,28 @@ def main() -> None:
         codes=["bundle_issued_in_future"],
         evidence=fresh_evidence(b24, max_future_skew_seconds=SKEW)))
 
+    # A statement outlives its carrier. The bounds govern the bundle's silence;
+    # an authenticated statement naming the key is read before either time check.
+    named = [statement(compromised=TRUSTED_ID)]
+    b26 = bundle(issued_at=NOW - HOUR, valid_until=NOW - 1, statements=named)
+    out.append(vector(26, "stale-by-issuer-statement-still-rejects",
+        "valid_until is one second past and the bundle names the trusted key. The "
+        "statement was authenticated with the bundle's signature and has no expiry "
+        "of its own, so the record is rejected; a verifier that aged the bundle out "
+        "before reading it would report unverified instead.",
+        b=b26, outcome=None, codes=["key_revoked", "statement_outlives_bundle"], rejected=True))
+    b27 = bundle(issued_at=NOW - MAX_AGE - 1, valid_until=NOW + 30 * DAY, statements=named)
+    out.append(vector(27, "stale-by-deployment-statement-still-rejects",
+        "Age is one second past max_bundle_age_seconds and the bundle names the "
+        "trusted key. Same rule on the deployment bound: rejected.",
+        b=b27, outcome=None, codes=["key_revoked", "statement_outlives_bundle"], rejected=True))
+    b28 = bundle(issued_at=NOW + DAY, valid_until=NOW + 30 * DAY, statements=named)
+    out.append(vector(28, "future-issued-statement-still-rejects",
+        "issued_at is a day ahead and the bundle names the trusted key. A "
+        "future-dated bundle vouches for nothing it is silent about, but what it "
+        "says was signed by a trusted bundle key: rejected.",
+        b=b28, outcome=None, codes=["key_revoked", "statement_outlives_bundle"], rejected=True))
+
     OUT.mkdir(parents=True, exist_ok=True)
     for name, doc in sorted(out):
         text = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"

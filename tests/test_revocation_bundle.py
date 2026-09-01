@@ -212,6 +212,26 @@ def test_I9_the_module_names_no_appraisal_status_value() -> None:
     assert "affirming appraisal" in source, "the 3.2.3 sentence the module is built around"
 
 
+def test_I11_an_authenticated_statement_is_read_before_either_time_check() -> None:
+    """Vectors 26, 27 and 28 carry the same statement as 11 inside bundles that are
+    stale by the issuer, stale by the deployment, and dated in the future. All
+    three reject. Their statement-free counterparts (07, 05, 24) report unverified,
+    so the ordering is what separates them, and reversing it turns these red."""
+    for name in (
+        "26-stale-by-issuer-statement-still-rejects",
+        "27-stale-by-deployment-statement-still-rejects",
+        "28-future-issued-statement-still-rejects",
+    ):
+        with pytest.raises(ValueError, match="revoked"):
+            _run(_load(VECTORS / f"{name}.json"))
+    for name, cause in (
+        ("07-issuer-bound-tripped-by-one-second", "bundle_expired"),
+        ("05-deployment-bound-tripped-by-one-second", "bundle_expired"),
+        ("24-issued-in-future-by-a-day", "bundle_issued_in_future"),
+    ):
+        assert _run(_load(VECTORS / f"{name}.json")).revocation.cause == cause, name
+
+
 # ---- the truth table, executed -------------------------------------------------
 
 

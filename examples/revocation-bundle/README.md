@@ -44,7 +44,7 @@ retains, since error message text is not something two implementations agree on.
 | `verified` | "verified against revocation bundle valid at T" | 01, 02, 03, 10, 13 |
 | `unverified_for_revocation` | "MUST report the record as unverified for revocation rather than as verified" | 04 to 09, 15 to 24 |
 | `no_check_performed` | "MUST report that it performed no revocation check" | 14, 25 |
-| `rejected` | the key is named by a statement on the bundle's log; no entry ID is available, so the 3.2.3 fallback applies | 11, 12 |
+| `rejected` | the key is named by a statement on the bundle's log; no entry ID is available, so the 3.2.3 fallback applies | 11, 12, 26, 27, 28 |
 
 None of the first three is an appraisal. Which `appraisal.status` value the second
 and third carry is the question #190 holds open, and nothing here answers it.
@@ -66,6 +66,18 @@ side.
 
 `tests/test_revocation_bundle.py` implements the five rules as stubs and shows the
 four rows reject all but `min`.
+
+## A statement outlives its carrier
+
+The two age bounds say what a bundle's *silence* is worth: an absent statement
+means "none known as of `issued_at`", which is informative only while
+`issued_at` is recent. A *present* statement was authenticated with the bundle's
+signature, has no expiry of its own in 3.2.3 or in the schema, and is read
+before either time check. Vectors 26, 27 and 28 carry the same statement as 11
+inside bundles that are stale by each bound and dated in the future; all three
+reject, where their statement-free counterparts 07, 05 and 24 report unverified.
+This ordering was raised in review of the pull request that added the consumer
+and chosen there rather than inherited from the shape of the procedure.
 
 ## What is not here
 

@@ -30,7 +30,10 @@ and defers the value to the deployment profile. A bundle is evidence only while
 both bounds hold, and an expired outcome names which bound tripped, so a verifier
 re-running from the retained facts alone, with no clock and no network, reaches
 the same outcome. Whether a second implementation agrees is what the conformance
-vectors are for.
+vectors are for. The bounds govern the bundle's silence, not its speech: a
+statement naming the trusted key was authenticated with the bundle's signature,
+has no expiry of its own, and rejects the record whether the bundle that carried
+it is fresh or not.
 
 What this module does not do, stated so it is not mistaken for something it does:
 
@@ -182,9 +185,14 @@ def check_bundle(
     """Decide what a bundle lets a verifier report about the trusted record key.
 
     The order of checks is fixed and is the order a second verifier must follow to
-    reproduce the outcome: shape, then who signed the set, then whether the set is
-    still evidence, then what the set says. A bundle that fails an earlier step is
-    not read further, so the cause names the first thing wrong, not everything.
+    reproduce the outcome: shape, then who signed the set, then what the set says
+    about this key, then whether the set is still evidence for what it does not
+    say. A bundle that fails an earlier step is not read further, so the cause
+    names the first thing wrong, not everything. Statements are read before the
+    time checks on purpose: the freshness bounds exist so that an absent statement
+    means something, and a present, authenticated one needs no clock to mean what
+    it says. That ordering was raised in review of the pull request that added
+    this module and chosen rather than inherited.
 
     Raises ``ValueError`` when a statement on the bundle's log names the trusted
     key. That is evidence failing rather than evidence absent, and it fails closed
@@ -255,13 +263,33 @@ def check_bundle(
             "bundle_signature_invalid", {**base, "bundle_key_id": bundle["bundle_key_id"]}
         )
 
-    # 3d. A bundle from the future has an issued_at nothing can have observed.
+    # 3d. What the set says about this key, read before either time check. A
+    # statement's signature was verified with the bundle's at 3c, so it is an
+    # authenticated assertion that the issuer declared this key compromised;
+    # section 3.2.3 gives a statement no expiry and no withdrawal, and the
+    # schema puts valid_until on the bundle, not on the statement. The time
+    # bounds below govern what the bundle's silence is worth; they do not make
+    # its speech untrue. Fallback rule: no entry ID is available here, so a
+    # named key rejects every record it signed.
+    for statement in statements:
+        if statement["compromised_key_id"] in trusted_ids:
+            raise ValueError(
+                f"signing key is revoked: statement on log {log_id!r} names it as "
+                f"{statement['compromised_key_id']!r} (bundle {base['bundle_digest']}). "
+                "No inclusion entry ID is available to place this record before the "
+                "revocation, so section 3.2.3's fallback applies and the record is rejected."
+            )
+
+    # 3e. A bundle from the future has an issued_at nothing can have observed, so
+    # its silence about other keys is not evidence of anything.
     if issued_at > now + max_future_skew_seconds:
         return _unverified("bundle_issued_in_future", {
             **base, "max_future_skew_seconds": max_future_skew_seconds,
         })
 
-    # 3e. Age. Tighter governs: the bundle is evidence only while both bounds hold.
+    # 3f. Age. Tighter governs: the bundle vouches for the absence of a statement
+    # only while both bounds hold, since an absent statement means "none known as
+    # of issued_at" and that is only informative while issued_at is recent.
     # Inclusive on the valid side, so now == valid_until and age == max are fresh.
     issuer_tripped = now > valid_until
     deployment_tripped = (now - issued_at) > max_bundle_age_seconds
@@ -272,17 +300,6 @@ def check_bundle(
             else "deployment"
         )
         return _unverified("bundle_expired", {**base, "bound_tripped": tripped})
-
-    # 3f. What the set says about this key. Fallback rule: no entry ID is available
-    # here, so a named key rejects every record it signed.
-    for statement in statements:
-        if statement["compromised_key_id"] in trusted_ids:
-            raise ValueError(
-                f"signing key is revoked: statement on log {log_id!r} names it as "
-                f"{statement['compromised_key_id']!r} (bundle {base['bundle_digest']}). "
-                "No inclusion entry ID is available to place this record before the "
-                "revocation, so section 3.2.3's fallback applies and the record is rejected."
-            )
 
     # 3g. Verified against this bundle, valid at T, with T retained.
     return RevocationCheck(
