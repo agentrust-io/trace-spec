@@ -34,6 +34,11 @@ from agentrust_trace.sign import (
     sign_record,
     verify_record,
 )
+from agentrust_trace.revocation import (
+    RevocationCheck,
+    VerificationResult,
+    check_bundle,
+)
 from agentrust_trace.validate import (
     iter_errors,
     SCHEMA,
@@ -71,7 +76,10 @@ __all__ = [
     "RuntimeInfo",
     "ToolTranscript",
     "TrustRecord",
+    "RevocationCheck",
     "RevocationStore",
+    "VerificationResult",
+    "check_bundle",
     "TRACE_PROFILE_V0_2",
     "SCHEMA",
     "iter_errors",

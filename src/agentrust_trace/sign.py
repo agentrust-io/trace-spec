@@ -14,8 +14,11 @@ import hashlib
 import json
 import os
 import warnings
-from collections.abc import Callable, Container
-from typing import Any, TypeAlias
+from collections.abc import Callable, Container, Iterable
+from typing import TYPE_CHECKING, Any, TypeAlias
+
+if TYPE_CHECKING:
+    from agentrust_trace.revocation import VerificationResult
 
 import rfc8785
 from jsonschema import ValidationError
@@ -413,7 +416,11 @@ def verify_record(
     max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
-) -> None:
+    revocation_bundle: dict[str, Any] | None = None,
+    trusted_bundle_keys: Iterable[dict[str, Any]] | None = None,
+    max_bundle_age_seconds: int = 86400,
+    now: int | None = None,
+) -> VerificationResult:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
     A trusted key is REQUIRED. Pass an ``Ed25519PublicKey`` or a JWK dict via
@@ -422,7 +429,8 @@ def verify_record(
     Raises ``InvalidSignature`` if the signature does not verify, and ``ValueError``
     for every other rejection (wrong or missing profile, no signature, no trusted
     key, malformed input, unsupported JWK type, stale record, nonce mismatch, or
-    revoked key). Returns ``None`` on success. All checks fail closed.
+    revoked key). Returns a ``VerificationResult`` on success, carrying what the
+    revocation check reported; see below. All checks fail closed.
 
     Profile (fail closed):
         The record's ``eat_profile`` must be exactly ``TRACE_PROFILE_V0_2``.
@@ -452,24 +460,76 @@ def verify_record(
         a record dated further in the future is rejected. If
         ``expected_nonce`` is given, it is compared in constant time against
         ``record["runtime"]["nonce"]``. A stale record or nonce mismatch raises
-        ``ValueError``.
+        ``ValueError``. ``now`` pins the verification moment (Unix epoch seconds)
+        for both the record-age check and the bundle-age check below; it defaults
+        to the clock, and a conformance vector supplies it so the outcome
+        reproduces from retained facts rather than from when the test ran.
 
-    Revocation (fail closed):
-        ``spec/trace-v0.2.md`` §3.2.1 requires a verifier to consult current
-        revocation status at verification time. Pass a ``revocation`` store, either
-        a container of revoked key identifiers or a callable performing a live
-        CRL/status/SCITT lookup. The trusted key is rejected if it is listed, or if
-        the store cannot answer: a callable that raises has not answered, and so has
-        one that returns anything other than ``True`` or ``False``. Identifiers are
-        the key's RFC 7638 thumbprint (``jwk_thumbprint``) and its ``kid``.
+    Revocation (reported, never implied):
+        ``spec/trace-v0.2.md`` section 3.2.3 separates three states and forbids
+        reporting any of them as an affirming appraisal: verified against a
+        revocation bundle valid at T; unverified for revocation, because the newest
+        bundle is past the profile's maximum age; and no revocation check performed,
+        because there was no bundle. The result's ``revocation`` field carries which
+        one applied and the facts a second verifier needs to reach it again.
 
-        ``revocation=None`` (the default) skips the check and keeps verification
-        purely offline. Offline verification cannot prove non-revocation: a
-        signature made by a compromised key stays cryptographically valid forever,
-        and nothing inside the record can retract it. See ``LIMITATIONS.md``.
+        Pass ``revocation_bundle``, a dict validated here against
+        ``schema/trace-revocation-bundle.json``, together with
+        ``trusted_bundle_keys``, the JWKs whose signatures the caller accepts on a
+        bundle. The bundle is evidence only while both age bounds hold: the
+        issuer's ``valid_until`` and the caller's ``max_bundle_age_seconds``,
+        measured from ``issued_at``. The tighter bound governs. 86400 is section
+        3.2.2's default maximum age, applied to bundles by 3.2.3's "same
+        maximum-age model" sentence; 3.2.3 names no bundle default of its own and
+        defers the value to the deployment profile. A bundle that is malformed,
+        signed by a key not in ``trusted_bundle_keys``, signed with an algorithm
+        this build cannot verify, dated in the future, or expired under either
+        bound yields ``unverified_for_revocation`` with the cause named; it does
+        not raise, because inability to check is not evidence of a defect. A
+        statement on the bundle's log naming the trusted key raises ``ValueError``:
+        no inclusion entry ID reaches this function, so 3.2.3's fallback applies
+        and every record the key signed is rejected.
+
+        ``revocation`` is the older store interface and still works: a container
+        of revoked key identifiers or a callable performing a live lookup. The
+        trusted key is rejected if it is listed, or if the store cannot answer.
+        A store that answers "not listed" is a check performed; the result reports
+        ``verified`` with ``source: "store"`` and no horizon, because a store has
+        none. Identifiers are the key's RFC 7638 thumbprint (``jwk_thumbprint``)
+        and its ``kid``, and the check reads the trusted key, never
+        ``record["cnf"]["jwk"]``.
+
+        With neither a bundle nor a store the result reports
+        ``no_check_performed``. That is the honest offline default, and it is
+        what the old ``None`` return withheld: verification that proves the record
+        was validly signed by this key, and nothing about whether the key is still
+        trusted. See ``LIMITATIONS.md``.
+
+        The outcome is a value in the result rather than an exception or a
+        separate entry point, so a caller has to handle it to know it. A caller
+        who discards the return has the fail-open behaviour the old signature
+        had; the alternatives were worse, and the reasoning is on issue #190.
     """
     import time
     from hmac import compare_digest
+
+    from agentrust_trace.revocation import (
+        NO_CHECK,
+        RevocationCheck,
+        VerificationResult,
+        check_bundle,
+    )
+
+    if now is None:
+        verification_time = int(time.time())
+    elif isinstance(now, bool) or not isinstance(now, int):
+        raise ValueError("now must be an integer Unix timestamp in seconds, or None")
+    else:
+        verification_time = now
+    if max_bundle_age_seconds < 0:
+        raise ValueError("max_bundle_age_seconds must be non-negative")
+    if max_future_skew_seconds < 0:
+        raise ValueError("max_future_skew_seconds must be non-negative")
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
@@ -563,6 +623,29 @@ def verify_record(
     if revocation is not None:
         _check_not_revoked(trusted_jwk, revocation)
 
+    # What the revocation check reports. The bundle governs when present; a store
+    # consulted beside it is recorded as consulted. Neither present: say so.
+    revocation_check: RevocationCheck
+    if revocation_bundle is not None:
+        revocation_check = check_bundle(
+            revocation_bundle,
+            trusted_key_identifiers=_key_identifiers(trusted_jwk),
+            trusted_bundle_keys=trusted_bundle_keys or (),
+            now=verification_time,
+            max_bundle_age_seconds=max_bundle_age_seconds,
+            max_future_skew_seconds=max_future_skew_seconds,
+        )
+        if revocation is not None:
+            revocation_check = RevocationCheck(
+                outcome=revocation_check.outcome,
+                cause=revocation_check.cause,
+                evidence={**revocation_check.evidence, "store": "consulted"},
+            )
+    elif revocation is not None:
+        revocation_check = RevocationCheck(outcome="verified", evidence={"source": "store"})
+    else:
+        revocation_check = NO_CHECK
+
     # The signature binding is defined as a signature made by the key in cnf.
     # Verifying with a caller-pinned key is necessary for authenticity, but it
     # must not permit a trusted signer to authenticate a record that names a
@@ -578,12 +661,10 @@ def verify_record(
         )
 
     # Freshness: bound the age of the record against its issued-at timestamp.
-    if max_future_skew_seconds < 0:
-        raise ValueError("max_future_skew_seconds must be non-negative")
     iat = record.get("iat")
     if not isinstance(iat, int) or isinstance(iat, bool):
         raise ValueError("record has no valid integer 'iat' for freshness check")
-    age = time.time() - iat
+    age = verification_time - iat
     if age < -max_future_skew_seconds:
         raise ValueError(
             f"record is dated {int(-age)}s in the future, exceeds "
@@ -607,3 +688,8 @@ def verify_record(
     msg = _canonical_bytes(record_no_sig)
 
     pub.verify(sig_bytes, msg)  # raises InvalidSignature on failure
+
+    return VerificationResult(
+        revocation=revocation_check,
+        trusted_key_thumbprint=jwk_thumbprint(trusted_jwk),
+    )

@@ -114,8 +114,21 @@ def delegation_link() -> list[Vector]:
                  lambda e: e["classification"], lambda e: list(e.get("codes") or []))
 
 
+def revocation_bundle() -> list[Vector]:
+    """The revocation-bundle set. Boundaries are its codes, one code per rule.
+
+    `rejected` is a fourth outcome beside 3.2.3's three: the key was named by a
+    statement and the record refused. It counts as non-accepting here, which is
+    what it is.
+    """
+    return _load("revocation-bundle",
+                 lambda e: "rejected" if e["rejected"] else e["outcome"],
+                 lambda e: list(e.get("codes") or []))
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
+    "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
 }
