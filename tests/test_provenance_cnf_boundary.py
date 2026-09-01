@@ -55,10 +55,11 @@ def test_non_object_cnf_is_refused_through_provenance_error(bad_cnf) -> None:
         verify_record(record, trusted)
 
 
-@pytest.mark.parametrize("cnf", [_MISSING, None, {}])
-def test_missing_null_and_empty_object_cnf_preserve_existing_behavior(cnf) -> None:
+@pytest.mark.parametrize("cnf", [_MISSING, None, {}, {"jwk": None}])
+def test_missing_or_empty_cnf_jwk_is_refused(cnf) -> None:
     record, trusted = _signed_with_cnf(cnf)
-    verify_record(record, trusted)
+    with pytest.raises(ProvenanceError, match="no cnf.jwk"):
+        verify_record(record, trusted)
 
 
 def test_valid_embedded_cnf_jwk_still_verifies() -> None:
