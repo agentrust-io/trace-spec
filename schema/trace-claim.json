@@ -119,7 +119,7 @@
             "tpm2",
             "software-only"
           ],
-          "description": "Hardware platform providing the root of trust. software-only marks development-mode records with no hardware backing; they must never be treated as attested evidence."
+          "description": "Hardware platform providing the root of trust. software-only marks records with no hardware root of trust: a development-mode execution, or a record assembled from evidence produced outside the runtime (origin.kind other than self requires this value; see spec 3.1.1). Such records must never be treated as attested evidence."
         },
         "measurement": {
           "type": "string",
