@@ -99,7 +99,7 @@ The five steps above are self-contained: given the record and a trusted key, the
 
 **Offline is a state you report, not a check you skip.** Revocation statements are anchored in the same transparency log as the records they govern, and verifiers cache a signed bundle carrying `valid_until`. A verifier offline says what it checked against, "verified against revocation bundle valid at T", rather than reporting an affirming appraisal it did not earn. §3.2.3 states that an expired bundle *"MUST report the record as unverified for revocation rather than as verified"*, and that a verifier with no bundle *"MUST report that it performed no revocation check"*.
 
-A record with no usable inclusion entry ID has no anchor to place it before or after the compromise, so §3.2.3 falls back to binary revocation for it: *"a verifier MUST reject every record signed by the revoked key"*. That fallback is what the current `verify_record()` store implements, and it is the correct behaviour for deployments carrying no receipts.
+A record with no usable inclusion entry ID has no anchor to place it before or after the compromise, so §3.2.3 falls back to binary revocation for it: *"a verifier MUST reject every record signed by the revoked key"*. That fallback is what `verify_record()` implements for both the store and the bundle, and it is the correct behaviour for deployments carrying no receipts.
 
 `verify_record()` takes a `revocation` store to do this. Pass a container of revoked identifiers, or a callable that performs a live lookup:
 
@@ -124,12 +124,27 @@ Both failure modes raise `ValueError`, including a store that cannot answer:
 |---|---|
 | Key listed as revoked | Rejected |
 | Store raises (endpoint down, timeout) | Rejected; an unavailable source is not evidence a key is unrevoked |
-| Key absent from the store | Verification continues |
-| No `revocation` passed | Check skipped; verification is offline and proves nothing about current key status |
+| Key absent from the store | Verification continues; the result reports `verified` with `source: "store"` and no horizon, because a store has none |
+| No `revocation` passed and no bundle | Verification continues; the result reports `no_check_performed` |
 
-The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted".
+The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted", and the result says so rather than leaving it implied.
 
-What the store does not yet do is entry-ID-scoped revocation. It answers "is this key revoked", which is the §3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced §3.2.3, and the schemas the bundle format needs are published at [`schema/trace-revocation.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-revocation.json) and [`schema/trace-revocation-bundle.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-revocation-bundle.json).
+`verify_record()` also consumes the bundle format §3.2.3 publishes. Pass `revocation_bundle`, a `TraceRevocationBundle/1.0` object, and `trusted_bundle_keys`, the JWKs whose signatures the caller accepts on a bundle:
+
+```python
+result = verify_record(
+    record, trusted_jwk,
+    revocation_bundle=bundle, trusted_bundle_keys=[bundle_signer_jwk],
+    max_bundle_age_seconds=86400, now=verification_time,
+)
+result.revocation.outcome    # "verified" | "unverified_for_revocation" | "no_check_performed"
+result.revocation.cause      # why a supplied bundle could not ground "verified", or None
+result.revocation.evidence   # what a second verifier needs to reach the same outcome
+```
+
+The three outcomes are §3.2.3's own words, and none of them is an appraisal: where a verifier records an unresolvable check in the record itself is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open. A bundle is evidence only while both age bounds hold, the issuer's `valid_until` and the caller's `max_bundle_age_seconds` measured from `issued_at`; the tighter bound governs, and an expired outcome names which one tripped. `now` pins the verification moment so the outcome reproduces from retained facts. A bundle that is malformed, signed by a key not in `trusted_bundle_keys`, signed with an algorithm this build cannot verify, dated in the future, or expired under either bound yields `unverified_for_revocation` with the cause named; it does not raise, because inability to check is not evidence of a defect. A statement on the bundle's log naming the trusted key raises, under the fallback above, and it is read before the time checks: the bounds say what the bundle's silence is worth, and an authenticated statement has no expiry of its own. [`examples/revocation-bundle/`](../examples/revocation-bundle/) carries the conformance vectors.
+
+What neither path does yet is entry-ID-scoped revocation. Both answer "is this key revoked", which is the §3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced §3.2.3. The bundle path also verifies the bundle signature only, not each statement's own signature against the §3.2.1 hierarchy; that check needs the hierarchy, and it is stated here rather than implied.
 
 ## Verifying hardware-rooted records
 

@@ -1,0 +1,89 @@
+{
+  "id": "TRACE-RBUN-017",
+  "name": "bundle-key-unknown-to-caller",
+  "description": "A correctly signed bundle from a key the caller does not trust for bundles. Untrusted, not invalid: the signature is fine, the signer is not accepted.",
+  "spec": "spec/trace-v0.2.md#323-revocation-of-record-signing-keys",
+  "context": {
+    "now": 1785000000,
+    "max_bundle_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw",
+      "kid": "issuer-key-2026"
+    },
+    "trusted_bundle_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "JfQ5mktI1ldOWzNpLVgad2rHpi8TfeRnX1gVZnP-2Sw"
+      }
+    ],
+    "bundle": {
+      "type": "TraceRevocationBundle/1.0",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "statements": [],
+      "bundle_key_id": "vF02qAO6IC7uo8E3QX6b5LzKwNFUHx9WmITW_-RDhqY",
+      "sig": {
+        "alg": "ed25519",
+        "value": "ZUJa_1gpzhMUTl1bOsEthARjMs04FXvfodf57MExLKCvGlkxyrsqvASjGIzCKqvAfB17MJRJ-ybCVU4ulSlsCQ"
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/issuer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw"
+        }
+      },
+      "signature": "cNXX2aeZWv47FIFqe1DSAtHDlG7FUcw3U75o5g4r-9r3cAqoXFLSC2ZlIY9fjiPOI9KiaP_XttbMmZruOSvyCQ"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [
+      "bundle_key_untrusted"
+    ],
+    "outcome": "unverified_for_revocation",
+    "cause": "bundle_key_untrusted",
+    "evidence": {
+      "bundle_digest": "sha256:ae49b38cc9cf175771109e5ecb2eafcbad98eb4bbdc320dd98f8cc5f56d1bc41",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "now": 1785000000,
+      "max_bundle_age_seconds": 86400,
+      "bundle_key_id": "vF02qAO6IC7uo8E3QX6b5LzKwNFUHx9WmITW_-RDhqY"
+    }
+  }
+}

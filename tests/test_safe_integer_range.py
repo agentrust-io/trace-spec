@@ -59,6 +59,12 @@ BOUNDED_SCHEMAS = (
     "schema/trace-revocation.json",
     "schema/trace-revocation-bundle.json",
     "src/agentrust_trace/schema/trace-v0.2.json",
+    # Packaged copies of the two revocation schemas, read by `revocation.py` so the
+    # installed package validates bundles without the repository and without the
+    # network. `tests/test_revocation_bundle.py` holds each byte-identical to its
+    # source under `schema/`.
+    "src/agentrust_trace/schema/trace-revocation.json",
+    "src/agentrust_trace/schema/trace-revocation-bundle.json",
 )
 UNBOUNDED_SCHEMAS = {
     "src/agentrust_trace/schema/trace-v0.1.json": (

@@ -32,6 +32,10 @@ dependencies = [
     # GPLv3, into an Apache-2.0 package's dependency tree.
     "rfc3986-validator>=0.1.1",
     "cryptography>=42.0",
+    # `revocation.py` resolves the bundle schema's statement `$ref` from the packaged
+    # copy through a `referencing.Registry`, so validation never fetches. `referencing`
+    # already arrives through `jsonschema`; it is declared because it is imported.
+    "referencing>=0.28",
     "rfc8785>=0.1.4",
 ]
 

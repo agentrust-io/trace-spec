@@ -35,7 +35,7 @@ import pytest
 
 import agentrust_trace as at
 from agentrust_trace import (content_marking, generate_key, intent_bridge, key_to_jwk,
-                             provenance, sign, validate)
+                             provenance, revocation, sign, validate)
 
 #: Values a caller can supply where an object, a string, a key or bytes is expected.
 #: The last five are the ones that separate a strict canonicalizer from a permissive
@@ -52,6 +52,7 @@ DOCUMENTED: dict[str, tuple[str, ...]] = {
     "content_marking": ("ContentMarkingError", "RecordMismatch"),
     "intent_bridge": ("IntentBridgeError", "AuthorizationDenied", "AuthorizationMismatch"),
     "provenance": ("ProvenanceError", "ToolCatalogMismatch"),
+    "revocation": ("ValueError", "UnanchorableValue"),
     "sign": ("ValueError", "UnanchorableValue", "InvalidSignature"),
     "validate": ("ValueError", "ValidationError"),
     "models": ("ValidationError",),
@@ -77,6 +78,11 @@ CALLS: dict[str, Callable[[Any], Any]] = {
     "provenance.sign_record": lambda v: provenance.sign_record(v, _KEY),
     "provenance.tool_catalog_hash": provenance.tool_catalog_hash,
     "provenance.verify_record": lambda v: provenance.verify_record(v, _JWK),
+    "revocation.bundle_digest": revocation.bundle_digest,
+    "revocation.check_bundle": lambda v: revocation.check_bundle(
+        v, trusted_key_identifiers=[], trusted_bundle_keys=[_JWK], now=1785000000,
+        max_bundle_age_seconds=86400, max_future_skew_seconds=300,
+    ),
     "sign.anchor_bytes": sign.anchor_bytes,
     "sign.jwk_thumbprint": sign.jwk_thumbprint,
     "sign.key_to_jwk": sign.key_to_jwk,
@@ -170,6 +176,7 @@ REACHES: dict[str, tuple[Any, str]] = {
     "provenance.sign_record": (None, "ProvenanceError"),
     "provenance.tool_catalog_hash": (None, "ProvenanceError"),
     "provenance.verify_record": (None, "ProvenanceError"),
+    "revocation.bundle_digest": (None, "ValueError"),
     "sign.anchor_bytes": (b"bytes", "UnanchorableValue"),
     "sign.jwk_thumbprint": (None, "ValueError"),
     "sign.key_to_jwk": (None, "ValueError"),
@@ -181,9 +188,20 @@ REACHES: dict[str, tuple[Any, str]] = {
 
 
 def test_every_swept_function_has_a_witness() -> None:
-    """`iter_errors` is excluded on purpose and named, rather than silently absent:
-    it returns findings instead of raising, and its witness is the next test."""
-    assert set(REACHES) == set(CALLS) - {"validate.iter_errors"}
+    """Two are excluded on purpose and named, rather than silently absent. `iter_errors`
+    returns findings instead of raising, and its witness is the next test.
+    `check_bundle` reports a bundle it cannot use as an outcome rather than raising,
+    by design (spec 3.2.3: inability to check is not evidence of a defect), and its
+    witness is `test_check_bundle_reports_junk_as_an_outcome` below."""
+    assert set(REACHES) == set(CALLS) - {"validate.iter_errors", "revocation.check_bundle"}
+
+
+@pytest.mark.parametrize("value", JUNK, ids=[repr(v)[:12] for v in JUNK])
+def test_check_bundle_reports_junk_as_an_outcome(value: Any) -> None:
+    """The sweep reaches `check_bundle`, and what comes back is a result, not a raise."""
+    result = CALLS["revocation.check_bundle"](value)
+    assert result.outcome == "unverified_for_revocation"
+    assert result.cause == "bundle_malformed"
 
 
 @pytest.mark.parametrize("name", sorted(REACHES))
