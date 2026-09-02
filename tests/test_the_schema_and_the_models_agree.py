@@ -63,10 +63,11 @@ import copy
 import json
 import re
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, get_args, get_origin
 
 import jsonschema
 import pytest
+from pydantic import BaseModel
 
 from agentrust_trace import TrustRecord, validate_json
 
@@ -402,6 +403,90 @@ def _model_pattern_strings() -> set[str]:
     return strings
 
 
+def _pattern_of(obj: Any) -> str | None:
+    """The pattern *obj* itself carries, or that sits inside its own metadata.
+
+    The single-object half of the three-indirection read ``_model_pattern_strings``
+    documents: a required field's constraint is one hop down, in ``field.metadata``;
+    this recurses to find it there without assuming how many hops down it is.
+    """
+    found = getattr(obj, "pattern", None)
+    if isinstance(found, str):
+        return found
+    for nested in getattr(obj, "metadata", ()) or ():
+        result = _pattern_of(nested)
+        if result is not None:
+            return result
+    return None
+
+
+def _own_pattern(field: Any) -> str | None:
+    """The pattern *field* itself is constrained by, direct or optional.
+
+    A required field's constraint is found by ``_pattern_of`` alone. An optional
+    field is ``Annotated[str, Field(pattern=...)] | None``, so ``field.metadata`` is
+    empty and the constraint sits on the ``Annotated`` union member's own
+    ``__metadata__`` instead; the second loop is that indirection.
+    """
+    pattern = _pattern_of(field)
+    if pattern is not None:
+        return pattern
+    for member in get_args(field.annotation):
+        for meta in getattr(member, "__metadata__", ()) or ():
+            pattern = _pattern_of(meta)
+            if pattern is not None:
+                return pattern
+    return None
+
+
+def _nested_model(annotation: Any) -> type[BaseModel] | None:
+    """*annotation* itself, or the non-``None`` member of ``X | None``, when it is a
+    ``BaseModel`` subclass."""
+    for candidate in (annotation, *get_args(annotation)):
+        if isinstance(candidate, type) and issubclass(candidate, BaseModel):
+            return candidate
+    return None
+
+
+def _nested_list_item_model(annotation: Any) -> type[BaseModel] | None:
+    """The item type of ``list[X]``, or of ``list[X] | None``, when ``X`` is a
+    ``BaseModel`` subclass."""
+    for candidate in (annotation, *get_args(annotation)):
+        if get_origin(candidate) is list:
+            (item,) = get_args(candidate) or (None,)
+            if isinstance(item, type) and issubclass(item, BaseModel):
+                return item
+    return None
+
+
+def _model_field_patterns(
+    model: type[BaseModel] = TrustRecord, prefix: tuple[str, ...] = ()
+) -> dict[tuple[str, ...], str]:
+    """Every field's own pattern constraint in *model*, keyed by its path in a record
+    the same way ``_pattern_constraints`` keys the schema's.
+
+    ``_model_pattern_strings`` collects every pattern the model carries, anywhere,
+    into one flat set: it can say a string is spoken for *somewhere*, not that a
+    given field is the one speaking for it. This keeps each pattern attached to the
+    specific field it constrains, so a schema constraint at a path can be compared to
+    that same path's own model constraint instead of to membership in the set of all
+    of them.
+    """
+    found: dict[tuple[str, ...], str] = {}
+    for name, field in model.model_fields.items():
+        path = prefix + (name,)
+        pattern = _own_pattern(field)
+        if pattern is not None:
+            found[path] = pattern
+        nested = _nested_model(field.annotation)
+        if nested is not None:
+            found.update(_model_field_patterns(nested, path))
+        item_model = _nested_list_item_model(field.annotation)
+        if item_model is not None:
+            found.update(_model_field_patterns(item_model, path + ("0",)))
+    return found
+
+
 def test_the_full_record_passes_both() -> None:
     """The control for everything below, same reason as the one above."""
     assert _by_schema(FULL), "the schema rejects the full record"
@@ -432,25 +517,22 @@ def _reachable(record: dict[str, Any], path: tuple[str, ...]) -> bool:
     return True
 
 
-def test_every_pattern_is_mirrored_or_split_or_declared() -> None:
-    """Each of the ten constraints must land in one of three states, none of them silent.
+def _unaccounted_patterns(
+    schema: dict[str, Any], model_field_patterns: dict[tuple[str, ...], str]
+) -> list[str]:
+    """Every pattern constraint in *schema* that lands in neither of the two silent
+    states, checked against *model_field_patterns* (a path-keyed map, so a schema
+    constraint is compared to that same field's own model constraint rather than to
+    membership in the set of every pattern the model carries anywhere).
 
-    *Mirrored*: the model constrains the field with the same pattern string the schema
-    publishes. Then no string can split the two, and saying so is a proof rather than an
-    observation about the values that happened to be tried.
-
-    *Split*: a probe the two disagree about, which belongs in ``DECLARED_DIVERGENCES``
-    with the reason it is not simply fixed.
-
-    *Neither*: the two carry different patterns and nothing here can tell them apart.
-    That is the state ``models.py`` already claims is impossible, and the one that
-    produced #244, so it fails unless a human has written down why.
+    Parameterized over both, rather than reading ``CANONICAL_SCHEMA`` and
+    ``TrustRecord`` directly, so the counterfactual test below can run the same check
+    against a mutated copy of the schema.
     """
-    model_patterns = _model_pattern_strings()
     unaccounted: list[str] = []
-    for path, pattern in sorted(_pattern_constraints(CANONICAL_SCHEMA).items()):
+    for path, pattern in sorted(_pattern_constraints(schema).items()):
         dotted = ".".join(path)
-        if pattern in model_patterns:
+        if model_field_patterns.get(path) == pattern:
             continue
         split = _splitters(path, pattern)
         declared = [s for s in split if (dotted, repr(s[0])[:26]) in DECLARED_DIVERGENCES]
@@ -467,6 +549,24 @@ def test_every_pattern_is_mirrored_or_split_or_declared() -> None:
                 else "and no probe splits them, so nothing here is checking this constraint"
             )
         )
+    return unaccounted
+
+
+def test_every_pattern_is_mirrored_or_split_or_declared() -> None:
+    """Each of the ten constraints must land in one of three states, none of them silent.
+
+    *Mirrored*: the model constrains the field with the same pattern string the schema
+    publishes. Then no string can split the two, and saying so is a proof rather than an
+    observation about the values that happened to be tried.
+
+    *Split*: a probe the two disagree about, which belongs in ``DECLARED_DIVERGENCES``
+    with the reason it is not simply fixed.
+
+    *Neither*: the two carry different patterns and nothing here can tell them apart.
+    That is the state ``models.py`` already claims is impossible, and the one that
+    produced #244, so it fails unless a human has written down why.
+    """
+    unaccounted = _unaccounted_patterns(CANONICAL_SCHEMA, _model_field_patterns())
     assert not unaccounted, "\n".join(unaccounted)
 
 
@@ -508,4 +608,37 @@ def test_the_generator_reaches_the_prefix_class_the_matrix_could_not() -> None:
         "the generator no longer reaches the prefix class: against the pre-#244 schema it "
         f"split the validators on {split!r}, which does not include the value a producer "
         "actually sent"
+    )
+
+
+def test_the_mirror_check_is_by_field_not_flat_membership() -> None:
+    """Review counterfactual: a pattern *string* genuinely used somewhere in the model
+    must not read as mirroring a field it does not itself constrain.
+
+    Reassigns ``references[].retention``'s own model pattern onto
+    ``build_provenance.digest`` in a copy of the schema. The model still constrains
+    ``build_provenance.digest`` with the digest pattern, not the duration one, so a
+    check that only asks "is this string spoken for somewhere in the model" - a flat
+    set, checked by membership - would wrongly call the two mirrored and skip probing
+    the field entirely. ``_model_field_patterns`` is keyed by field for exactly this
+    reason.
+    """
+    model_field_patterns = _model_field_patterns()
+    duration_pattern = model_field_patterns[("references", "0", "retention")]
+    collision_path = ("build_provenance", "digest")
+    assert model_field_patterns[collision_path] != duration_pattern, (
+        "setup: build_provenance.digest must genuinely carry a different constraint "
+        "from references[].retention for this to test anything"
+    )
+
+    mutated = copy.deepcopy(CANONICAL_SCHEMA)
+    mutated["properties"]["build_provenance"]["properties"]["digest"]["pattern"] = (
+        duration_pattern
+    )
+
+    unaccounted = _unaccounted_patterns(mutated, model_field_patterns)
+    assert any(entry.startswith("build_provenance.digest:") for entry in unaccounted), (
+        "a schema pattern reassigned onto a field the model does not constrain with it "
+        "must be flagged, even though the pattern string itself is genuinely in use "
+        "elsewhere in the model:\n" + "\n".join(unaccounted)
     )
