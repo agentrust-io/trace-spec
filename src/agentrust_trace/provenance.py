@@ -378,23 +378,25 @@ def verify_record(
 
     cnf = _as_object(record.get("cnf"), "cnf")
     embedded = cnf.get("jwk")
-    if embedded:
-        # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
-        # its key material; `kid`, `use` and `alg` are optional members that carry none
-        # of it, and a key resolved from a JWKS endpoint normally has `kid` while
-        # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
-        # and rejected records signed by exactly the right key.
-        from hmac import compare_digest
+    if not embedded:
+        raise ProvenanceError("record carries no cnf.jwk")
 
-        try:
-            matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
-        except ValueError as exc:
-            raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
-        if not matched:
-            raise ProvenanceError(
-                "the record's embedded key is not the trusted key. A record signed by "
-                "some other key is a record about a server somebody else is describing."
-            )
+    # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
+    # its key material; `kid`, `use` and `alg` are optional members that carry none
+    # of it, and a key resolved from a JWKS endpoint normally has `kid` while
+    # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
+    # and rejected records signed by exactly the right key.
+    from hmac import compare_digest
+
+    try:
+        matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+    except ValueError as exc:
+        raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
+    if not matched:
+        raise ProvenanceError(
+            "the record's embedded key is not the trusted key. A record signed by "
+            "some other key is a record about a server somebody else is describing."
+        )
 
     pub = _pubkey_from_jwk(trusted_jwk)
     body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
