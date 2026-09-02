@@ -66,6 +66,14 @@ def _as_object(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
+def _tool_count(catalog: dict[str, Any]) -> int:
+    """Return the required catalog count as a JSON integer."""
+    value = catalog.get("tool_count")
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ProvenanceError("tool_catalog.tool_count must be a non-negative integer")
+    return value
+
+
 class ToolCatalogMismatch(ProvenanceError):
     """The server offered a tool set the record does not describe.
 
@@ -344,6 +352,7 @@ def verify_record(
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
+    _tool_count(catalog)
 
     # Freshness. `issued_at` has been required and type-checked since the format
     # existed, with an error message explaining that a record with no issue time
@@ -442,4 +451,10 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
             f"({len(tools)} tools offered, record declares {declared_count}). "
             "The signature may be perfectly valid; this is about the server, not the "
             "document."
+        )
+    declared_count = _tool_count(catalog)
+    if declared_count != len(tools):
+        raise ProvenanceError(
+            f"tool_catalog.tool_count declares {declared_count} tools, but the matching "
+            f"catalog contains {len(tools)}"
         )
