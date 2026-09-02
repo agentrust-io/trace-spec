@@ -341,7 +341,18 @@ def _probes(pattern: str, valid: str) -> list[str]:
 
 
 def _splitters(path: tuple[str, ...], pattern: str) -> list[tuple[str, bool, bool]]:
-    """Probes at *path* the two validators disagree about."""
+    """Probes at *path* the two validators disagree about.
+
+    Raises ``LookupError`` naming *path* when ``FULL`` does not reach it, rather than
+    letting the plain ``KeyError`` out of ``_get`` propagate. This is the same gap
+    ``test_the_fixture_reaches_every_pattern_in_the_schema`` already reports by field
+    name via ``_reachable``; this read the path unguarded.
+    """
+    if not _reachable(FULL, path):
+        raise LookupError(
+            f"{'.'.join(path)}: pattern {pattern!r} constrains a path FULL does not "
+            "reach, so nothing here can probe it"
+        )
     valid = _get(FULL, path)
     split: list[tuple[str, bool, bool]] = []
     for probe in _probes(pattern, valid):
@@ -534,7 +545,11 @@ def _unaccounted_patterns(
         dotted = ".".join(path)
         if model_field_patterns.get(path) == pattern:
             continue
-        split = _splitters(path, pattern)
+        try:
+            split = _splitters(path, pattern)
+        except LookupError as exc:
+            unaccounted.append(str(exc))
+            continue
         declared = [s for s in split if (dotted, repr(s[0])[:26]) in DECLARED_DIVERGENCES]
         if split and len(declared) == len(split):
             continue
@@ -641,4 +656,27 @@ def test_the_mirror_check_is_by_field_not_flat_membership() -> None:
         "a schema pattern reassigned onto a field the model does not constrain with it "
         "must be flagged, even though the pattern string itself is genuinely in use "
         "elsewhere in the model:\n" + "\n".join(unaccounted)
+    )
+
+
+def test_a_missing_path_fails_with_the_field_name_not_a_keyerror() -> None:
+    """Review counterfactual: a pattern on a field ``FULL`` omits must fail naming
+    that field, not with a raw ``KeyError`` out of ``_get``.
+
+    ``test_the_fixture_reaches_every_pattern_in_the_schema`` already catches the same
+    reachability gap cleanly, by field name, via ``_reachable``. ``_splitters`` is the
+    other place that reads an arbitrary schema path out of ``FULL``, and it read the
+    path unguarded, so the same gap surfaced there as a bare ``KeyError`` instead.
+    """
+    bogus_path = ("build_provenance", "does_not_exist_in_full")
+    assert not _reachable(FULL, bogus_path), "setup: the path must genuinely be absent from FULL"
+
+    with pytest.raises(Exception) as excinfo:
+        _splitters(bogus_path, "^irrelevant$")
+
+    assert not isinstance(excinfo.value, KeyError), (
+        f"a missing path must not surface as a raw KeyError: {excinfo.value!r}"
+    )
+    assert "build_provenance.does_not_exist_in_full" in str(excinfo.value), (
+        f"the failure must name the missing field; got {excinfo.value!r}"
     )
