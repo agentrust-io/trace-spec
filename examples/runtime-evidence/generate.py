@@ -278,9 +278,18 @@ def base_record(quote: bytes, key: Ed25519PrivateKey) -> dict:
     return sign_record(record, key)
 
 
+# Published test key, fixed so the corpus is reproducible and the committed vectors
+# are byte-stable. It signs nothing outside this directory and protects nothing; the
+# alternative is a fresh key per run, which makes every vector churn and makes
+# "regenerate and diff" useless as a review.
+PUBLISHED_TEST_KEY = bytes.fromhex(
+    "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+)
+
+
 def build_corpus() -> list[tuple[str, str, str | None, dict]]:
     """Return (name, expected grade, expected model claim or None, record)."""
-    key = Ed25519PrivateKey.generate()
+    key = Ed25519PrivateKey.from_private_bytes(PUBLISHED_TEST_KEY)
     quote_a = (HARDWARE / "tdx_quote.bin").read_bytes()
     quote_b = (HARDWARE / "tdx_quote_manifest.bin").read_bytes()
 
@@ -408,7 +417,22 @@ def main() -> int:
         if args.out:
             out = Path(args.out)
             out.mkdir(parents=True, exist_ok=True)
-            (out / f"{name}.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+            # Wrapped, not bare: the expectation travels with the vector so a reader
+            # and tests/test_runtime_evidence_vectors.py see what it is graded against
+            # without re-deriving it. `record` stays a clean TRACE record, because a
+            # vector carrying an extra top-level member would fail the very schema the
+            # corpus exists to exercise.
+            (out / f"{name}.json").write_text(
+                json.dumps(
+                    {
+                        "expected": {"grade": expected, "model_claim": expected_claim},
+                        "record": record,
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
     width = max(len(r[0]) for r in rows)
     print(f"{'vector'.ljust(width)}  {'expected'.ljust(17)}  {'actual'.ljust(17)}  note")

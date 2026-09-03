@@ -197,6 +197,15 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 MEASURED_ELSEWHERE = {
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
+    # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,
+    # and this set's outcomes are three assurance grades, so `trivially_satisfied_by`
+    # would be comparing against the wrong two unconditional implementations.
+    "runtime-evidence": "tests/test_runtime_evidence_vectors.py, which asserts the "
+                        "half this repository can honestly measure (schema, signature, "
+                        "evidence shape, and the pinned claim that the top grade is "
+                        "unreachable) and names the half it cannot, quote verification, "
+                        "which examples/runtime-evidence/generate.py runs against "
+                        "agent-manifest's verifier",
 }
 
 

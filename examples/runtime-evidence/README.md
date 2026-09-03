@@ -29,6 +29,21 @@ Needs `rfc8785`, `jsonschema`, `cryptography`, `cbor2`, and a checkout of
 `agent-manifest` beside this repository. Override the two locations with
 `AGENT_MANIFEST_SRC` and `TDX_CAPTURE` if it lives elsewhere.
 
+Records are signed with a fixed published test key, so regeneration is byte-identical
+and `--out` produces no diff unless something actually changed. The key signs nothing
+outside this directory and protects nothing.
+
+## What CI measures, and what it does not
+
+`tests/test_runtime_evidence_vectors.py` runs on every push and asserts the half this
+repository can honestly check: schema validity against the draft, signature validity,
+evidence shape, and the pinned fact that no vector reaches the top grade.
+
+It does not verify the quotes. That needs a TDX verifier, TRACE does not ship one, and
+§8 of the proposal argues it should not start. That half runs here, in `generate.py`,
+against `agent-manifest`'s verifier. The split is named rather than papered over with
+a skipped test, which would look like coverage and be none.
+
 ## The vectors
 
 | Vector | Outcome | What it holds |
