@@ -16,6 +16,7 @@ accepts a valid quote without binding it to the record accepts the swap.
 
 Run:  python generate.py [--out DIR]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,8 +68,9 @@ PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
 # `runtime` is additionalProperties:false. That refusal is the gap the profile is
 # about, so a corpus cannot be run against the schema it proposes to change.
 DRAFT_SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[2] / "schema" / "trace-claim-v0.3-draft.json")
-    .read_text(encoding="utf-8")
+    (Path(__file__).resolve().parents[2] / "schema" / "trace-claim-v0.3-draft.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 
@@ -158,18 +160,14 @@ def appraise(record: dict) -> str:
     parsed = parse_tdx_quote(quote)
 
     if runtime.get("platform") != "intel-tdx":
-        raise Reject(
-            f"platform {runtime.get('platform')!r} is not what this evidence roots"
-        )
+        raise Reject(f"platform {runtime.get('platform')!r} is not what this evidence roots")
 
     # The binding rule. A valid quote proves a TD ran. It says nothing about which
     # measurement this record is entitled to claim until the two are compared.
     claimed = runtime.get("measurement", "")
     actual = "sha384:" + parsed.mrtd.hex()
     if claimed != actual:
-        raise Reject(
-            f"runtime.measurement {claimed} is not the MRTD in the evidence ({actual})"
-        )
+        raise Reject(f"runtime.measurement {claimed} is not the MRTD in the evidence ({actual})")
 
     # The key-binding rule, which is the whole distance between the top grade and the
     # middle one. docs/trust-levels.md already requires a Level 1 signing key to be
@@ -184,18 +182,40 @@ def appraise(record: dict) -> str:
 def grade_model_claim(record: dict, envelope_grade: str) -> str:
     """A TEE-signed record does not make every claim inside it attested.
 
-    `model.weights_digest` is attested only where the digest is itself inside the
-    signed evidence. Otherwise the environment is attested and the model claim is the
-    issuer's word carried inside a hardware-signed envelope, which is the shape most
-    likely to be read as stronger than it is.
+    `model.weights_digest` is attested only where the verifier can RECOMPUTE the
+    binding from the evidence. Otherwise the environment is attested and the model
+    claim is the issuer's word carried inside a hardware-signed envelope, which is the
+    shape most likely to be read as stronger than it is.
+
+    Note what this deliberately does not do: it never reads `evidence.binds`. That
+    member is a producer's statement of intent, and grading a claim by consulting it
+    would let a producer raise its own model claim by writing a string, which is the
+    assurance laundering this profile exists to refuse. An advisory field that changes
+    a grade is not advisory. The first draft of this function did read it, and it took
+    a vector that sets `binds` without earning it to make that visible.
     """
     model = record.get("model") or {}
-    if "weights_digest" not in model:
+    digest = model.get("weights_digest")
+    if digest is None:
         return "model claim: absent"
     if envelope_grade == "unattested":
         return "model claim: self-reported"
-    evidence = (record.get("runtime") or {}).get("evidence") or {}
-    if evidence.get("binds") == "weights_digest":
+
+    quote = ((record.get("runtime") or {}).get("evidence") or {}).get("quote")
+    if quote is None:
+        return "model claim: self-reported"
+
+    report_data = parse_tdx_quote(unb64u(quote)).report_data[:32]
+    # A producer may commit to the digest string as written, or to the raw digest
+    # bytes it names. Both are recomputable; anything else is not this rule's case.
+    algo, _, hexdigest = digest.partition(":")
+    candidates = [hashlib.sha256(digest.encode()).digest()]
+    if algo == "sha256" and len(hexdigest) == 64:
+        try:
+            candidates.append(bytes.fromhex(hexdigest))
+        except ValueError:
+            pass
+    if report_data in candidates:
         return "model claim: attested"
     return "model claim: self-reported"
 
@@ -247,9 +267,7 @@ def base_record(quote: bytes, key: Ed25519PrivateKey) -> dict:
                 "https://github.com/slsa-framework/slsa-github-generator"
                 "/.github/workflows/generator_container_slsa3.yml"
             ),
-            "digest": (
-                "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
-            ),
+            "digest": ("sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"),
         },
         "appraisal": {
             "status": "affirming",
@@ -260,22 +278,32 @@ def base_record(quote: bytes, key: Ed25519PrivateKey) -> dict:
     return sign_record(record, key)
 
 
-def build_corpus() -> list[tuple[str, str, dict]]:
-    """Return (name, expected outcome, record)."""
+def build_corpus() -> list[tuple[str, str, str | None, dict]]:
+    """Return (name, expected grade, expected model claim or None, record)."""
     key = Ed25519PrivateKey.generate()
     quote_a = (HARDWARE / "tdx_quote.bin").read_bytes()
     quote_b = (HARDWARE / "tdx_quote_manifest.bin").read_bytes()
 
     accept = base_record(quote_a, key)
-    vectors: list[tuple[str, str, dict]] = [
-        ("accept-real-quote-platform-attested", "platform-attested", accept)
+    vectors: list[tuple[str, str, str | None, dict]] = [
+        (
+            "accept-real-quote-platform-attested",
+            "platform-attested",
+            "model claim: self-reported",
+            accept,
+        )
     ]
 
     # No citation at all. Nothing to check, so nothing is claimed.
     absent = copy.deepcopy(accept)
     del absent["runtime"]["evidence"]
     vectors.append(
-        ("downgrade-evidence-absent", "unattested", sign_record(_unsigned(absent), key))
+        (
+            "downgrade-evidence-absent",
+            "unattested",
+            "model claim: self-reported",
+            sign_record(_unsigned(absent), key),
+        )
     )
 
     # A pointer to evidence is not evidence held.
@@ -286,7 +314,12 @@ def build_corpus() -> list[tuple[str, str, dict]]:
         "quote_uri": "https://example.org/quotes/a",
     }
     vectors.append(
-        ("downgrade-evidence-by-reference", "unattested", sign_record(_unsigned(byref), key))
+        (
+            "downgrade-evidence-by-reference",
+            "unattested",
+            "model claim: self-reported",
+            sign_record(_unsigned(byref), key),
+        )
     )
 
     # Forged: one byte flipped inside the region the attestation key signs.
@@ -294,15 +327,13 @@ def build_corpus() -> list[tuple[str, str, dict]]:
     forged_quote[48 + 136] ^= 0xFF
     forged = copy.deepcopy(accept)
     forged["runtime"]["evidence"]["quote"] = b64u(bytes(forged_quote))
-    vectors.append(
-        ("reject-forged-quote", "reject", sign_record(_unsigned(forged), key))
-    )
+    vectors.append(("reject-forged-quote", "reject", None, sign_record(_unsigned(forged), key)))
 
     # Genuine quote, measurement taken from somewhere else.
     mismatch = copy.deepcopy(accept)
     mismatch["runtime"]["measurement"] = "sha384:" + "00" * 48
     vectors.append(
-        ("reject-measurement-mismatch", "reject", sign_record(_unsigned(mismatch), key))
+        ("reject-measurement-mismatch", "reject", None, sign_record(_unsigned(mismatch), key))
     )
 
     # The vector this corpus exists for, and it does not do what it was written to do.
@@ -323,6 +354,7 @@ def build_corpus() -> list[tuple[str, str, dict]]:
         (
             "limit-substituted-quote-from-the-same-td",
             "platform-attested",
+            "model claim: self-reported",
             sign_record(_unsigned(swapped), key),
         )
     )
@@ -330,13 +362,29 @@ def build_corpus() -> list[tuple[str, str, dict]]:
     # The same swap, made after signing. The record signature is what refuses it.
     tampered = copy.deepcopy(accept)
     tampered["runtime"]["evidence"]["quote"] = b64u(quote_b)
-    vectors.append(("reject-evidence-swapped-after-signing", "reject", tampered))
+    vectors.append(("reject-evidence-swapped-after-signing", "reject", None, tampered))
 
     # A hardware platform value the evidence does not root.
     wrongplat = copy.deepcopy(accept)
     wrongplat["runtime"]["platform"] = "amd-sev-snp"
     vectors.append(
-        ("reject-platform-not-the-evidence", "reject", sign_record(_unsigned(wrongplat), key))
+        ("reject-platform-not-the-evidence", "reject", None, sign_record(_unsigned(wrongplat), key))
+    )
+
+    # `binds` is advisory, and a vector proves it cannot raise anything. This record
+    # declares that the guest committed to the weights digest. It did not: REPORT_DATA
+    # holds a manifest digest, as it does in every capture we own. The envelope grade
+    # is unaffected and the model claim stays self-reported, because the rule
+    # recomputes the binding instead of believing the declaration.
+    claimed_binding = copy.deepcopy(accept)
+    claimed_binding["runtime"]["evidence"]["binds"] = "weights-digest"
+    vectors.append(
+        (
+            "advisory-binds-cannot-raise-a-claim",
+            "platform-attested",
+            "model claim: self-reported",
+            sign_record(_unsigned(claimed_binding), key),
+        )
     )
 
     return vectors
@@ -348,29 +396,26 @@ def main() -> int:
     args = ap.parse_args()
 
     rows: list[tuple[str, str, str, bool, str]] = []
-    for name, expected, record in build_corpus():
+    for name, expected, expected_claim, record in build_corpus():
         try:
             grade = appraise(record)
         except Reject as e:
             actual, note = "reject", str(e)
         else:
             actual, note = grade, grade_model_claim(record, grade)
-        rows.append((name, expected, actual, actual == expected, note))
+        ok = actual == expected and (expected_claim is None or note == expected_claim)
+        rows.append((name, expected, actual, ok, note))
         if args.out:
             out = Path(args.out)
             out.mkdir(parents=True, exist_ok=True)
-            (out / f"{name}.json").write_text(
-                json.dumps(record, indent=2), encoding="utf-8"
-            )
+            (out / f"{name}.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
 
     width = max(len(r[0]) for r in rows)
     print(f"{'vector'.ljust(width)}  {'expected'.ljust(17)}  {'actual'.ljust(17)}  note")
     print("-" * (width + 62))
     for name, expected, actual, ok, note in rows:
         flag = "" if ok else "   <-- MISMATCH"
-        print(
-            f"{name.ljust(width)}  {expected.ljust(17)}  {actual.ljust(17)}  {note}{flag}"
-        )
+        print(f"{name.ljust(width)}  {expected.ljust(17)}  {actual.ljust(17)}  {note}{flag}")
 
     failures = sum(1 for r in rows if not r[3])
     limits = sum(1 for r in rows if r[0].startswith("limit-"))

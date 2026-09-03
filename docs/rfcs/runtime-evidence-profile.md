@@ -142,9 +142,13 @@ The middle row is narrower than it looks and §7.2 shows why.
 
 ### 6.1 A grade on the record is not a grade on its claims
 
-`model.weights_digest` is attested where the digest is itself inside the signed evidence, and self-reported otherwise. A TEE-signed envelope does not make its contents attested; it makes them the issuer's word, carried in a hardware-signed envelope, which is the shape most likely to be read as stronger than it is. The same reasoning applies to `policy.bundle_hash` and `tool_transcript.hash`: hardware attests what was measured, and a value the runtime wrote into a record after the fact was not measured.
+`model.weights_digest` is attested where a verifier can **recompute** the binding from the evidence, and self-reported otherwise. A TEE-signed envelope does not make its contents attested; it makes them the issuer's word, carried in a hardware-signed envelope, which is the shape most likely to be read as stronger than it is. The same reasoning applies to `policy.bundle_hash` and `tool_transcript.hash`: hardware attests what was measured, and a value the runtime wrote into a record after the fact was not measured.
 
 This is §3.1.1's principle turned inward. The specification already refuses to let a pointer raise a record. It should equally refuse to let a record raise its own contents.
+
+**Recompute is load-bearing, and the first draft of this proposal got it wrong.** The rule originally read `evidence.binds` to decide the grade, which would have let a producer raise its own model claim by writing `binds: "weights-digest"` into a record. That is precisely the laundering this section forbids, reintroduced inside the section that forbids it. An advisory member that changes a grade is not advisory. `advisory-binds-cannot-raise-a-claim` in §7 is the vector that keeps it honest: it declares the binding, does not have it, and grades self-reported.
+
+The near miss is worth recording rather than quietly fixing. The failure mode was not carelessness about the principle; it was stating the principle in §3 and implementing the opposite forty lines away, which is the shape this whole proposal exists to catch in `runtime`.
 
 ## 7. Measurement
 
@@ -161,9 +165,12 @@ reject-measurement-mismatch               reject   runtime.measurement is not th
 limit-substituted-quote-from-the-same-td  platform-attested
 reject-evidence-swapped-after-signing     reject   record envelope failed: InvalidSignature
 reject-platform-not-the-evidence          reject   platform 'amd-sev-snp' is not what this evidence roots
+advisory-binds-cannot-raise-a-claim       platform-attested   model claim: self-reported
 
-8/8 vectors behaved as the profile says they must (1 of them documenting a limit).
+9/9 vectors behaved as the profile says they must (1 of them documenting a limit).
 ```
+
+Each vector asserts both the record grade and the model-claim grade, because §6.1 is a claim about the relationship between the two and a corpus that checked only the first would not test it.
 
 ### 7.1 What the corpus found
 
