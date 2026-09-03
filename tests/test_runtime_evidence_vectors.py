@@ -60,7 +60,7 @@ def test_the_corpus_did_not_shrink() -> None:
     The count is the whole assertion: which vectors exist is the generator's business,
     but a set that can silently lose its inconvenient members measures nothing.
     """
-    assert len(VECTORS) == 9
+    assert len(VECTORS) == 10
 
 
 @pytest.mark.parametrize("path", VECTORS, ids=IDS)

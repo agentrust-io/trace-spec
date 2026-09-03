@@ -140,7 +140,11 @@ def appraise(record: dict) -> str:
 
     fmt = evidence.get("format")
     if fmt != "tdx-quote-v4":
-        raise Reject(f"unsupported evidence format {fmt!r}")
+        # Rules 2 and 5: a verifier with no implementation for a format treats the
+        # record as if the block were absent. Refusing here would make an
+        # unimplemented format indistinguishable from bad evidence, and would let
+        # any verifier's coverage gap become a rejection of a sound record.
+        return "unattested"
 
     if "quote" not in evidence:
         # By-reference evidence. TRACE claims offline verifiability, and a verifier
@@ -328,6 +332,22 @@ def build_corpus() -> list[tuple[str, str, str | None, dict]]:
             "unattested",
             "model claim: self-reported",
             sign_record(_unsigned(byref), key),
+        )
+    )
+
+    # A format this verifier has no implementation for. Rules 2 and 5 say that is
+    # the verifier's coverage gap and not a defect in the record, so it grades the
+    # same as absent evidence. The quote bytes are the genuine ones: the point is
+    # that the grade turns on the format label alone, before anything is parsed.
+    unknown_format = copy.deepcopy(accept)
+    unknown_format["runtime"]["evidence"]["format"] = "sev-snp-report-v2"
+    unknown_format["runtime"]["platform"] = "amd-sev-snp"
+    vectors.append(
+        (
+            "downgrade-unsupported-format",
+            "unattested",
+            "model claim: self-reported",
+            sign_record(_unsigned(unknown_format), key),
         )
     )
 

@@ -51,6 +51,7 @@ a skipped test, which would look like coverage and be none.
 | `accept-real-quote-platform-attested` | `platform-attested` | the happy path, and note it is not the top grade |
 | `downgrade-evidence-absent` | `unattested` | no evidence is not a rejection; every v0.2 record is this |
 | `downgrade-evidence-by-reference` | `unattested` | a URI is not evidence held |
+| `downgrade-unsupported-format` | `unattested` | the verifier's coverage gap is not the record's defect |
 | `reject-forged-quote` | reject | one byte flipped inside the signed TD report body |
 | `reject-measurement-mismatch` | reject | genuine quote, measurement claimed from elsewhere |
 | `limit-substituted-quote-from-the-same-td` | `platform-attested` | **a documented limit, not a success.** See below |

@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
-**Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 8 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
+**Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 10 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
 **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` so the diff is one member deep.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
@@ -167,7 +167,7 @@ reject-evidence-swapped-after-signing     reject   record envelope failed: Inval
 reject-platform-not-the-evidence          reject   platform 'amd-sev-snp' is not what this evidence roots
 advisory-binds-cannot-raise-a-claim       platform-attested   model claim: self-reported
 
-9/9 vectors behaved as the profile says they must (1 of them documenting a limit).
+10/10 vectors behaved as the profile says they must (1 of them documenting a limit).
 ```
 
 Each vector asserts both the record grade and the model-claim grade, because §6.1 is a claim about the relationship between the two and a corpus that checked only the first would not test it.

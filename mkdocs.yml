@@ -225,6 +225,7 @@ nav:
   - RFCs:
       - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
       - A2A delegation-link verification profile: docs/rfcs/a2a-delegation-profile.md
+      - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
   - Project:
       - Limitations: LIMITATIONS.md
       - Changelog: CHANGELOG.md
