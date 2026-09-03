@@ -18,6 +18,14 @@ wheel installed elsewhere in the environment must not shadow the code under
 test; a regression test fails with the resolved import path if that guarantee is
 lost.
 
+## Using AI to contribute
+
+Use agents. A lot of this was built with them and saying otherwise would be dishonest.
+
+The rule is that you have to understand what you submit. If you cannot explain what your change does and how it interacts with the rest of the system, with the agent closed, do not open the pull request. Reviewing a change nobody can explain costs more than writing it did, and it becomes someone else's problem the moment it merges.
+
+That is a rule about understanding, not about tooling.
+
 ## DCO sign-off
 
 All commits must include a Developer Certificate of Origin sign-off:
