@@ -1,0 +1,50 @@
+{
+  "expected": {
+    "grade": "unattested",
+    "model_claim": "model claim: self-reported"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1753056000,
+    "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+    "model": {
+      "provider": "meta",
+      "model_id": "llama-3.3-70b-instruct",
+      "version": "3.3",
+      "weights_digest": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    },
+    "runtime": {
+      "platform": "intel-tdx",
+      "measurement": "sha384:9bf86e6280ec4282b8b5822d8166410a456cdb720109aa799f0011fa63df1de3ee5e35e293fc410c061433163acb03a6",
+      "firmware_version": "gcp-c3",
+      "evidence": {
+        "format": "tdx-quote-v4",
+        "quote_digest": "sha256:f9efbac112efe510aa8ccd20703b063591b8c2c54c474d0ff1d6500299bae0ba",
+        "quote_uri": "https://example.org/quotes/a"
+      }
+    },
+    "policy": {
+      "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+      "enforcement_mode": "enforce",
+      "version": "1.0.0"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 2,
+      "builder": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml",
+      "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://github.com/agentrust-io/agent-manifest"
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    },
+    "signature": "hXGDZB4S5OOSkJ5wYSOYn7LR2NJHNu5l_WUZ55BcUZqLxrvblgOHAq-cp4UBAMDcAQCSzcnyIAHkzh3UfgeSDQ"
+  }
+}
