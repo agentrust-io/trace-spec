@@ -930,6 +930,28 @@ Rule 3 is what makes the block safe to add. A reference that could invalidate a 
 
 **Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together.
 
+#### 3.1.3 `delegation.parent_record_hash`: what the digest covers
+
+`delegation.parent_record_hash` is the field a verifier walks to reconstruct a delegation chain. The schema gives it a pattern and calls it a "digest of the parent hop's Trust Record", which does not say which bytes are digested, and at least three readings of that phrase produce different digests.
+
+The preimage is the **complete parent record as published, with its `signature` member present**, canonicalised with RFC 8785 (JCS):
+
+```
+delegation.parent_record_hash = "sha256:" + hex(SHA-256(JCS(parent_record)))
+```
+
+with `sha384:` and SHA-384 as the permitted alternative, per the schema pattern.
+
+1. A producer MUST compute `parent_record_hash` over the complete parent record, including its `signature` member where the profile embeds one, canonicalised with RFC 8785. No member is removed, blanked or reordered before digesting.
+1. A verifier MUST recompute the digest the same way, over the parent record as it received it, and MUST NOT reconstruct or re-serialise the parent by any other route.
+1. The digest algorithm named in the prefix MUST match the algorithm used, and a verifier MUST reject a record whose prefix names an algorithm it does not support rather than fall back to another.
+
+**This is not the canonical form defined in §3.2.2, and the difference is deliberate.** §3.2.2 constructs the signature pre-image with the `signature` field *absent*, because a signature cannot cover itself. A chain digest has no such constraint and gains from not having one: digesting the record as published means a verifier digests exactly what it fetched, with no member-removal step to get wrong, and the parent's signature is then covered by the chain digest as well as checked on its own. For an enveloping-signature profile, where the record carries no `signature` member, the two pre-images coincide.
+
+The other two readings fail for concrete reasons. Digesting the file's raw bytes makes the value sensitive to whitespace and key order, so it breaks the first time a record passes through a system that re-serialises it. Digesting with `signature` removed adds a second canonicalisation rule for implementers to get wrong and buys nothing.
+
+**A near-miss here passes every existing vector.** The RFC 8785 key ordering that §3.2.2 describes, and the code-point ordering that `sort_keys=True` produces in several JSON libraries, agree across the Basic Multilingual Plane and diverge only once a key contains a supplementary-plane character. An implementation that takes the shortcut therefore computes correct chain digests for ASCII records indefinitely and produces an unverifiable chain the first time such a key appears. Every vector in `examples/delegation-link/` is currently ASCII, so the corpus does not discriminate the two; a vector whose parent record carries a supplementary-plane key is what closes that.
+
 ### 3.2 Wire format
 
 \*\*Envelope: \*\* EAT (RFC 9711): JWT (JSON, human-readable contexts) or CWT/CBOR-COSE (constrained and high-throughput contexts).
