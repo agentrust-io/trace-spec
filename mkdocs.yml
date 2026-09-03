@@ -219,6 +219,7 @@ nav:
   - Crosswalks:
       - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
       - Acta Decision Receipts: docs/crosswalks/acta-decision-receipts.md
+      - N’KEMBA Institutional Reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
   - Test Suite: https://tests.agentrust-io.com
   - Method:
       - How the conformance vectors are built: docs/conformance-method.md
