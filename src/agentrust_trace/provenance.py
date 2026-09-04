@@ -66,6 +66,13 @@ def _as_object(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
+def _nonempty_string(value: Any, field: str) -> str:
+    """Return a required textual locator, rejecting truthy non-string JSON values."""
+    if not isinstance(value, str) or not value:
+        raise ProvenanceError(f"{field} must be a non-empty string")
+    return value
+
+
 def _tool_count(catalog: dict[str, Any]) -> int:
     """Return the required catalog count as a JSON integer."""
     value = catalog.get("tool_count")
@@ -153,8 +160,7 @@ def _check_structure(
             raise ProvenanceError(
                 f"identity.artifact must be an object, got {type(artifact).__name__}"
             )
-        if not artifact.get("package"):
-            raise ProvenanceError("artifact.package is required (a Package URL)")
+        _nonempty_string(artifact.get("package"), "artifact.package")
         if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
             raise ProvenanceError(
                 "artifact.digest must be a sha256: digest of the entrypoint. For an "
@@ -166,8 +172,7 @@ def _check_structure(
             raise ProvenanceError(
                 f"identity.endpoint must be an object, got {type(endpoint).__name__}"
             )
-        if not endpoint.get("url"):
-            raise ProvenanceError("endpoint.url is required when endpoint is present")
+        _nonempty_string(endpoint.get("url"), "endpoint.url")
         if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
             raise ProvenanceError(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
