@@ -61,14 +61,18 @@ def _digest(data: bytes, alg: str) -> str:
 
 def _record_url(value: Any) -> str:
     """Return a C2PA external-reference URL or refuse the malformed value."""
+    message = "record.url must be an absolute http(s) URI"
     if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
-        raise ContentMarkingError("record.url must be an absolute http(s) URI")
+        raise ContentMarkingError(message)
     try:
         parsed = urlsplit(value)
+        port = parsed.port
     except ValueError as exc:
-        raise ContentMarkingError("record.url must be an absolute http(s) URI") from exc
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ContentMarkingError("record.url must be an absolute http(s) URI")
+        raise ContentMarkingError(message) from exc
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+        raise ContentMarkingError(message)
+    # Reading parsed.port above is intentional: urllib rejects malformed/non-numeric ports there.
+    _ = port
     return value
 
 
