@@ -136,9 +136,10 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     data = assertion.get("data")
     if not isinstance(data, dict):
         raise ContentMarkingError("assertion has no data object")
-    if data.get("version") != ASSERTION_VERSION:
+    version = data.get("version")
+    if isinstance(version, bool) or version != ASSERTION_VERSION:
         raise ContentMarkingError(
-            f"unknown assertion version {data.get('version')!r}; expected {ASSERTION_VERSION}. "
+            f"unknown assertion version {version!r}; expected {ASSERTION_VERSION}. "
             "An unknown version is rejected rather than parsed best-effort."
         )
 
