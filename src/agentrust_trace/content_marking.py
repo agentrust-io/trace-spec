@@ -21,7 +21,7 @@ import hashlib
 import re
 from typing import Any
 
-from rfc3986_validator import validate_rfc3986
+from rfc3986_validator import validate_rfc3986  # type: ignore[import-untyped]
 
 __all__ = [
     "ASSERTION_LABEL",
