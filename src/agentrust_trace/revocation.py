@@ -121,6 +121,14 @@ def _unverified(cause: Cause, evidence: dict[str, Any]) -> RevocationCheck:
     return RevocationCheck(outcome="unverified_for_revocation", cause=cause, evidence=evidence)
 
 
+def _check_seconds(name: str, value: Any) -> None:
+    """Reject a malformed bundle-freshness input before using it as seconds."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer, got {type(value).__name__}")
+    if value < 0:
+        raise ValueError(f"{name} must be non-negative, got {value}")
+
+
 @lru_cache(maxsize=1)
 def _bundle_validator() -> jsonschema.Draft202012Validator:
     """A validator for the bundle schema that resolves its statement ``$ref`` locally.
@@ -198,6 +206,9 @@ def check_bundle(
     key. That is evidence failing rather than evidence absent, and it fails closed
     like the ``revocation`` store does.
     """
+    _check_seconds("now", now)
+    _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
     trusted_ids = list(trusted_key_identifiers)
     trusted_bundle_keys = list(trusted_bundle_keys)
 
