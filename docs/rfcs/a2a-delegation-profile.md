@@ -187,17 +187,20 @@ freshness policy on top of this profile; no rule here reads it.
 the verifier context to judge it under, and the classification and codes it expects, so a
 third party can score an implementation without running anything from this repository.
 
-Twenty-three of the twenty-four score the ten rules above, two per rule with a declared
-implementation defect that one vector catches and the other misses. The remaining vector,
-`24-parent-key-supplementary-plane.json`, is not a rule vector: it targets the digest
-preimage itself, over which every rule is evaluated. Spec section 3.1.3 names the gap this
-vector closes: the corpus was entirely ASCII, under which RFC 8785's UTF-16 key ordering and
-a code-point ordering (`sort_keys=True` in several JSON libraries) agree, so nothing in the
-set could tell an implementation that canonicalizes correctly apart from one that takes the
-code-point shortcut. This vector's parent record carries a `cnf.jwk` member keyed outside the
-Basic Multilingual Plane, where the two orderings disagree; a canonicalizer that takes the
-shortcut computes the wrong digest for it and reports `parent_not_found` on a chain every
-other vector here shows verifying.
+Twenty of the twenty-four score the ten rules above, two per rule with a
+declared implementation defect that one vector catches and the other misses.
+Three more (`01`–`03`) are clean chains, expected to verify with no rule
+firing. The remaining vector, `24-parent-key-supplementary-plane.json`, is
+not a rule vector: it targets the digest preimage itself, over which every
+rule is evaluated. Spec section 3.1.3 names the gap this vector closes: the
+corpus was entirely ASCII, under which RFC 8785's UTF-16 key ordering and
+a code-point ordering (`sort_keys=True` in several JSON libraries) agree, so
+nothing in the set could tell an implementation that canonicalizes correctly
+apart from one that takes the code-point shortcut. This vector's parent
+record carries a `cnf.jwk` member keyed outside the Basic Multilingual
+Plane, where the two orderings disagree; a canonicalizer that takes the
+shortcut computes the wrong digest for it and reports `parent_not_found` on
+a chain every other vector here shows verifying.
 
 Every record in every vector, including the ones built to fail, validates against
 `schema/trace-claim.json`. A defect the schema already rejects is not a profile defect, and a
