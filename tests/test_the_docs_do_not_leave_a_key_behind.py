@@ -44,7 +44,9 @@ def test_the_documentation_writes_something() -> None:
     patterns above are the kind of thing that stops matching after an edit."""
     found = _paths_the_docs_write()
     assert found, "recovered no written paths from docs/; the patterns have stopped matching"
-    assert "trace-key.pem" in found, f"the quickstart's key is not among {sorted(found)}"
+    assert {"issuer-public.pem", "session.trace.json"} <= found, (
+        f"the quickstart's saved artifacts are not among {sorted(found)}"
+    )
 
 
 @pytest.mark.parametrize("name", sorted(_paths_the_docs_write()))
