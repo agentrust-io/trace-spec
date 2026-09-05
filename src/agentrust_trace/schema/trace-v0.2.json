@@ -472,6 +472,46 @@
               }
             }
           ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "d"
+                ]
+              },
+              {
+                "required": [
+                  "p"
+                ]
+              },
+              {
+                "required": [
+                  "q"
+                ]
+              },
+              {
+                "required": [
+                  "dp"
+                ]
+              },
+              {
+                "required": [
+                  "dq"
+                ]
+              },
+              {
+                "required": [
+                  "qi"
+                ]
+              },
+              {
+                "required": [
+                  "k"
+                ]
+              }
+            ]
+          },
+          "$comment": "RFC 8747 defines cnf as a confirmation key: the public half, present so a verifier can bind the record to the key that signed it. A private member here publishes the signing key inside the signed, self-authenticating, typically anchored record, and the only remedy afterwards is to revoke the identity. Mirrors _JWK_PRIVATE_PARAMS in the reference model, which already refuses these.",
           "additionalProperties": {
             "$ref": "#/$defs/canonicalizableValue"
           }
