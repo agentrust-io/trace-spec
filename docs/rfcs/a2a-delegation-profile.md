@@ -189,7 +189,7 @@ third party can score an implementation without running anything from this repos
 
 Twenty of the twenty-four score the ten rules above, two per rule with a
 declared implementation defect that one vector catches and the other misses.
-Three more (`01`–`03`) are clean chains, expected to verify with no rule
+Three more (`01`to`03`) are clean chains, expected to verify with no rule
 firing. The remaining vector, `24-parent-key-supplementary-plane.json`, is
 not a rule vector: it targets the digest preimage itself, over which every
 rule is evaluated. Spec section 3.1.3 names the gap this vector closes: the
