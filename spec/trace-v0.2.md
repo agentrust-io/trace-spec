@@ -217,7 +217,8 @@ with `sha384:` and SHA-384 as the permitted alternative, per the schema pattern.
 
 The other two readings fail for concrete reasons. Digesting the file's raw bytes makes the value sensitive to whitespace and key order, so it breaks the first time a record passes through a system that re-serialises it. Digesting with `signature` removed adds a second canonicalisation rule for implementers to get wrong and buys nothing.
 
-**A near-miss here passes every existing vector.** The RFC 8785 key ordering that §3.2.2 describes, and the code-point ordering that `sort_keys=True` produces in several JSON libraries, agree across the Basic Multilingual Plane and diverge only once a key contains a supplementary-plane character. An implementation that takes the shortcut therefore computes correct chain digests for ASCII records indefinitely and produces an unverifiable chain the first time such a key appears. Every vector in `examples/delegation-link/` is currently ASCII, so the corpus does not discriminate the two; a vector whose parent record carries a supplementary-plane key is what closes that.
+**A near-miss here passes every vector but one.** The RFC 8785 key ordering that §3.2.2 describes, and the code-point ordering that `sort_keys=True` produces in several JSON libraries, agree across the Basic Multilingual Plane and diverge only once a key contains a supplementary-plane character. An implementation that takes the shortcut therefore computes correct chain digests for ASCII records indefinitely and produces an unverifiable chain the first time such a key appears.
+`examples/delegation-link/24-parent-key-supplementary-plane.json` is the vector that catches it: its parent record carries a key outside the Basic Multilingual Plane, where the two orderings disagree. Every other record's keys in that corpus are ASCII.
 
 ### 3.2 Wire format
 
