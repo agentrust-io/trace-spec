@@ -41,7 +41,7 @@ Level 0 records are signed with an Ed25519 key held by the agent process. There 
 }
 ```
 
-All-zero measurement (`sha256:000...000`) is conventional for software-only development records. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path.
+`runtime.measurement` is required on every record, including `software-only` ones. Under `software-only`, the field is not a hardware measurement: it is a software commitment defined by the producing profile (for example, a hash over an image digest and policy bundle, or over a chain-tip), and that profile must document its preimage so a verifier can recompute it. All-zero (`sha256:000...000`) is reserved for a producer that has no commitment to offer at all, such as a bare development record with nothing measured; it is not the default for `software-only` in general. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path.
 
 ---
 
