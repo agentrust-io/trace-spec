@@ -357,6 +357,30 @@ def _b64url_decode(value: str, *, field: str) -> bytes:
         raise ValueError(f"{field} is not valid base64url: {exc}") from exc
 
 
+def _check_seconds(
+    name: str, value: Any, *, optional: bool = False, exc: type[Exception] = ValueError
+) -> None:
+    """Reject a malformed freshness-policy input instead of silently acting on it.
+
+    A verifier's age/skew policy is configuration, and a wrong one fails in the
+    direction that matters: ``max_age_seconds=-1`` is not a stricter bound, it
+    classifies every record ever issued as stale, and a caller who meant to
+    disable the bound (``None``) would see a uniform refusal with no error
+    naming the cause. ``bool`` is excluded explicitly because it is a subclass
+    of ``int`` in Python, so ``True`` would otherwise pass as one second.
+
+    Shared by :func:`sign.verify_record` and :func:`provenance.verify_record`,
+    which pass their own exception type via *exc* so each keeps its existing
+    public error type (``ValueError`` and ``ProvenanceError`` respectively).
+    """
+    if optional and value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise exc(f"{name} must be an integer, got {type(value).__name__}")
+    if value < 0:
+        raise exc(f"{name} must be non-negative, got {value}")
+
+
 def sign_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
     """Return a copy of *record* with ``cnf.jwk`` populated and a ``signature`` field added.
 
@@ -526,10 +550,8 @@ def verify_record(
         raise ValueError("now must be an integer Unix timestamp in seconds, or None")
     else:
         verification_time = now
-    if max_bundle_age_seconds < 0:
-        raise ValueError("max_bundle_age_seconds must be non-negative")
-    if max_future_skew_seconds < 0:
-        raise ValueError("max_future_skew_seconds must be non-negative")
+    _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
@@ -661,6 +683,9 @@ def verify_record(
         )
 
     # Freshness: bound the age of the record against its issued-at timestamp.
+    # Both bounds are verifier configuration, not record data, and a malformed
+    # one is checked before it is used -- see `_check_seconds`.
+    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
     iat = record.get("iat")
     if not isinstance(iat, int) or isinstance(iat, bool):
         raise ValueError("record has no valid integer 'iat' for freshness check")
