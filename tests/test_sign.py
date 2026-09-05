@@ -434,6 +434,76 @@ def test_verify_record_rejects_negative_future_skew_configuration():
         verify_record(record, key_to_jwk(key), max_future_skew_seconds=-1)
 
 
+# --- freshness policy inputs, shared with provenance.py via `_check_seconds` --
+#
+# The age/skew bounds are verifier configuration, and a malformed one fails in
+# the direction that matters: -1 is not a stricter bound, it calls every
+# record ever issued stale, uniformly, with no error naming the cause. `bool`
+# gets its own case because it is a subclass of `int`, so `True` would
+# otherwise be accepted as one second. `provenance.verify_record` already
+# guarded against this (per the review on #164); this is that same guard on
+# the Trust Record side.
+
+
+@pytest.mark.parametrize("bad", [-1, -86400, True, False, 1.5, "300", object()])
+def test_a_malformed_max_age_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    with pytest.raises(ValueError) as exc:
+        verify_record(record, key_to_jwk(key), max_age_seconds=bad)
+    assert "max_age_seconds must be" in str(exc.value)
+
+
+@pytest.mark.parametrize("bad", [True, False, 1.5, "300", None])
+def test_a_malformed_skew_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    with pytest.raises(ValueError) as exc:
+        verify_record(record, key_to_jwk(key), max_future_skew_seconds=bad)
+    assert "max_future_skew_seconds must be" in str(exc.value)
+
+
+@pytest.mark.parametrize("ok", [1, 86400])
+def test_a_well_formed_bound_still_verifies(ok: int) -> None:
+    key = generate_key()
+    verify_record(sign_record(_fresh_record(), key), key_to_jwk(key), max_age_seconds=ok)
+    verify_record(
+        sign_record(_fresh_record(), key), key_to_jwk(key), max_future_skew_seconds=ok
+    )
+
+
+@pytest.mark.parametrize("bad", [-1, -86400, True, False, 1.5, "300", object(), None])
+def test_a_malformed_bundle_age_is_reported_not_applied(bad) -> None:
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    with pytest.raises(ValueError) as exc:
+        verify_record(record, key_to_jwk(key), max_bundle_age_seconds=bad)
+    assert "max_bundle_age_seconds must be" in str(exc.value)
+
+
+@pytest.mark.parametrize("ok", [1, 86400])
+def test_a_well_formed_bundle_age_still_verifies(ok: int) -> None:
+    key = generate_key()
+    verify_record(
+        sign_record(_fresh_record(), key), key_to_jwk(key), max_bundle_age_seconds=ok
+    )
+
+def test_zero_is_a_bound_and_not_a_falsy_stand_in_for_unset() -> None:
+    """`0` and `None` are different policies and must not be conflated.
+
+    `None` disables the age bound; `0` is the strictest one expressible - the
+    record must be issued at this instant, so anything already in the past is
+    stale. A validator that treated `0` as falsy would silently accept every
+    record under the strictest policy a caller can write.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    time.sleep(1.1)
+    verify_record(record, key_to_jwk(key), max_age_seconds=None)  # disabled: passes
+    with pytest.raises(ValueError, match="stale"):
+        verify_record(record, key_to_jwk(key), max_age_seconds=0)
+
+
 def test_verify_record_rejects_non_okp_jwk():
     key = generate_key()
     record = sign_record(_fresh_record(), key)
