@@ -22,7 +22,7 @@ A software-held key signs the record. `software-only` identifies the absence of 
 
 A valid signature authenticates the key's statement. It does not prove that a policy ran or an action completed. A privileged party holding that key can sign other statements.
 
-The measurement can be a software commitment defined by the producer. All-zero is reserved for an example or producer that offers no measurement commitment. Use the [quick start](quickstart.md) for a complete runnable record rather than copying abbreviated field examples.
+`runtime.measurement` is required on every record, including `software-only` ones. Under `software-only`, the field is not a hardware measurement: it is a software commitment defined by the producing profile (for example, a hash over an image digest and policy bundle, or over a chain-tip), and that profile must document its preimage so a verifier can recompute it. All-zero (`sha256:000...000`) is reserved for a producer that has no commitment to offer at all, such as a bare development record with nothing measured; it is not the default for `software-only` in general. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path. Use the [quick start](quickstart.md) for a complete runnable record rather than copying abbreviated field examples.
 
 ## Level 1: hardware evidence
 

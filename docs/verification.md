@@ -41,13 +41,13 @@ The recipient decides whether the checks performed satisfy the operation's requi
 
 Signature verification alone cannot discover a later key revocation. Offline appraisal requires cached revocation evidence as well as the record and trusted key. Report which evidence was checked and whether it remains current.
 
-[Â§3.2.3 of the spec](../spec/trace-v0.2.md) closes that gap without giving up offline verification. Two things are worth knowing before reading the code below.
+[§3.2.3 of the spec](../spec/trace-v0.2.md) closes that gap without giving up offline verification. Two things are worth knowing before reading the code below.
 
-**The boundary is a log entry ID, not a time.** The intuitive rule is to reject a record from a revoked key when its `iat` falls after the compromise. A compromised record-signing key also signs `iat`, so whoever holds it backdates the record and the rule passes. Â§3.2.3 anchors to the SCITT inclusion entry ID instead, because entry IDs are monotonic and bound to the Merkle structure, so ordering survives the compromise of the signing key in a way a timestamp does not. In Â§3.2.3's words, a record from a revoked key is valid *"if and only if its SCITT inclusion entry ID is less than or equal to `last_valid_entry_id`"*, on the log named in the statement.
+**The boundary is a log entry ID, not a time.** The intuitive rule is to reject a record from a revoked key when its `iat` falls after the compromise. A compromised record-signing key also signs `iat`, so whoever holds it backdates the record and the rule passes. §3.2.3 anchors to the SCITT inclusion entry ID instead, because entry IDs are monotonic and bound to the Merkle structure, so ordering survives the compromise of the signing key in a way a timestamp does not. In §3.2.3's words, a record from a revoked key is valid *"if and only if its SCITT inclusion entry ID is less than or equal to `last_valid_entry_id`"*, on the log named in the statement.
 
-**Offline is a state you report, not a check you skip.** Revocation statements are anchored in the same transparency log as the records they govern, and verifiers cache a signed bundle carrying `valid_until`. A verifier offline says what it checked against, "verified against revocation bundle valid at T", rather than reporting an affirming appraisal it did not earn. Â§3.2.3 states that an expired bundle *"MUST report the record as unverified for revocation rather than as verified"*, and that a verifier with no bundle *"MUST report that it performed no revocation check"*.
+**Offline is a state you report, not a check you skip.** Revocation statements are anchored in the same transparency log as the records they govern, and verifiers cache a signed bundle carrying `valid_until`. A verifier offline says what it checked against, "verified against revocation bundle valid at T", rather than reporting an affirming appraisal it did not earn. §3.2.3 states that an expired bundle *"MUST report the record as unverified for revocation rather than as verified"*, and that a verifier with no bundle *"MUST report that it performed no revocation check"*.
 
-A record with no usable inclusion entry ID has no anchor to place it before or after the compromise, so Â§3.2.3 falls back to binary revocation for it: *"a verifier MUST reject every record signed by the revoked key"*. That fallback is what `verify_record()` implements for both the store and the bundle, and it is the correct behaviour for deployments carrying no receipts.
+A record with no usable inclusion entry ID has no anchor to place it before or after the compromise, so §3.2.3 falls back to binary revocation for it: *"a verifier MUST reject every record signed by the revoked key"*. That fallback is what `verify_record()` implements for both the store and the bundle, and it is the correct behaviour for deployments carrying no receipts.
 
 `verify_record()` takes a `revocation` store to do this. Pass a container of revoked identifiers, or a callable that performs a live lookup:
 
@@ -77,7 +77,7 @@ Both failure modes raise `ValueError`, including a store that cannot answer:
 
 The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted", and the result says so rather than leaving it implied.
 
-`verify_record()` also consumes the bundle format Â§3.2.3 publishes. Pass `revocation_bundle`, a `TraceRevocationBundle/1.0` object, and `trusted_bundle_keys`, the JWKs whose signatures the caller accepts on a bundle:
+`verify_record()` also consumes the bundle format §3.2.3 publishes. Pass `revocation_bundle`, a `TraceRevocationBundle/1.0` object, and `trusted_bundle_keys`, the JWKs whose signatures the caller accepts on a bundle:
 
 ```python
 result = verify_record(
@@ -90,9 +90,9 @@ result.revocation.cause      # why a supplied bundle could not ground "verified"
 result.revocation.evidence   # what a second verifier needs to reach the same outcome
 ```
 
-The three outcomes are Â§3.2.3's own words, and none of them is an appraisal: where a verifier records an unresolvable check in the record itself is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open. A bundle is evidence only while both age bounds hold, the issuer's `valid_until` and the caller's `max_bundle_age_seconds` measured from `issued_at`; the tighter bound governs, and an expired outcome names which one tripped. `now` pins the verification moment so the outcome reproduces from retained facts. A bundle that is malformed, signed by a key not in `trusted_bundle_keys`, signed with an algorithm this build cannot verify, dated in the future, or expired under either bound yields `unverified_for_revocation` with the cause named; it does not raise, because inability to check is not evidence of a defect. A statement on the bundle's log naming the trusted key raises, under the fallback above, and it is read before the time checks: the bounds say what the bundle's silence is worth, and an authenticated statement has no expiry of its own. [`examples/revocation-bundle/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/revocation-bundle/) carries the conformance vectors.
+The three outcomes are §3.2.3's own words, and none of them is an appraisal: where a verifier records an unresolvable check in the record itself is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open. A bundle is evidence only while both age bounds hold, the issuer's `valid_until` and the caller's `max_bundle_age_seconds` measured from `issued_at`; the tighter bound governs, and an expired outcome names which one tripped. `now` pins the verification moment so the outcome reproduces from retained facts. A bundle that is malformed, signed by a key not in `trusted_bundle_keys`, signed with an algorithm this build cannot verify, dated in the future, or expired under either bound yields `unverified_for_revocation` with the cause named; it does not raise, because inability to check is not evidence of a defect. A statement on the bundle's log naming the trusted key raises, under the fallback above, and it is read before the time checks: the bounds say what the bundle's silence is worth, and an authenticated statement has no expiry of its own. [`examples/revocation-bundle/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/revocation-bundle/) carries the conformance vectors.
 
-What neither path does yet is entry-ID-scoped revocation. Both answer "is this key revoked", which is the Â§3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced Â§3.2.3. The bundle path also verifies the bundle signature only, not each statement's own signature against the Â§3.2.1 hierarchy; that check needs the hierarchy, and it is stated here rather than implied.
+What neither path does yet is entry-ID-scoped revocation. Both answer "is this key revoked", which is the §3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced §3.2.3. The bundle path also verifies the bundle signature only, not each statement's own signature against the §3.2.1 hierarchy; that check needs the hierarchy, and it is stated here rather than implied.
 
 ## Verifying hardware-rooted records
 
@@ -102,7 +102,7 @@ Hardware appraisal supports Level 1; Level 2 adds transparency anchoring. Verify
 
 ## Verifying build provenance depth
 
-The normative rules are defined by [Â§3.3.1 of the specification](../spec/trace-v0.2.md).
+The normative rules are defined by [§3.3.1 of the specification](../spec/trace-v0.2.md).
 `build_provenance.provenance_depth` declares how far down the supply chain the issuer claims to
 have walked. A verifier records what it actually checked in
 `appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the
