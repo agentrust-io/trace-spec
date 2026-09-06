@@ -297,6 +297,25 @@ def test_sha384_subject_binding_rejects_the_wrong_digest() -> None:
     }
 
 
+def _mislabelled_control() -> dict[str, Any]:
+    """Record declares sha384:X; the subject carries the same hex under `sha256`."""
+    vector = copy.deepcopy(CONTROL)
+    hexadecimal = "a" * 96
+    digest = "sha384:" + hexadecimal
+    vector["build_provenance"]["digest"] = digest
+    vector["context"]["artifact_digest"] = digest
+    statement = _attestation(vector)
+    assert statement is not None
+    statement["subject"][0]["digest"] = {"sha256": hexadecimal}
+    return vector
+
+
+def test_a_hex_declared_under_another_algorithm_does_not_bind() -> None:
+    assert verify(_mislabelled_control(), "builder")["failures"] == [
+        "attestation_subject_mismatch"
+    ]
+
+
 @pytest.mark.parametrize("name,vector", FIXTURES, ids=[name for name, _ in FIXTURES])
 def test_verdicts_are_monotone_over_depth(name: str, vector: dict[str, Any]) -> None:
     """A deeper verifier never accepts what a shallower one rejected."""
