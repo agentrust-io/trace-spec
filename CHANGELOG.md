@@ -11,6 +11,39 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-05
+
+### Security
+
+- **`cnf.jwk` no longer accepts private key material (GHSA-vc4p-h84j-7qxj).**
+  RFC 8747 defines `cnf` as a confirmation key: the public half, carried so a
+  verifier can bind the record to the key that signed it. `models.TrustRecord`
+  already refused `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` via
+  `_JWK_PRIVATE_PARAMS`, with the comment "cnf.jwk is a public
+  proof-of-possession key". The verification path validates against the schema
+  rather than the model, and the schema's `jwk` block constrained only the
+  `kty`/`crv`/`x`/`y` shapes, so everything else fell through
+  `additionalProperties`. A Trust Record carrying its own private key validated
+  and `sign.verify_record()` accepted it. The rule existed, and only in the half
+  verification does not call.
+
+  No attacker step is involved, and that is not a mitigation. A Trust Record is
+  signed, self-authenticating and typically anchored, so once such a record is
+  out the key is out and the only remedy is to revoke the identity.
+  `sign.sign_record()` could never produce one, because it builds `cnf` from
+  `key_to_jwk()`, which returns the public half only; the exposure is a record
+  assembled by hand or by another implementation, which is the population a
+  published schema exists to constrain.
+
+  Both schema copies carry the constraint and a test holds them byte-identical.
+  `agentrust-io/trace-tests` carried a third copy with the same gap and its
+  conformance suite passed such a record, since `TR-ENV-004` checks only that
+  `kty` is present; that repo adds `TR-ENV-005` for it.
+
+  **Breaking for producers emitting a private `cnf.jwk`:** those records were
+  always invalid per the reference model and are now rejected by the schema too.
+
+
 ### Added
 
 - **`verify_record()` consumes the section 3.2.3 revocation bundle and reports what it checked (#190, closes #246).** The bundle format merged with #187 and nothing read it. `verify_record()` now takes `revocation_bundle`, `trusted_bundle_keys`, `max_bundle_age_seconds` and `now`, and returns a `VerificationResult` whose `revocation` field carries one of section 3.2.3's three states as a value: `verified`, `unverified_for_revocation`, or `no_check_performed`, with the cause and the evidence a second verifier needs. Previously the function returned `None` and a caller could not tell a verified key from one nobody checked, which is #246. Two bounds govern bundle age, the issuer's `valid_until` and the caller's maximum measured from `issued_at`, and the tighter governs; an expired outcome names which bound tripped. `examples/revocation-bundle/` carries 25 conformance vectors, generated, covering both bounds with margin and every non-verified state. No `appraisal.status` value is named; where an unresolvable check is recorded in the record stays open on #190. Callers that ignored the old `None` return are unaffected; a caller asserting `is None` on the return will see a change.
