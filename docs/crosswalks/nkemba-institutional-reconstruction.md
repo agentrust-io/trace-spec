@@ -125,6 +125,6 @@ Nothing in this document creates a TRACE conformance requirement. Tests of N'KEM
 ## References
 
 - TRACE v0.2 specification: [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md)
-- TRACE external references, section 3.1.2: [`spec/trace-v0.2.md#312-external-references`](../../spec/trace-v0.2.md#312-external-references)
+- TRACE external references, section 3.1.2: [`spec/trace-v0.2.md#312-references-facts-this-record-points-at`](../../spec/trace-v0.2.md#312-references-facts-this-record-points-at)
 - TRACE cross-walk venue discussion: [trace-spec#274](https://github.com/agentrust-io/trace-spec/issues/274)
 - TRACE relationship registry discussion: [trace-spec#226](https://github.com/agentrust-io/trace-spec/issues/226)
