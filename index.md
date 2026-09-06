@@ -1,57 +1,29 @@
 ---
-title: Hardware-attested receipts for AI agent actions
-description: TRACE is an open specification for hardware-attested AI agent governance records. A Trust Record states what ran, where, under which policy, touching which data, calling which tools, in a form any third party can verify without trusting the operator.
+title: Create and verify signed runtime evidence
+description: TRACE defines portable signed runtime evidence. Start with software signing and tamper detection, then explore hardware attestation and transparency verification.
 ---
 
-# TRACE
+# Sign a runtime record. Check its evidence.
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
+TRACE is an open specification for portable, signed runtime evidence. Its record format connects workload identity, policy, data classification, and tool-transcript commitments. A verifier checks the signature and the evidence required by its trust policy.
 
-**A Trust Record answers what ran, where, under which policy, touching which data, and calling which tools, in a form any third party can verify without trusting the operator.**
+[Create and verify your first record](docs/quickstart.md){ .md-button .md-button--primary }
+[Understand the trust levels](docs/trust-levels.md){ .md-button }
 
-!!! tip "TL;DR"
-    - An audit log is written by the system being audited. A Trust Record is signed inside a TEE and checked against a hardware root, so the operator cannot author it after the fact.
-    - The current specification is **v0.2**, with a [conformance test suite](https://tests.agentrust-io.com) that scores a record by level.
-    - Install with `pip install agentrust-trace` and sign your first record in a few minutes.
-    - TRACE Specification is hosted at the Linux Foundation as its own series, [TRACE Specification, a Series of LF Projects, LLC](https://www.linuxfoundation.org/).
+The first example needs Python 3.11+ and no cloud account. It signs synthetic declarations in software, verifies with a separately retained key, and demonstrates tamper detection. Hardware provenance and registry inclusion require additional evidence and checks.
 
-```bash
-pip install agentrust-trace
-```
+## What the record contains
 
-```python
-import time
-from agentrust_trace import generate_key, sign_record
+| Question | Fields to inspect | What the verifier still needs |
+|---|---|---|
+| Which workload is named? | `subject`, `model` | An authenticated issuer and evidence binding the workload |
+| What runtime is claimed? | `runtime` | Valid attestation and approved measurements for hardware provenance |
+| Which policy is named? | `policy` | Independently approved policy inputs |
+| What data class is declared? | `data_class` | Evidence supporting the producer's classification |
+| What transcript is committed? | `tool_transcript` | Transcript evidence when individual calls matter |
+| Was evidence anchored? | `transparency` | A verified receipt and the required log trust policy |
 
-key = generate_key()
-
-record = {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-    "iat": int(time.time()),
-    "subject": "spiffe://trust.example.org/agent/payments-processor",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
-    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
-    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
-    "data_class": "confidential",
-    "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
-    "appraisal": {"status": "none", "verifier": "https://verifier.example.org"},
-}
-
-signed = sign_record(record, key)
-```
-
-## What a Trust Record proves
-
-Each question maps to a claim a third party can check without asking you.
-
-| Question | TRACE claim |
-|---|---|
-| What model ran? | `model.model_id` + `model.weights_digest` |
-| Where did it run? | `runtime.platform` + `runtime.measurement` |
-| Under which policy? | `policy.bundle_hash` + `policy.enforcement_mode` |
-| What data did it touch? | `data_class` |
-| Which tools were called? | `tool_transcript.hash` + `tool_transcript.call_count` |
-| Is the record independently anchored? | `transparency` (SCITT receipt URI) |
+A signed field is a producer's claim. Signature verification alone does not establish that the described execution occurred or that a policy was enforced. See the [verification protocol](docs/verification.md) for the full evaluation path.
 
 ## Where to start
 
