@@ -110,6 +110,14 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     for index, t in enumerate(tools):
         if not isinstance(t, dict):
             raise ProvenanceError(f"tools[{index}] must be an object, got {type(t).__name__}")
+        if (
+            "input_schema" in t
+            and "inputSchema" in t
+            and anchor_bytes(t["input_schema"]) != anchor_bytes(t["inputSchema"])
+        ):
+            raise ProvenanceError(
+                f"tools[{index}] carries conflicting input_schema and inputSchema values"
+            )
     normalized = sorted(
         (
             {
