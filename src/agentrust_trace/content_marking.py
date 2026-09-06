@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 __all__ = [
     "ASSERTION_LABEL",
@@ -58,6 +59,19 @@ def _digest(data: bytes, alg: str) -> str:
     return f"{alg}:{_ALGS[alg](data).hexdigest()}"
 
 
+def _record_url(value: Any) -> str:
+    """Return a C2PA external-reference URL or refuse the malformed value."""
+    if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
+        raise ContentMarkingError("record.url must be an absolute http(s) URI")
+    try:
+        parsed = urlsplit(value)
+    except ValueError as exc:
+        raise ContentMarkingError("record.url must be an absolute http(s) URI") from exc
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ContentMarkingError("record.url must be an absolute http(s) URI")
+    return value
+
+
 def build_assertion(
     record_bytes: bytes,
     *,
@@ -77,8 +91,7 @@ def build_assertion(
             "record_bytes must be the serialized record as it will be served. A hash "
             "over a re-serialized object is a hash of bytes nobody will fetch."
         )
-    if not url:
-        raise ContentMarkingError("url is required: an assertion with no reference binds nothing")
+    url = _record_url(url)
 
     import json
 
@@ -143,8 +156,9 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
         )
 
     ref = data.get("record")
-    if not isinstance(ref, dict) or not ref.get("url"):
+    if not isinstance(ref, dict):
         raise ContentMarkingError("assertion carries no record reference")
+    url = _record_url(ref.get("url"))
     alg = ref.get("alg")
     if not isinstance(alg, str):
         raise ContentMarkingError(
@@ -156,7 +170,7 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
 
     if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
         raise ContentMarkingError(
-            f"record_bytes must be the bytes retrieved from {ref['url']}, got "
+            f"record_bytes must be the bytes retrieved from {url}, got "
             f"{type(record_bytes).__name__}. `build_assertion` already refuses this and "
             "the reason it matters more here is that `bytes(5)` is five zero bytes: an "
             "int would be hashed, would not match, and the caller would be told the "
@@ -167,7 +181,7 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     actual = _digest(bytes(record_bytes), alg)
     if actual != expected:
         raise RecordMismatch(
-            f"the record at {ref['url']} does not match the assertion: computed {actual}, "
+            f"the record at {url} does not match the assertion: computed {actual}, "
             f"assertion says {expected}. The record changed after the asset was signed, or "
             "the URL is serving a different one."
         )
@@ -176,10 +190,10 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     try:
         record = json.loads(record_bytes)
     except ValueError as exc:
-        raise ContentMarkingError(f"record at {ref['url']} is not JSON: {exc}") from exc
+        raise ContentMarkingError(f"record at {url} is not JSON: {exc}") from exc
     if not isinstance(record, dict):
         raise ContentMarkingError(
-            f"the record at {ref['url']} must decode to a JSON object, got "
+            f"the record at {url} must decode to a JSON object, got "
             f"{type(record).__name__}. It matched the declared hash, so this is what the "
             "record actually is at that URL, not a mismatch to report as RecordMismatch."
         )
