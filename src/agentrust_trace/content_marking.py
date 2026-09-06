@@ -95,6 +95,8 @@ def build_assertion(
             "record_bytes must be the serialized record as it will be served. A hash "
             "over a re-serialized object is a hash of bytes nobody will fetch."
         )
+    if not url:
+        raise ContentMarkingError("url is required: an assertion with no reference binds nothing")
     url = _record_url(url)
 
     import json
