@@ -101,12 +101,11 @@ A valid TRACE record can therefore remain valid while the N’KEMBA institutiona
 
 ## Public reproducibility surface
 
-The current synthetic fail-closed demonstrator is published at:
+The current synthetic fail-closed evaluator source is published at:
 
-- https://nkemba.pt/nkemba-evidence-demo-v08.html
-- evaluator source: https://nkemba.pt/demo-evaluator-v08.js
+- https://nkemba.pt/demo-evaluator-v08.js
 
-The demonstrator is intentionally narrow. It is functional-logic evidence for the downstream verdict boundary, not a TRACE conformance fixture, certification surface, or independent audit.
+The previously referenced HTML demonstrator URL has been removed because it is not currently available. The evaluator is intentionally narrow. It is functional-logic evidence for the downstream verdict boundary, not a TRACE conformance fixture, certification surface, or independent audit.
 
 ## References
 
