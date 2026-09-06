@@ -29,40 +29,36 @@ def test_http_and_https_record_urls_are_accepted(url: str) -> None:
     assert verify_assertion(assertion, raw)
 
 
-@pytest.mark.parametrize(
-    "bad_url",
-    [
-        True,
-        1,
-        [1],
-        {"x": 1},
-        " ",
-        "not a url",
-        "ftp://registry.example/records/abc123.json",
-        "https:///records/abc123.json",
-    ],
-)
+BAD_URLS = [
+    True,
+    1,
+    [1],
+    {"x": 1},
+    " ",
+    "not a url",
+    "ftp://registry.example/records/abc123.json",
+    "https:///records/abc123.json",
+    "https://@/records/abc123.json",
+    "https://registry.example:bad/records/abc123.json",
+]
+
+
+@pytest.mark.parametrize("bad_url", BAD_URLS)
 def test_build_assertion_refuses_values_outside_the_record_url_boundary(bad_url) -> None:
     with pytest.raises(ContentMarkingError, match=r"record\.url must be an absolute http\(s\) URI"):
         build_assertion(_record_bytes(), url=bad_url)
 
 
-@pytest.mark.parametrize(
-    "bad_url",
-    [
-        True,
-        1,
-        [1],
-        {"x": 1},
-        " ",
-        "not a url",
-        "ftp://registry.example/records/abc123.json",
-        "https:///records/abc123.json",
-    ],
-)
+@pytest.mark.parametrize("bad_url", BAD_URLS)
 def test_verify_assertion_refuses_values_outside_the_record_url_boundary(bad_url) -> None:
     raw = _record_bytes()
     assertion = build_assertion(raw, url=HTTPS_URL)
     assertion["data"]["record"]["url"] = bad_url
     with pytest.raises(ContentMarkingError, match=r"record\.url must be an absolute http\(s\) URI"):
         verify_assertion(assertion, raw)
+
+
+def test_truthiness_only_mutation_would_reopen_the_boundary() -> None:
+    """Truthy malformed values are the regression class, not just empty URLs."""
+    for bad_url in [True, 1, [1], {"x": 1}, "not a url"]:
+        assert bool(bad_url)
