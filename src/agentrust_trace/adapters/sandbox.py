@@ -324,7 +324,7 @@ class TraceSandboxAdapter:
     def software_measurement(image_digest: str, bundle_hash: str) -> str:
         """The measurement for an unattested sandbox.
 
-        ``sha256(image_digest + "\n" + bundle_hash)`` over UTF-8, both operands in their
+        ``sha256(image_digest + "\\n" + bundle_hash)`` over UTF-8, both operands in their
         ``sha256:``-prefixed form. Deliberately simple so another implementation can
         reproduce it without a JSON library.
 
