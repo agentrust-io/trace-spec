@@ -23,9 +23,10 @@ from typing import Any
 from agentrust_trace.sign import (
     RevocationStore,
     _canonical_bytes,
-    anchor_bytes,
     _check_not_revoked,
+    _check_seconds,
     _pubkey_from_jwk,
+    anchor_bytes,
     jwk_thumbprint,
     key_to_jwk,
 )
@@ -265,24 +266,6 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     return {**payload, "signature": sig}
 
 
-def _check_seconds(name: str, value: Any, *, optional: bool = False) -> None:
-    """Reject a malformed policy input instead of silently acting on it.
-
-    A verifier's age policy is configuration, and a wrong one fails in the
-    direction that matters: ``max_age_seconds=-1`` is not a stricter bound, it
-    classifies every record ever issued as stale, and a caller who meant to
-    disable the bound would see a uniform refusal rather than an error naming
-    the cause. ``bool`` is excluded explicitly because it is a subclass of
-    ``int`` in Python, so ``True`` would otherwise pass as one second.
-    """
-    if optional and value is None:
-        return
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ProvenanceError(f"{name} must be an integer, got {type(value).__name__}")
-    if value < 0:
-        raise ProvenanceError(f"{name} must be non-negative, got {value}")
-
-
 def verify_record(
     record: dict[str, Any],
     trusted_jwk: dict[str, Any],
@@ -358,8 +341,10 @@ def verify_record(
     # existed, with an error message explaining that a record with no issue time
     # cannot be aged; this is the step that reads it. `_check_structure` above has
     # already established it is a non-negative int.
-    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
-    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds, exc=ProvenanceError)
+    _check_seconds(
+        "max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError
+    )
     age = time.time() - int(record["issued_at"])
     if age < -max_future_skew_seconds:
         raise ProvenanceError(
