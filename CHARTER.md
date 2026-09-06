@@ -43,9 +43,9 @@ Upon host organization acceptance, governance transitions from the current Proje
 
 ## 4. Intellectual Property Policy
 
-All contributions must be made under the terms of [LICENSE](LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
+All contributions must be made under the terms of [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
 
-Normative specification text and the normative TRACE JSON Schema are licensed under the Community Specification License 1.0. Source code, examples, workflows, and tests are licensed under Apache License 2.0. Documentation other than specification materials is licensed under CC BY 4.0. Earlier specification publications remain available under the licenses stated when they were published. See [LICENSE](LICENSE) and the [license map](Governance/License.md).
+Normative specification text and the normative TRACE JSON Schema are licensed under the Community Specification License 1.0. Source code, examples, workflows, and tests are licensed under Apache License 2.0. Documentation other than specification materials is licensed under CC BY 4.0. Earlier specification publications remain available under the licenses stated when they were published. See [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE) and the [license map](Governance/License.md).
 
 ## 5. Trademark Policy
 

@@ -1,65 +1,21 @@
 # Platform: AMD SEV-SNP
 
-AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) is the primary hardware root of trust for TRACE Level 2 records on AMD-based cloud instances and on-premises servers.
+A signed SEV-SNP report supplies evidence about a confidential VM. To use it for TRACE, a verifier must check the report's authenticity, accepted platform state and measurement, freshness, and binding to the record-signing key. A digest copied into JSON is not that verification.
 
-## What AMD SEV-SNP provides
+## Measurement and key binding
 
-| Property | Detail |
-|---|---|
-| Memory encryption | AES-128 per-VM encrypted memory |
-| Attestation report | Signed by AMD's VCEK (chip-unique key) |
-| Measurement | SHA-384 of the VM image + policy |
-| Replay protection | Nonce-based freshness |
+The SNP report's `MEASUREMENT` field is a 48-byte launch measurement. It is distinct from guest-supplied `REPORT_DATA`, which a profile can use to bind a key and challenge. See Google's [SEV-SNP ABI implementation](https://pkg.go.dev/github.com/google/go-sev-guest/abi) for the field sizes.
 
-## TRACE fields populated by SEV-SNP
+An expected launch measurement must be independently approved. A certificate-distribution endpoint supplies signing collateral; it is not a Reference Integrity Manifest describing the expected workload. Matching a report's measurement to a record also does not establish what that measurement represents without the producing profile and reference values.
 
-```json
-{
-  "runtime": {
-    "platform": "amd-sev-snp",
-    "measurement": "sha384:c9e4b1d2e3f4a5b6...",
-    "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/cert_chain",
-    "firmware_version": "1.53.0",
-    "nonce": "ZRVkXG1w..."
-  }
-}
-```
+## TRACE representation
 
-- `measurement`: SHA-384 of the SNP attestation report's `measurement` field (the VM image digest)
-- `rim_uri`: AMD Key Distribution Service URL for VCEK certificate chain verification
-- `firmware_version`: SNP firmware version embedded in the attestation report
-- `nonce`: replay-protection nonce from the attestation challenge
+Standalone records use `runtime.platform="amd-sev-snp"`, or `azure-cvm-sev-snp` when the producing profile requires that identifier. `runtime.measurement` uses the schema's digest syntax; the producer must define its relationship to the verified report. Do not hash an already-computed measurement again unless the profile explicitly defines that transformation.
 
-## Verification flow
+Hardware appraisal supports Level 1. Level 2 adds a separately verified transparency anchor. See [trust levels](../trust-levels.md).
 
-To verify a SEV-SNP TRACE record offline:
+## Deployment and verification
 
-1. Parse `runtime.rim_uri` and fetch the VCEK certificate chain from AMD KDS
-2. Verify the VCEK chain up to AMD's root CA (publicly available)
-3. Verify the SNP attestation report signature using the VCEK certificate
-4. Compare `runtime.measurement` against the report's `measurement` field
-5. Confirm `cnf.jwk` was generated inside the enclave at that measurement
+Cloud support depends on machine family, region, firmware, and guest configuration. For GCP, consult the current [Confidential VM configurations](https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations). C3 is an Intel TDX family; N2D is used for AMD SEV-SNP.
 
-```bash
-# cMCP does steps 1-5 automatically and embeds the result in the TRACE record
-agentrust-trace verify-hardware session.trace.json \
-  --platform amd-sev-snp \
-  --check-rim
-```
-
-## Supported cloud instances
-
-| Cloud | Instance family |
-|---|---|
-| Azure | DCasv5, ECasv5, DCadsv5, ECadsv5 |
-| GCP | C3 (with AMD SEV-SNP enabled) |
-| AWS | Not supported (AWS uses Nitro: separate profile) |
-| On-premises | Any server with EPYC Genoa / Bergamo or newer |
-
-## On-premises deployment
-
-For on-premises SEV-SNP (e.g., Supermicro H13 with EPYC Genoa), OPAQUE ships the verifier with the platform: same cryptographic guarantees as cloud deployments, no cloud attestation service dependency. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
-
-## Example record
-
-See [`examples/amd-sev-snp.json`](https://github.com/agentrust-io/trace-spec/blob/main/examples/amd-sev-snp.json) for a complete TRACE Level 2 record from an AMD SEV-SNP deployment.
+For the actual AgenTrust implementation and recorded hardware runs, use [cMCP hardware validation](https://cmcp.agentrust-io.com/testing/hardware-validation/) and its [verification tutorial](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/). The TRACE SDK's signature verifier does not perform this hardware appraisal.

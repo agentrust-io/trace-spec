@@ -1,76 +1,19 @@
 # Platform: NVIDIA H100 Confidential Computing
 
-NVIDIA H100 (and Blackwell) GPUs support Confidential Computing: hardware-isolated GPU execution with attestation rooted in NVIDIA's Attestation Root Certificate Authority (NRAS). TRACE Level 2 on NVIDIA CC is the first hardware-verifiable governance record for GPU-based AI inference.
+NVIDIA GPU attestation provides evidence about a GPU's identity and firmware state. NVIDIA Remote Attestation Service (NRAS), its Reference Integrity Manifest service, and certificate-status services have separate roles. See [NVIDIA's attestation documentation](https://docs.nvidia.com/attestation/index.html) and [H100 attestation example](https://docs.nvidia.com/attestation/quick-start-guide/latest/attestation-examples/hopper_single_gpu.html).
 
-## What NVIDIA H100 CC provides
+## TRACE representation
 
-| Property | Detail |
-|---|---|
-| Memory protection | GPU memory encrypted and isolated per VM |
-| Attestation | NVIDIA RIM Service attestation, signed by NVIDIA NRAS |
-| Measurement | GPU firmware + driver measurement |
-| Combined attestation | CPU TEE + GPU CC: one unified attestation report |
+Standalone TRACE registers `runtime.platform="nvidia-h100"` and `"nvidia-blackwell"`. A registered identifier does not mean this Python SDK collects GPU evidence or verifies an NRAS result. The producer must define how its `runtime.measurement` relates to authenticated GPU evidence.
 
-TRACE on H100 is the first open standard to combine CPU TEE attestation and GPU CC attestation into a single signed governance record. This was demonstrated at GTC Berlin.
+The cMCP configuration name `opaque` belongs to that runtime's provider interface; it is not a standalone TRACE platform value. Follow the producing runtime's envelope and verifier documentation rather than substituting names between formats.
 
-## TRACE fields populated by NVIDIA H100 CC
+## CPU, GPU, and signing-key binding
 
-```json
-{
-  "runtime": {
-    "platform": "nvidia-h100",
-    "measurement": "sha256:f0e9d8c7b6a5f4e3d2c1b0a9...",
-    "rim_uri": "https://nras.nvidia.com/rims/H100_SXM5/fw_v551.81",
-    "firmware_version": "551.81"
-  }
-}
-```
+An accepted GPU attestation does not automatically attest the CPU workload, model weights, policy enforcement, or record-signing key. A combined deployment needs explicit evidence linking the relevant components and the signing key under a documented profile. This page does not define a universal combined CPU/GPU digest or an additional `runtime.extensions` wire field.
 
-- `measurement`: Combined CPU+GPU measurement hash
-- `rim_uri`: NVIDIA RIM Service URL for firmware Reference Integrity Manifest
-- `firmware_version`: NVIDIA GPU driver/firmware version
+Hardware appraisal supports Level 1. Level 2 additionally requires transparency anchoring. Read [trust levels](../trust-levels.md) and the producing runtime's [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/) before relying on a deployment claim.
 
-## Verification flow
+## Getting started
 
-```bash
-agentrust-trace verify-hardware session.trace.json \
-  --platform nvidia-h100 \
-  --check-rim
-```
-
-1. Fetches the GPU RIM from NVIDIA's RIM Service at `runtime.rim_uri`
-2. Verifies firmware measurement against the RIM
-3. Verifies the GPU attestation report using NVIDIA NRAS root certificate
-4. Validates that the combined CPU+GPU measurement matches `runtime.measurement`
-5. Confirms `cnf.jwk` is endorsed by both CPU TEE and GPU CC attestation
-
-## Combined CPU+GPU attestation
-
-For maximum assurance, run the agent in a combined AMD SEV-SNP + NVIDIA H100 CC deployment. The TRACE record carries both measurements:
-
-```json
-{
-  "runtime": {
-    "platform": "nvidia-h100",
-    "measurement": "sha256:combined-cpu-gpu-measurement...",
-    "rim_uri": "https://nras.nvidia.com/rims/...",
-    "extensions": {
-      "cpu_platform": "amd-sev-snp",
-      "cpu_measurement": "sha384:cpu-only-measurement..."
-    }
-  }
-}
-```
-
-## Supported configurations
-
-| Configuration | Status |
-|---|---|
-| H100 SXM5 + AMD EPYC (SEV-SNP) | ✓ GA |
-| H100 PCIe + Intel Xeon (TDX) | ✓ GA |
-| H100 SXM5 + AMD EPYC (bare metal) | Preview |
-| NVIDIA Blackwell B200 | Preview |
-
-## Example record
-
-See [`examples/nvidia-h100.json`](https://github.com/agentrust-io/trace-spec/blob/main/examples/nvidia-h100.json).
+Use NVIDIA's current example for GPU evidence collection and appraisal. For standalone TRACE signing and signature verification, use the [local quick start](../quickstart.md). These are separate checks; this package has no `agentrust-trace verify-hardware` command.

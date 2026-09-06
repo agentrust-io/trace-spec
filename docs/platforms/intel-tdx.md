@@ -1,68 +1,19 @@
 # Platform: Intel TDX
 
-Intel TDX (Trust Domain Extensions) provides hardware-isolated Trust Domains (TDs): VMs with encrypted memory, isolated register state, and hardware-signed attestation. TRACE Level 2 on TDX is supported on GCP Confidential VM (N2D-TDX) and select on-premises Intel Xeon Scalable deployments.
+Intel TDX isolates a Trust Domain and provides signed quote evidence about its measured state. A TRACE consumer still needs a verifier that checks the quote, accepted trust roots and collateral, expected measurements, freshness, and record-signing-key binding.
 
-## What Intel TDX provides
+## Measurement and representation
 
-| Property | Detail |
-|---|---|
-| Memory encryption | AES-256-XTS per-TD |
-| Attestation report | TD Quote, signed by Intel's QE (Quoting Enclave) |
-| Measurement | SHA-384 MRTD (TD measurement register) |
-| Extensible registers | RTMR0 to 3 for measuring additional components |
+Standalone TRACE uses `runtime.platform="intel-tdx"`. MRTD describes the initial Trust Domain measurement; RTMRs can carry additional runtime measurements. The producing profile must say which evidence the record commits to and how the recipient checks it. A generic combination of these registers is not defined by this page.
 
-## TRACE fields populated by TDX
+The `runtime.measurement` string is a claim until checked against authenticated evidence and independently approved reference values. Comparing two self-reported digests cannot establish key custody inside a Trust Domain.
 
-```json
-{
-  "runtime": {
-    "platform": "intel-tdx",
-    "measurement": "sha384:a1b2c3d4e5f6a7b8...",
-    "rim_uri": "https://api.trustedservices.intel.com/tdx/certification/v4/",
-    "firmware_version": "5.35.1",
-    "nonce": "dGRhY2Uzz..."
-  }
-}
-```
+## Deployment
 
-- `measurement`: SHA-384 of the TDX TD Quote's MRTD field
-- `rim_uri`: Intel Trust Authority / PCCS URL for TDX certificate chain
-- `firmware_version`: TDX firmware version from the TD Quote header
+GCP provides Intel TDX on C3 Confidential VMs; N2D is an AMD family. Availability and supported guest configurations change, so use Google's current [supported configurations](https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations) when provisioning.
 
-## Verification flow
+For AgenTrust's collected evidence, verifier behavior, and remaining collateral checks, see [cMCP hardware validation](https://cmcp.agentrust-io.com/testing/hardware-validation/). Follow its [verification tutorial](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/) for the runtime's envelope and trust inputs.
 
-```bash
-agentrust-trace verify-hardware session.trace.json \
-  --platform intel-tdx \
-  --check-rim
-```
+## Assurance boundary
 
-The verifier:
-1. Fetches the TDX certificate chain from Intel's PCCS or Trust Authority
-2. Verifies the TD Quote using Intel's SGX QVL (Quote Verification Library)
-3. Compares `runtime.measurement` against the TD Quote MRTD
-4. Validates that `cnf.jwk` was generated inside the TD at that measurement
-
-## Supported cloud instances
-
-| Cloud | Instance type |
-|---|---|
-| GCP | C3 Confidential VM (TDX) |
-| Azure | DCesv5, ECesv5 (Intel TDX preview) |
-| On-premises | Intel Xeon Scalable 4th Gen (Sapphire Rapids) and newer |
-
-## On-premises deployment
-
-For on-premises Intel TDX (e.g., Supermicro SYS-121H with Xeon Scalable 4th Gen), the cMCP gateway runs as a TD and uses Intel's PCCS (Platform Certificate Caching Service) or the Intel Trust Authority for attestation verification. No cloud dependency is required: deploy PCCS locally to air-gap the attestation path. See [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp) for the Helm chart.
-
-```yaml
-# cmcp.yaml (on-premises TDX)
-attestation:
-  platform: intel-tdx
-  pccs_url: https://pccs.internal.example.org:8081  # your local PCCS
-  rim_cache: /var/cache/trace/rims
-```
-
-## Example record
-
-See [`examples/intel-tdx.json`](https://github.com/agentrust-io/trace-spec/blob/main/examples/intel-tdx.json).
+Hardware appraisal supports TRACE Level 1; Level 2 additionally requires transparency anchoring. The standalone TRACE SDK does not provide a `verify-hardware` CLI or automatically provision an Intel collateral service. See [trust levels](../trust-levels.md) and [attestation platforms](index.md).

@@ -1,212 +1,36 @@
-# Hardware Attestation Platforms
+# Interpreting Hardware Attestation
 
-Understand what the `runtime.measurement` field contains for each TEE platform, what it proves, and how a verifier uses it.
+A platform name and measurement in a signed TRACE record are claims. To treat them as hardware evidence, a recipient needs authenticated attestation evidence, accepted reference values, and a binding to the signing key. This guide explains that distinction; it does not provision a TEE.
 
-## What you'll learn
+## Start with the right format
 
-- What `runtime.platform` and `runtime.measurement` mean for each supported platform
-- Why `software-only` is only safe for development and testing
-- What measurement values prove about the code that signed the record
-- How a verifier checks a measurement against a Reference Integrity Manifest
-- What the `agentrust-trace` library does and does not do with measurements
+Standalone TRACE records use the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). cMCP emits a distinct `RuntimeClaim` envelope and uses its own verifier. Do not pass that envelope directly to `agentrust_trace.verify_record`.
 
-## Prerequisites
-
-```bash
-pip install agentrust-trace
-```
-
----
-
-## The measurement Field
-
-Every TRACE Trust Record carries a `runtime` object with two required fields:
-
-```json
-{
-  "runtime": {
-    "platform": "amd-sev-snp",
-    "measurement": "sha384:c9e4b1d2e3f4a5b6..."
-  }
-}
-```
-
-`measurement` is a digest that identifies the exact binary that ran inside the TEE at the moment the signing key was generated. The TEE hardware computes and seals this value; software running outside the TEE cannot forge it.
-
-This is what makes hardware-attested TRACE records meaningful: the signing key was generated inside the measured enclave, so the measurement in the record is a claim about the code that produced the key. If the measurement matches a known-good reference value, you know the key came from the expected software, unmodified.
-
----
-
-## software-only
-
-```python
-import time
-from agentrust_trace import generate_key, sign_record
-
-key = generate_key()
-
-record = {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-    "iat": int(time.time()),
-    "subject": "spiffe://dev.example.org/agent/local-test",
-    "runtime": {
-        "platform": "software-only",
-        "measurement": "sha256:" + "0" * 64,
-    },
-    # ... other required fields ...
-}
-```
-
-`platform: "software-only"` means no TEE is present. The measurement is conventionally all-zero bytes. This platform value exists so a development record can never be mistaken for a hardware-backed record by a consumer that inspects `runtime.platform`.
-
-Use `software-only` only in development and testing. A production verifier should reject records with this platform:
-
-```python
-def check_platform(record: dict) -> None:
-    platform = record["runtime"]["platform"]
-    if platform == "software-only":
-        raise ValueError("software-only records are not accepted in production")
-```
-
----
-
-## TPM2
-
-```json
-{
-  "runtime": {
-    "platform": "tpm2",
-    "measurement": "sha256:<PCR digest>",
-    "rim_uri": "https://vendor.example.org/rim/firmware-1.2.pem"
-  }
-}
-```
-
-For TPM2, `measurement` is a PCR (Platform Configuration Register) digest. TPM PCR banks accumulate measurements of firmware, bootloader, kernel, and application code during the boot sequence. The value in `measurement` reflects the state of specific PCR banks at the time the key was generated.
-
-Which PCR banks are included depends on the deployment configuration. A verifier checks the measurement by fetching the Reference Integrity Manifest (RIM) at `runtime.rim_uri` and comparing the expected PCR values against the measurement.
-
----
-
-## AMD SEV-SNP
-
-```json
-{
-  "runtime": {
-    "platform": "amd-sev-snp",
-    "measurement": "sha384:<SNP attestation report measurement field>",
-    "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/...",
-    "firmware_version": "1.51.00"
-  }
-}
-```
-
-For AMD SEV-SNP, `measurement` is the `MEASUREMENT` field from the SNP attestation report. AMD's Secure Nested Paging hardware computes this value over the initial memory contents of the confidential VM: firmware, kernel, initrd, and the guest application image. The measurement is sealed by the hardware before any guest code runs.
-
-The RIM is the AMD Key Distribution Service (KDS) URL for the Versioned Chip Endorsement Key (VCEK) or VLEK. A verifier fetches the platform attestation report from KDS, verifies the AMD root certificate chain, and confirms the `MEASUREMENT` field matches the expected value for the known-good image.
-
-The `firmware_version` field helps correlate against published AMD firmware RIMs.
-
----
-
-## Intel TDX
-
-```json
-{
-  "runtime": {
-    "platform": "intel-tdx",
-    "measurement": "sha384:<TD report MRTD field>",
-    "rim_uri": "https://api.trustedservices.intel.com/tdx/certification/v4/..."
-  }
-}
-```
-
-For Intel TDX, `measurement` is the `MRTD` (Measurement of the TD) field from the TDX TD Report. Intel TDX measures the initial TD memory (TDVF firmware, kernel, and workload image) into `MRTD` during TD build. This value cannot be changed after TD launch.
-
-The RIM endpoint is Intel Trust Authority (ITA). A verifier fetches the TD Quote (via `tdx-attest` or a platform attestation proxy), verifies the Intel root certificate chain, and confirms the `MRTD` value matches the reference for the expected image.
-
-TDX reports also carry `RTMR` (Runtime Measurement Registers) for post-launch measurements. TRACE v0.1 binds only `MRTD` in the `measurement` field; `RTMR` values are outside the current scope.
-
----
-
-## NVIDIA H100
-
-```json
-{
-  "runtime": {
-    "platform": "nvidia-h100",
-    "measurement": "sha384:<NRAS attestation report digest>",
-    "rim_uri": "https://nras.attestation.nvidia.com/v3/attestation/..."
-  }
-}
-```
-
-For NVIDIA H100 (Confidential Computing mode), `measurement` is the attestation report digest from the NVIDIA Remote Attestation Service (NRAS). NVIDIA's hardware attestation chain covers the GPC firmware, the driver, and the GPU workload configuration.
-
-A verifier fetches the attestation certificate from NRAS, verifies the NVIDIA root certificate chain, and confirms the digest corresponds to an approved GPU firmware and driver version.
-
----
-
-## How a Verifier Checks a Measurement
-
-The `agentrust-trace` Python library carries the `measurement` field and makes it available in the signed record. It does not perform hardware measurement verification. That is the TEE platform's responsibility and requires platform-specific tooling.
-
-A complete verifier for hardware-attested records does three things:
-
-1. Verify the TRACE record signature with `verify_record()` (this library).
-2. Fetch the platform attestation report for the stated `rim_uri`.
-3. Confirm the `measurement` in the TRACE record matches the expected value in the RIM.
-
-Step 3 proves the key that signed the TRACE record was generated by the expected software running inside the attested enclave. Without step 3, you know the record was not tampered with after signing, but you do not know whether the signing key came from legitimate code.
-
-```python
-from agentrust_trace import verify_record, validate_json
-
-# Step 1: verify the TRACE record structure and signature against a trusted key
-validate_json(record)
-verify_record(record, trusted_jwk)  # trusted_jwk obtained out-of-band
-
-# Step 2 + 3: platform-specific: outside the scope of agentrust-trace
-# For cMCP-issued records, use cmcp-verify which handles the full chain.
-# cmcp-verify operates on a RuntimeClaim (the cMCP envelope), not on a
-# flat TrustRecord, and requires the expected hashes to verify against:
-#
-# from cmcp_verify import verify_trace_claim, ApprovedHashes
-# approved = ApprovedHashes(
-#     policy_bundle_hash="sha256:<expected-cedar-policy-hash>",
-#     tool_catalog_hash="sha256:<expected-tool-catalog-hash>",
-# )
-# result = verify_trace_claim(claim_json, approved)
-# print(result.status.value)  # "verified" | "partially_verified" | "unverified"
-```
-
----
-
-## Platform Enum Reference
-
-The `RuntimeInfo` model accepts exactly these platform values:
-
-| Value | Attestation root |
+| Evidence | What the recipient checks |
 |---|---|
-| `software-only` | None: development only |
-| `tpm2` | TPM PCR digest |
-| `amd-sev-snp` | AMD SEV-SNP MEASUREMENT field |
-| `intel-tdx` | Intel TDX MRTD field |
-| `nvidia-h100` | NVIDIA NRAS attestation digest |
-| `nvidia-blackwell` | NVIDIA Blackwell confidential computing |
-| `aws-nitro` | AWS Nitro Enclave attestation document |
-| `arm-cca` | Arm CCA Realm Measurement |
-| `google-confidential-space` | Google Confidential Space measurement |
+| Signed record | Schema, supported profile, trusted signing key, signature, freshness, configured revocation and nonce checks |
+| Hardware report or quote | Signature chain and collateral, platform policy, expected measurement, fresh challenge |
+| Key binding | The authenticated report binds this record-signing key under the producing profile |
+| Policy and transcript | Independently obtained artifacts match the signed commitments; their meaning depends on the producer |
+| Transparency | Inclusion proof and an independently trusted log/checkpoint; a URL alone is insufficient |
 
-Records with any other platform string will fail schema validation.
+## Software-only records
 
----
+`runtime.platform="software-only"` carries no hardware assurance. Its measurement can be a producer-defined software commitment; all-zero is appropriate only when no commitment is offered. Software-signed records can support uses whose trust policy accepts software key custody. They must not satisfy a requirement for verified hardware evidence.
 
-## Summary
+## Hardware-specific evidence
 
-The `runtime.measurement` field identifies the binary that generated the signing key, as measured by the TEE hardware. Each platform computes this differently: PCR digest for TPM2, `MEASUREMENT` for AMD SEV-SNP, `MRTD` for Intel TDX, and an NRAS digest for NVIDIA H100. The `agentrust-trace` library carries this field in the signed record; verifying the measurement against the TEE platform's attestation chain is a separate step that requires platform-specific tooling. For cMCP-issued records, the `cmcp-verify` library handles the full chain.
+- [AMD SEV-SNP](../platforms/amd-sev-snp.md): distinguish the launch measurement from guest-supplied report data.
+- [Intel TDX](../platforms/intel-tdx.md): interpret MRTD and RTMRs under the producing profile.
+- [NVIDIA H100](../platforms/nvidia-h100.md): GPU appraisal does not automatically establish CPU workload or signing-key identity.
+- TPM2: a quote and trusted attestation key can establish measured-state evidence. A TPM is not a general-purpose enclave for the application; it does not by itself protect agent process memory from the host OS. See [cMCP's TPM security model](https://cmcp.agentrust-io.com/spec/tpm-security-model/).
 
-Related tutorials:
+## What the TRACE SDK does
 
-- [Sign your first trust record](signing-your-first-trust-record.md)
-- [Integration with cMCP](integrating-with-cmcp.md)
+`verify_record` verifies the standalone signed object. It does not collect or appraise hardware quotes, fetch a Reference Integrity Manifest, or independently substantiate `appraisal.status`. There is no `verify-hardware` command in this package.
+
+For cMCP evidence, use its [verification tutorial](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/), approved policy/catalog hashes, and required attestation inputs. For a local software example, use [quick start](../quickstart.md).
+
+## Report the checks performed
+
+Hardware appraisal corresponds to Level 1; Level 2 adds transparency anchoring. Report unavailable evidence as unavailable, and a contradictory result as a failure. A record that says `affirming` does not authorize an action without the recipient's own acceptance policy. See [trust levels](../trust-levels.md) and [verification outcomes](../verification-outcome-statements.md).

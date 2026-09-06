@@ -12,7 +12,7 @@ All code contributions to the Project must be made under the Apache License, Ver
 
 All documentation (excluding specifications) will be made available under the Creative Commons Attribution 4.0 International license, available at: https://creativecommons.org/licenses/by/4.0.
 
-Specification text published before this policy took effect stays available under the license under which it was published. See [LICENSE](LICENSE) and the [license map](Governance/License.md).
+Specification text published before this policy took effect stays available under the license under which it was published. See [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE) and the [license map](Governance/License.md).
 
 ## Roles
 

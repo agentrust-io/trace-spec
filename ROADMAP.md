@@ -12,7 +12,7 @@ Status as of August 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](spec/
 - **OWASP Agentic AI Top 10 cross-walk**: [`docs/crosswalks/owasp-agentic-top-10.md`](docs/crosswalks/owasp-agentic-top-10.md).
 - **Acta decision-receipt cross-walk**: [`docs/crosswalks/acta-decision-receipts.md`](docs/crosswalks/acta-decision-receipts.md).
 - **Producer adapters** for AGT, cMCP, and sandboxed agent runtimes, one code path spanning Level 0 and Level 1.
-- **Platform bindings documented** for AMD SEV-SNP, Intel TDX, and NVIDIA H100 ([`docs/platforms/`](docs/platforms/)). This SDK verifies the record; verification of the attestation evidence itself lives in `cmcp` and `agent-manifest`, both of which have been run against genuine hardware quotes.
+- **Platform bindings documented** for AMD SEV-SNP, Intel TDX, and NVIDIA H100 ([`docs/platforms/`](docs/platforms/index.md)). This SDK verifies the record; verification of the attestation evidence itself lives in `cmcp` and `agent-manifest`, both of which have been run against genuine hardware quotes.
 - **Reference implementation.** cMCP enforces Cedar policy inside the TEE and emits signed GatewayClaims carrying `policy`, `data_class`, and `tool_transcript`.
 
 ## Next: v0.3
