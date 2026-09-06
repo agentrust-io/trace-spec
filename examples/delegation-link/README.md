@@ -75,3 +75,11 @@ the link algorithm read once and assumed uniform.
 Vector 05 is the one to read first. It is a complete, correctly signed chain whose only
 defect is which bytes its link was computed over, and it is the whole of the difference
 between two readings of one sentence in `docs/schema.md`.
+
+Vector 24 is a different kind of vector: not a rule pair, but the corpus's answer to a gap
+named directly in `spec/trace-v0.2.md` §3.1.3. Every other vector here is ASCII, so nothing
+in the set could tell an implementation that canonicalizes a parent record by RFC 8785
+(UTF-16 code-unit key order) apart from one that canonicalizes it by code point, the way
+`json.dumps(sort_keys=True)` does — the two agree on every prior vector and disagree on this
+one. `tests/test_delegation_parent_hash_canonicalization.py` recomputes that divergence
+directly rather than trusting this description of it.

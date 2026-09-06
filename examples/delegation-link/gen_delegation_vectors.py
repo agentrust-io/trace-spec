@@ -42,6 +42,16 @@ still reachable — it just has to be built that way from the start rather than
 tampered with afterwards — which is why `sign_key` is a build-time parameter here
 and no vector is produced by mutating a finished chain.
 
+**The digest is over UTF-16 code-unit key order, not code-point order.** Section
+3.1.3 states that the two orderings agree across the Basic Multilingual Plane and
+diverge only once an object key contains a supplementary-plane character, and that
+every vector in this corpus was ASCII and so could not tell an implementation that
+takes the code-point shortcut from one that computes RFC 8785 correctly. Vector 24
+is the vector that spec paragraph names as missing: its root's `cnf.jwk` carries
+extra members keyed by a BMP private-use character and by a character outside the
+Basic Multilingual Plane, which sort in opposite relative order under the two
+schemes. The chain is otherwise exactly vector 01's.
+
 Keys derive from one published seed, per role, so the whole set regenerates
 byte-for-byte and a third party can reissue any of it. Public test material with
 no secret in it.
@@ -206,6 +216,24 @@ def build_chain(hops: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         if "claimed_key" in hop:
             body["cnf"] = {"jwk": jwk_for(hop["claimed_key"])}
+        if "jwk_extra" in hop:
+            # RFC 7517 members `cnf.jwk` carries beyond `kty`/`crv`/`x`/`y`.
+            # `additionalProperties` on `cnf.jwk` in schema/trace-claim.json
+            # allows them, section 3.2.2 puts them under the signature, and
+            # section 3.1.3 puts them under the chain digest. `_jwk_key` reads
+            # only the four named fields, so they never change which key this
+            # is for `root_key_untrusted` or for `claimed_key`'s comparison
+            # provided they do not shadow those four names, which would make
+            # this hop claim different key material rather than the same
+            # material plus extra members, so that is asserted rather than
+            # left to be noticed in a diff of the emitted JWK.
+            assert not set(hop["jwk_extra"]) & {"kty", "crv", "x", "y"}, (
+                "jwk_extra must not shadow key material"
+            )
+            base = body.get("cnf", {}).get("jwk") or jwk_for(
+                hop.get("claimed_key", hop.get("sign_key", hop["role"]))
+            )
+            body["cnf"] = {"jwk": {**base, **hop["jwk_extra"]}}
         records.append(signed(body, sign_key=hop.get("sign_key", hop["role"])))
     return records
 
@@ -275,6 +303,22 @@ SINGLE_HOP = [
     {"role": "planner", "data_class": "confidential", "credential_id": CRED_PLANNER[0]},
 ]
 
+#: The near-miss section 3.1.3 describes: a BMP private-use character (single
+#: UTF-16 code unit U+E000) and a character outside the Basic Multilingual Plane
+#: (U+1F600, a surrogate pair whose leading unit is U+D83D). RFC 8785 orders by
+#: UTF-16 code unit, so the surrogate-pair key sorts first (0xD83D < 0xE000);
+#: Python's `sorted()` and `json.dumps(sort_keys=True)` order by code point, so
+#: the private-use key sorts first instead (0xE000 < 0x1F600). Same two members,
+#: opposite relative order, one of them wrong.
+SUPPLEMENTARY_PLANE_EXTRA = {
+    "\ue000": "bmp-private-use",
+    "\U0001f600": "supplementary-plane",
+}
+
+SUPPLEMENTARY_PLANE_HOPS = [
+    {**SINGLE_HOP[0], "jwk_extra": SUPPLEMENTARY_PLANE_EXTRA},
+    SINGLE_HOP[1],
+]
 
 def main() -> None:
     out: list[tuple[str, dict[str, Any]]] = []
@@ -624,6 +668,25 @@ def main() -> None:
         ]),
         classification="unverifiable", codes=["digest_algorithm_unsupported"],
         credentials=WELL_FORMED,
+    ))
+
+    # -- canonicalization: UTF-16 code-unit key order, not code-point order -----
+
+    add("24-parent-key-supplementary-plane.json", vector(
+        "TRACE-DELEG-024", "parent-key-supplementary-plane",
+        "The root's `cnf.jwk` carries two additional RFC 7517 members, keyed by "
+        "a BMP private-use character and by a character outside the Basic "
+        "Multilingual Plane. Section 3.1.3 states that RFC 8785's UTF-16 "
+        "code-unit key order and code-point order agree everywhere except here, "
+        "and that this corpus was entirely ASCII and so could not separate an "
+        "implementation that canonicalizes correctly from one that sorts by "
+        "code point instead. This is that vector: the leaf's "
+        "`parent_record_hash` is the root's digest under UTF-16 order. A "
+        "verifier that sorts by code point computes a different digest for the "
+        "same root, fails to resolve the link, and reports `parent_not_found` "
+        "on a chain that is otherwise exactly vector 01's.",
+        build_chain(SUPPLEMENTARY_PLANE_HOPS),
+        classification="verified", codes=[], credentials=WELL_FORMED,
     ))
 
     for name, doc in sorted(out):

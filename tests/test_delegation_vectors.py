@@ -414,6 +414,7 @@ def test_vector_set_is_complete() -> None:
         "21-depth-one-past-the-bound.json",
         "22-leaf-link-uses-sha384.json",
         "23-deep-link-uses-sha384.json",
+        "24-parent-key-supplementary-plane.json",
     ]
 
 
