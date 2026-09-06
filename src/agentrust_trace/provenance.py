@@ -112,7 +112,7 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
         if (
             "input_schema" in t
             and "inputSchema" in t
-            and t["input_schema"] != t["inputSchema"]
+            and anchor_bytes(t["input_schema"]) != anchor_bytes(t["inputSchema"])
         ):
             raise ProvenanceError(
                 f"tools[{index}] carries conflicting input_schema and inputSchema values"
