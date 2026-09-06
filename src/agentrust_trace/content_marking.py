@@ -20,7 +20,8 @@ from __future__ import annotations
 import hashlib
 import re
 from typing import Any
-from urllib.parse import urlsplit
+
+from rfc3986_validator import validate_rfc3986
 
 __all__ = [
     "ASSERTION_LABEL",
@@ -38,6 +39,7 @@ ASSERTION_VERSION = 1
 _ALGS = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
 _SUBJECT_RE = re.compile(r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")
 _DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_HTTP_URL_RE = re.compile(r"^https?://(?P<authority>[^/?#]+)(?:[/?#].*)?$", re.IGNORECASE)
 
 
 class ContentMarkingError(ValueError):
@@ -64,15 +66,40 @@ def _record_url(value: Any) -> str:
     message = "record.url must be an absolute http(s) URI"
     if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
         raise ContentMarkingError(message)
-    try:
-        parsed = urlsplit(value)
-        port = parsed.port
-    except ValueError as exc:
-        raise ContentMarkingError(message) from exc
-    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+    if validate_rfc3986(value) is None:
         raise ContentMarkingError(message)
-    # Reading parsed.port above is intentional: urllib rejects malformed/non-numeric ports there.
-    _ = port
+
+    match = _HTTP_URL_RE.fullmatch(value)
+    if match is None:
+        raise ContentMarkingError(message)
+
+    authority = match.group("authority")
+    hostport = authority.rsplit("@", 1)[-1]
+    if not hostport:
+        raise ContentMarkingError(message)
+
+    port: str | None = None
+    if hostport.startswith("["):
+        close = hostport.find("]")
+        if close <= 1:
+            raise ContentMarkingError(message)
+        tail = hostport[close + 1 :]
+        if tail:
+            if not tail.startswith(":") or not tail[1:].isdigit():
+                raise ContentMarkingError(message)
+            port = tail[1:]
+    else:
+        if hostport.count(":") > 1:
+            raise ContentMarkingError(message)
+        if ":" in hostport:
+            host, port = hostport.rsplit(":", 1)
+            if not host or not port.isdigit():
+                raise ContentMarkingError(message)
+        elif not hostport:
+            raise ContentMarkingError(message)
+
+    if port is not None and int(port) > 65535:
+        raise ContentMarkingError(message)
     return value
 
 
