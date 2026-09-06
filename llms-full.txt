@@ -2,60 +2,30 @@
 
 > Trust Runtime Attestation and Compliance Evidence: open attestation standard for agentic AI governance
 
-TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. A TRACE Trust Record binds what model ran, in which verified hardware environment, under which policy, on what data class, and which tools were invoked into a single signed artifact rooted in silicon attestation, then anchors it to a SCITT transparency ledger so a third party can verify it without trusting the operator. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite.
+TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for signed AI agent runtime evidence. A TRACE Trust Record connects workload identity, policy, data classification, and transcript commitments. Software signing, hardware attestation, and transparency inclusion establish different properties and require separate checks. Start with a local signed record and tamper detection, then choose the evidence required by your verifier. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite.
 
 # Getting started
 
-# TRACE
+# Sign a runtime record. Check its evidence.
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
+TRACE is an open specification for portable, signed runtime evidence. Its record format connects workload identity, policy, data classification, and tool-transcript commitments. A verifier checks the signature and the evidence required by its trust policy.
 
-**A Trust Record answers what ran, where, under which policy, touching which data, and calling which tools, in a form any third party can verify without trusting the operator.**
+[Create and verify your first record](https://trace.agentrust-io.com/docs/quickstart/index.md) [Understand the trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)
 
-TL;DR
+The first example needs Python 3.11+ and no cloud account. It signs synthetic declarations in software, verifies with a separately retained key, and demonstrates tamper detection. Hardware provenance and registry inclusion require additional evidence and checks.
 
-- An audit log is written by the system being audited. A Trust Record is signed inside a TEE and checked against a hardware root, so the operator cannot author it after the fact.
-- The current specification is **v0.2**, with a [conformance test suite](https://tests.agentrust-io.com) that scores a record by level.
-- Install with `pip install agentrust-trace` and sign your first record in a few minutes.
-- TRACE Specification is hosted at the Linux Foundation as its own series, [TRACE Specification, a Series of LF Projects, LLC](https://www.linuxfoundation.org/).
+## What the record contains
 
-```
-pip install agentrust-trace
-```
+| Question                      | Fields to inspect  | What the verifier still needs                                       |
+| ----------------------------- | ------------------ | ------------------------------------------------------------------- |
+| Which workload is named?      | `subject`, `model` | An authenticated issuer and evidence binding the workload           |
+| What runtime is claimed?      | `runtime`          | Valid attestation and approved measurements for hardware provenance |
+| Which policy is named?        | `policy`           | Independently approved policy inputs                                |
+| What data class is declared?  | `data_class`       | Evidence supporting the producer's classification                   |
+| What transcript is committed? | `tool_transcript`  | Transcript evidence when individual calls matter                    |
+| Was evidence anchored?        | `transparency`     | A verified receipt and the required log trust policy                |
 
-```
-import time
-from agentrust_trace import generate_key, sign_record
-
-key = generate_key()
-
-record = {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-    "iat": int(time.time()),
-    "subject": "spiffe://trust.example.org/agent/payments-processor",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
-    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
-    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
-    "data_class": "confidential",
-    "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
-    "appraisal": {"status": "none", "verifier": "https://verifier.example.org"},
-}
-
-signed = sign_record(record, key)
-```
-
-## What a Trust Record proves
-
-Each question maps to a claim a third party can check without asking you.
-
-| Question                              | TRACE claim                                           |
-| ------------------------------------- | ----------------------------------------------------- |
-| What model ran?                       | `model.model_id` + `model.weights_digest`             |
-| Where did it run?                     | `runtime.platform` + `runtime.measurement`            |
-| Under which policy?                   | `policy.bundle_hash` + `policy.enforcement_mode`      |
-| What data did it touch?               | `data_class`                                          |
-| Which tools were called?              | `tool_transcript.hash` + `tool_transcript.call_count` |
-| Is the record independently anchored? | `transparency` (SCITT receipt URI)                    |
+A signed field is a producer's claim. Signature verification alone does not establish that the described execution occurred or that a policy was enforced. See the [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) for the full evaluation path.
 
 ## Where to start
 
@@ -103,202 +73,143 @@ TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted
 
 # Quickstart
 
-Get your first TRACE Trust Record in five minutes.
+Create a signed record, verify it, then change one field and watch verification fail. This local example uses synthetic claims and software signing. It does not execute an AI agent, enforce a policy, contact a registry, or produce hardware attestation.
 
 ## Install
 
+Use Python 3.11+, Git, and Bash on Linux, macOS, or Windows with WSL. Install from the source checkout for this example: the published 0.9.0 package still bundles an older schema that requires a transparency entry, even for an unanchored record.
+
 ```
-pip install agentrust-trace
+git clone https://github.com/agentrust-io/trace-spec.git trace-quickstart
+cd trace-quickstart
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 ```
 
 ## Generate a signing key
 
-```
-from agentrust_trace import generate_key
-from cryptography.hazmat.primitives import serialization
-
-key = generate_key()
-
-# Save private key: keep secure, never commit or log
-pem_private = key.private_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption(),
-)
-with open("trace-key.pem", "wb") as f:
-    f.write(pem_private)
-
-# Save public key: safe to distribute to verifiers
-pem_public = key.public_key().public_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PublicFormat.SubjectPublicKeyInfo,
-)
-with open("trace-key.pem.pub", "wb") as f:
-    f.write(pem_public)
-```
-
-In production, pass the PEM to `TRACE_PRIVATE_KEY_PEM` as an environment variable instead of writing it to disk. `load_signing_key()` reads this variable automatically.
+The script below generates one key and uses it to sign the record. It saves only the public key, so you can verify the record in another process. Keep that public key separate from untrusted records. In a real deployment, the verifier must obtain an approved issuer key through its own trust channel.
 
 ## Emit a Trust Record (standalone)
 
-Use `sign_record()` to produce a Level 0 record without AGT or any other framework:
+Save this complete block as `first_record.py` in `trace-quickstart`:
 
 ```
-import time, json
-from agentrust_trace import generate_key, sign_record
+import copy
+import json
+import time
+from pathlib import Path
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
+from agentrust_trace import generate_key, sign_record, validate_json, verify_record
 
 key = generate_key()
-
+trusted_key = key.public_key()
 record = {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
-    "subject": "spiffe://trust.example.org/agent/my-agent",
-    "model": {
-        "provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
-        "version": "20251001",
-    },
-    "runtime": {
-        "platform": "software-only",
-        "measurement": "sha256:" + "0" * 64,
-    },
-    "policy": {
-        "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7"
-                       "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
-        "enforcement_mode": "enforce",
-    },
+    "subject": "spiffe://example.test/agent/demo",
+    "model": {"provider": "example", "model_id": "demo-model"},
+    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
+    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
     "data_class": "internal",
-    "build_provenance": {
-        "slsa_level": 1,
-        "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
-                  "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
-    },
-    "appraisal": {
-        "status": "none",
-        "verifier": "https://verifier.example.org",
-    },
-    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
+    "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
+    "appraisal": {"status": "none", "verifier": "https://verifier.example.test"},
 }
 
 signed = sign_record(record, key)
+validate_json(signed)
+verify_record(signed, public_key_or_jwk=trusted_key)
+print("PASS: schema and signature against the retained public key")
 
-with open("session.trace.json", "w") as f:
-    json.dump(signed, f, indent=2)
+Path("session.trace.json").write_text(json.dumps(signed, indent=2))
+Path("issuer-public.pem").write_bytes(trusted_key.public_bytes(
+    serialization.Encoding.PEM,
+    serialization.PublicFormat.SubjectPublicKeyInfo,
+))
+
+changed = copy.deepcopy(signed)
+changed["data_class"] = "public"
+try:
+    verify_record(changed, public_key_or_jwk=trusted_key)
+except InvalidSignature:
+    print("PASS: changed record rejected")
+else:
+    raise RuntimeError("Expected the changed record to fail verification")
+
+print("Saved session.trace.json and issuer-public.pem; no hardware attestation")
 ```
 
-This produces a valid Level 0 record. For hardware-attested (Level 1+) records, use cMCP as the runtime: it handles TEE key generation and measurement automatically.
+Run it:
+
+```
+python first_record.py
+```
+
+Expected output:
+
+```
+PASS: schema and signature against the retained public key
+PASS: changed record rejected
+Saved session.trace.json and issuer-public.pem; no hardware attestation
+```
+
+The policy and build hashes are placeholders. A valid signature binds these declarations; it does not prove that a model ran or a policy was enforced.
 
 ## Emit with a persistent key
 
-In production, load the signing key from `TRACE_PRIVATE_KEY_PEM` so the same key is used across process restarts. `load_signing_key()` reads that variable and falls back to an ephemeral key with a warning if the variable is not set:
+The example's private key exists only in memory. Its saved public key can still verify earlier records after the process exits. To sign future records as the same issuer, retain the private key through an approved key-management mechanism. See [signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md) for signing APIs and [verification](https://trace.agentrust-io.com/docs/verification/index.md) for trust and revocation requirements.
 
-```
-import os, time, json
-from agentrust_trace import load_signing_key, sign_record
+## Verify
 
-# Export TRACE_PRIVATE_KEY_PEM before running, or set it in your deployment secrets.
-# If unset, an ephemeral key is generated and a warning is emitted; records signed
-# with an ephemeral key cannot be re-verified after the process exits.
-key = load_signing_key()
-
-record = {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-    "iat": int(time.time()),
-    "subject": "spiffe://trust.example.org/agent/my-agent",
-    "model": {
-        "provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
-        "version": "20251001",
-    },
-    "runtime": {
-        "platform": "software-only",
-        "measurement": "sha256:" + "0" * 64,
-    },
-    "policy": {
-        "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7"
-                       "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
-        "enforcement_mode": "enforce",
-    },
-    "data_class": "internal",
-    "build_provenance": {
-        "slsa_level": 1,
-        "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
-                  "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
-    },
-    "appraisal": {
-        "status": "none",
-        "verifier": "https://verifier.example.org",
-    },
-    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
-}
-
-signed = sign_record(record, key)
-
-with open("session.trace.json", "w") as f:
-    json.dump(signed, f, indent=2)
-```
-
-## Verify offline
+Save this as `verify_saved.py` beside the two generated files, then run `python verify_saved.py`:
 
 ```
 import json
-from agentrust_trace import verify_record, validate_json
-from cryptography.exceptions import InvalidSignature
+from pathlib import Path
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from agentrust_trace import validate_json, verify_record
 
-with open("session.trace.json") as f:
-    signed_record = json.load(f)
-
-# Schema check
-validate_json(signed_record)  # raises jsonschema.ValidationError if malformed
-
-# Signature check: verify against a pinned trusted key in production.
-# allow_embedded_key=True trusts the cnf.jwk in the record itself, which
-# only proves internal consistency, not that the record came from a trusted issuer.
-try:
-    verify_record(signed_record, allow_embedded_key=True)
-    print("Signature valid (Ed25519)")
-    print(f"  subject:     {signed_record['subject']}")
-    print(f"  policy:      {signed_record['policy']['bundle_hash'][:24]}... "
-          f"({signed_record['policy']['enforcement_mode']})")
-    print(f"  data_class:  {signed_record['data_class']}")
-    print(f"  appraisal:   {signed_record['appraisal']['status']}")
-except InvalidSignature:
-    print("Signature invalid")
+trusted_key = load_pem_public_key(Path("issuer-public.pem").read_bytes())
+record = json.loads(Path("session.trace.json").read_text())
+validate_json(record)
+verify_record(record, public_key_or_jwk=trusted_key)
+print("PASS: saved record verified against the retained public key")
 ```
 
-Output:
-
-```
-Signature valid (Ed25519)
-  subject:     spiffe://trust.example.org/agent/my-agent
-  policy:      sha256:b2c3d4e5f6a7b8c9... (enforce)
-  data_class:  internal
-  appraisal:   none
-```
-
-`verify_record()` raises `cryptography.exceptions.InvalidSignature` if the record was tampered with after signing. `appraisal.status` is `none` here because no external verifier was contacted: see [Verification Protocol](https://trace.agentrust-io.com/docs/verification/index.md) for the full five-step flow.
+Expected: `PASS: saved record verified against the retained public key`. Verification uses a default maximum age of 24 hours, so rerun the first script if the demo record has expired. A wrong key, changed record, or stale timestamp must fail; investigate the error instead of enabling embedded-key trust to make it pass.
 
 ## What you now have
 
-| Claim                  | What it proves                                    |
-| ---------------------- | ------------------------------------------------- |
-| `policy.bundle_hash`   | Exact Cedar policy hash that governed the session |
-| `tool_transcript.hash` | Merkle-chained audit log of every tool invocation |
-| `subject`              | Workload identity (SPIFFE or DID)                 |
-| `appraisal.status`     | Verifier judgment: affirming / contraindicated    |
-| `signature`            | Ed25519 over the full record: verifiable offline  |
+| Artifact                          | What it establishes                                  |
+| --------------------------------- | ---------------------------------------------------- |
+| `session.trace.json`              | A schema-valid, signed set of synthetic declarations |
+| `issuer-public.pem`               | The key retained by this demo's verifier             |
+| Tamper check                      | A modified signed field fails signature verification |
+| `runtime.platform: software-only` | This example provides no hardware provenance         |
+| `appraisal.status: none`          | No external appraisal occurred                       |
+
+The verification call above does not check hardware attestation or registry inclusion. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
 
 ## Add hardware attestation (Level 2)
 
-For TEE-rooted records (AMD SEV-SNP, Intel TDX, NVIDIA H100), use cMCP as the runtime: it issues Level 2 TRACE records with a TEE-bound key and a SCITT transparency anchor automatically.
+Follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md), [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md), and [platform documentation](https://trace.agentrust-io.com/docs/platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
 
-→ [Integration guide: cMCP](https://trace.agentrust-io.com/docs/integration/cmcp/index.md)
+## Troubleshooting
+
+- **Module not found:** activate `.venv` in the terminal where you run the scripts.
+- **File not found:** run both scripts from `trace-quickstart`; run `first_record.py` first.
+- **Signature failure:** confirm the record matches the retained public key. Deliberately changing a signed field should fail.
+- **Record too old:** generate a fresh demo record. Keep production freshness requirements explicit.
 
 ## Next steps
 
-- [Full Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): all claims, wire formats, conformance
-- [Verification Protocol](https://trace.agentrust-io.com/docs/verification/index.md): five-step offline verification
-- [Schema Reference](https://trace.agentrust-io.com/docs/schema/index.md): JSON Schema with field descriptions
+- [Verification protocol](https://trace.agentrust-io.com/docs/verification/index.md): checks beyond the signature.
+- [Anchor a record](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md): publish and verify a transparency anchor.
+- [Schema reference](https://trace.agentrust-io.com/docs/schema/index.md): field definitions.
+- [Full specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): normative contracts and conformance.
 
 # Trust Levels
 
