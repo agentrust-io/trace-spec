@@ -1,9 +1,9 @@
 # Privacy
 
-agentrust-trace (the TRACE SDK) collects and transmits no personal data.
+The TRACE SDK processes the records, keys, and evidence supplied by the calling application. Records can contain identifiers, artifact locations, or other sensitive metadata chosen by the producer; review those fields before sharing them.
 
-It runs locally as a Python library. It processes only the inputs you give it, entirely on your machine, and sends no telemetry, analytics, or usage data to agentrust-io, OPAQUE, or any third party. There is no account, login, or tracking, and no cookies or background network calls.
+Core signing and signature verification run locally. The SDK does not send project telemetry or analytics. Application-provided callbacks, evidence retrieval, and registry submission can involve network services chosen by that application; their handling of data is separate from the local signature operation.
 
-Any network activity is user-initiated: anchoring a record to a SCITT transparency service happens only when you explicitly call it, to the endpoint you configure.
+Uninstalling the package does not delete generated records, exported keys, logs, caches, backups, or records already shared with a registry or recipient. Manage those artifacts through your application's retention and deletion procedures.
 
-Uninstalling removes it completely. Questions or corrections: https://github.com/agentrust-io/trace-spec/issues
+[Report a correction](https://github.com/agentrust-io/trace-spec/issues).
