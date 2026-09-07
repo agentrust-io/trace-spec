@@ -96,6 +96,10 @@ class SandboxAttestation:
     nonce: str | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.platform, str):
+            raise ValueError(
+                f"SandboxAttestation.platform must be a string, got {type(self.platform).__name__}"
+            )
         if self.platform == "software-only":
             raise ValueError(
                 "SandboxAttestation.platform must not be 'software-only'. Omit the "
@@ -107,6 +111,11 @@ class SandboxAttestation:
             raise ValueError(
                 f"SandboxAttestation.platform {self.platform!r} is not an accepted "
                 f"platform. Accepted: {', '.join(sorted(_PLATFORMS))}."
+            )
+        if not isinstance(self.measurement, str):
+            raise ValueError(
+                "SandboxAttestation.measurement must be a string, got "
+                f"{type(self.measurement).__name__}"
             )
         if not _DIGEST_RE.match(self.measurement):
             raise ValueError(
@@ -151,11 +160,17 @@ class SandboxSessionResult:
     """Issuance timestamp. Defaults to now."""
 
     def __post_init__(self) -> None:
+        if not isinstance(self.sandbox_id, str):
+            raise ValueError(f"sandbox_id must be a string, got {type(self.sandbox_id).__name__}")
         if not _SUBJECT_RE.match(self.sandbox_id):
             raise ValueError(
                 f"sandbox_id {self.sandbox_id!r} must be a SPIFFE URI "
                 "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
                 "It becomes the record subject, which is what a verifier keys on."
+            )
+        if not isinstance(self.image_digest, str):
+            raise ValueError(
+                f"image_digest must be a string, got {type(self.image_digest).__name__}"
             )
         if not _DIGEST_RE.match(self.image_digest):
             raise ValueError(
