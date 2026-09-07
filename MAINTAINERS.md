@@ -15,6 +15,14 @@ The Project Lead has final decision authority on specification changes, AAIF/CoS
 | Rishabh Poddar | OPAQUE Systems | Specification, TEE profiles |
 | Aaron Fulkerson | OPAQUE Systems | Specification, governance |
 
+## Repository Maintainers
+
+| Name | GitHub | Scope |
+|---|---|---|
+| Louie Lu | [@lywinged](https://github.com/lywinged) | TRACE specification and conformance requirements |
+
+Louie's appointment was [announced by the Project Lead](https://github.com/orgs/agentrust-io/discussions/33).
+
 ## How to become a maintainer
 
 **Reviewer**: 3+ merged PRs with substantive contributions. Nominated by a Maintainer, confirmed by Project Lead.
