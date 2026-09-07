@@ -53,6 +53,7 @@ def _subprocess_origin(package: str) -> pathlib.Path | None:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,  # a non-zero exit just means "cannot import", handled below
         )
     except (OSError, subprocess.SubprocessError):
         return None
