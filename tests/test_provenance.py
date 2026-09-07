@@ -203,6 +203,60 @@ def test_unsigned_record_is_rejected() -> None:
         verify_record(_record(), key_to_jwk(generate_key()))
 
 
+@pytest.mark.parametrize(
+    "bad_signature", [12345, 3.14, True, ["A", "B"], {"sig": "AA"}, b"AAAAAAAA"]
+)
+def test_a_non_string_signature_is_rejected_not_crashed_on(bad_signature) -> None:
+    """A `record` reaches `verify_record` untrusted, same as every other field.
+
+    `signature + "=" * (-len(signature) % 4)` used to run on whatever JSON value
+    sat under `record["signature"]`, and a non-string -- an int, a bool, a list,
+    a nested object -- raised a bare `TypeError` (`object of type 'int' has no
+    len()` for an int, a `TypeError` on `+` for a dict) rather than the
+    `ProvenanceError` this function documents for every other malformed input.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["signature"] = bad_signature
+    with pytest.raises(ProvenanceError, match="base64url string"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bad_signature", ["a", "你好", "!!!not-base64!!!padding???"])
+def test_a_malformed_base64_signature_is_rejected_not_crashed_on(bad_signature) -> None:
+    """Correctly typed but not decodable: the other half of the same gap.
+
+    A string signature that cannot pad to a whole byte, or that carries a
+    non-ASCII character, previously reached `base64.urlsafe_b64decode` directly
+    and raised `binascii.Error` / `ValueError`, not `ProvenanceError`.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["signature"] = bad_signature
+    with pytest.raises(ProvenanceError, match="not valid base64url"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_a_malformed_signature_does_not_reorder_the_cnf_check_ahead_of_it() -> None:
+    """The signature-decode guard must land where the crash it replaces did:
+    after the embedded-key checks, not before them.
+
+    Both problems here raise `ProvenanceError`, so nothing here distinguishes a
+    fix that checks the signature first from one that checks `cnf.jwk` first --
+    except which message comes back. This pins that order so a future change
+    that hoists the signature-format check above the `cnf.jwk` checks (an easy
+    slip: the natural-looking place to add it is right where `signature` is
+    first read, several lines above where it is first used) fails here instead
+    of only being noticed as a changed error message downstream.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    del signed["cnf"]["jwk"]
+    signed["signature"] = 12345  # also malformed, but cnf.jwk is checked first
+    with pytest.raises(ProvenanceError, match="no cnf.jwk"):
+        verify_record(signed, key_to_jwk(key))
+
+
 def test_unknown_format_version_is_rejected_not_parsed() -> None:
     key = generate_key()
     signed = sign_record({**_record(), "format": "agentrust-io/mcp-server-provenance/2"}, key)
