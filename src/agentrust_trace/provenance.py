@@ -22,6 +22,7 @@ from typing import Any
 
 from agentrust_trace.sign import (
     RevocationStore,
+    _b64url_decode,
     _canonical_bytes,
     _check_not_revoked,
     _check_seconds,
@@ -315,8 +316,6 @@ def verify_record(
     **This does not check the server.** It checks the paper. Call
     :func:`check_tool_catalog` with the tools the server actually offered.
     """
-    import base64
-
     if not isinstance(record, dict):
         raise ProvenanceError(
             f"record must be a JSON object, got {type(record).__name__}. `_as_object` "
@@ -407,9 +406,21 @@ def verify_record(
 
     pub = _pubkey_from_jwk(trusted_jwk)
     body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
-    padded = signature + "=" * (-len(signature) % 4)
+    # `signature` reaches this function from whatever the caller is verifying, the
+    # same untrusted document nothing above this line has vouched for either: a
+    # non-string here (an int, a list of chars, a nested object) previously hit
+    # `signature + "=" * (-len(signature) % 4)` and raised a bare `TypeError` --
+    # "object of type 'int' has no len()" -- which is not the ProvenanceError this
+    # function documents and is not caught by a caller written against it.
+    # `_b64url_decode` is `sign.verify_record`'s own guard for exactly this field;
+    # reused here so a malformed signature fails the same way a malformed one does
+    # everywhere else in this module: closed, and named.
     try:
-        pub.verify(base64.urlsafe_b64decode(padded), body)
+        sig_bytes = _b64url_decode(signature, field="signature")
+    except ValueError as exc:
+        raise ProvenanceError(str(exc)) from exc
+    try:
+        pub.verify(sig_bytes, body)
     except Exception as exc:  # cryptography raises InvalidSignature
         raise ProvenanceError(f"signature does not verify: {exc}") from exc
 

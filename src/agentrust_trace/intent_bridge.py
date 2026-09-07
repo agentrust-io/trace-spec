@@ -125,7 +125,18 @@ def verify_bridge(
     signature_value = root.get("signature")
     if not isinstance(signature_value, str):
         raise IntentBridgeError("signature must be a base64url string")
-    signature = _b64url_decode(signature_value, field="signature")
+    # `_b64url_decode` is `sign`'s own helper and raises the bare `ValueError` that
+    # module documents for itself, not an `IntentBridgeError`: a plain `ValueError`
+    # is not an instance of the subclass this module defines, so a malformed (but
+    # correctly-typed) base64url string -- too short to pad to a whole byte, or
+    # carrying a non-ASCII character -- previously escaped as a raw `ValueError` a
+    # caller written against `IntentBridgeError` does not catch. Same failure this
+    # module's own `_jcs` docstring calls out for `rfc8785.CanonicalizationError`;
+    # this call site needs the same wrapping.
+    try:
+        signature = _b64url_decode(signature_value, field="signature")
+    except ValueError as exc:
+        raise IntentBridgeError(str(exc)) from exc
     fields = {
         "authorization_id", "decision", "authorizer", "authorizer_key_id",
         "authorized_at", "expires_at", "scope", "pic", "declaration_digest",

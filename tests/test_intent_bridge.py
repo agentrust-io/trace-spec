@@ -80,6 +80,30 @@ def test_tampering_is_rejected(field: str) -> None:
         )
 
 
+@pytest.mark.parametrize("bad_signature", ["a", "你好", "!!!not-base64!!!padding???"])
+def test_a_malformed_base64_signature_raises_intentbridgeerror_not_valueerror(
+    bad_signature: str,
+) -> None:
+    """`_b64url_decode` is `sign`'s own helper and raises the bare `ValueError`
+    that module documents for itself. Called here unwrapped, a correctly-typed
+    but undecodable signature -- too short to pad to a whole byte, or carrying a
+    non-ASCII character -- escaped as that raw `ValueError`, which is not an
+    instance of `IntentBridgeError` and is not caught by a caller written
+    against this module's own exception (the same failure this module's `_jcs`
+    docstring calls out for `rfc8785.CanonicalizationError`, at a call site the
+    docstring does not cover).
+    """
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    tampered = copy.deepcopy(bridge)
+    tampered["signature"] = bad_signature
+    with pytest.raises(IntentBridgeError, match="not valid base64url"):
+        verify_bridge(
+            tampered, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args,
+            tool_call=tool_call, transcript=transcript, now=150,
+        )
+
+
 def test_deny_and_scope_fail_closed() -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     denied = copy.deepcopy(bridge)
