@@ -1,0 +1,17 @@
+# Runtime + dev dependencies, mirroring [project.dependencies] and the dev
+# extra. Installed with --require-hashes before the local package goes in with
+# --no-deps, because pip cannot hash-pin an editable install in the same
+# invocation. Compile with:
+#   uv pip compile requirements/dev.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/dev.txt
+pydantic>=2.13.5
+jsonschema>=4.26.0
+rfc3986-validator>=0.1.1
+cryptography>=42.0
+referencing>=0.28
+rfc8785>=0.1.4
+pytest>=9.1.1
+pytest-cov>=7.1.0
+ruff>=0.4
+mypy>=1.10
+types-jsonschema

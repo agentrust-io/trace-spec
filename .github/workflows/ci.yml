@@ -26,7 +26,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install package and dev deps
-        run: pip install -e ".[dev]"
+        # Third-party dependencies come from the hash-pinned lock first; the
+        # local package then goes in with --no-deps, because pip cannot
+        # hash-pin an editable install in the same invocation.
+        run: |
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --no-deps -e .
 
       - name: Lint
         run: ruff check src tests scripts

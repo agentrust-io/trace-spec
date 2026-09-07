@@ -24,7 +24,7 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          pip install hatchling
+          pip install --require-hashes -r requirements/build.txt
           python -m hatchling build
 
       - name: Verify wheel as installed artifact
