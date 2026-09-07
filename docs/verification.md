@@ -1,97 +1,45 @@
 # Verification Protocol
 
-TRACE Trust Records are independently verifiable offline: no call to the issuer, no API, no trust-me-the-log-is-real. The one thing offline verification cannot establish is that the signing key is *still* trusted; see [Checking revocation status](#checking-revocation-status).
+A TRACE verifier authenticates a signed record and evaluates the evidence required by the recipient's policy. Offline verification needs the relevant artifacts and trust inputs already available. It cannot infer missing hardware, revocation, or transparency evidence from the record's assertions.
 
 ## Five-step verification
 
-This is the normative protocol from [§3.3 of the spec](../spec/trace-v0.2.md).
-
-Before interpreting any claim, validate the complete object against the canonical
-v0.2 JSON Schema. A valid signature authenticates every byte but does not make an
-unknown field, missing required claim, or invalid enum meaningful. The Python
-`verify_record()` API performs this schema check automatically and fails closed.
+This is an implementation guide to [section 3.3 of the specification](../spec/trace-v0.2.md), which remains authoritative. For a runnable Python example, use [verify a trust record](tutorials/verifying-a-trust-record.md).
 
 ### Step 1: Parse the envelope
 
-A TRACE Trust Record is a signed JSON object. The `signature` field contains a base64url-encoded Ed25519 (or ES256/ES384) signature over the canonical JSON of the record with only `signature` removed. The `cnf.jwk` public key remains in the signed pre-image, binding that key to the rest of the record.
-
-```python
-import json, base64
-import rfc8785  # RFC 8785 (JCS) canonicalization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-record = json.load(open("session.trace.json"))
-sig_bytes = base64.urlsafe_b64decode(record["signature"] + "==")
-payload = {k: v for k, v in record.items() if k != "signature"}
-payload_bytes = rfc8785.dumps(payload)  # JCS canonical bytes, NOT json.dumps
-```
-
-The pre-image is the RFC 8785 (JCS) canonical form of the record with only `signature` removed. All other top-level fields, including `cnf`, are included. `json.dumps(sort_keys=True)` is **not** JCS-conformant, it diverges for non-ASCII strings and IEEE 754 numbers, so use a JCS library (the spec mandates this in §3.2.2).
+Validate the complete standalone record against the canonical schema and supported EAT profile. A cMCP `RuntimeClaim` is a different envelope and requires its runtime-specific verifier.
 
 ### Step 2: Resolve the public key
 
-The `cnf.jwk` field embeds the public key. For TEE-issued records, this key is TEE-bound: its private half never leaves the measured enclave.
-
-Resolve trust out of band and require the trusted key and `cnf.jwk` to have the
-same RFC 7638 thumbprint before verification. Checking the signature with a
-trusted key while allowing the signed record to name a different confirmation
-key breaks the binding required by §3.2.2 and can mislead downstream
-proof-of-possession checks.
-
-```python
-from cryptography.hazmat.primitives.serialization import load_der_public_key
-
-jwk = record["cnf"]["jwk"]
-# For ES256/ES384: reconstruct EC key from x/y
-# For Ed25519: decode x directly
-pub_key = Ed25519PublicKey.from_public_bytes(
-    base64.urlsafe_b64decode(jwk["x"] + "==")
-)
-```
+Obtain an approved issuer key through the recipient's own trust configuration. The incoming `cnf.jwk` cannot establish its own authority. The trusted key and signed confirmation key must match under the signature profile.
 
 ### Step 3: Verify the signature
 
-```python
-pub_key.verify(sig_bytes, payload_bytes)
-# Raises InvalidSignature if tampered: silent if valid
-print("✓ Signature valid")
-```
+Use `agentrust_trace.verify_record(record, public_key_or_jwk=trusted_key)`. It checks the standalone schema, supported profile, key binding, and Ed25519 signature, with configured freshness, nonce, and revocation inputs. It rejects missing trust input by default. The signature covers every field except `signature`, including `cnf` and any `transparency` value, using RFC 8785 canonicalization.
+
+A signature proves a statement came from the trusted key. It does not establish the truth of every claim in that statement.
 
 ### Step 4: Check the EAT profile
 
-```python
-assert record["eat_profile"] == "tag:agentrust-io.com,2026:trace-v0.2", "Unknown profile"
-print("✓ eat_profile correct")
-```
-
-If you verify with `agentrust_trace.verify_record`, this step is enforced for you,
-before any cryptographic work: a record whose `eat_profile` is missing, superseded
-(the v0.1 identifier), or anything other than `TRACE_PROFILE_V0_2` raises
-`ValueError`. The manual assert above is what a from-scratch verifier must do
-itself: spec section 2 requires a v0.2 verifier to reject everything but the v0.2
-identifier, and a valid signature over semantics your build does not implement is
-not evidence.
+The current SDK requires `tag:agentrust-io.com,2026:trace-v0.2`. The superseded v0.1 identifier is rejected. This check is already included in `verify_record`; a custom verifier must also enforce its supported profile.
 
 ### Step 5: Appraise the claims
 
-Interpret `appraisal.status` against your policy:
+Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
 
-| Status | Meaning |
+| Claimed status | Interpretation |
 |---|---|
-| `affirming` | All evidence passed verifier appraisal |
-| `warning` | Evidence passed but with conditions |
-| `contraindicated` | Evidence failed: treat as untrusted |
-| `none` | No appraisal performed (software-only Level 0) |
+| `affirming` | The issuer reports a successful appraisal; verify its authority, evidence, scope, and policy |
+| `warning` | The issuer reports conditions that need recipient policy handling |
+| `contraindicated` | The issuer reports failed appraisal |
+| `none` | No appraisal is claimed |
 
-```python
-status = record["appraisal"]["status"]
-assert status == "affirming", f"Appraisal failed: {status}"
-print(f"✓ Appraisal: {status}")
-```
+The recipient decides whether the checks performed satisfy the operation's requirements. A non-software platform name or `affirming` string alone is insufficient.
 
 ## Checking revocation status
 
-The five steps above are self-contained: given the record and a trusted key, they run with no network. That is the property TRACE is built for, and it has exactly one gap. A signature is valid forever, so a record signed by a key that was later compromised and revoked still passes every offline step. Nothing inside the record can withdraw the key that signed it.
+Signature verification alone cannot discover a later key revocation. Offline appraisal requires cached revocation evidence as well as the record and trusted key. Report which evidence was checked and whether it remains current.
 
 [§3.2.3 of the spec](../spec/trace-v0.2.md) closes that gap without giving up offline verification. Two things are worth knowing before reading the code below.
 
@@ -142,19 +90,15 @@ result.revocation.cause      # why a supplied bundle could not ground "verified"
 result.revocation.evidence   # what a second verifier needs to reach the same outcome
 ```
 
-The three outcomes are §3.2.3's own words, and none of them is an appraisal: where a verifier records an unresolvable check in the record itself is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open. A bundle is evidence only while both age bounds hold, the issuer's `valid_until` and the caller's `max_bundle_age_seconds` measured from `issued_at`; the tighter bound governs, and an expired outcome names which one tripped. `now` pins the verification moment so the outcome reproduces from retained facts. A bundle that is malformed, signed by a key not in `trusted_bundle_keys`, signed with an algorithm this build cannot verify, dated in the future, or expired under either bound yields `unverified_for_revocation` with the cause named; it does not raise, because inability to check is not evidence of a defect. A statement on the bundle's log naming the trusted key raises, under the fallback above, and it is read before the time checks: the bounds say what the bundle's silence is worth, and an authenticated statement has no expiry of its own. [`examples/revocation-bundle/`](../examples/revocation-bundle/) carries the conformance vectors.
+The three outcomes are §3.2.3's own words, and none of them is an appraisal: where a verifier records an unresolvable check in the record itself is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open. A bundle is evidence only while both age bounds hold, the issuer's `valid_until` and the caller's `max_bundle_age_seconds` measured from `issued_at`; the tighter bound governs, and an expired outcome names which one tripped. `now` pins the verification moment so the outcome reproduces from retained facts. A bundle that is malformed, signed by a key not in `trusted_bundle_keys`, signed with an algorithm this build cannot verify, dated in the future, or expired under either bound yields `unverified_for_revocation` with the cause named; it does not raise, because inability to check is not evidence of a defect. A statement on the bundle's log naming the trusted key raises, under the fallback above, and it is read before the time checks: the bounds say what the bundle's silence is worth, and an authenticated statement has no expiry of its own. [`examples/revocation-bundle/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/revocation-bundle/) carries the conformance vectors.
 
 What neither path does yet is entry-ID-scoped revocation. Both answer "is this key revoked", which is the §3.2.3 fallback, so a key revoked after a long run of legitimate records currently invalidates all of them rather than the ones logged after `last_valid_entry_id`. Carrying the entry ID through `verify_record()` is implementation work tracked in the issue that produced §3.2.3. The bundle path also verifies the bundle signature only, not each statement's own signature against the §3.2.1 hierarchy; that check needs the hierarchy, and it is stated here rather than implied.
 
 ## Verifying hardware-rooted records
 
-For Level 2 records (TEE-issued), additionally verify that the `cnf.jwk` key is bound to the hardware measurement in `runtime`:
+Hardware appraisal supports Level 1; Level 2 adds transparency anchoring. Verify the report or quote signature and accepted trust chain, its freshness and platform policy, the independently approved measurement, and its binding to the record-signing key. The producing profile defines that binding.
 
-1. Fetch the Reference Integrity Manifest at `runtime.rim_uri`
-2. Compare `runtime.measurement` against the RIM
-3. Verify that `cnf.jwk` was endorsed by the TEE at that measurement
-
-This chain proves the key that signed the TRACE record was generated *inside* the attested enclave, not by an operator process.
+`verify_record` does not perform these hardware checks. Comparing a record's digest to an unauthenticated reference or reading `affirming` is not a substitute. See [attestation platforms](platforms/index.md) and the producing runtime's verifier.
 
 ## Verifying build provenance depth
 
@@ -239,30 +183,13 @@ it states what each depth does not assure.
 
 ## CLI verification
 
-```bash
-# Install
-pip install agentrust-trace
-
-# Verify a record
-agentrust-trace verify session.trace.json --pubkey issuer.pub
-
-# Verify with hardware check (fetches RIM from AMD/Intel/NVIDIA)
-agentrust-trace verify session.trace.json --pubkey issuer.pub --check-hardware
-
-# Batch verify
-agentrust-trace verify *.trace.json --pubkey issuer.pub --summary
-```
+The reference SDK exposes a Python API; it does not install an `agentrust-trace` command. Follow the [complete verification script](tutorials/verifying-a-trust-record.md) to load a saved record and independently trusted public key. Hardware appraisal requires a provider-specific verifier and evidence inputs.
 
 ## SCITT-anchored records
 
-If `transparency` is set, the record is anchored in an append-only transparency log. Verify the anchor:
+A `transparency` URI names a claimed log entry. It does not establish inclusion by itself. Retrieve the receipt, verify its binding to the record, and verify the inclusion proof against an independently trusted log or checkpoint. See [anchoring to the registry](tutorials/anchoring-to-the-registry.md) for the reference format and sequence.
 
-```bash
-agentrust-trace verify-scitt session.trace.json \
-  --transparency-log https://registry.agentrust-io.com
-```
-
-A valid SCITT receipt proves the record was included in the log and cannot be retroactively removed or modified.
+An authenticated inclusion proof establishes inclusion under that checkpoint. It does not establish the truth of the record's claims, complete logging, or future log availability.
 
 ## Action receipts and embodied workflows
 
@@ -300,15 +227,15 @@ external outcome claim.
 
 | Claim verified | What it means |
 |---|---|
-| Signature valid | The record was not tampered with after issuance |
-| `cnf.jwk` hardware-bound | The signing key was generated inside a measured TEE |
-| `policy.bundle_hash` | This exact Cedar policy was in force, not an approximate |
-| `tool_transcript.hash` | The audit log is intact and matches the record |
-| SCITT receipt valid | The record is in an append-only log: cannot be quietly deleted |
+| Signature valid against a trusted key | That key signed the authenticated record bytes |
+| Independently appraised hardware/key binding | The accepted evidence binds this key to the environment under the producing profile |
+| Policy artifact matches its hash | The supplied artifact matches the signed commitment; execution needs separate evidence |
+| Transcript artifact matches its hash | The supplied transcript matches the commitment; completeness is not established by the hash alone |
+| Receipt valid against a trusted log/checkpoint | The bound record was included under that checkpoint; availability and completeness remain separate |
 
 ## What verification does NOT prove
 
-Verification proves *what happened during the recorded session* under the stated policy, in the stated environment. It does not:
+Verification establishes the checks actually performed against the supplied evidence and trust inputs. It does not:
 
 - Prove the signing key is still trusted; offline verification cannot prove non-revocation, so pass a `revocation` store
 - Prove the agent's internal reasoning was sound

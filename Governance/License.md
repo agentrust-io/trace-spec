@@ -10,7 +10,7 @@ TRACE specification materials are subject to the [Community Specification Licens
 - the normative TRACE JSON Schema at `schema/trace-claim.json`; and
 - other files expressly identified as part of a Draft Specification or Approved Specification.
 
-Earlier specification publications remain available under the licenses stated when they were published. See the repository [LICENSE](../LICENSE) for that history.
+Earlier specification publications remain available under the licenses stated when they were published. See the repository [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE) for that history.
 
 ## Source Code License
 

@@ -1,34 +1,25 @@
 # Attestation Platforms
 
-TRACE Level 1 trust records require a TEE-backed signing key and a hardware measurement in the `runtime` field. The following platforms are supported.
+Hardware evidence can support TRACE Level 1. Level 2 additionally requires transparency anchoring; selecting a hardware platform does not establish either level by itself. A recipient must verify the evidence and its binding to the record-signing key.
 
-| Platform | `runtime.platform` value | Measurement source |
-|----------|-------------------------|-------------------|
-| AMD SEV-SNP | `sev-snp` | Launch measurement (128-bit digest extended to sha256) |
-| Intel TDX | `tdx` | MRTD + RTMRs combined measurement |
-| NVIDIA H100 | `opaque` | GPU attestation report RIM hash |
-| TPM2 | `tpm2` | PCR bank quote (sha256 bank, PCRs 0 to 7) |
+## Platform names and evidence
 
-For `software-only` (Level 0) records, no TEE is required and the `runtime.platform` value must be exactly `"software-only"`.
+Standalone TRACE records use the names in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Runtime configuration names such as cMCP's `sev-snp`, `tdx`, and `opaque` are not interchangeable with these wire values.
 
-## How platform verification works
+| Platform guide | Standalone `runtime.platform` | Evidence to appraise |
+|---|---|---|
+| [AMD SEV-SNP](amd-sev-snp.md) | `amd-sev-snp` or the profile-specific `azure-cvm-sev-snp` | Signed SNP report, certificate chain, measurement, and key/challenge binding |
+| [Intel TDX](intel-tdx.md) | `intel-tdx` | Signed TD quote, collateral, measurement registers, and key/challenge binding |
+| [NVIDIA H100](nvidia-h100.md) | `nvidia-h100` | GPU attestation evidence and its explicit binding to the workload and signing key |
+| TPM2 | `tpm2` | Quote, selected PCRs, trusted attestation-key provenance, and challenge binding |
+| Software | `software-only` | Software signature and producer-defined commitments; no hardware assurance |
 
-At Level 1, the cMCP runtime:
+The schema also registers other platform identifiers. Registration is not a claim that this Python SDK collects or appraises evidence for every platform.
 
-1. Requests a fresh quote from the TEE firmware at session start.
-2. Submits the quote to the TRACE verifier endpoint, which checks it against the relevant RIM.
-3. Embeds the verified measurement in `runtime.measurement` and sets `appraisal.status` to `"affirming"`.
-4. Signs the completed record with the TEE-bound key.
+## What the SDK checks
 
-The signing key is generated inside the TEE and never leaves the enclave boundary. The `cnf.jwk` in the record carries only the public half.
+`agentrust_trace.verify_record` checks the standalone record's schema, profile, signature against a trusted key, freshness, and configured nonce/revocation inputs. It does not collect a hardware quote or turn a platform string into verified hardware evidence. There is no `agentrust-trace verify-hardware` command in this package.
 
-## Platform guides
+Use a verifier for the producing runtime and evidence format. For cMCP's distinct `RuntimeClaim` envelope, follow [cMCP verification](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/) and its [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/).
 
-- [AMD SEV-SNP](amd-sev-snp.md): setup, measurement format, launch policy
-- [Intel TDX](intel-tdx.md): MRTD/RTMR layout, on-premises and cloud deployment
-- [NVIDIA H100](nvidia-h100.md): GPU attestation, RIM URI format
-
-## Related
-
-- [Trust Levels](../trust-levels.md): what Level 1 guarantees and when to use it
-- [Hardware Attestation Platforms tutorial](../tutorials/hardware-attestation-platforms.md): end-to-end walkthrough
+Continue to [trust levels](../trust-levels.md) or [interpreting hardware evidence](../tutorials/hardware-attestation-platforms.md).
