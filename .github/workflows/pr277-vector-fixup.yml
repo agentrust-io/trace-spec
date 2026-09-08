@@ -1,0 +1,40 @@
+name: PR277 vector fixup
+on:
+  push:
+    branches: [automation/pr277-runtime-evidence-fixup]
+    paths: [.github/workflows/pr277-vector-fixup.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply reviewed vector patches
+        run: |
+          git apply --check .github/pr277-vectors-1.patch
+          git apply --check .github/pr277-vectors-2.patch
+          git apply .github/pr277-vectors-1.patch
+          git apply .github/pr277-vectors-2.patch
+          git diff --check
+      - name: Verify target blobs
+        run: |
+          test "$(git hash-object examples/runtime-evidence/vectors/accept-real-quote-platform-attested.json)" = 89df6a718f4c3bc07e5bc5e4ef070578331d7c61
+          test "$(git hash-object examples/runtime-evidence/vectors/advisory-binds-cannot-raise-a-claim.json)" = c76a8e5ca70f1d6c0ec5e072ce35a8a52990fac4
+          test "$(git hash-object examples/runtime-evidence/vectors/downgrade-evidence-absent.json)" = 8bd9d7416ff072c91761993f23c209ae5a36f74e
+          test "$(git hash-object examples/runtime-evidence/vectors/downgrade-evidence-by-reference.json)" = f56dd6e73184e030faec81493d21d7bcca0a2a4e
+          test "$(git hash-object examples/runtime-evidence/vectors/downgrade-unsupported-format.json)" = a12f94e5a25356829d82a216374e754cbc44a9eb
+          test "$(git hash-object examples/runtime-evidence/vectors/limit-substituted-quote-from-the-same-td.json)" = 650ad5cb82d68e3bce8f22164af97d568c6885c4
+          test "$(git hash-object examples/runtime-evidence/vectors/reject-evidence-swapped-after-signing.json)" = ff31c22951038f778924f0f597438196bb951a72
+          test "$(git hash-object examples/runtime-evidence/vectors/reject-forged-quote.json)" = 4eb66dc5a275ce3b2d30f0d69580148a1b7a02b1
+          test "$(git hash-object examples/runtime-evidence/vectors/reject-measurement-mismatch.json)" = 8d29cb7d21fd177e6f60f333ef927ae5ca6397b6
+          test "$(git hash-object examples/runtime-evidence/vectors/reject-platform-not-the-evidence.json)" = b41f680ea81bc393f3210c47136a2ce635840f44
+      - name: Commit vector fixup
+        run: |
+          git config user.name "Louie Lu"
+          git config user.email "48041247+lywinged@users.noreply.github.com"
+          git add examples/runtime-evidence/vectors
+          git commit -m "chore: materialize PR 277 vector fixup"
+          git push
