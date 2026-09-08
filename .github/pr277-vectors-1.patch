@@ -1,0 +1,105 @@
+diff --git a/examples/runtime-evidence/vectors/accept-real-quote-platform-attested.json b/examples/runtime-evidence/vectors/accept-real-quote-platform-attested.json
+index febf026d88e93f239fb15ea917a3d40588f0db6b..89df6a718f4c3bc07e5bc5e4ef070578331d7c61 100644
+--- a/examples/runtime-evidence/vectors/accept-real-quote-platform-attested.json
++++ b/examples/runtime-evidence/vectors/accept-real-quote-platform-attested.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "6HL46-HfjriPRaKhq0wK3UfYDJRmbj6fmljo3sF4pmi-hmHXS7HAMgp5O7DeMg03XDT2b1V9NccntvI0uznvBA"
++    "signature": "uBUT0tPs1kbBzGAv8CKDZ5aNJ_saBmtBGTTcQFIeH7WGxHldc_x4xdh7YBUf847Cua4y9GC7lmWTCsKrx1eaAA"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/advisory-binds-cannot-raise-a-claim.json b/examples/runtime-evidence/vectors/advisory-binds-cannot-raise-a-claim.json
+index cc6043d5ceace0e99f47c346d7debe94b10b1c86..c76a8e5ca70f1d6c0ec5e072ce35a8a52990fac4 100644
+--- a/examples/runtime-evidence/vectors/advisory-binds-cannot-raise-a-claim.json
++++ b/examples/runtime-evidence/vectors/advisory-binds-cannot-raise-a-claim.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -46,6 +46,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "Yhl06AvmCi2HUvi-Pa_4eR37F9aUhm2UEOlRaID5q51wBowJai64NiqdcidK1Hl7EMuGppaDwqM-LpDbeQwJAg"
++    "signature": "jb3eLEPRAQX3HWzHd8Yr1KEREa-haFBfy4wwZ2lwFTT9MUPibbIGK_5ct4G5xy4HALhjANzXMGomSyxT_Uo_Bw"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/downgrade-evidence-absent.json b/examples/runtime-evidence/vectors/downgrade-evidence-absent.json
+index 54635b2820d86b5aedfc11947cc750ff68a21cfd..8bd9d7416ff072c91761993f23c209ae5a36f74e 100644
+--- a/examples/runtime-evidence/vectors/downgrade-evidence-absent.json
++++ b/examples/runtime-evidence/vectors/downgrade-evidence-absent.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -40,6 +40,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "gALv35ORQsKrIQBtIVESEtsTpZw6vtrYKqU7FV7BBp-M5dp3kApgrkFNXWSB5PfHgJCG7whDvbrlV7WZLVj_AQ"
++    "signature": "Uh578Y9N6b5Msk-tJP-_ABXcOjgUAaKmPslOawoNJop60gzLh8VDTxuUDKwz75iiYYxpU20UJZuBZPmi92VaAA"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/downgrade-evidence-by-reference.json b/examples/runtime-evidence/vectors/downgrade-evidence-by-reference.json
+index 1a2244b23214c5a80381b9fda36e9ac070c70e5c..f56dd6e73184e030faec81493d21d7bcca0a2a4e 100644
+--- a/examples/runtime-evidence/vectors/downgrade-evidence-by-reference.json
++++ b/examples/runtime-evidence/vectors/downgrade-evidence-by-reference.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "hXGDZB4S5OOSkJ5wYSOYn7LR2NJHNu5l_WUZ55BcUZqLxrvblgOHAq-cp4UBAMDcAQCSzcnyIAHkzh3UfgeSDQ"
++    "signature": "CJMeZTh65v3gcypmTAjIxnbka65wbQHlrPzsW8LQf8WAOzpv5oGxODwdZhAKnUwUvilS50sEEJW5htWq3M0ZBg"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/downgrade-unsupported-format.json b/examples/runtime-evidence/vectors/downgrade-unsupported-format.json
+index 7cf9c0e9e674a6ed94489a4170f570092e819ff8..a12f94e5a25356829d82a216374e754cbc44a9eb 100644
+--- a/examples/runtime-evidence/vectors/downgrade-unsupported-format.json
++++ b/examples/runtime-evidence/vectors/downgrade-unsupported-format.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "zNcZBtd3BvopMJDZQigr9Ix5hvLlnaLb6JzTHLCLEkAzrMhSpjohMGLmuYMp7OMlBJuKdFEf0BF7uKI2hfuCBw"
++    "signature": "71srYj_TzJJwy1Nxng3X8kGmPVBvKXat1-MbN0_3lK5ecXtG3dwnTEx_M9O1uv1GWcUIMulMOQvO3bQLNuemBw"
+   }
+ }
