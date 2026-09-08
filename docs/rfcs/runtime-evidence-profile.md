@@ -4,7 +4,7 @@
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
 **Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 10 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
-**Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` so the diff is one member deep.
+**Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
 
@@ -58,16 +58,23 @@ The specification's own doctrine, applied to the block it was never applied to, 
 
 ## 2. The verification model
 
-A verifier is given a record and context. Context is what no record can supply, and it is enumerated rather than assumed:
+A relying party is given a record and context. Context is what no record can supply, and it is enumerated rather than assumed:
 
-| Context | Why it cannot come from the record |
-|---|---|
-| `trusted_root_keys` | a record naming its own key as trusted is not evidence |
-| `platform_verifiers` | the code that checks a quote, which TRACE does not ship and should not |
-| `accepted_measurements` | which MRTD or PCR set is the workload you meant is a deployment decision |
-| `now` | freshness bounds, per §3.2.2 |
+| Context | Why it cannot come from the record | Used by this profile's grade |
+|---|---|---|
+| `trusted_root_keys` | a record naming its own key as trusted is not evidence | no; signer trust is a separate result |
+| `platform_verifiers` | the code that checks a quote, which TRACE does not ship and should not | yes; selected by `format` |
+| `accepted_measurements` | which MRTD or PCR set is the workload you meant is a deployment decision | no; deployment appraisal is separate |
+| `now` | freshness bounds, per §3.2.2 | no; freshness belongs to record verification |
 
-The last row of that table is the important one for what follows. Verifying a quote establishes that genuine silicon reported a measurement. Whether that measurement is the workload the relying party intended is a separate question that no quote answers, and this proposal does not answer it either.
+The grade in this proposal is deliberately orthogonal to signer trust. The reference
+generator checks that the record is internally signature-consistent under its embedded
+`cnf` key; it does not promote that key into `trusted_root_keys`. A relying party
+combines the runtime-evidence grade with its independent signer-trust, freshness, and
+accepted-measurement decisions. `platform-attested` therefore never means "trusted
+issuer".
+
+The `accepted_measurements` row is the important one for what follows. Verifying a quote establishes that genuine silicon reported a measurement. Whether that measurement is the workload the relying party intended is a separate question that no quote answers, and this proposal does not answer it either.
 
 ## 3. The block
 
@@ -87,7 +94,7 @@ The last row of that table is the important one for what follows. Verifying a qu
 | Member | Required | Meaning |
 |---|---|---|
 | `format` | yes | selects the verifier and the rule for extracting a measurement |
-| `quote` | one of | the evidence as the platform emitted it, base64url, no padding |
+| `quote` | one of | attestation evidence bytes supplied by the producer, base64url, no padding; preserving the platform-emitted declared structure is a producer obligation |
 | `quote_digest` | one of | digest of the evidence, for the by-reference form |
 | `quote_uri` | no | where the by-reference form may be fetched |
 | `collateral` | no | `embedded` when everything needed travels in the quote; `required` when the verifier must supply it out of band |
@@ -102,7 +109,7 @@ The last row of that table is the important one for what follows. Verifying a qu
 
 1. **The envelope is checked first.** Schema, then the record signature over the canonical form with `signature` absent. The evidence is a member of the record, so the record signature is what binds a quote to this record rather than to any record. Verifying the quote first would check hardware that this record never committed to.
 2. **The evidence is verified by a platform verifier for its `format`.** A verifier that has no implementation for a format treats the record as if the block were absent, per rule 5, and does not reject it: not being able to read evidence is not the same as evidence being bad.
-3. **`platform` and the evidence must agree.** A record claiming `amd-sev-snp` while carrying a TDX quote is refused.
+3. **`platform`, `collateral`, and the evidence must agree.** A record claiming `amd-sev-snp` while carrying a TDX quote is refused. A `tdx-quote-v4` record declaring `collateral: "required"` is also refused: the TDX quote format used here carries the PCK chain in the quote, so that declaration contradicts the evidence format. An omitted `collateral` remains allowed because the member is optional.
 4. **`measurement` must equal the measurement extracted from the evidence.** For `tdx-quote-v4` that is the MRTD. A valid quote establishes that a TD ran; it says nothing about which measurement this record is entitled to claim until the two are compared. Disagreement is a rejection, not a downgrade, because the record made a specific false statement.
 5. **Evidence that is absent, by-reference, or in an unsupported format grades `unattested`.** Not a rejection. A record with no evidence is a record with no evidence, and v0.2 records are all of them. The by-reference form is included here on purpose: TRACE's stated property is offline verifiability, and a verifier holding a URI has verified nothing. A pointer earns what §3.1.2 rule 3 already says a pointer earns.
 6. **The guest-controlled field is compared against the record's `cnf` key.** Where the platform's guest-controlled field commits to the record-signing key, the record grades `attested`. Where it does not, `platform-attested`. §5.2 is why this is the line.
@@ -114,9 +121,9 @@ These were not read out of the existing text. Each was hit while writing a vecto
 
 ### 5.1 Inline or by reference
 
-Both are expressible; only one earns a grade. A record whose evidence must be fetched cannot be verified offline, and offline verifiability by any party is the property §1 of the specification leads with. Permitting the by-reference form and grading it `unattested` keeps a producer honest who genuinely cannot inline 8 KB, without letting a URI stand in for evidence.
+Both are expressible; only one earns a grade. A record whose evidence must be fetched cannot be verified offline, and offline verifiability by any party is the property §1 of the specification leads with. Permitting the by-reference form and grading it `unattested` keeps a producer honest who genuinely cannot inline several KB, without letting a URI stand in for evidence.
 
-The cost is real and measured rather than estimated. A TDX v4 quote is 8,000 bytes, 10,667 characters in base64url, and it takes the accept vector from 1,184 bytes to 11,923: an order of magnitude, on the corpus in §7. That is the price of the record being evidence rather than a claim about evidence, and it is paid once per record.
+The cost is real and measured rather than estimated. The declared TDX v4 quote structure in the captures ends at byte 4,935: 4,935 bytes, or 6,580 characters in base64url. At that structure length the accept record is 7,836 bytes compact, versus 1,184 without evidence. The committed capture files are 8,000 bytes because they carry 3,065 trailing zero bytes; the verifier does not read that tail, and bytes outside the format-declared structure are not counted as evidence cost. That is the price of the record being evidence rather than a claim about evidence, and it is paid once per record.
 
 ### 5.2 Which binding separates the grades
 
@@ -126,6 +133,13 @@ Binding the guest-controlled field to the `cnf` key gives the chain the specific
 
 **This diverges from what the reference producer does today.** `agent-manifest`'s TDX provider binds `sha256(manifest_pre_image)` into `REPORT_DATA`, not the record-signing key. Two implementations were asked the same question and gave different answers, which is the measurement worth having: the divergence names a sentence that is missing rather than a bug in either. Reconciling it is work this proposal creates and does not do.
 
+For `tdx-quote-v4`, this profile reads only the first 32 bytes of `REPORT_DATA` for
+that commitment. The second 32 bytes are reserved by this profile: the verifier does
+not derive a grade from them, and it does not require them to be zero. A producer that
+uses those bytes may be carrying information another profile understands; this one
+does not claim to.
+
+
 ### 5.3 Why a middle grade exists at all
 
 The obvious ladder has two rungs. A third was forced by the artifacts: a record can carry a real, fully verifying quote and still not connect it to whoever signed the record, and both collapses lose something. Folding it up into `attested` is exactly the overstatement the proposal exists to prevent. Folding it down into `unattested` discards a fact the verifier did establish, which is that genuine silicon reported this measurement.
@@ -134,11 +148,13 @@ The obvious ladder has two rungs. A third was forced by the artifacts: a record 
 
 | Grade | Established | Not established |
 |---|---|---|
-| `unattested` | the issuer authored the record | anything about an execution environment |
-| `platform-attested` | genuine silicon reported this measurement, and this record's issuer holds a quote proving it | that this record's signer ran inside that TEE, or that this record describes that execution |
-| `attested` | the above, and the record-signing key is committed to inside the TEE | that any particular claim in the record is true, per §6.1 |
+| `unattested` | the record is signature-consistent under its `cnf` key | that the key is trusted; anything about an execution environment |
+| `platform-attested` | genuine silicon reported this measurement, and the signed record carries the quote proving it | that the record-signing key is trusted or ran inside that TEE, or that this record describes that execution |
+| `attested` | the above, and the record-signing key is committed to inside the TEE | that the key is trusted; that any particular claim in the record is true, per §6.1 |
 
-The middle row is narrower than it looks and §7.2 shows why.
+These grades describe runtime evidence, not issuer authorization. A relying party still
+has to establish trust in the `cnf` key independently, as §2 states. The middle row is
+narrower than it looks and §7.2 shows why.
 
 ### 6.1 A grade on the record is not a grade on its claims
 
@@ -156,10 +172,17 @@ The near miss is worth recording rather than quietly fixing. The failure mode wa
 
 The verifier is `agent-manifest`'s, imported unmodified. TRACE does not implement attestation and this proposal does not start; it carries evidence to verifiers that already exist.
 
+Every vector carries `tag:agentrust-io.com,2026:trace-v0.3`. That is a semantic
+boundary, not a label change: the released v0.2 schema closes `runtime` with
+`additionalProperties: false` and therefore refuses `evidence`. A v0.2 verifier is
+expected to refuse these records as an unsupported profile rather than interpret them
+under v0.2 semantics.
+
 ```
 accept-real-quote-platform-attested       platform-attested
 downgrade-evidence-absent                 unattested
 downgrade-evidence-by-reference           unattested
+downgrade-unsupported-format                unattested
 reject-forged-quote                       reject   evidence signature or PCK chain did not verify
 reject-measurement-mismatch               reject   runtime.measurement is not the MRTD in the evidence
 limit-substituted-quote-from-the-same-td  platform-attested
@@ -195,5 +218,5 @@ Both are gaps in the capture procedure rather than in the design, and both are c
 - **It does not make TRACE an attestation verifier.** `format` selects someone else's verifier. The list of formats is a registry, not an implementation surface.
 - **It does not appraise TCB.** `agent-manifest`'s TDX verifier checks signatures and the PCK chain to a pinned root; it does not evaluate TCB or QE identity. "Genuine silicon" is in scope, "current firmware" is not, and a grade must not be read as the second.
 - **It does not decide whether a measurement is the right one.** §2.
-- **It does not change any existing field, and adds no requirement to any v0.2 record.** Records without `evidence` grade `unattested`, which is a name for what they always were.
+- **It does not change any existing v0.2 field, and adds no requirement to any v0.2 record.** The new member is carried only under the v0.3 profile URI. Records without `evidence` grade `unattested`, which is a name for what they always were.
 - **It does not resolve §5.2.** The reference producer binds something else today, and a profile is not adopted by writing down which side should move.

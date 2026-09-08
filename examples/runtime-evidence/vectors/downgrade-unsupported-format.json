@@ -4,7 +4,7 @@
     "model_claim": "model claim: self-reported"
   },
   "record": {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
     "iat": 1753056000,
     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
     "model": {
@@ -45,6 +45,6 @@
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
       }
     },
-    "signature": "zNcZBtd3BvopMJDZQigr9Ix5hvLlnaLb6JzTHLCLEkAzrMhSpjohMGLmuYMp7OMlBJuKdFEf0BF7uKI2hfuCBw"
+    "signature": "71srYj_TzJJwy1Nxng3X8kGmPVBvKXat1-MbN0_3lK5ecXtG3dwnTEx_M9O1uv1GWcUIMulMOQvO3bQLNuemBw"
   }
 }

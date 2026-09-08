@@ -12,7 +12,7 @@ carries the expectation the corpus grades it against.
 **Out of scope here**, deliberately: whether a quote verifies. That needs a TDX
 verifier, this project does not ship one, and the proposal argues it should not start.
 `examples/runtime-evidence/generate.py` performs that half against `agent-manifest`'s
-verifier and reports 9/9.
+verifier and reports 10/10.
 
 The split is stated rather than hidden because a test that quietly skipped the
 hardware half would look like coverage and be none, which is the defect the profile is
@@ -61,6 +61,14 @@ def test_the_corpus_did_not_shrink() -> None:
     but a set that can silently lose its inconvenient members measures nothing.
     """
     assert len(VECTORS) == 10
+
+
+def test_every_vector_declares_the_v03_profile() -> None:
+    profiles = {_load(path)["record"]["eat_profile"] for path in VECTORS}
+    assert profiles == {"tag:agentrust-io.com,2026:trace-v0.3"}, (
+        "runtime.evidence is a v0.3 semantic boundary; a v0.2 profile here would tell "
+        "a verifier to apply a schema that refuses the evidence member"
+    )
 
 
 @pytest.mark.parametrize("path", VECTORS, ids=IDS)

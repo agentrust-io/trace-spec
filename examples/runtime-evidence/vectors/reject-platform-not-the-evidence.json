@@ -4,7 +4,7 @@
     "model_claim": null
   },
   "record": {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
     "iat": 1753056000,
     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
     "model": {
@@ -45,6 +45,6 @@
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
       }
     },
-    "signature": "YSVUte3usB4ycGrgSe9an7yKIafixqCgf1mkz9EgrTm7RHiAOyi3ldKwWgNRPC9OR5RMOlp9bqqEZu4qNNBxDw"
+    "signature": "hdDn3NngjGaqTsujS0xOlab_Z4RCpEHHTalkY6HhMO_E7lvNJOAGMmCkYLjBZdyDJV2e5rfsGy1kiBTtzb1PAg"
   }
 }

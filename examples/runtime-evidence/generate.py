@@ -62,7 +62,7 @@ _DEFAULT_CAPTURE = (
 )
 HARDWARE = Path(os.environ.get("TDX_CAPTURE", str(_DEFAULT_CAPTURE)))
 
-PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
+PROFILE = "tag:agentrust-io.com,2026:trace-v0.3"
 
 # The draft schema, because the shipped v0.2 one refuses `runtime.evidence` outright:
 # `runtime` is additionalProperties:false. That refusal is the gap the profile is
@@ -165,6 +165,13 @@ def appraise(record: dict) -> str:
 
     if runtime.get("platform") != "intel-tdx":
         raise Reject(f"platform {runtime.get('platform')!r} is not what this evidence roots")
+
+    collateral = evidence.get("collateral")
+    if collateral not in (None, "embedded"):
+        raise Reject(
+            f"collateral {collateral!r} disagrees with tdx-quote-v4, which carries "
+            "its verification chain in the quote"
+        )
 
     # The binding rule. A valid quote proves a TD ran. It says nothing about which
     # measurement this record is entitled to claim until the two are compared.

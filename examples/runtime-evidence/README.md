@@ -25,9 +25,15 @@ python generate.py            # run the rules, print the table
 python generate.py --out vectors   # also write each record as JSON
 ```
 
-Needs `rfc8785`, `jsonschema`, `cryptography`, `cbor2`, and a checkout of
-`agent-manifest` beside this repository. Override the two locations with
-`AGENT_MANIFEST_SRC` and `TDX_CAPTURE` if it lives elsewhere.
+Needs `rfc8785`, `jsonschema`, `cryptography>=42,<51`, `cbor2`, and a checkout of
+`agent-manifest` beside this repository. The cryptography range matches the imported
+verifier's declared dependency; older releases do not expose `not_valid_before_utc`.
+Override the two locations with `AGENT_MANIFEST_SRC` and `TDX_CAPTURE` if it lives
+elsewhere.
+
+Every committed vector declares `tag:agentrust-io.com,2026:trace-v0.3`. A v0.2
+validator is expected to refuse vectors carrying `runtime.evidence`; treating these
+examples as v0.2 would erase the version boundary the new member requires.
 
 Records are signed with a fixed published test key, so regeneration is byte-identical
 and `--out` produces no diff unless something actually changed. The key signs nothing
