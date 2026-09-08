@@ -191,43 +191,19 @@ def appraise(record: dict) -> str:
 
 
 def grade_model_claim(record: dict, envelope_grade: str) -> str:
-    """A TEE-signed record does not make every claim inside it attested.
+    """Grade the model claim separately from the record's runtime evidence.
 
-    `model.weights_digest` is attested only where the verifier can RECOMPUTE the
-    binding from the evidence. Otherwise the environment is attested and the model
-    claim is the issuer's word carried inside a hardware-signed envelope, which is the
-    shape most likely to be read as stronger than it is.
-
-    Note what this deliberately does not do: it never reads `evidence.binds`. That
-    member is a producer's statement of intent, and grading a claim by consulting it
-    would let a producer raise its own model claim by writing a string, which is the
-    assurance laundering this profile exists to refuse. An advisory field that changes
-    a grade is not advisory. The first draft of this function did read it, and it took
-    a vector that sets `binds` without earning it to make that visible.
+    The current verifier authenticates a quote and its guest-controlled REPORT_DATA;
+    it does not establish which model weights were measured, loaded, or used. A match
+    against those bytes proves only a commitment, even when the match is recomputable.
+    Neither `envelope_grade` nor the advisory `evidence.binds` supplies the missing
+    model evidence. A present weights digest therefore remains self-reported at every
+    record grade; an absent digest has no model claim to grade.
     """
     model = record.get("model") or {}
     digest = model.get("weights_digest")
     if digest is None:
         return "model claim: absent"
-    if envelope_grade == "unattested":
-        return "model claim: self-reported"
-
-    quote = ((record.get("runtime") or {}).get("evidence") or {}).get("quote")
-    if quote is None:
-        return "model claim: self-reported"
-
-    report_data = parse_tdx_quote(unb64u(quote)).report_data[:32]
-    # A producer may commit to the digest string as written, or to the raw digest
-    # bytes it names. Both are recomputable; anything else is not this rule's case.
-    algo, _, hexdigest = digest.partition(":")
-    candidates = [hashlib.sha256(digest.encode()).digest()]
-    if algo == "sha256" and len(hexdigest) == 64:
-        try:
-            candidates.append(bytes.fromhex(hexdigest))
-        except ValueError:
-            pass
-    if report_data in candidates:
-        return "model claim: attested"
     return "model claim: self-reported"
 
 
@@ -313,6 +289,29 @@ def build_corpus() -> list[tuple[str, str, str | None, dict]]:
             accept,
         )
     ]
+
+    # Collateral is optional, but a declaration must agree with the inline TDX
+    # evidence. Re-sign both records so rejection cannot come from the envelope.
+    omitted_collateral = copy.deepcopy(accept)
+    del omitted_collateral["runtime"]["evidence"]["collateral"]
+    vectors.append(
+        (
+            "accept-collateral-omitted",
+            "platform-attested",
+            "model claim: self-reported",
+            sign_record(_unsigned(omitted_collateral), key),
+        )
+    )
+    required_collateral = copy.deepcopy(accept)
+    required_collateral["runtime"]["evidence"]["collateral"] = "required"
+    vectors.append(
+        (
+            "reject-collateral-required",
+            "reject",
+            None,
+            sign_record(_unsigned(required_collateral), key),
+        )
+    )
 
     # No citation at all. Nothing to check, so nothing is claimed.
     absent = copy.deepcopy(accept)
@@ -410,8 +409,8 @@ def build_corpus() -> list[tuple[str, str, str | None, dict]]:
     # `binds` is advisory, and a vector proves it cannot raise anything. This record
     # declares that the guest committed to the weights digest. It did not: REPORT_DATA
     # holds a manifest digest, as it does in every capture we own. The envelope grade
-    # is unaffected and the model claim stays self-reported, because the rule
-    # recomputes the binding instead of believing the declaration.
+    # is unaffected and the model claim stays self-reported: neither a declaration
+    # nor a matching commitment establishes that the model was measured or used.
     claimed_binding = copy.deepcopy(accept)
     claimed_binding["runtime"]["evidence"]["binds"] = "weights-digest"
     vectors.append(
@@ -420,6 +419,22 @@ def build_corpus() -> list[tuple[str, str, str | None, dict]]:
             "platform-attested",
             "model claim: self-reported",
             sign_record(_unsigned(claimed_binding), key),
+        )
+    )
+
+    # The quote stays untouched. Copying its guest-controlled bytes into the record
+    # creates a matching commitment without supplying any evidence about a model.
+    matching_commitment = copy.deepcopy(accept)
+    matching_commitment["model"]["weights_digest"] = (
+        "sha256:" + parse_tdx_quote(quote_a).report_data[:32].hex()
+    )
+    matching_commitment["runtime"]["evidence"]["binds"] = "weights-digest"
+    vectors.append(
+        (
+            "commitment-cannot-attest-model",
+            "platform-attested",
+            "model claim: self-reported",
+            sign_record(_unsigned(matching_commitment), key),
         )
     )
 

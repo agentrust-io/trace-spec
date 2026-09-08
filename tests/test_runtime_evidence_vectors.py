@@ -12,7 +12,8 @@ carries the expectation the corpus grades it against.
 **Out of scope here**, deliberately: whether a quote verifies. That needs a TDX
 verifier, this project does not ship one, and the proposal argues it should not start.
 `examples/runtime-evidence/generate.py` performs that half against `agent-manifest`'s
-verifier and reports 10/10.
+verifier and reports 13/13, and `examples/runtime-evidence/test_appraisal.py` runs it in
+the dedicated `runtime-evidence` CI job against a pinned verifier commit.
 
 The split is stated rather than hidden because a test that quietly skipped the
 hardware half would look like coverage and be none, which is the defect the profile is
@@ -60,7 +61,7 @@ def test_the_corpus_did_not_shrink() -> None:
     The count is the whole assertion: which vectors exist is the generator's business,
     but a set that can silently lose its inconvenient members measures nothing.
     """
-    assert len(VECTORS) == 10
+    assert len(VECTORS) == 13
 
 
 def test_every_vector_declares_the_v03_profile() -> None:

@@ -23,9 +23,10 @@ implement attestation, and the proposal does not start.
 ```bash
 python generate.py            # run the rules, print the table
 python generate.py --out vectors   # also write each record as JSON
+pytest test_appraisal.py           # the same rules, asserted
 ```
 
-Needs `rfc8785`, `jsonschema`, `cryptography>=42,<51`, `cbor2`, and a checkout of
+Needs `pytest`, `rfc8785`, `jsonschema`, `cryptography>=42,<51`, `cbor2`, and a checkout of
 `agent-manifest` beside this repository. The cryptography range matches the imported
 verifier's declared dependency; older releases do not expose `not_valid_before_utc`.
 Override the two locations with `AGENT_MANIFEST_SRC` and `TDX_CAPTURE` if it lives
@@ -39,22 +40,29 @@ Records are signed with a fixed published test key, so regeneration is byte-iden
 and `--out` produces no diff unless something actually changed. The key signs nothing
 outside this directory and protects nothing.
 
-## What CI measures, and what it does not
+## What CI measures, and where
 
-`tests/test_runtime_evidence_vectors.py` runs on every push and asserts the half this
-repository can honestly check: schema validity against the draft, signature validity,
-evidence shape, and the pinned fact that no vector reaches the top grade.
+Two jobs, because the two halves have different dependencies.
 
-It does not verify the quotes. That needs a TDX verifier, TRACE does not ship one, and
-§8 of the proposal argues it should not start. That half runs here, in `generate.py`,
-against `agent-manifest`'s verifier. The split is named rather than papered over with
-a skipped test, which would look like coverage and be none.
+`tests/test_runtime_evidence_vectors.py` runs in the ordinary suite on every push and
+asserts the half this repository can check on its own: schema validity against the
+draft, signature validity, evidence shape, the corpus count, and the pinned fact that
+no vector reaches the top grade. It never imports `agent-manifest`.
+
+`test_appraisal.py` runs in the dedicated `runtime-evidence` job, which checks out
+`agent-manifest` at a pinned commit and runs the real TDX verifier over the committed
+quotes. It asserts each vector's grade, the specific reason for each rejection, and
+that regenerating the corpus reproduces the committed bytes. Nothing in it is mocked,
+and a missing verifier or a missing capture fails the job instead of skipping it, which
+is what a skipped test would have looked like: coverage that is none.
 
 ## The vectors
 
 | Vector | Outcome | What it holds |
 |---|---|---|
 | `accept-real-quote-platform-attested` | `platform-attested` | the happy path, and note it is not the top grade |
+| `accept-collateral-omitted` | `platform-attested` | `collateral` is optional, and omitting it changes nothing |
+| `reject-collateral-required` | reject | `required` contradicts a format that carries its own chain |
 | `downgrade-evidence-absent` | `unattested` | no evidence is not a rejection; every v0.2 record is this |
 | `downgrade-evidence-by-reference` | `unattested` | a URI is not evidence held |
 | `downgrade-unsupported-format` | `unattested` | the verifier's coverage gap is not the record's defect |
@@ -64,6 +72,7 @@ a skipped test, which would look like coverage and be none.
 | `reject-evidence-swapped-after-signing` | reject | the record signature is what refuses it |
 | `reject-platform-not-the-evidence` | reject | `amd-sev-snp` claimed over a TDX quote |
 | `advisory-binds-cannot-raise-a-claim` | `platform-attested` | declares a binding it does not have; model claim stays self-reported |
+| `commitment-cannot-attest-model` | `platform-attested` | a recomputable `REPORT_DATA` match is a commitment, not model evidence |
 
 Each vector asserts the record grade **and** the model-claim grade. The profile's §6.1
 is a claim about how those two relate, so a corpus checking only the first would not

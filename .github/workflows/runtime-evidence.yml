@@ -1,0 +1,76 @@
+# The half of the runtime-evidence corpus the ordinary suite cannot check.
+#
+# `tests/test_runtime_evidence_vectors.py` runs on every push and never imports
+# `agent-manifest`: it checks the schema, the record signatures, the evidence
+# shapes and the corpus count. Quote verification needs a TDX verifier, which
+# TRACE does not ship and the proposal argues it should not start, so that half
+# runs here against `agent-manifest`'s verifier at a pinned commit.
+#
+# Nothing here is mocked or skipped. A missing verifier checkout or a missing
+# capture fails this job, because a skipped test would look like coverage and be
+# none, which is the defect the proposal itself is about.
+name: runtime-evidence
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**"]
+  pull_request:
+    paths:
+      - "examples/runtime-evidence/**"
+      - "schema/trace-claim-v0.3-draft.json"
+      - "docs/rfcs/runtime-evidence-profile.md"
+      - ".github/workflows/runtime-evidence.yml"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # Pinned, not floating. The grades in the proposal are a claim about what a
+  # particular verifier says, so the verifier is a version and not a name.
+  AGENT_MANIFEST_COMMIT: 934809709a2815695d65cfacb45dc0a164286046
+
+jobs:
+  appraise:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Fetched into RUNNER_TEMP rather than checked out into the workspace.
+      # `tools/check_dashes.py` walks the repository root and would report every em
+      # dash in a foreign tree parked there, and it is not the only instrument here
+      # that treats everything under the root as ours.
+      - name: Fetch the external verifier at the pinned commit
+        run: |
+          set -euo pipefail
+          git init -q "$RUNNER_TEMP/agent-manifest"
+          git -C "$RUNNER_TEMP/agent-manifest" remote add origin \
+            https://github.com/agentrust-io/agent-manifest
+          git -C "$RUNNER_TEMP/agent-manifest" fetch -q --depth 1 origin \
+            "$AGENT_MANIFEST_COMMIT"
+          git -C "$RUNNER_TEMP/agent-manifest" checkout -q FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/agent-manifest" rev-parse HEAD)" = "$AGENT_MANIFEST_COMMIT"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # cbor2 is not a TRACE dependency. Importing `agent_manifest._tdx_verify`
+      # goes through the package `__init__`, which needs it; TDX verification
+      # itself needs only `cryptography`.
+      #
+      # `cryptography` is installed unbounded, as everywhere else in this repository,
+      # while the verifier declares `>=42,<51`. A release past that bound will fail
+      # this job rather than quietly change what the grades mean, which is the
+      # direction to fail in; bump the pinned commit when it happens.
+      - name: Install package, dev deps, and the verifier's import requirements
+        run: |
+          pip install -e ".[dev]"
+          pip install cbor2
+
+      - name: Appraise the corpus with the real verifier
+        env:
+          AGENT_MANIFEST_SRC: ${{ runner.temp }}/agent-manifest/python/src
+          TDX_CAPTURE: ${{ runner.temp }}/agent-manifest/python/tests/fixtures/hardware/gcp-tdx-2026-07-21
+        run: pytest examples/runtime-evidence/test_appraisal.py

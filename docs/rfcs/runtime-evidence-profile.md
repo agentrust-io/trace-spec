@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
-**Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 10 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
+**Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 13 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
 **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
@@ -123,7 +123,7 @@ These were not read out of the existing text. Each was hit while writing a vecto
 
 Both are expressible; only one earns a grade. A record whose evidence must be fetched cannot be verified offline, and offline verifiability by any party is the property §1 of the specification leads with. Permitting the by-reference form and grading it `unattested` keeps a producer honest who genuinely cannot inline several KB, without letting a URI stand in for evidence.
 
-The cost is real and measured rather than estimated. The declared TDX v4 quote structure in the captures ends at byte 4,935: 4,935 bytes, or 6,580 characters in base64url. At that structure length the accept record is 7,836 bytes compact, versus 1,184 without evidence. The committed capture files are 8,000 bytes because they carry 3,065 trailing zero bytes; the verifier does not read that tail, and bytes outside the format-declared structure are not counted as evidence cost. That is the price of the record being evidence rather than a claim about evidence, and it is paid once per record.
+The cost is real and measured rather than estimated. The accept vector in §7 is 11,923 bytes compact, against 1,184 for the same record without evidence: an order of magnitude. Almost all of the difference is the quote, at 8,000 bytes or 10,667 characters in base64url. Not all of that is evidence. The declared TDX v4 quote structure in these captures ends at byte 4,935, and the remaining 3,065 bytes are a zero tail outside that structure, which the verifier used here does not read; the corpus carries the capture files whole, so it pays for the tail as well. A producer shipping only the declared structure would carry 6,580 characters and a 7,836-byte record. Either way this is the price of the record being evidence rather than a claim about evidence, and it is paid once per record.
 
 ### 5.2 Which binding separates the grades
 
@@ -158,13 +158,13 @@ narrower than it looks and §7.2 shows why.
 
 ### 6.1 A grade on the record is not a grade on its claims
 
-`model.weights_digest` is attested where a verifier can **recompute** the binding from the evidence, and self-reported otherwise. A TEE-signed envelope does not make its contents attested; it makes them the issuer's word, carried in a hardware-signed envelope, which is the shape most likely to be read as stronger than it is. The same reasoning applies to `policy.bundle_hash` and `tool_transcript.hash`: hardware attests what was measured, and a value the runtime wrote into a record after the fact was not measured.
+The current reference verifier reports a present `model.weights_digest` as self-reported at every record grade. An absent digest is reported as `model claim: absent`. A TEE-signed envelope does not establish that the named model weights were measured, loaded, or used. The same separation applies to `policy.bundle_hash` and `tool_transcript.hash`: authenticating the record does not establish its individual claims.
+
+TDX `REPORT_DATA` is guest-controlled. Recomputing a match against its first 32 bytes authenticates a commitment, not a measurement of the named model. A producer can copy those bytes from an existing genuine quote into `model.weights_digest` and re-sign the record without loading any model. The quote remains valid and the record still grades `platform-attested`, but the model claim remains self-reported. Establishing an attested model claim would require additional evidence connecting the claimed weights to what the workload measured or used; this proposal does not define or verify that evidence.
 
 This is §3.1.1's principle turned inward. The specification already refuses to let a pointer raise a record. It should equally refuse to let a record raise its own contents.
 
-**Recompute is load-bearing, and the first draft of this proposal got it wrong.** The rule originally read `evidence.binds` to decide the grade, which would have let a producer raise its own model claim by writing `binds: "weights-digest"` into a record. That is precisely the laundering this section forbids, reintroduced inside the section that forbids it. An advisory member that changes a grade is not advisory. `advisory-binds-cannot-raise-a-claim` in §7 is the vector that keeps it honest: it declares the binding, does not have it, and grades self-reported.
-
-The near miss is worth recording rather than quietly fixing. The failure mode was not carelessness about the principle; it was stating the principle in §3 and implementing the opposite forty lines away, which is the shape this whole proposal exists to catch in `runtime`.
+Two earlier versions of this rule overstated the boundary: the first read `evidence.binds`, and the second treated a recomputable `REPORT_DATA` commitment as model attestation. Both are kept as vectors rather than quietly dropped. `advisory-binds-cannot-raise-a-claim` and `commitment-cannot-attest-model` in §7 hold the two cases: neither a producer's declaration nor a matching commitment raises the model claim.
 
 ## 7. Measurement
 
@@ -178,22 +178,32 @@ boundary, not a label change: the released v0.2 schema closes `runtime` with
 expected to refuse these records as an unsupported profile rather than interpret them
 under v0.2 semantics.
 
-```
-accept-real-quote-platform-attested       platform-attested
-downgrade-evidence-absent                 unattested
-downgrade-evidence-by-reference           unattested
-downgrade-unsupported-format                unattested
-reject-forged-quote                       reject   evidence signature or PCK chain did not verify
-reject-measurement-mismatch               reject   runtime.measurement is not the MRTD in the evidence
-limit-substituted-quote-from-the-same-td  platform-attested
-reject-evidence-swapped-after-signing     reject   record envelope failed: InvalidSignature
-reject-platform-not-the-evidence          reject   platform 'amd-sev-snp' is not what this evidence roots
-advisory-binds-cannot-raise-a-claim       platform-attested   model claim: self-reported
+The corpus, summarised rather than transcribed: `python generate.py` prints one row per vector with
+the full reason for each rejection, and `examples/runtime-evidence/test_appraisal.py` pins those
+reasons.
 
-10/10 vectors behaved as the profile says they must (1 of them documenting a limit).
-```
+| Vector | Result | Model claim |
+|---|---|---|
+| `accept-real-quote-platform-attested` | `platform-attested` | self-reported |
+| `accept-collateral-omitted` | `platform-attested` | self-reported |
+| `reject-collateral-required` | reject, the declared collateral disagrees with the evidence format | not graded |
+| `downgrade-evidence-absent` | `unattested` | self-reported |
+| `downgrade-evidence-by-reference` | `unattested` | self-reported |
+| `downgrade-unsupported-format` | `unattested` | self-reported |
+| `reject-forged-quote` | reject, the evidence signature or PCK chain did not verify | not graded |
+| `reject-measurement-mismatch` | reject, `runtime.measurement` is not the MRTD in the evidence | not graded |
+| `limit-substituted-quote-from-the-same-td` | `platform-attested`, and a limit rather than a success | self-reported |
+| `reject-evidence-swapped-after-signing` | reject, the record envelope failed | not graded |
+| `reject-platform-not-the-evidence` | reject, the platform is not what this evidence roots | not graded |
+| `advisory-binds-cannot-raise-a-claim` | `platform-attested` | self-reported |
+| `commitment-cannot-attest-model` | `platform-attested` | self-reported |
+
+The run closes with `13/13 vectors behaved as the profile says they must (1 of them documenting a limit
+of the rules rather than a success).`
 
 Each vector asserts both the record grade and the model-claim grade, because §6.1 is a claim about the relationship between the two and a corpus that checked only the first would not test it.
+
+The dedicated `runtime-evidence` CI job runs these rules with the external verifier pinned to `agent-manifest` commit `934809709a2815695d65cfacb45dc0a164286046`. It checks the committed grades and the specific reason for each rejection, then regenerates all 13 vectors and compares their bytes. Missing verifier code or missing captures fail that job rather than skipping it. The ordinary TRACE suite checks the schema, the record signatures and the evidence shapes independently, and does not depend on `agent-manifest`.
 
 ### 7.1 What the corpus found
 

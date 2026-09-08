@@ -204,8 +204,9 @@ MEASURED_ELSEWHERE = {
                         "half this repository can honestly measure (schema, signature, "
                         "evidence shape, and the pinned claim that the top grade is "
                         "unreachable) and names the half it cannot, quote verification, "
-                        "which examples/runtime-evidence/generate.py runs against "
-                        "agent-manifest's verifier",
+                        "which examples/runtime-evidence/test_appraisal.py runs in the "
+                        "dedicated runtime-evidence job against agent-manifest's verifier "
+                        "at a pinned commit",
 }
 
 
