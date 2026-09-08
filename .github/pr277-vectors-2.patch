@@ -1,0 +1,105 @@
+diff --git a/examples/runtime-evidence/vectors/limit-substituted-quote-from-the-same-td.json b/examples/runtime-evidence/vectors/limit-substituted-quote-from-the-same-td.json
+index 3a498409077317bf594a80629743a33f8b8ca929..650ad5cb82d68e3bce8f22164af97d568c6885c4 100644
+--- a/examples/runtime-evidence/vectors/limit-substituted-quote-from-the-same-td.json
++++ b/examples/runtime-evidence/vectors/limit-substituted-quote-from-the-same-td.json
+@@ -4,7 +4,7 @@
+     "model_claim": "model claim: self-reported"
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "MD6vH_OwRy3TDJqP1EGJ2sL9Ks3Qa5iwD3ZBSKlwXCaiKFK7wc-Uas9WrEnKMnHOWIf-YLPUVAI752KSiHWOAw"
++    "signature": "9xWuo5AstezgIluSNG_3u63HzDmAtxFGhe-xZXpjckfLDB0eQsYJIlDsXgAhJQOoSKq7_xOZx1mZVNITkuZtCg"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/reject-evidence-swapped-after-signing.json b/examples/runtime-evidence/vectors/reject-evidence-swapped-after-signing.json
+index fbe426bcf83c68d97f4a16feb2ab9f8b5bff271b..ff31c22951038f778924f0f597438196bb951a72 100644
+--- a/examples/runtime-evidence/vectors/reject-evidence-swapped-after-signing.json
++++ b/examples/runtime-evidence/vectors/reject-evidence-swapped-after-signing.json
+@@ -4,7 +4,7 @@
+     "model_claim": null
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "6HL46-HfjriPRaKhq0wK3UfYDJRmbj6fmljo3sF4pmi-hmHXS7HAMgp5O7DeMg03XDT2b1V9NccntvI0uznvBA"
++    "signature": "uBUT0tPs1kbBzGAv8CKDZ5aNJ_saBmtBGTTcQFIeH7WGxHldc_x4xdh7YBUf847Cua4y9GC7lmWTCsKrx1eaAA"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/reject-forged-quote.json b/examples/runtime-evidence/vectors/reject-forged-quote.json
+index e0d78ab4e9010fcec75c59b392adf64e09734f96..4eb66dc5a275ce3b2d30f0d69580148a1b7a02b1 100644
+--- a/examples/runtime-evidence/vectors/reject-forged-quote.json
++++ b/examples/runtime-evidence/vectors/reject-forged-quote.json
+@@ -4,7 +4,7 @@
+     "model_claim": null
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "mxAziWAdO6C2iD-XvO-ZgqX64W9emgiYCQwYqIoSlVq_2LxM1IhYWH3AjvBUKcCU9Sm1nakzLoiLkuFfCp8qDw"
++    "signature": "8FIf-z05R6JYdH1cqi9VFNniE8fUH9QdOJJWeLNkvsBYvaFFSxogU4PQX4UFBRdygNcgEQpEdpd37YSZCp2uBg"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/reject-measurement-mismatch.json b/examples/runtime-evidence/vectors/reject-measurement-mismatch.json
+index f889c10c1846332b94a19577fbd2a70776786ffc..8d29cb7d21fd177e6f60f333ef927ae5ca6397b6 100644
+--- a/examples/runtime-evidence/vectors/reject-measurement-mismatch.json
++++ b/examples/runtime-evidence/vectors/reject-measurement-mismatch.json
+@@ -4,7 +4,7 @@
+     "model_claim": null
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "_2bw2SHA9QzHyrOVRZ85dUbHW97lg0W57yqR4M7VHLoEaJoZHGD8gYRlUPJ7i6seBl7hWW7AVr56AgDNjBLSCg"
++    "signature": "HBCwMBaBtcjIDIcFeXxbC1mYGaauyADvAyVFREqHnghc2JHolgaYVDuXEk5ngcOECSYiub51wxpBAgcfzg3FDQ"
+   }
+ }
+diff --git a/examples/runtime-evidence/vectors/reject-platform-not-the-evidence.json b/examples/runtime-evidence/vectors/reject-platform-not-the-evidence.json
+index e6e984299595450eb328a6261ca82affca29b4ce..b41f680ea81bc393f3210c47136a2ce635840f44 100644
+--- a/examples/runtime-evidence/vectors/reject-platform-not-the-evidence.json
++++ b/examples/runtime-evidence/vectors/reject-platform-not-the-evidence.json
+@@ -4,7 +4,7 @@
+     "model_claim": null
+   },
+   "record": {
+-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
++    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+     "iat": 1753056000,
+     "subject": "spiffe://trust.example.org/agent/evidence-demo/prod",
+     "model": {
+@@ -45,6 +45,6 @@
+         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+       }
+     },
+-    "signature": "YSVUte3usB4ycGrgSe9an7yKIafixqCgf1mkz9EgrTm7RHiAOyi3ldKwWgNRPC9OR5RMOlp9bqqEZu4qNNBxDw"
++    "signature": "hdDn3NngjGaqTsujS0xOlab_Z4RCpEHHTalkY6HhMO_E7lvNJOAGMmCkYLjBZdyDJV2e5rfsGy1kiBTtzb1PAg"
+   }
+ }
