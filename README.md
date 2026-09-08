@@ -110,7 +110,7 @@ TRACE builds on open IETF and IRTF standards: RFC 9711 (CBOR Web Token / EAT) fo
 
 ### How do I create and verify a Trust Record?
 
-Install the Python library with `pip install agentrust-trace`, sign a record with `TrustRecord.sign(claims, signing_key)`, anchor it to a SCITT ledger with `record.anchor()`, and check it with `record.verify(verifying_key)`.
+Install the library with `pip install agentrust-trace`, sign a record with `sign_record(record, key)`, and check one with `verify_record(record, public_key_or_jwk=trusted_key)`, both imported from `agentrust_trace`. `verify_record` checks the profile URI, the schema, the signature over the RFC 8785 canonical form, and freshness; it checks revocation only when you pass it a revocation source, and it performs no attestation verification. The library does not anchor a record to a transparency ledger: `transparency` is a string member holding the SCITT receipt URI, which a producer fills in once its ledger returns one. The Quickstart page carries a runnable version of both steps.
 
 ### How does TRACE relate to AGT and cMCP?
 
