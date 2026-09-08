@@ -33,7 +33,7 @@
     }
   },
   "title": "TRACE Trust Record (v0.3 runtime-evidence draft)",
-  "description": "DRAFT. v0.2 plus runtime.evidence. Binds nothing until docs/rfcs/runtime-evidence-profile.md is adopted. Every other member is byte-identical to schema/trace-claim.json so the diff is reviewable.",
+  "description": "DRAFT. v0.3 profile boundary plus runtime.evidence. Binds nothing until docs/rfcs/runtime-evidence-profile.md is adopted. Outside the profile identifier and runtime.evidence, members are byte-identical to schema/trace-claim.json so the diff is reviewable.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -50,8 +50,8 @@
   "properties": {
     "eat_profile": {
       "type": "string",
-      "const": "tag:agentrust-io.com,2026:trace-v0.2",
-      "description": "EAT profile URI identifying this as a TRACE v0.2 Trust Record."
+      "const": "tag:agentrust-io.com,2026:trace-v0.3",
+      "description": "EAT profile URI identifying this as a TRACE v0.3 runtime-evidence draft Trust Record."
     },
     "iat": {
       "type": "integer",
@@ -159,7 +159,7 @@
             "quote": {
               "type": "string",
               "pattern": "^[A-Za-z0-9_-]+$",
-              "description": "The evidence as emitted by the platform, base64url, no padding. Byte-identical to what the hardware produced; a re-encoded or re-serialized quote is a different artifact."
+              "description": "Attestation evidence bytes supplied by the producer, base64url, no padding. Preserving the platform-emitted declared structure is a producer obligation, not a property a verifier can establish from this record alone. A verifier evaluates the format-defined structure and does not treat trailing bytes as evidence for or against a grade."
             },
             "quote_digest": {
               "type": "string",
