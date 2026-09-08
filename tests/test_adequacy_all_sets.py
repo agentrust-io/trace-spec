@@ -4,12 +4,11 @@ The criteria come from defects found on real sets. A standard that only ever mea
 other people's work is advocacy, so this module measures every set by the same loader
 and records the shortfalls where they fall rather than where it would be comfortable.
 
-Where they fall today: `canonicalization-boundary`, which is ours, expects acceptance
-in every vector, so it cannot tell a conformant verifier from one that accepts
-unconditionally. That is recorded in `KNOWN_ONE_DIRECTIONAL` with the record asserted
-exactly, so it cannot widen unnoticed and the entry is deleted when the missing
-direction is added. `build-provenance-depth` carries a margin at every boundary and
-nothing is recorded against it.
+`canonicalization-boundary` previously expected acceptance in every vector, so it
+could not tell a conformant verifier from one that accepts unconditionally. Its
+non-JCS signing-preimage negatives supply the missing direction. No set currently
+needs an exemption in `KNOWN_ONE_DIRECTIONAL`; any future shortfall is recorded
+exactly rather than allowed to widen unnoticed.
 
 A set is measured here or named in `MEASURED_ELSEWHERE` with the test that covers it.
 Neither is possible to skip: `test_every_vector_set_on_disk_is_measured_somewhere`
@@ -137,15 +136,12 @@ SETS = {
 # only ever expects rejection is passed by one that rejects everything; a set that
 # only ever expects acceptance is passed by one that accepts everything, and that
 # half is the one that gets left out.
-# One set is knowingly one-directional. `canonicalization-boundary` detects a
-# non-conformant canonicalizer by the fact that it *rejects* records a conformant
-# verifier accepts, so every vector in it expects acceptance and the set cannot tell
-# a correct verifier from one that accepts unconditionally. That second implementation
-# is a real failure, not a hypothetical, so this is a gap rather than a design: it
-# closes when the set gains one record signed over a non-JCS form, which a conformant
-# verifier must reject. Recorded rather than skipped, and asserted exactly, so it
-# cannot widen and cannot be forgotten.
-KNOWN_ONE_DIRECTIONAL = {"canonicalization-boundary": "accept"}
+# No set currently needs an exemption. The former `canonicalization-boundary`
+# entry was removed when schema-valid records signed over non-JCS preimages added
+# the rejecting direction alongside the existing RFC 8785 positive controls.
+# Keep any future shortfall explicit and exact; removing an exemption does not
+# relax either unconditional-answer check below.
+KNOWN_ONE_DIRECTIONAL: dict[str, str] = {}
 
 
 @pytest.mark.parametrize("name", sorted(SETS))

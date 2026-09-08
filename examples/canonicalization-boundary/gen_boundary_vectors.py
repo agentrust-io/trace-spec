@@ -2,15 +2,17 @@
 
 The spec: "Implementations MUST use an RFC 8785-conformant library. Using
 `json.dumps(sort_keys=True)` (Python) or equivalent ad-hoc sorting is insufficient."
-No published test material exercised that sentence: every existing record is
-ASCII-only with schema-fixed keys, and on such records every ad-hoc serializer agrees
-with RFC 8785 byte-for-byte, so an implementation using one passes everything.
+ASCII-only values and schema-fixed keys can conceal escaping and key-order
+differences. These portable records make the signature-byte contract observable.
 
-These are the records on which they disagree. Each is schema-valid and correctly
-signed over its RFC 8785 bytes, and each carries ``diverges_under`` — the ad-hoc
-canonicalizations whose output differs, so that a verifier built on them computes
-different bytes and rejects a valid record. ``tests/test_canonicalization_boundary.py``
-recomputes that list rather than trusting it.
+These are the records on which they disagree. The four positive records are
+schema-valid and correctly signed over RFC 8785 bytes. Two negative controls use
+the same payloads but sign different, non-JCS byte forms: their Ed25519 signatures
+are valid over those declared preimages, not valid TRACE signatures. Each carries
+``diverges_under`` — the ad-hoc canonicalizations whose output differs from JCS.
+For positive vectors these forms reject valid records; the negatives instead
+expose acceptance of signatures over an alternate form. The tests recompute
+this list rather than trusting it.
 
 The ad-hoc forms make a ladder, each rung needing a sharper vector to expose:
 
@@ -95,10 +97,23 @@ BASE_RECORD: dict[str, Any] = {
 }
 
 
-def signed(record: dict[str, Any]) -> dict[str, Any]:
+def signing_bytes(body: dict[str, Any], form: str) -> bytes:
+    """Fixture generation only; no alternate serialization is accepted by TRACE."""
+    if form == "rfc8785":
+        return rfc8785.dumps(body)
+    if form == "sort_keys_compact":
+        return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    if form == "sort_keys_compact_utf8":
+        return json.dumps(
+            body, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+    raise ValueError(f"unknown fixture signing form: {form}")
+
+
+def signed(record: dict[str, Any], *, signing_form: str = "rfc8785") -> dict[str, Any]:
     body = dict(record)
     body["cnf"] = {"jwk": {**public_jwk(), **body.get("cnf", {}).get("jwk", {})}}
-    body["signature"] = b64u(KEY.sign(rfc8785.dumps(body)))
+    body["signature"] = b64u(KEY.sign(signing_bytes(body, signing_form)))
     return body
 
 
@@ -107,18 +122,29 @@ def vector(
     description: str,
     record: dict[str, Any],
     diverges_under: list[str],
+    *,
+    signing_form: str = "rfc8785",
 ) -> dict[str, Any]:
-    return {
+    result: dict[str, Any] = {
         "name": name,
         "description": description,
         "spec": "trace-v0.2 section 3.2.2 — implementations MUST use an "
         "RFC 8785-conformant library",
         "profile": "trace.canonicalization.boundary.v0",
         "trusted_key": public_jwk(),
-        "record": signed(record),
+        "record": signed(record, signing_form=signing_form),
         "expected": {"outcome": "verified"},
         "diverges_under": diverges_under,
     }
+    if signing_form != "rfc8785":
+        body = {key: value for key, value in result["record"].items() if key != "signature"}
+        result["expected"] = {"outcome": "rejected", "failure": "signature_invalid"}
+        result["signing_form"] = signing_form
+        # Exact UTF-8 preimages, encoded as JSON strings for portable inspection.
+        # These are fixture metadata, not fields added to the Trust Record.
+        result["signed_input_utf8"] = signing_bytes(body, signing_form).decode("utf-8")
+        result["canonical_input_utf8"] = rfc8785.dumps(body).decode("utf-8")
+    return result
 
 
 def main() -> None:
@@ -196,6 +222,36 @@ def main() -> None:
         "with that vector.",
         r,
         ["sort_keys_default", "sort_keys_compact", "sort_keys_compact_utf8"],
+    )))
+
+    # Negative controls keep the unsigned payloads of 01 and 03 unchanged. Only
+    # the signature preimage changes; schema, trust key and timestamp cannot be
+    # the reason a conformant verifier refuses them. Neither expected result is
+    # inferred from running the verifier under test.
+    r = {key: copy.deepcopy(value) for key, value in out[0][1]["record"].items()
+         if key != "signature"}
+    out.append(("05-ascii-escaped-signature.json", vector(
+        "ascii-escaped-signature",
+        "The payload of vector 01 signed over compact ASCII-escaped JSON rather "
+        "than RFC 8785 bytes. Its signature verifies over that published alternate "
+        "preimage but is not a valid TRACE signature. Canonical re-signing of the "
+        "same payload passes.",
+        r,
+        ["sort_keys_default", "sort_keys_compact"],
+        signing_form="sort_keys_compact",
+    )))
+
+    r = {key: copy.deepcopy(value) for key, value in out[2][1]["record"].items()
+         if key != "signature"}
+    out.append(("06-codepoint-order-signature.json", vector(
+        "codepoint-order-signature",
+        "The payload of vector 03 signed over compact literal-UTF8 JSON with "
+        "code-point key ordering. Only key order differs from RFC 8785; ASCII "
+        "escaping is not the defect. The published alternate signature is "
+        "cryptographically valid, but TRACE verification rejects it.",
+        r,
+        ["sort_keys_default", "sort_keys_compact", "sort_keys_compact_utf8"],
+        signing_form="sort_keys_compact_utf8",
     )))
 
     for name, doc in out:
