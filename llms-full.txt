@@ -383,16 +383,24 @@ Records that omit `provenance_depth` are treated as `surface`. This keeps every 
 
 ### Profile floors
 
-Deployment profiles select the minimum acceptable verified depth:
+Deployment profiles select the minimum acceptable verified depth. Every floor below is a choice this specification makes for deployments that describe themselves as operating under the named regime, rather than a requirement derived from that regime. Neither regulation discussed in the next section requires a verification depth at all.
 
-| Profile                                           | Floor                                                                     |
-| ------------------------------------------------- | ------------------------------------------------------------------------- |
-| Default, SLSA L0 to L1                            | `surface`                                                                 |
-| SLSA L2 and above                                 | `builder`                                                                 |
-| FIPS-aligned, EU AI Act Annex IV high-risk, HIPAA | `transitive`                                                              |
-| cMCP reference profile                            | `builder`, with `transitive` recommended where ecosystem coverage permits |
+| Profile                                            | Floor                                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------------- |
+| Default, SLSA L0 to L1                             | `surface`                                                                 |
+| SLSA L2 and above                                  | `builder`                                                                 |
+| FIPS-aligned, EU AI Act Article 6 high-risk, HIPAA | `transitive`                                                              |
+| cMCP reference profile                             | `builder`, with `transitive` recommended where ecosystem coverage permits |
 
 A verifier whose configured floor is not met by `provenance_depth_verified` sets `appraisal.status` to `contraindicated`.
+
+### Regulatory context for the profile floors (informative)
+
+The floors above name the EU AI Act. This section records what that Regulation actually requires, together with the Cyber Resilience Act, which is the instrument most often reached for in its place. Verification at any depth is not evidence of compliance with either of them, and neither is a floor that is met.
+
+**Regulation (EU) 2024/1689.** Annex IV is the technical documentation schedule whose elements Article 11(1) requires the technical documentation to contain at a minimum. It is not a classification annex, since high-risk classification runs through Article 6 with Annexes I and III, and neither Article 11 nor Annex IV imposes a verification obligation of the kind `provenance_depth_verified` records. Two adjacent provisions are sometimes read as supplying one, and neither does. Article 25(4), as amended by Regulation (EU) 2026/1744, requires the provider of a high-risk AI system and a third party supplying an AI system, AI model, tools, services, components or processes used or integrated in it to specify by written agreement the information, capabilities, technical access and other assistance the provider needs, and it does not apply to third parties making tools, services, processes or components other than general-purpose AI models publicly available under a free and open-source licence. Article 15(5) requires technical solutions addressing, where appropriate, data poisoning, model poisoning, adversarial examples, confidentiality attacks and model flaws, which is stated as an outcome rather than as a depth of supply-chain verification. Articles 11, 15 and 25 sit in Sections 2 and 3 of Chapter III, whose application Regulation (EU) 2026/1744 moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III, and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I, subject to the Article 111(2) grace period for units of a type and model already placed on the market.
+
+**Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify and document vulnerabilities and components, including by drawing up a software bill of materials in a commonly used and machine-readable format covering at the very least the top-level dependencies of the product. That is a component inventory obligation, so it does not by itself establish `builder` or `transitive` verification, both of which are claims about provenance rather than about composition. Its Annex I obligations apply from 11 December 2027, with the reporting obligations in Article 14 applying from 11 September 2026.
 
 ### Why depth is recorded rather than assumed
 
