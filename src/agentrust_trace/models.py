@@ -315,12 +315,18 @@ class JWK(_TraceModel):
     crv: str | None = None
     x: str | None = None
     y: str | None = None
+    n: str | None = None
+    e: str | None = None
     kid: str | None = None
 
     @model_validator(mode="after")
     def _require_key_material(self) -> JWK:
         """A confirmation key without key material binds nothing (RFC 7518 §6)."""
-        required_by_kty = {"OKP": ("crv", "x"), "EC": ("crv", "x", "y")}
+        required_by_kty = {
+            "OKP": ("crv", "x"),
+            "EC": ("crv", "x", "y"),
+            "RSA": ("n", "e"),
+        }
         required = required_by_kty.get(self.kty, ())
         missing = [name for name in required if getattr(self, name) is None]
         if missing:

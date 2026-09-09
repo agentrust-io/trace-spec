@@ -15,6 +15,11 @@ Narrowing `kty` to a fixed set would be a different act: section 3.2.1 states si
 algorithms per envelope context and fixes no set for the embedded-signature form of section
 3.2.2, so a schema-level enum would add a constraint the specification does not make, which
 is a normative question and not a schema fix.
+
+`models.JWK` carried the same `OKP`/`EC`-only table and is corrected with it. The schema is
+what another language validates against and the model is what a Python caller reaches, so
+the last test here checks the two against each other on every case rather than trusting that
+a fix applied to one of them reached the other.
 """
 
 from __future__ import annotations
@@ -25,7 +30,10 @@ import pathlib
 from typing import Any
 
 import jsonschema
+import pydantic
 import pytest
+
+from agentrust_trace.models import TrustRecord
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
@@ -112,3 +120,49 @@ def test_the_packaged_schema_is_the_same_bytes() -> None:
     published = (ROOT / "schema" / "trace-claim.json").read_bytes()
     packaged = (ROOT / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_bytes()
     assert published == packaged
+
+
+JWK_CASES = [
+    pytest.param(BASE["cnf"]["jwk"], True, id="okp-complete"),
+    pytest.param({"kty": "OKP"}, False, id="okp-bare"),
+    pytest.param({"kty": "OKP", "crv": "Ed25519"}, False, id="okp-without-x"),
+    pytest.param(
+        {"kty": "EC", "crv": "P-256", "x": "f83OJ3D2", "y": "x_FEzRu9"}, True, id="ec-complete"
+    ),
+    pytest.param({"kty": "EC", "crv": "P-256", "x": "f83OJ3D2"}, False, id="ec-without-y"),
+    pytest.param({"kty": "RSA", "n": "0vx7ag", "e": "AQAB"}, True, id="rsa-complete"),
+    pytest.param({"kty": "RSA"}, False, id="rsa-bare"),
+    pytest.param({"kty": "RSA", "n": "0vx7ag"}, False, id="rsa-without-e"),
+    pytest.param({"kty": "RSA", "e": "AQAB"}, False, id="rsa-without-n"),
+    pytest.param({"kty": "RSA", "n": 123, "e": "AQAB"}, False, id="rsa-with-a-non-string-modulus"),
+    pytest.param({"kty": "AKP", "pub": "x"}, True, id="a-kty-neither-artifact-names"),
+]
+
+
+@pytest.mark.parametrize("jwk,accepted", JWK_CASES)
+def test_the_schema_and_the_model_agree_on_every_case(jwk: dict[str, Any], accepted: bool) -> None:
+    """Two artifacts decide whether a confirmation key is usable, and they must agree.
+
+    `schema/trace-claim.json` is what an implementation in another language validates
+    against; `models.JWK` is what a Python caller reaches, and it is exported. A producer
+    meets them in an order nobody controls, so a key one takes and the other refuses fails
+    somewhere unpredictable. Half of this fix was exactly that state: the schema required
+    `n` and `e` and the model still did not, which is the disagreement
+    `test_all_three_layers_draw_the_line_in_the_same_place` was written for on a different
+    field. This is the same instrument for this one.
+
+    The last case is the deliberate open end. Neither artifact holds a `kty` it does not
+    name to a key-material rule, because section 3.2.1 fixes no set for the
+    embedded-signature form of section 3.2.2. They agree on that too.
+    """
+    record = _with_jwk(jwk)
+    schema_ok = not list(VALIDATOR.iter_errors(record))
+    try:
+        TrustRecord.model_validate(record)
+        model_ok = True
+    except pydantic.ValidationError:
+        model_ok = False
+    assert schema_ok == model_ok == accepted, (
+        f"schema={schema_ok} model={model_ok}, expected {accepted}. A confirmation key one "
+        "artifact takes and the other refuses fails somewhere the producer did not choose."
+    )
