@@ -21,9 +21,10 @@ checking any archived record, including these.
 - `amd-sev-snp.json`: AMD SEV-SNP example.
 - `nvidia-h100.json`: NVIDIA H100 Confidential Computing example.
 - `tpm2.json`: TPM 2.0 example.
-- `sandbox-runtime.json`: a sandboxed agent runtime, TPM 2.0 rooted. Produced by
-  `TraceSandboxAdapter`; the decision log is a kernel-sandbox policy trace rather
-  than MCP tool calls.
+- `sandbox-runtime.json`: a sandboxed agent runtime in the shape a `tpm2` attestation
+  produces. Its measurement, nonce and key are placeholders; see
+  `docs/integration/sandbox-runtime.md`. Produced by `TraceSandboxAdapter`; the decision
+  log is a kernel-sandbox policy trace rather than MCP tool calls.
 - `action-receipts/`: informative fixture shapes for action-level receipt
   verification. These are not TRACE Trust Records and are not validated against
   `schema/trace-claim.json`.

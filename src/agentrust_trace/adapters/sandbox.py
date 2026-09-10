@@ -142,9 +142,10 @@ class SandboxAttestation:
     nonce: str | None = None
     """Opaque, carried into ``runtime.nonce`` unchanged. If your attestation verifier
     bound the quote's challenge to the key you will sign this record with, this is
-    where that challenge goes; nothing here or downstream checks that binding, so an
-    unrelated string is accepted just as readily. Omit it rather than fill it with a
-    value that was never actually bound to anything."""
+    where that challenge goes; nothing here binds it to the key, and downstream
+    ``verify_record(expected_nonce=...)`` compares it only with a value the verifier
+    already knows. Omit it rather than fill it with a value that was never actually
+    bound to anything."""
 
     def __post_init__(self) -> None:
         if not isinstance(self.platform, str):
@@ -304,7 +305,7 @@ class TraceSandboxAdapter:
         supplied evidence verbatim, with no cryptographic check performed on it here.
         Actual Level 1 assurance requires that evidence to have been independently
         verified -- by your own attestation verifier, against the named platform --
-         before you construct the :class:`SandboxAttestation`, *and* it requires that
+        before you construct the :class:`SandboxAttestation`, *and* it requires that
         verification to bind the key :func:`~agentrust_trace.sign.sign_record` is
         called with to the attested environment. This method has no way to check
         either: the ``cnf`` it returns is a placeholder, and the real key arrives
