@@ -457,9 +457,12 @@ def test_margins_have_not_thinned() -> None:
     """
     current = {code: len(_margin(code)) for code in RULE_CODES}
 
-    if not MARGINS_FILE.exists():
-        MARGINS_FILE.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
-        pytest.skip(f"recorded initial margins to {MARGINS_FILE.name}; re-run to enforce")
+    assert MARGINS_FILE.exists(), (
+        f"{MARGINS_FILE.name} is missing, so there is nothing to ratchet against. A guard "
+        "that rebuilds its own baseline from the current tree records whatever the tree "
+        "has just lost. Restore the file from history; to rebaseline on purpose, write "
+        "the current margins to it in the same commit that changes the fixtures, and say why."
+    )
 
     recorded: dict[str, int] = json.loads(MARGINS_FILE.read_text(encoding="utf-8"))
     thinned = {
@@ -536,11 +539,12 @@ def test_no_vector_has_lost_its_role() -> None:
     """
     current = _roles()
 
-    if not ROLES_FILE.exists():
-        ROLES_FILE.write_text(
-            json.dumps(current, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
-        pytest.skip(f"recorded initial roles to {ROLES_FILE.name}; re-run to enforce")
+    assert ROLES_FILE.exists(), (
+        f"{ROLES_FILE.name} is missing, so there is nothing to ratchet against. A guard "
+        "that rebuilds its own baseline from the current tree records whatever the tree "
+        "has just lost. Restore the file from history; to rebaseline on purpose, write "
+        "_roles() to it in the same commit that changes the fixtures, and say why."
+    )
 
     recorded: dict[str, dict[str, list[str]]] = json.loads(
         ROLES_FILE.read_text(encoding="utf-8")
