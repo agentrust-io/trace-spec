@@ -31,6 +31,7 @@ The questions, in increasing strength:
    implementation defect that one catches and the other misses? Two copies of the
    same vector satisfy question 3 and fail this one.
 5. Has any rule's margin dropped below what it was? (silent thinning)
+6. Is each vector still the one doing the discriminating? (silent substitution)
 
 Independence is #124's definition made executable. For every rule, ``DEFECTS``
 declares at least one *weakened* variant of its check, each modelling a real
@@ -41,6 +42,12 @@ least one of them from its expected outcome while leaving another undisturbed. T
 declaration is fail-closed: a registered rule with no defect entry fails the suite,
 so the question "what bug would your second vector catch that your first would not?"
 has to be answered when the rule is added, not after a regression demonstrates it.
+
+Question 5 counts and question 6 names. A margin is a set of fixture names reduced to
+its size, so a change that keeps the size and moves the work is invisible to it:
+rewriting a vector into a copy of its partner still leaves the count at two.
+``vector_roles.json`` records which fixture carries which discrimination, so that
+substitution fails by name instead of passing.
 """
 
 from __future__ import annotations
@@ -71,6 +78,7 @@ TESTS_DIR = Path(__file__).parent
 VERIFIER_MODULE = TESTS_DIR / "test_action_receipt_fixtures.py"
 FIXTURE_DIR = TESTS_DIR.parent / "examples" / "action-receipts" / "conformance"
 MARGINS_FILE = TESTS_DIR / "vector_margins.json"
+ROLES_FILE = TESTS_DIR / "vector_roles.json"
 FIXTURES = discover_fixtures(FIXTURE_DIR)
 
 RULE_CODES = tuple(rule.code for rule in RULES)
@@ -157,7 +165,10 @@ DEFECTS: dict[str, dict[str, Check]] = {
         ].lower()
         != "none",
     },
-    # A signature check that stops at well-formedness.
+    # A signature check that stops at well-formedness. `04` is the only vector in the
+    # corpus whose signature is structurally sound and still does not verify, a shape
+    # that exists only when the signer is a key the verifier does not hold. Reissuing
+    # that fixture therefore takes a second published key, per #178.
     "signature_or_key_mismatch": {
         "checks_structure_only": lambda f: _trusted_jwk(f, f["receipt"]) is not None
         and _sig_malformed(f["receipt"]),
@@ -467,4 +478,103 @@ def test_margins_have_not_thinned() -> None:
     assert not vanished, (
         f"rules that had recorded margins no longer exist: {vanished}. If they were "
         f"removed on purpose, drop them from {MARGINS_FILE.name} in the same commit."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 6. The role ratchet
+# ---------------------------------------------------------------------------
+
+
+def _roles() -> dict[str, dict[str, list[str]]]:
+    """Per fixture: the rules it is load-bearing for, and the defects it separates.
+
+    The same measurement questions 3 and 4 make, keyed by fixture rather than by rule.
+    `_margin` returns a set and the ratchet stores only its size, so neither can see
+    which fixture is doing the work. This asks whether a given vector still does the
+    job it was written for.
+    """
+    roles: dict[str, dict[str, list[str]]] = {}
+    for code in RULE_CODES:
+        bearing = _margin(code)
+        for name in bearing:
+            roles.setdefault(name, {}).setdefault(code, [])
+        for defect, weakened_check in DEFECTS[code].items():
+            for name in sorted(_deviating(_weakened(code, weakened_check)) & bearing):
+                roles[name][code].append(defect)
+    return roles
+
+
+def test_no_vector_has_lost_its_role() -> None:
+    """A ratchet on identity: a vector may not quietly stop discriminating.
+
+    Margins count, and a count cannot see work moving between vectors. Rewriting a
+    vector into a copy of its partner leaves the rule's margin at two, and
+    `test_vectors_for_each_rule_are_independent` still passes whenever some other
+    declared defect happens to separate the pair. What is lost is the specific
+    property the vector was written to exercise, and nothing recorded which vector
+    carried it.
+
+    The case this is built for is #178, reissuing fixtures 01-09 from a key whose
+    private half is published. Exactly one of the nine carries a discrimination: `04`
+    is the corpus's only structurally sound signature that does not verify, so it
+    catches `checks_structure_only` while `24`, whose signature is the wrong length,
+    does not. That shape exists only when the signer is a key the verifier does not
+    hold, so reissuing `04` under the issuer key and corrupting its signature to keep
+    it failing turns it into a second `24`. The reissue therefore takes two published
+    deterministic keys, the issuer key and one that plays the wrong signer, and this
+    test is what says so at the moment the mistake is made rather than after.
+
+    Six of the remaining eight record as load-bearing with no defect of their own,
+    which is what they are: their partners in 17-30 carry the discrimination. `01` and
+    `02` are the other two, and they are absent from the file altogether, because they
+    are the valid vectors and deleting a rule does not change the outcome of a fixture
+    that passes.
+
+    Gaining a role is an ordinary PR. Losing one is a decision someone makes on
+    purpose, in the same commit, with a reason.
+    """
+    current = _roles()
+
+    if not ROLES_FILE.exists():
+        ROLES_FILE.write_text(
+            json.dumps(current, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        pytest.skip(f"recorded initial roles to {ROLES_FILE.name}; re-run to enforce")
+
+    recorded: dict[str, dict[str, list[str]]] = json.loads(
+        ROLES_FILE.read_text(encoding="utf-8")
+    )
+
+    # Each way of losing a role gets its own reason. They are three different
+    # mistakes, and a single closing sentence fits only one of them.
+    lost: list[str] = []
+    for name in sorted(recorded):
+        if name not in current:
+            lost.append(
+                f"{name}: gone, and it was load-bearing for {sorted(recorded[name])}. "
+                "Retiring a vector retires whatever it was the only one to catch."
+            )
+            continue
+        for code in sorted(recorded[name]):
+            if code not in current[name]:
+                lost.append(
+                    f"{name}: no longer load-bearing for {code!r}. Deleting that rule "
+                    "stopped changing this fixture's outcome, so it no longer "
+                    "exercises it at all."
+                )
+                continue
+            missing = sorted(set(recorded[name][code]) - set(current[name][code]))
+            if missing:
+                lost.append(
+                    f"{name}: no longer separates {missing} for {code!r}. It still "
+                    "fails for the rule, so what it lost is the margin rather than "
+                    "the coverage: it has become a copy of its partner."
+                )
+
+    assert not lost, (
+        "vectors lost the discrimination they were written for:\n  "
+        + "\n  ".join(lost)
+        + f"\nIf the change is intended, update {ROLES_FILE.name} in the same commit "
+        + "and say why."
     )
