@@ -165,10 +165,13 @@ DEFECTS: dict[str, dict[str, Check]] = {
         ].lower()
         != "none",
     },
-    # A signature check that stops at well-formedness. `04` is the only vector in the
-    # corpus whose signature is structurally sound and still does not verify, a shape
-    # that exists only when the signer is a key the verifier does not hold. Reissuing
-    # that fixture therefore takes a second published key, per #178.
+    # A signature check that stops at well-formedness. `04` is the only vector whose
+    # issuer key the verifier holds and whose 64-byte signature still fails to verify;
+    # `14` and `23` fail for want of a key, `24` for length. A single key can produce
+    # that shape by corrupting a signature at fixed length; what it cannot produce is a
+    # signature by a key the verifier does not hold, which is what `04` models. This
+    # check sees the shape, not the signer, so the second key #178 asks for is a
+    # decision the reissue makes on purpose.
     "signature_or_key_mismatch": {
         "checks_structure_only": lambda f: _trusted_jwk(f, f["receipt"]) is not None
         and _sig_malformed(f["receipt"]),
@@ -520,13 +523,14 @@ def test_no_vector_has_lost_its_role() -> None:
 
     The case this is built for is #178, reissuing fixtures 01-09 from a key whose
     private half is published. Exactly one of the nine carries a discrimination: `04`
-    is the corpus's only structurally sound signature that does not verify, so it
-    catches `checks_structure_only` while `24`, whose signature is the wrong length,
-    does not. That shape exists only when the signer is a key the verifier does not
-    hold, so reissuing `04` under the issuer key and corrupting its signature to keep
-    it failing turns it into a second `24`. The reissue therefore takes two published
-    deterministic keys, the issuer key and one that plays the wrong signer, and this
-    test is what says so at the moment the mistake is made rather than after.
+    is the only vector whose issuer key the verifier holds and whose 64-byte signature
+    still fails to verify, so it catches `checks_structure_only` while `24`, whose
+    signature is the wrong length, does not. What this test holds is that shape. A
+    single-key reissue that collapses `04` to the wrong length, or renames it, fails
+    here by name; one that corrupts the signature at fixed length passes, because the
+    shape survives even though the fixture no longer models a wrong signer. The second
+    published key #178 asks for is therefore a decision the reissue makes on purpose,
+    and this test says so about the shape, not about the signer.
 
     Six of the remaining eight record as load-bearing with no defect of their own,
     which is what they are: their partners in 17-30 carry the discrimination. `01` and
