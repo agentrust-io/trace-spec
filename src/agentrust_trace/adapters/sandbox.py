@@ -27,11 +27,42 @@ hardware at all. Passing a :class:`SandboxAttestation` moves the record from
 the call changes. An adapter that could only emit Level 0 would force a second code
 path for the deployments that matter most.
 
-**It will not let a caller claim hardware it does not have.** ``platform`` is only ever
-set from a supplied attestation, an attestation may not name ``software-only``, and the
-platform is checked against the enum on :class:`~agentrust_trace.models.RuntimeInfo`
-rather than a copy of it. A record that says ``tpm2`` therefore carries a measurement
-that something other than this process produced.
+**It rejects the ways a caller can misname unattested evidence; it does not appraise the
+evidence itself.** ``platform`` is only ever set from a supplied attestation, an
+attestation may not name ``software-only``, the platform is checked against the enum on
+:class:`~agentrust_trace.models.RuntimeInfo` rather than a copy of it, and
+``measurement`` must be a ``sha256:``/``sha384:`` digest. That is shape validation, not
+cryptographic verification: nothing here checks a quote, a signature, or a nonce, so
+constructing a :class:`SandboxAttestation` with an invented platform and an invented
+digest is accepted and reaches the record unchanged. This is the same boundary
+docs/trust-levels.md states for every Level 1 producer --
+``agentrust_trace.sign.verify_record`` does not appraise hardware quotes either -- and it
+applies here for the same reason: appraising the evidence requires the platform's own
+verification path (a TDX/SEV-SNP quote check against the vendor's key, a TPM quote check
+against a known PCR policy, and so on), which is outside what a record-shaped library can
+do generically. Pass a :class:`SandboxAttestation` only after your own attestation
+verifier has checked genuine evidence from the named platform; passing one built from
+data your process invented produces a Level 1-shaped record with no Level 1 assurance
+behind it.
+
+**Independently verified evidence is necessary but not sufficient.** docs/trust-levels.md
+is explicit that Level 1 needs "authenticated evidence binding the record-signing key to
+the expected environment," and docs/verification.md puts the responsibility for that
+binding on "the producing profile." This adapter is that producing profile for a sandbox
+runtime, and it defines no binding: nothing here ties ``measurement`` (or ``nonce``) to
+the specific key that ends up in the record's ``cnf.jwk`` -- the key :func:`sign_record`
+is called with is chosen independently of, and after, whatever attestation was verified.
+A caller who verifies a genuine quote and then signs with an unrelated key produces a
+record that is no more bound to hardware than a fabricated one; :class:`SandboxAttestation`
+and :func:`~agentrust_trace.sign.sign_record` cannot tell the two cases apart. If your
+attestation flow supports a caller-supplied challenge (a TPM quote's qualifying data, an
+SNP report's ``REPORT_DATA``, a TDX quote's ``REPORTDATA``), bind it yourself: request the
+quote with that field set to a value derived from the signing key you are about to pass to
+``sign_record`` (for example its RFC 7638 thumbprint), verify the quote's binding to that
+value in your own verifier, and only then carry it through as :attr:`SandboxAttestation.nonce`
+so a downstream verifier that knows your convention can check it too.
+:func:`~agentrust_trace.sign.verify_record` does not check this binding either -- nothing
+in this codebase does; it is on you and on whatever verifier you point at these records.
 
 Sandbox identity and image are carried in the existing v0.2 fields (``subject`` and
 ``build_provenance.digest``). A dedicated ``sandbox`` object belongs in a later profile;
@@ -80,6 +111,21 @@ class SandboxAttestation:
     Supply this when the host produced attestation evidence. Omit it and the record is
     Level 0, marked ``software-only``, which is the honest description of a sandbox on
     a machine with no root of trust.
+
+    This dataclass validates shape only (an accepted platform name, a digest-shaped
+    measurement); it does not verify that the evidence is genuine. Construct one only
+    from a measurement your own attestation verifier obtained from the named platform,
+    not from a value your process computed or invented -- nothing downstream of this
+    constructor can tell the difference.
+
+    Verifying the evidence is genuine is still not the same as Level 1 assurance: TRACE
+    also requires that evidence to bind the record-signing key to the attested
+    environment (see the module docstring). This dataclass has no field that expresses
+    that binding on its own -- ``nonce`` is carried through to the record verbatim, on
+    trust, and is not checked against ``measurement``, against any key, or against
+    anything else. If you bind your quote's challenge to your signing key yourself,
+    ``nonce`` is where that value goes; if you do not, leaving it unset is more honest
+    than filling it with a value that implies a binding nobody verified.
     """
 
     platform: str
@@ -94,6 +140,11 @@ class SandboxAttestation:
     rim_uri: str | None = None
     firmware_version: str | None = None
     nonce: str | None = None
+    """Opaque, carried into ``runtime.nonce`` unchanged. If your attestation verifier
+    bound the quote's challenge to the key you will sign this record with, this is
+    where that challenge goes; nothing here or downstream checks that binding, so an
+    unrelated string is accepted just as readily. Omit it rather than fill it with a
+    value that was never actually bound to anything."""
 
     def __post_init__(self) -> None:
         if not isinstance(self.platform, str):
@@ -248,7 +299,18 @@ class TraceSandboxAdapter:
     def build_trust_record(self, session: SandboxSessionResult) -> dict[str, Any]:
         """Return an unsigned Trust Record for *session*.
 
-        Level 0 when ``session.attestation`` is ``None``, Level 1 when it is supplied.
+        Level 0 when ``session.attestation`` is ``None``. Otherwise the record is
+        Level 1-*shaped*: ``runtime.platform`` and ``runtime.measurement`` carry the
+        supplied evidence verbatim, with no cryptographic check performed on it here.
+        Actual Level 1 assurance requires that evidence to have been independently
+        verified -- by your own attestation verifier, against the named platform --
+         before you construct the :class:`SandboxAttestation`, *and* it requires that
+        verification to bind the key :func:`~agentrust_trace.sign.sign_record` is
+        called with to the attested environment. This method has no way to check
+        either: the ``cnf`` it returns is a placeholder, and the real key arrives
+        later, at ``sign_record``, decided independently of whatever attestation was
+        passed here. See the module docstring and :class:`SandboxAttestation` for this
+        boundary.
         """
         bundle_hash = self.bundle_hash(session.policy_bundle_bytes)
         runtime = self._runtime(session, bundle_hash)
