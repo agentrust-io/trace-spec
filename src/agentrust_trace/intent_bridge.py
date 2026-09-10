@@ -65,7 +65,17 @@ def digest_jcs(value: dict[str, Any]) -> str:
 
 
 def sign_bridge(authorization: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
-    """Sign the complete authorization; key material is deliberately not embedded."""
+    """Sign the complete authorization; key material is deliberately not embedded.
+
+    Raises ``IntentBridgeError`` for a *key* that is not an ``Ed25519PrivateKey``: the
+    bridge profile fixes the algorithm, and the package's two other signers hold their
+    key to the same type through ``key_to_jwk``.
+    """
+    if not isinstance(key, Ed25519PrivateKey):
+        raise IntentBridgeError(
+            f"key must be an Ed25519PrivateKey, got {type(key).__name__}. The bridge "
+            "profile fixes the algorithm, so there is no other key this can sign with."
+        )
     artifact = {"profile": BRIDGE_PROFILE, "authorization": authorization}
     signature = base64.urlsafe_b64encode(key.sign(_jcs(artifact, "the authorization"))).rstrip(b"=")
     return {**artifact, "signature": signature.decode("ascii")}

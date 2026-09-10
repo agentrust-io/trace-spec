@@ -20,6 +20,8 @@ import re
 import time
 from typing import Any
 
+import rfc8785
+
 from agentrust_trace.sign import (
     RevocationStore,
     _b64url_decode,
@@ -188,6 +190,12 @@ def _check_structure(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
             )
+    if attestation is not None and not isinstance(attestation, dict):
+        raise ProvenanceError(
+            f"attestation must be an object or null, got {type(attestation).__name__}. "
+            "spec/server-provenance-v1.md: the evidence in the shape TRACE v0.2 section 3.1 "
+            "runtime uses, or null."
+        )
     if kind == "tee-attested" and not attestation:
         raise ProvenanceError(
             "kind='tee-attested' without attestation evidence is the claim without the "
@@ -225,7 +233,7 @@ def build_record(
     """
     if kind not in KINDS:
         raise ProvenanceError(f"kind {kind!r} is not one of {', '.join(KINDS)}")
-    if not _PUBLISHER_RE.match(publisher or ""):
+    if not isinstance(publisher, str) or not _PUBLISHER_RE.match(publisher):
         raise ProvenanceError(
             f"publisher {publisher!r} must be a DID or SPIFFE URI. A display name is not "
             "resolvable and a verifier cannot check one."
@@ -272,13 +280,29 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     Raises ``ProvenanceError`` for a *record* that is not a JSON object. ``{**record}``
     reads it before its shape is established, so a non-mapping raised a bare
     ``TypeError`` about dict unpacking, which is not this module's documented refusal.
+    Also raises ``ProvenanceError`` for a *key* that is not an Ed25519 private key, and
+    for a record with no RFC 8785 canonical form, such as an integer outside the JCS
+    safe range; both used to escape as the underlying library's ``ValueError``.
     """
     if not isinstance(record, dict):
         raise ProvenanceError(
             f"record must be a JSON object, got {type(record).__name__}"
         )
-    payload = {**record, "cnf": {"jwk": key_to_jwk(key)}}
-    body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    try:
+        jwk = key_to_jwk(key)
+    except ValueError as exc:
+        raise ProvenanceError(f"key must be an Ed25519 private key: {exc}") from exc
+    payload = {**record, "cnf": {"jwk": jwk}}
+    try:
+        body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    except rfc8785.CanonicalizationError as exc:
+        # `_canonical_bytes` is `rfc8785.dumps` and raises its own errors for a value JCS
+        # has no form for, including an integer outside the safe domain. Those are
+        # `ValueError`s, not this module's, so a caller catching `ProvenanceError` saw a
+        # crash. Same shape as the wrap `intent_bridge._jcs` already carries.
+        raise ProvenanceError(
+            f"record has no RFC 8785 canonical form, so it cannot be signed: {exc}"
+        ) from exc
     import base64
 
     sig = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
@@ -410,7 +434,19 @@ def verify_record(
         )
 
     pub = _pubkey_from_jwk(trusted_jwk)
-    body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
+    try:
+        body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
+    except rfc8785.CanonicalizationError as exc:
+        # The other half of the wrap `sign_record` carries. The record here is the
+        # untrusted document, so it can hold a value JCS has no form for wherever the
+        # structural checks above do not type the field: an integer outside the safe
+        # range under `tools`, say. `rfc8785`'s errors are its own `ValueError`s, not
+        # this module's, so a caller written against `ProvenanceError` saw a crash
+        # where every other malformed record gives a refusal.
+        raise ProvenanceError(
+            f"record has no RFC 8785 canonical form, so its signature cannot be "
+            f"checked: {exc}"
+        ) from exc
     # `signature` reaches this function from whatever the caller is verifying, the
     # same untrusted document nothing above this line has vouched for either: a
     # non-string here (an int, a list of chars, a nested object) previously hit
