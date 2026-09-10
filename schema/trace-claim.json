@@ -412,7 +412,7 @@
       "properties": {
         "jwk": {
           "type": "object",
-          "description": "JWK (RFC 7517) representing the TEE-sealed public key. Keys must carry actual key material: OKP keys require crv and x; EC keys require crv, x, and y.",
+          "description": "JWK (RFC 7517) representing the TEE-sealed public key. Keys must carry actual key material: OKP keys require crv and x; EC keys require crv, x, and y; RSA keys require n and e.",
           "required": [
             "kty"
           ],
@@ -427,6 +427,12 @@
               "type": "string"
             },
             "y": {
+              "type": "string"
+            },
+            "n": {
+              "type": "string"
+            },
+            "e": {
               "type": "string"
             },
             "kid": {
@@ -470,6 +476,24 @@
                   "y"
                 ]
               }
+            },
+            {
+              "if": {
+                "required": [
+                  "kty"
+                ],
+                "properties": {
+                  "kty": {
+                    "const": "RSA"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "n",
+                  "e"
+                ]
+              }
             }
           ],
           "not": {
@@ -511,7 +535,7 @@
               }
             ]
           },
-          "$comment": "RFC 8747 defines cnf as a confirmation key: the public half, present so a verifier can bind the record to the key that signed it. A private member here publishes the signing key inside the signed, self-authenticating, typically anchored record, and the only remedy afterwards is to revoke the identity. Mirrors _JWK_PRIVATE_PARAMS in the reference model, which already refuses these.",
+          "$comment": "RFC 8747 defines cnf as a confirmation key: the public half, present so a verifier can bind the record to the key that signed it. A private member here publishes the signing key inside the signed, self-authenticating, typically anchored record, and the only remedy afterwards is to revoke the identity. Mirrors _JWK_PRIVATE_PARAMS in the reference model, which already refuses these. A kty this schema does not name is not held to a key-material rule here: section 3.2.1 states signing algorithms per envelope context and fixes no set for the embedded-signature form of section 3.2.2, so an enum here would add a constraint the specification does not make, and such a key is refused later by the verifier. The n and e declarations are load-bearing rather than decorative: without them a non-string modulus reaches additionalProperties, which admits any canonicalizable value.",
           "additionalProperties": {
             "$ref": "#/$defs/canonicalizableValue"
           }
