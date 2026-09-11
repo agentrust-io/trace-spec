@@ -134,6 +134,16 @@ Everything from `10` up pins its own deterministic test key, since the private h
 the key used by `01`–`09` is not published; `gen_rule_coverage_vectors.py` regenerates
 the range byte-for-byte and only public JWKs appear in the files.
 
+Reissuing `01`–`09` from published keys takes two of them, not one (#178). `04` is the
+only vector whose issuer key the verifier holds and whose 64-byte signature still fails
+to verify, which is the shape that separates it from `24`. A single key can keep that
+shape, by corrupting the signature at fixed length; what it cannot keep is the fixture's
+meaning, a signature made by a key the verifier does not hold. The guard below sees the
+shape and not the signer, so the second key is a decision the reissue makes on purpose
+rather than one a test enforces. `tests/vector_roles.json` records which vector carries
+which discrimination, and `test_no_vector_has_lost_its_role` fails by name if a reissue
+drops one.
+
 `tests/test_action_receipt_fixtures.py` recomputes each digest, verifies each
 signature against the pinned key, checks session and call binding, enforces
 freshness and receipt-chain ordering, and compares the result with each
