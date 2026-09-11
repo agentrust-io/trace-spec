@@ -185,12 +185,12 @@ application Regulation (EU) 2026/1744 moved to 2 December 2027 for systems high-
 Article 6(2) and Annex III, and to 2 August 2028 for systems high-risk under Article 6(1)
 and Annex I. Article 111(2), as replaced by the same Regulation, applies the AI Act to
 operators of high-risk systems, other than the systems referred to in Article 111(1), that
-have been placed on the market or put into service before that date of application, only
-where, as from that date, those systems are subject to significant changes in their designs,
-and in any case requires providers and deployers of high-risk systems intended to be used by
-public authorities to comply by 2 August 2030. The reading that one unit lawfully placed on
-the market or put into service carries the other units of the same type and model is recital
-39 of Regulation (EU) 2026/1744 rather than operative text.
+have been placed on the market or put into service before that date of application, only if,
+as from that date, those systems are subject to significant changes in their designs, and in
+any case requires providers and deployers of high-risk systems intended to be used by public
+authorities to take the necessary steps to comply by 2 August 2030. The reading that one unit
+lawfully placed on the market or put into service carries the other units of the same type
+and model is recital 39 of Regulation (EU) 2026/1744 rather than operative text.
 
 **Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify
 and document vulnerabilities and components, including by drawing up a software bill of
