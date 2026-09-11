@@ -188,8 +188,9 @@ operators of high-risk systems, other than the systems referred to in Article 11
 have been placed on the market or put into service before that date of application, only
 where, as from that date, those systems are subject to significant changes in their designs,
 and in any case requires providers and deployers of high-risk systems intended to be used by
-public authorities to comply by 2 August 2030. The reading that one lawfully placed unit
-carries the other units of the same type and model is recital 39 rather than operative text.
+public authorities to comply by 2 August 2030. The reading that one unit lawfully placed on
+the market or put into service carries the other units of the same type and model is recital
+39 of Regulation (EU) 2026/1744 rather than operative text.
 
 **Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify
 and document vulnerabilities and components, including by drawing up a software bill of
