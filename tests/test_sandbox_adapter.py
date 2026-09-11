@@ -175,7 +175,7 @@ def test_the_same_session_is_level_0_or_level_1_by_attestation_alone() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. A caller must not be able to claim hardware it does not have
+# 4. A caller cannot misname unattested evidence (shape validation only)
 # ---------------------------------------------------------------------------
 
 def test_attestation_rejects_software_only_as_a_platform() -> None:
@@ -195,6 +195,89 @@ def test_attestation_rejects_an_unknown_platform() -> None:
 def test_attestation_rejects_a_measurement_that_is_not_a_digest(measurement: str) -> None:
     with pytest.raises(ValueError, match="is not a sha256: or sha384: digest"):
         SandboxAttestation(platform="tpm2", measurement=measurement)
+
+
+# ---------------------------------------------------------------------------
+# 4b. Shape validation is not evidence verification, and must not be mistaken
+#     for it: SandboxAttestation/TraceSandboxAdapter do not, and cannot from
+#     this input alone, verify that a measurement was ever produced by the
+#     named platform. A digest-shaped, enum-valid attestation is accepted
+#     verbatim even when the caller invented every byte of it. Pinning this
+#     documents the actual contract (docs/trust-levels.md's Level 1 boundary:
+#     "agentrust_trace.verify_record does not itself appraise hardware
+#     quotes") rather than letting it silently regress into a false sense of
+#     verification, or silently regress into the adapter starting to reject
+#     input it has never had grounds to trust or distrust.
+# ---------------------------------------------------------------------------
+
+def test_a_fabricated_but_well_shaped_attestation_is_accepted_verbatim() -> None:
+    """Documents the boundary: shape validation, not cryptographic appraisal.
+
+    Nothing in ``SandboxAttestation`` or ``TraceSandboxAdapter`` checks a quote, a
+    signature, or a nonce. A caller who never touched real hardware can build an
+    attestation entirely from invented values, as long as they are shaped like real
+    evidence, and the adapter reproduces them in the signed record unchanged. Verifying
+    that a measurement actually came from the named platform is the responsibility of
+    the caller's own attestation verifier, run *before* constructing the
+    ``SandboxAttestation`` -- see the sandbox.py module docstring and
+    docs/integration/sandbox-runtime.md.
+    """
+    fabricated = SandboxAttestation(
+        platform="amd-sev-snp",
+        measurement="sha256:" + "0" * 64,
+    )
+    record = _make_adapter().build_trust_record(_make_session(attestation=fabricated))
+    assert record["runtime"]["platform"] == "amd-sev-snp"
+    assert record["runtime"]["measurement"] == "sha256:" + "0" * 64
+    # Structurally valid, and signable, despite carrying no actual hardware evidence.
+    TrustRecord.model_validate(record)
+    key = generate_key()
+    signed = sign_record(record, key)
+    verify_record(signed, key_to_jwk(key))
+
+
+def test_genuinely_verified_evidence_is_still_not_bound_to_the_signing_key() -> None:
+    """Documents a second, separate gap from the fabricated-evidence one above.
+
+    Even a caller who *did* independently verify genuine hardware evidence before
+    constructing a ``SandboxAttestation`` -- doing everything the module docstring now
+    asks of them -- still cannot get real Level 1 assurance out of this adapter, because
+    nothing here binds that evidence to the specific key the record ends up signed
+    with. ``nonce`` is carried through verbatim and is never checked against
+    ``cnf.jwk``, against the signing key passed to ``sign_record``, or against
+    anything else. Two records built from the identical (hypothetically genuine)
+    attestation but signed with unrelated, unrelated-to-the-hardware keys both verify
+    successfully; nothing distinguishes "the verified key" from "any key the caller
+    felt like using afterwards". Per docs/trust-levels.md, Level 1 requires
+    "authenticated evidence binding the record-signing key to the expected
+    environment"; per docs/verification.md, defining that binding is this producing
+    profile's job, and it does not define one.
+    """
+    same_attestation = SandboxAttestation(
+        platform="tpm2",
+        measurement=TPM_MEASUREMENT,
+        # A caller following the module's own advice: a nonce that claims to bind a
+        # challenge to *some* key. Nothing checks that it binds to the key used below.
+        nonce="claimed-binding-to-key-A",
+    )
+    record_a = _make_adapter().build_trust_record(_make_session(attestation=same_attestation))
+    record_b = _make_adapter().build_trust_record(_make_session(attestation=same_attestation))
+
+    key_a = generate_key()
+    key_b = generate_key()  # Unrelated to whatever "claimed-binding-to-key-A" meant.
+
+    signed_a = sign_record(record_a, key_a)
+    signed_b = sign_record(record_b, key_b)
+
+    # Both verify: the adapter and sign_record() accept the same "verified" evidence
+    # bound to a nonce string regardless of which key actually signs the record.
+    verify_record(signed_a, key_to_jwk(key_a))
+    verify_record(signed_b, key_to_jwk(key_b))
+    # The nonce, and therefore the claimed binding, is identical in both -- yet the
+    # embedded confirmation keys differ. Nothing here or in sign_record/verify_record
+    # detects that the "binding" is meaningless.
+    assert signed_a["runtime"]["nonce"] == signed_b["runtime"]["nonce"]
+    assert signed_a["cnf"]["jwk"]["x"] != signed_b["cnf"]["jwk"]["x"]
 
 
 def test_accepted_platforms_are_read_from_the_model() -> None:
