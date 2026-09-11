@@ -104,6 +104,27 @@ def test_a_malformed_base64_signature_raises_intentbridgeerror_not_valueerror(
         )
 
 
+
+@pytest.mark.parametrize("bad_decision", [True, 1, None, "", "reject"])
+def test_malformed_signed_decision_is_not_classified_as_denial(bad_decision) -> None:
+    """Only literal `deny` is AuthorizationDenied.
+
+    Malformed values are producer errors, not policy decisions.
+    """
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    malformed = copy.deepcopy(bridge)
+    malformed["authorization"]["decision"] = bad_decision
+    malformed = sign_bridge(malformed["authorization"], key)
+
+    with pytest.raises(IntentBridgeError, match="decision must be") as excinfo:
+        verify_bridge(
+            malformed, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args,
+            tool_call=tool_call, transcript=transcript, now=150,
+        )
+    assert not isinstance(excinfo.value, AuthorizationDenied)
+
+
 def test_deny_and_scope_fail_closed() -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     denied = copy.deepcopy(bridge)

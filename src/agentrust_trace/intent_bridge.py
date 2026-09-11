@@ -27,7 +27,7 @@ class IntentBridgeError(ValueError):
 
 
 class AuthorizationDenied(IntentBridgeError):
-    """The signed decision is not an authorization to execute."""
+    """The signed decision is the literal valid `deny`, not authorization to execute."""
 
 
 class AuthorizationMismatch(IntentBridgeError):
@@ -95,6 +95,14 @@ def _nonempty_string(value: Any, field: str) -> str:
     return value
 
 
+
+def _decision(value: Any) -> str:
+    """Return a valid authorization decision or refuse a malformed value."""
+    if not isinstance(value, str) or value not in {"allow", "deny"}:
+        raise IntentBridgeError('authorization.decision must be "allow" or "deny"')
+    return value
+
+
 def _unique_nonempty_strings(value: Any, field: str) -> list[str]:
     if (
         not isinstance(value, list)
@@ -148,6 +156,7 @@ def verify_bridge(
         raise IntentBridgeError(f"authorization is missing fields: {sorted(missing)}")
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
         _nonempty_string(authorization[field], f"authorization.{field}")
+    _decision(authorization["decision"])
 
     # Hoisted out of the try below. Inside it, an authorization JCS cannot serialize
     # was reported as "the signature is invalid", which is a different fact and sends
