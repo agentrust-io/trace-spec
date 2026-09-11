@@ -131,6 +131,28 @@ def test_output_schema_does_not_change_the_hash() -> None:
 # --- building: refuse records that cannot mean anything --------------------
 
 
+
+@pytest.mark.parametrize(
+    "bad_issued_at",
+    [True, False, 1.9, "123", -0.5, [1], "abc", 2**60],
+)
+def test_build_record_refuses_malformed_issued_at_before_coercion(bad_issued_at) -> None:
+    """Explicit timestamps are validated as supplied, never normalized into another value."""
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=bad_issued_at)
+
+
+def test_build_record_preserves_an_explicit_valid_issued_at() -> None:
+    assert _record(issued_at=123)["issued_at"] == 123
+
+
+def test_build_record_converts_only_the_internal_time_default(monkeypatch) -> None:
+    monkeypatch.setattr(time, "time", lambda: 123.9)
+    record = _record()
+    assert record["issued_at"] == 123
+    assert isinstance(record["issued_at"], int)
+
+
 def test_identity_with_neither_artifact_nor_endpoint_is_refused() -> None:
     with pytest.raises(ProvenanceError, match="identifies nothing"):
         build_record(kind="publisher-asserted", publisher="did:web:x", tools=TOOLS)

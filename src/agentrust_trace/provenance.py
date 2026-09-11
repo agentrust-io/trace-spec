@@ -21,6 +21,7 @@ import time
 from typing import Any
 
 from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
     RevocationStore,
     _b64url_decode,
     _canonical_bytes,
@@ -198,11 +199,19 @@ def _check_structure(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
         )
-    # bool is an int subclass, and True would otherwise pass as a timestamp.
-    if not isinstance(issued_at, int) or isinstance(issued_at, bool) or issued_at < 0:
+    # bool is an int subclass, and True would otherwise pass as a timestamp. The
+    # upper bound is the JCS safe-integer limit used by every signed integer surface:
+    # a value outside it has no portable canonical form to sign.
+    if (
+        not isinstance(issued_at, int)
+        or isinstance(issued_at, bool)
+        or issued_at < 0
+        or issued_at > JCS_SAFE_INTEGER
+    ):
         raise ProvenanceError(
-            "issued_at must be a non-negative integer Unix timestamp. A record with no "
-            "issue time cannot be aged, so a consumer has no way to reject a stale one."
+            "issued_at must be a non-negative integer Unix timestamp within the JCS "
+            "safe-integer range. A record with no usable issue time cannot be aged, so "
+            "a consumer has no way to reject a stale one."
         )
 
 
@@ -235,7 +244,10 @@ def build_record(
             "a record needs artifact identity, endpoint identity, or both. One with "
             "neither identifies nothing."
         )
-    stamped_at = int(issued_at if issued_at is not None else time.time())
+    # Only the internally generated default needs conversion from time.time().
+    # Explicit caller values must reach _check_structure unchanged; coercing them
+    # first would turn booleans, floats and numeric strings into valid-looking ints.
+    stamped_at = int(time.time()) if issued_at is None else issued_at
     _check_structure(
         kind=kind,
         artifact=artifact,
