@@ -16,7 +16,11 @@ def _after(
     observed_at: int = 150,
 ) -> dict:
     return {
-        "observation": observation or {"commit": "abc123", "reachable": True},
+        "observation": (
+            observation
+            if observation is not None
+            else {"commit": "abc123", "reachable": True}
+        ),
         "observer": observer,
         "observed_at": observed_at,
     }
@@ -145,7 +149,7 @@ def test_predicate_must_return_three_state_value() -> None:
 
 @pytest.mark.parametrize(
     "trusted",
-    ["observer-1", b"observer-1", {"observer-1": True}, {"", "observer-1"}],
+    [None, "observer-1", b"observer-1", {"observer-1": True}, {"", "observer-1"}],
 )
 def test_trusted_observers_must_be_an_actual_identity_collection(trusted) -> None:
     after = _after()
