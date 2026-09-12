@@ -20,8 +20,12 @@ import re
 import time
 from typing import Any
 
+
 import rfc8785
 
+from pydantic import ValidationError
+
+from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.sign import (
     JCS_SAFE_INTEGER,
     RevocationStore,
@@ -191,18 +195,46 @@ def _check_structure(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
             )
-    if attestation is not None and not isinstance(attestation, dict):
-        raise ProvenanceError(
-            f"attestation must be an object or null, got {type(attestation).__name__}. "
-            "spec/server-provenance-v1.md: the evidence in the shape TRACE v0.2 section 3.1 "
-            "runtime uses, or null."
-        )
-    if kind == "tee-attested" and not attestation:
-        raise ProvenanceError(
-            "kind='tee-attested' without attestation evidence is the claim without the "
-            "thing that backs it"
-        )
-    if kind != "tee-attested" and attestation:
+        # §3: attestation must be present and runtime-shaped iff kind == "tee-attested",
+    # else null. Checking this by truthiness alone isn't enough: falsy-but-not-null
+    # values ({}, [], "", 0) would pass as "null", and any truthy value ("hello",
+    # ["x"]) would pass as "attestation" regardless of shape. Checked by identity
+    # and shape below instead.
+    #
+    # No separate isinstance(dict) guard here: RuntimeInfo.model_validate already
+    # rejects non-objects for tee-attested, and the elif below rejects any non-None
+    # value for every other kind. A standalone guard would just duplicate that, or
+    # misfire with the wrong error message ahead of the kind check.
+    if kind == "tee-attested":
+        if attestation is None:
+            raise ProvenanceError(
+                "kind='tee-attested' without attestation evidence is the claim without the "
+                "thing that backs it"
+            )
+        # Same model TRACE v0.2 §3.1 `runtime` uses -- one shape, one place it's
+        # checked. Rejects wrong types, missing fields, unknown platform, bad
+        # measurement digest, and unexpected extra members.
+        try:
+            validated = RuntimeInfo.model_validate(attestation)
+        except ValidationError as exc:
+            raise ProvenanceError(
+                "attestation does not match the shape TRACE v0.2 §3.1 `runtime` uses: "
+                f"{exc}"
+            ) from exc
+        # Shape-valid isn't the same as a hardware root. "software-only" is a
+        # legitimate RuntimeInfo value elsewhere (an honestly non-attested Trust
+        # Record), but §1 defines tee-attested as attestation "from inside a TEE",
+        # and docs/platforms/index.md documents software-only as no hardware
+        # assurance at all -- so here it's still the claim without the backing,
+        # just shape-valid instead of null or malformed.
+        if validated.platform == "software-only":
+            raise ProvenanceError(
+                "kind='tee-attested' attestation names platform='software-only', which "
+                "TRACE v0.2 §3.1 and docs/platforms/index.md document as carrying no "
+                "hardware assurance -- the claim without the thing that backs it, in "
+                "shape-valid clothing"
+            )
+    elif attestation is not None:
         raise ProvenanceError(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
