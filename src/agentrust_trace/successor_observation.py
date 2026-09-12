@@ -71,6 +71,17 @@ def evaluate_successor_observation(
     expected = _digest(expected_successor_digest, "expected_successor_digest")
     if not isinstance(independence_required, bool):
         raise SuccessorObservationError("independence_required must be boolean")
+    if (
+        isinstance(trusted_observers, (str, bytes, bytearray, dict))
+        or not all(isinstance(item, str) and item for item in trusted_observers)
+    ):
+        raise SuccessorObservationError(
+            "trusted_observers must be a collection of non-empty observer identity strings"
+        )
+    if executor_id is not None and (not isinstance(executor_id, str) or not executor_id):
+        raise SuccessorObservationError("executor_id must be a non-empty string or None")
+    if not callable(predicate):
+        raise SuccessorObservationError("predicate must be callable")
     for field, value in (("now", now), ("max_age_seconds", max_age_seconds)):
         if (
             not isinstance(value, int)
