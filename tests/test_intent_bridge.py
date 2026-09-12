@@ -301,3 +301,57 @@ def test_verifier_time_override_must_be_a_non_negative_integer(bad_now: object) 
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
             transcript=transcript, now=bad_now,  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize(
+    ("executed", "transcribed"),
+    [
+        ({"approved": 1}, {"approved": True}),
+        ({"approved": True}, {"approved": 1}),
+        ({"approved": 0}, {"approved": False}),
+        ({"approved": False}, {"approved": 0}),
+    ],
+)
+def test_transcript_call_is_compared_over_canonical_bytes_not_python_equality(
+    executed: dict, transcribed: dict
+) -> None:
+    """#317: `True == 1` in Python, so `!=` accepted a JSON-distinct transcript call."""
+    call = {"name": "send_invoice", "arguments": executed}
+    bridge, key, declaration, intent, args, tool_call, _ = _fixture(tool_call=call)
+    substituted = {"name": "send_invoice", "arguments": transcribed}
+    assert substituted == tool_call, "the substitution must be Python-equal to be a regression"
+    assert digest_jcs(substituted) != digest_jcs(tool_call)
+    with pytest.raises(AuthorizationMismatch, match="transcript.before.tool_call"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript={"before": {"tool_call": substituted}, "after": {"status": "accepted"}},
+            now=150,
+        )
+
+
+def test_transcript_call_identical_to_the_execution_still_verifies() -> None:
+    """The control for the case above: canonical-byte equality still accepts a match."""
+    call = {"name": "send_invoice", "arguments": {"approved": 1}}
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture(tool_call=call)
+    result = verify_bridge(
+        bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+        pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+        transcript=transcript, now=150,
+    )
+    assert result["authorization_id"] == "auth-7"
+
+
+@pytest.mark.parametrize("bad", [None, "send_invoice", ["send_invoice"], 7])
+def test_transcript_call_that_is_not_an_object_stays_an_authorization_mismatch(
+    bad: object,
+) -> None:
+    """Comparing digests must not turn a malformed transcript into a different class."""
+    bridge, key, declaration, intent, args, tool_call, _ = _fixture()
+    with pytest.raises(AuthorizationMismatch, match="transcript.before.tool_call"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript={"before": {"tool_call": bad}, "after": {"status": "accepted"}},
+            now=150,
+        )

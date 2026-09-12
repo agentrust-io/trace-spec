@@ -214,9 +214,10 @@ def verify_bridge(
         if not compare_digest(expected, actual):
             raise AuthorizationMismatch(f"PIC {name} does not match the signed authorization")
 
+    tool_call_digest = digest_jcs(tool_call)
     digest_pairs = (
         ("declaration_digest", digest_jcs(declaration)),
-        ("tool_call_digest", digest_jcs(tool_call)),
+        ("tool_call_digest", tool_call_digest),
     )
     for name, actual in digest_pairs:
         expected = _digest(authorization[name], f"authorization.{name}")
@@ -229,7 +230,20 @@ def verify_bridge(
         if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
             raise AuthorizationMismatch("a full before/after transcript is required")
         before = transcript.get("before")
-        if not isinstance(before, dict) or before.get("tool_call") != tool_call:
+        if not isinstance(before, dict) or not isinstance(before.get("tool_call"), dict):
+            raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
+        # Host-language equality is not this bridge's identity relation. Python holds
+        # True == 1 and False == 0, nested objects included, so comparing the two call
+        # objects with != accepts a transcript whose call has different JCS bytes from
+        # the one the authorization digested (#317). Every other comparison in this
+        # function is over canonical bytes; so is this one.
+        try:
+            before_digest = digest_jcs(before["tool_call"])
+        except IntentBridgeError:
+            raise AuthorizationMismatch(
+                "transcript.before.tool_call does not match execution"
+            ) from None
+        if not compare_digest(before_digest, tool_call_digest):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
         if not isinstance(transcript.get("after"), dict):
             raise AuthorizationMismatch("transcript.after must contain the execution result")
