@@ -189,6 +189,19 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
             "An unknown version is rejected rather than parsed best-effort."
         )
 
+    # Section 2 marks both of these required. The comparisons further down establish
+    # agreement, not presence, so without this two absences read as a match (#326).
+    # A malformed assertion is the caller's own input: it is ContentMarkingError rather
+    # than RecordMismatch, which would accuse the server at the URL of serving the wrong
+    # record.
+    for field in ("subject", "eat_profile"):
+        if field not in data:
+            raise ContentMarkingError(
+                f"assertion data has no {field}, which section 2 marks required. The "
+                "binding check compares it against the fetched record, and a comparison "
+                "establishes agreement rather than presence."
+            )
+
     ref = data.get("record")
     if not isinstance(ref, dict):
         raise ContentMarkingError("assertion carries no record reference")
@@ -231,6 +244,13 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
             f"{type(record).__name__}. It matched the declared hash, so this is what the "
             "record actually is at that URL, not a mismatch to report as RecordMismatch."
         )
+    for field in ("subject", "eat_profile"):
+        if field not in record:
+            raise RecordMismatch(
+                f"the record at {url} has no {field}, which section 2 marks required, so "
+                "the assertion has nothing to be bound to. It matched the declared hash, "
+                "so this is what that URL is serving."
+            )
     if record.get("subject") != data.get("subject"):
         raise RecordMismatch(
             f"assertion names subject {data.get('subject')!r} and the record says "
