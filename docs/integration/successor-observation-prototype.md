@@ -8,7 +8,7 @@ The current bridge requires `transcript.after` to be an object but does not bind
 identity or define what a verifier may conclude from it. Issue #338 proposes separating
 two questions:
 
-1. **Integrity:** is this the exact successor observation that the profile bound?
+1. **Integrity:** is this the exact successor envelope (observation, observer, and time) that the profile bound?
 2. **Sufficiency:** is that observation trusted, fresh, independent when required, and
    decisive under the transition predicate?
 
@@ -16,7 +16,7 @@ This prototype exists to make those conclusion rules executable before choosing 
 
 ## Prototype boundary
 
-`evaluate_successor_observation()` receives an `expected_observation_digest` from its
+`evaluate_successor_observation()` receives an `expected_successor_digest` from its
 caller. That parameter deliberately stands in for the future binding mechanism. The
 prototype does not decide whether the digest belongs in the signed authorization,
 `transcript.after`, or a detached successor-observation artifact.
@@ -33,7 +33,7 @@ The successor envelope is deliberately small:
 
 The verifier separately supplies:
 
-- the expected RFC 8785 / SHA-256 observation digest;
+- the expected RFC 8785 / SHA-256 digest of the complete successor envelope;
 - its trusted observer set;
 - the executor identity, if known;
 - whether observer independence is required;
@@ -50,7 +50,7 @@ The evaluator returns exactly one of:
 
 Malformed artifacts and binding failures are errors rather than a fourth evidence result.
 
-The important rule is that a successful digest check is necessary for integrity but is
+The important rule is that a successful digest check binds observation content, observer identity, and observation time and is necessary for integrity but is
 never sufficient for `established`.
 
 ## Counterexample from #332
