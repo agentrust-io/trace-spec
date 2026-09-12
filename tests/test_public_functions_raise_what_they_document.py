@@ -74,6 +74,13 @@ CALLS: dict[str, Callable[[Any], Any]] = {
         lambda v: content_marking.verify_assertion(v, _RECORD_BYTES),
     "intent_bridge.digest_jcs": intent_bridge.digest_jcs,
     "intent_bridge.sign_bridge": lambda v: intent_bridge.sign_bridge(v, _KEY),
+    # #320: every argument is keyword-only, which is why this was listed as
+    # unsweepable and why a coercion in front of the validator went unnoticed.
+    # Only issued_at varies; the rest are valid so a refusal can only come from it.
+    "provenance.build_record": lambda v: provenance.build_record(
+        kind="publisher-asserted", publisher="did:web:example.com", tools=[],
+        artifact={"package": "x", "digest": "sha256:" + "a" * 64}, issued_at=v,
+    ),
     "provenance.check_tool_catalog": lambda v: provenance.check_tool_catalog(v, []),
     "provenance.sign_record": lambda v: provenance.sign_record(v, _KEY),
     "provenance.tool_catalog_hash": provenance.tool_catalog_hash,
@@ -98,7 +105,6 @@ CALLS: dict[str, Callable[[Any], Any]] = {
 #: somebody remembered.
 NO_ARGUMENT_TO_SWEEP = {
     "sign.generate_key", "sign.load_signing_key",
-    "provenance.build_record",
     "intent_bridge.verify_bridge",  # every argument is keyword-only and required
 }
 
@@ -172,6 +178,7 @@ REACHES: dict[str, tuple[Any, str]] = {
     "content_marking.verify_assertion": (None, "ContentMarkingError"),
     "intent_bridge.digest_jcs": ("a-string", "IntentBridgeError"),
     "intent_bridge.sign_bridge": ({"k": float("nan")}, "IntentBridgeError"),
+    "provenance.build_record": (True, "ProvenanceError"),
     "provenance.check_tool_catalog": (None, "ProvenanceError"),
     "provenance.sign_record": (None, "ProvenanceError"),
     "provenance.tool_catalog_hash": (None, "ProvenanceError"),

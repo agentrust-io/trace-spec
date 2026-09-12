@@ -763,3 +763,46 @@ def test_the_record_type_is_checked_before_the_record_is_read() -> None:
     with pytest.raises(ProvenanceError) as excinfo:
         verify_record([], key_to_jwk(key))
     assert "unknown format" not in str(excinfo.value)
+
+
+# #320: `build_record` coerced an explicitly supplied `issued_at` with `int()` before
+# handing it to `_check_structure`, so the guard there never saw what the caller passed.
+# Its own comment says what it is for: "bool is an int subclass, and True would otherwise
+# pass as a timestamp". The order defeated it.
+@pytest.mark.parametrize(
+    ("supplied", "was_coerced_to"),
+    [
+        (True, 1),
+        (False, 0),
+        (1.9, 1),
+        ("123", 123),
+        (-0.5, 0),
+    ],
+)
+def test_an_explicitly_supplied_issued_at_is_validated_before_it_is_coerced(
+    supplied: object, was_coerced_to: int
+) -> None:
+    assert int(supplied) == was_coerced_to, "the coercion this pins must still be the one"
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+
+
+@pytest.mark.parametrize("supplied", [[1], "abc", b"7", {"t": 1}, float("nan")])
+def test_an_unconvertible_issued_at_raises_what_the_module_documents(
+    supplied: object,
+) -> None:
+    """`int()` raised `TypeError` or `ValueError` here, which no caller written against
+    this module's contract catches."""
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+
+
+def test_a_valid_issued_at_is_still_carried_through_unchanged() -> None:
+    assert _record(issued_at=1_754_000_000)["issued_at"] == 1_754_000_000
+
+
+def test_an_omitted_issued_at_is_still_stamped_with_the_current_time() -> None:
+    before = int(time.time())
+    stamped = _record()["issued_at"]
+    assert isinstance(stamped, int) and not isinstance(stamped, bool)
+    assert before <= stamped <= int(time.time())
