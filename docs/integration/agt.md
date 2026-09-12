@@ -19,7 +19,7 @@ A record under the superseded v0.1 EAT profile is not accepted by the current v0
 | UTF-8 chain-tip string | SHA-256 software commitment in `runtime.measurement` |
 | Deployment metadata | Model, classification, and build-provenance declarations |
 
-The adapter uses RFC 8785 for transcript canonicalization. It currently accepts a transparency string but does not submit to a registry, and populates an `affirming` appraisal without independently evaluating the session. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an appraisal or anchor for synthetic input.
+The adapter uses RFC 8785 for transcript canonicalization. It currently accepts a transparency string but does not submit to a registry. `appraisal.status` defaults to `none`, because the adapter does not evaluate the session and `appraisal.status` is the verifier's field (spec section 3.3.1); pass `appraisal_status` only when an appraisal actually happened. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an anchor for synthetic input.
 
 ## Assurance
 
