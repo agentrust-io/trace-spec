@@ -20,6 +20,9 @@ import re
 import time
 from typing import Any
 
+from pydantic import ValidationError
+
+from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.sign import (
     RevocationStore,
     _b64url_decode,
@@ -188,12 +191,61 @@ def _check_structure(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
             )
-    if kind == "tee-attested" and not attestation:
-        raise ProvenanceError(
-            "kind='tee-attested' without attestation evidence is the claim without the "
-            "thing that backs it"
-        )
-    if kind != "tee-attested" and attestation:
+    # §3: attestation is required, and shaped, exactly when kind == "tee-attested";
+    # `null` otherwise. This used to be two truthiness checks (`not attestation` /
+    # `attestation`), which is a check on whether the value is *empty*, not on
+    # whether it is the right *type* or *shape*. `{}`, `[]`, `""` and `0` are all
+    # falsy, so a non-TEE record carrying any of them as `attestation` sailed past
+    # "and attestation" as if it were the required `None`. And because Python
+    # truthiness treats every non-empty container and every non-empty string as
+    # truthy regardless of type, a `tee-attested` record with `attestation: "hello"`
+    # or `attestation: ["anything"]` sailed past "not attestation" the same way,
+    # with that arbitrary value then carried into the built record and accepted by
+    # `verify_record`'s copy of this same rule. Checked by identity and shape below
+    # instead, so a value has to actually be `None`, or actually be an object in the
+    # runtime-attestation shape, to pass.
+    if kind == "tee-attested":
+        if attestation is None:
+            raise ProvenanceError(
+                "kind='tee-attested' without attestation evidence is the claim without the "
+                "thing that backs it"
+            )
+        # `RuntimeInfo` is the same model TRACE v0.2 §3.1 `runtime` validates
+        # against, reused rather than re-specified here because the spec (§3, this
+        # module's own docstring above) says `attestation` is "the evidence, in the
+        # shape TRACE v0.2 §3.1 `runtime` uses" -- one shape, one place it is
+        # checked. It rejects non-objects (a string, a list, a bare number, a bool)
+        # the same way it rejects an object missing `platform` or `measurement`, an
+        # unknown `platform` value, a `measurement` that is not a `sha256:`/`sha384:`
+        # digest, or an unexpected extra member (`extra="forbid"`).
+        try:
+            validated = RuntimeInfo.model_validate(attestation)
+        except ValidationError as exc:
+            raise ProvenanceError(
+                "attestation does not match the shape TRACE v0.2 §3.1 `runtime` uses: "
+                f"{exc}"
+            ) from exc
+        # Shape validity is not the same claim as a hardware root. `RuntimeInfo`
+        # legitimately allows `platform: "software-only"` because a Trust Record's
+        # `runtime` block is sometimes honestly non-attested (dev mode, an
+        # imported log). `attestation` on a `tee-attested` provenance record has no
+        # such honest use: §1 defines this kind as "the server itself, from inside
+        # a TEE" whose "measurement ... roots outside the operator", and
+        # docs/platforms/index.md documents `software-only` as carrying "no
+        # hardware assurance". A `tee-attested` record naming that platform is
+        # schema-valid and still the exact claim-without-a-backing this function
+        # exists to catch, just spelled as a well-formed object instead of `null`
+        # or a wrong type. `models.RuntimeInfo._origin_cannot_claim_hardware`
+        # already treats `platform != "software-only"` as the test for "asserts a
+        # hardware root" for Trust Records; applied the same way here.
+        if validated.platform == "software-only":
+            raise ProvenanceError(
+                "kind='tee-attested' attestation names platform='software-only', which "
+                "TRACE v0.2 §3.1 and docs/platforms/index.md document as carrying no "
+                "hardware assurance -- the claim without the thing that backs it, in "
+                "shape-valid clothing"
+            )
+    elif attestation is not None:
         raise ProvenanceError(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
