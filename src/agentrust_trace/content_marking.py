@@ -116,6 +116,11 @@ def build_assertion(
     re-serialized dict is a hash of something nobody will ever fetch: key order,
     separators and escaping all change the bytes without changing the record, and
     the verifier hashes what the server sends.
+
+    Raises ``ContentMarkingError`` for a *url* that is empty, an *alg* that is not a
+    digest algorithm name, and an *anchor* that is not a non-empty string. A non-string
+    or empty anchor used to be dropped without a word, so the caller got an assertion
+    with no anchor and no error.
     """
     if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
         raise ContentMarkingError(
@@ -125,6 +130,17 @@ def build_assertion(
     if not url:
         raise ContentMarkingError("url is required: an assertion with no reference binds nothing")
     url = _record_url(url)
+    if not isinstance(alg, str):
+        raise ContentMarkingError(
+            f"alg must be a digest algorithm name, got {type(alg).__name__}; use sha256 or sha384"
+        )
+    if anchor is not None and (not isinstance(anchor, str) or not anchor):
+        # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
+        # caller who passed one got an assertion with no anchor and no error. Refuse it.
+        raise ContentMarkingError(
+            "anchor must be a non-empty registry entry URI string or None, got "
+            f"{anchor!r}"
+        )
 
     import json
 

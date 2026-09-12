@@ -12,6 +12,7 @@ import base64
 import time
 
 import pytest
+import rfc8785
 
 from agentrust_trace.provenance import (
     FORMAT,
@@ -23,7 +24,13 @@ from agentrust_trace.provenance import (
     tool_catalog_hash,
     verify_record,
 )
-from agentrust_trace.sign import _canonical_bytes, generate_key, jwk_thumbprint, key_to_jwk
+from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
+    _canonical_bytes,
+    generate_key,
+    jwk_thumbprint,
+    key_to_jwk,
+)
 
 DIGEST = "sha256:" + "a" * 64
 OTHER_DIGEST = "sha256:" + "b" * 64
@@ -795,6 +802,52 @@ def test_an_unconvertible_issued_at_raises_what_the_module_documents(
     this module's contract catches."""
     with pytest.raises(ProvenanceError, match="issued_at"):
         _record(issued_at=supplied)
+
+
+# The other half of #320, which #334 did not carry: the guard had no upper bound, so a
+# producer accepted a timestamp it could not sign. The value is a well-formed non-negative
+# integer, so none of the tests above reaches it; `int(2**60)` is `2**60`.
+@pytest.mark.parametrize(
+    ("supplied", "accepted"),
+    [
+        (JCS_SAFE_INTEGER - 1, True),
+        (JCS_SAFE_INTEGER, True),
+        (JCS_SAFE_INTEGER + 1, False),
+        (2**60, False),
+    ],
+    ids=["below", "at", "above", "far-above"],
+)
+def test_the_issued_at_bound_sits_where_the_canonicalizer_stops(
+    supplied: int, accepted: bool
+) -> None:
+    """The boundary is asserted against `rfc8785` rather than against a number written
+    twice: the guard and the canonicalizer have to agree about which integers exist, or
+    `build_record` emits records `sign_record` refuses."""
+    if accepted:
+        assert _record(issued_at=supplied)["issued_at"] == supplied
+        rfc8785.dumps({"issued_at": supplied})
+        return
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+    with pytest.raises(rfc8785.IntegerDomainError):
+        rfc8785.dumps({"issued_at": supplied})
+
+
+def test_an_out_of_range_issued_at_no_longer_leaves_the_verifier_as_rfc8785s_error() -> None:
+    """`_check_structure` is shared, so the bound reaches `verify_record` as well.
+
+    Under the default freshness policy such a record was already refused, as dated in the
+    future, so nothing that verified before is refused now. The case that changes is a
+    caller who widens `max_future_skew_seconds` past the gap: the structural check ran
+    with the value in hand, the canonicalizer met it first, and `rfc8785`'s
+    `IntegerDomainError` left a function documented to raise `ProvenanceError`.
+    """
+    key = generate_key()
+    record = _record()
+    record["issued_at"] = 2**60
+    signed = dict(record, signature="AA", cnf={"jwk": key_to_jwk(key)})
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        verify_record(signed, key_to_jwk(key), max_future_skew_seconds=10**19)
 
 
 def test_a_valid_issued_at_is_still_carried_through_unchanged() -> None:

@@ -181,6 +181,30 @@ def _trusted_bundle_key(
     return None
 
 
+def _sequence_of(value: Any, name: str, element: type) -> list[Any]:
+    """Materialise a caller-supplied iterable, refusing the shapes that iterate wrongly.
+
+    A ``str`` iterates as characters, so ``trusted_key_identifiers="sha256:..."`` used to
+    become a list of one-character identifiers that matched no statement, and the check
+    reported ``verified`` for a key it never looked up. A ``dict`` iterates as its keys,
+    so a single JWK passed where a list of them was meant became a list of field names.
+    Neither is an iterable of *element* and both are refused here, with the documented
+    error, rather than turned into a result.
+    """
+    if isinstance(value, (str, bytes, bytearray, dict)) or not hasattr(value, "__iter__"):
+        raise ValueError(
+            f"{name} must be an iterable of {element.__name__} values, got "
+            f"{type(value).__name__}"
+        )
+    items = list(value)
+    bad = [type(v).__name__ for v in items if not isinstance(v, element)]
+    if bad:
+        raise ValueError(
+            f"{name} must contain only {element.__name__} values, found {sorted(set(bad))}"
+        )
+    return items
+
+
 def check_bundle(
     bundle: dict[str, Any],
     *,
@@ -204,13 +228,17 @@ def check_bundle(
 
     Raises ``ValueError`` when a statement on the bundle's log names the trusted
     key. That is evidence failing rather than evidence absent, and it fails closed
-    like the ``revocation`` store does.
+    like the ``revocation`` store does. Also raises ``ValueError`` for the caller's
+    own arguments when they are not what they say: ``trusted_key_identifiers`` must
+    be an iterable of strings and ``trusted_bundle_keys`` an iterable of JWK
+    objects, and a bare string or a single object is refused rather than iterated
+    as characters or field names.
     """
     _check_seconds("now", now)
     _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
-    trusted_ids = list(trusted_key_identifiers)
-    trusted_bundle_keys = list(trusted_bundle_keys)
+    trusted_ids = _sequence_of(trusted_key_identifiers, "trusted_key_identifiers", str)
+    trusted_bundle_keys = _sequence_of(trusted_bundle_keys, "trusted_bundle_keys", dict)
 
     # 3a. Shape, against the packaged schema pair. The first error by path, so the
     # evidence points at one place rather than listing the file.

@@ -509,7 +509,11 @@ def verify_record(
         signed by a key not in ``trusted_bundle_keys``, signed with an algorithm
         this build cannot verify, dated in the future, or expired under either
         bound yields ``unverified_for_revocation`` with the cause named; it does
-        not raise, because inability to check is not evidence of a defect. A
+        not raise, because inability to check is not evidence of a defect. The
+        argument itself is held to its shape: ``trusted_bundle_keys`` must be an
+        iterable of JWK objects or ``None``, and a string, a single object or
+        another non-iterable raises ``ValueError`` rather than being read as no
+        keys. A
         statement on the bundle's log naming the trusted key raises ``ValueError``:
         no inclusion entry ID reaches this function, so 3.2.3's fallback applies
         and every record the key signed is rejected.
@@ -652,7 +656,7 @@ def verify_record(
         revocation_check = check_bundle(
             revocation_bundle,
             trusted_key_identifiers=_key_identifiers(trusted_jwk),
-            trusted_bundle_keys=trusted_bundle_keys or (),
+            trusted_bundle_keys=() if trusted_bundle_keys is None else trusted_bundle_keys,
             now=verification_time,
             max_bundle_age_seconds=max_bundle_age_seconds,
             max_future_skew_seconds=max_future_skew_seconds,
