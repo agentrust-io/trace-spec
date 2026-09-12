@@ -167,8 +167,11 @@ them, and neither is a floor that is met.
 elements Article 11(1) requires the technical documentation to contain at a minimum. It is
 not a classification annex, since high-risk classification runs through Article 6 with
 Annexes I and III, and neither Article 11 nor Annex IV imposes a verification obligation of
-the kind `provenance_depth_verified` records. Two adjacent provisions are sometimes read as
-supplying one, and neither does. Article 25(4), as amended by Regulation (EU) 2026/1744,
+the kind `provenance_depth_verified` records. Article 12 does not impose one either, since it
+requires that a high-risk system technically allow the automatic recording of events over its
+lifetime, which is a capability requirement about logging rather than a statement about
+provenance or build inputs. Two adjacent provisions are sometimes read as supplying one, and
+neither does. Article 25(4), as amended by Regulation (EU) 2026/1744,
 requires the provider of a high-risk AI system and a third party supplying an AI system, AI
 model, tools, services, components or processes used or integrated in it to specify by
 written agreement the information, capabilities, technical access and other assistance the
@@ -177,11 +180,17 @@ components other than general-purpose AI models publicly available under a free 
 open-source licence. Article 15(5) requires technical solutions addressing, where
 appropriate, data poisoning, model poisoning, adversarial examples, confidentiality attacks
 and model flaws, which is stated as an outcome rather than as a depth of supply-chain
-verification. Articles 11, 15 and 25 sit in Sections 2 and 3 of Chapter III, whose
+verification. Articles 11, 12, 15 and 25 sit in Sections 2 and 3 of Chapter III, whose
 application Regulation (EU) 2026/1744 moved to 2 December 2027 for systems high-risk under
 Article 6(2) and Annex III, and to 2 August 2028 for systems high-risk under Article 6(1)
-and Annex I, subject to the Article 111(2) grace period for units of a type and model
-already placed on the market.
+and Annex I. Article 111(2), as replaced by the same Regulation, applies the AI Act to
+operators of high-risk systems, other than the systems referred to in Article 111(1), that
+have been placed on the market or put into service before that date of application, only if,
+as from that date, those systems are subject to significant changes in their designs, and in
+any case requires providers and deployers of high-risk systems intended to be used by public
+authorities to take the necessary steps to comply by 2 August 2030. The reading that one unit
+lawfully placed on the market or put into service carries the other units of the same type
+and model is recital 39 of Regulation (EU) 2026/1744 rather than operative text.
 
 **Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify
 and document vulnerabilities and components, including by drawing up a software bill of
