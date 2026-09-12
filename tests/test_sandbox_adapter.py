@@ -244,9 +244,10 @@ def test_genuinely_verified_evidence_is_still_not_bound_to_the_signing_key() -> 
     asks of them -- still cannot get real Level 1 assurance out of this adapter, because
     nothing here binds that evidence to the specific key the record ends up signed
     with. ``nonce`` is carried through verbatim and is never checked against
-    ``cnf.jwk``, against the signing key passed to ``sign_record``, or against
-    anything else. Two records built from the identical (hypothetically genuine)
-    attestation but signed with unrelated, unrelated-to-the-hardware keys both verify
+    ``cnf.jwk`` or against the signing key passed to ``sign_record``. A verifier can
+    compare it against a value it chose, via ``verify_record(expected_nonce=...)``,
+    which establishes freshness rather than key binding. Two records built from the
+    identical (hypothetically genuine) attestation but signed with unrelated keys both verify
     successfully; nothing distinguishes "the verified key" from "any key the caller
     felt like using afterwards". Per docs/trust-levels.md, Level 1 requires
     "authenticated evidence binding the record-signing key to the expected
