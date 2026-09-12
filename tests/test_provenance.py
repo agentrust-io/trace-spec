@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import base64
 import time
+from typing import get_args
 
 import pytest
 
+from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.provenance import (
     FORMAT,
     ProvenanceError,
@@ -930,10 +932,20 @@ def test_tee_attested_rejects_software_only_as_the_named_platform() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "platform",
-    ["intel-tdx", "amd-sev-snp", "azure-cvm-sev-snp", "nvidia-h100", "tpm2"],
-)
+#: Every platform `RuntimeInfo` accepts other than `software-only`. Derived from
+#: the live model, the same way `tests/test_sandbox_adapter.py`'s
+#: `test_accepted_platforms_are_read_from_the_model` does, rather than
+#: hand-copied: a hand-copied list is exactly the class of drift this whole fix
+#: is about, and it had already happened once here (the first version of this
+#: test named five of the nine).
+_HARDWARE_PLATFORMS = sorted(
+    p
+    for p in get_args(RuntimeInfo.model_fields["platform"].annotation)
+    if p != "software-only"
+ )
+
+
+@pytest.mark.parametrize("platform", _HARDWARE_PLATFORMS)
 def test_tee_attested_accepts_every_hardware_platform(platform: str) -> None:
     """The software-only rejection must not overreach onto real hardware roots."""
     rec = _record(
@@ -941,6 +953,21 @@ def test_tee_attested_accepts_every_hardware_platform(platform: str) -> None:
         attestation={"platform": platform, "measurement": DIGEST},
     )
     assert rec["attestation"]["platform"] == platform
+
+
+def test_hardware_platform_list_is_actually_populated() -> None:
+    """Guard on the derivation itself.
+
+    `pytest.mark.parametrize` over an empty list silently collects zero test
+    cases and the run still shows green, which is exactly how the previous,
+    hand-copied five-of-nine list could have quietly become five-of-zero and
+    nobody would have noticed from the test count alone.
+    """
+    assert "software-only" not in _HARDWARE_PLATFORMS
+    all_platforms = get_args(RuntimeInfo.model_fields["platform"].annotation)
+    assert len(_HARDWARE_PLATFORMS) == len(all_platforms) - 1
+    for known in ("intel-tdx", "amd-sev-snp", "nvidia-h100", "tpm2"):
+        assert known in _HARDWARE_PLATFORMS
 
 
 def test_the_verifier_rejects_a_shape_valid_software_only_tee_attested_record() -> None:
