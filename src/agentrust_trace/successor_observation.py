@@ -48,7 +48,7 @@ def _not_established(reason: str) -> SuccessorOutcome:
 def evaluate_successor_observation(
     after: dict[str, Any] | None,
     *,
-    expected_observation_digest: str,
+    expected_successor_digest: str,
     trusted_observers: Collection[str],
     executor_id: str | None,
     independence_required: bool,
@@ -58,7 +58,7 @@ def evaluate_successor_observation(
 ) -> SuccessorOutcome:
     """Evaluate a successor observation without conflating binding with closure.
 
-    `expected_observation_digest` is supplied by the caller to represent whatever
+    `expected_successor_digest` is supplied by the caller to represent whatever
     binding mechanism the profile eventually chooses. This prototype deliberately
     does not decide whether that digest belongs in the signed authorization, the
     transcript, or a detached observation artifact.
@@ -68,7 +68,7 @@ def evaluate_successor_observation(
     contradicts it, and None when the observation itself does not decide it.
     """
 
-    expected = _digest(expected_observation_digest, "expected_observation_digest")
+    expected = _digest(expected_successor_digest, "expected_successor_digest")
     if not isinstance(independence_required, bool):
         raise SuccessorObservationError("independence_required must be boolean")
     for field, value in (("now", now), ("max_age_seconds", max_age_seconds)):
@@ -119,14 +119,14 @@ def evaluate_successor_observation(
         )
 
     try:
-        actual = digest_jcs(observation)
+        actual = digest_jcs(after)
     except IntentBridgeError as exc:
         raise SuccessorObservationError(
-            f"successor observation has no RFC 8785 canonical form: {exc}"
+            f"successor envelope has no RFC 8785 canonical form: {exc}"
         ) from exc
     if not compare_digest(expected, actual):
         raise SuccessorObservationError(
-            "successor observation does not match the expected digest binding"
+            "successor envelope does not match the expected digest binding"
         )
 
     if observer not in trusted_observers:
