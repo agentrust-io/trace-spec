@@ -806,3 +806,165 @@ def test_an_omitted_issued_at_is_still_stamped_with_the_current_time() -> None:
     stamped = _record()["issued_at"]
     assert isinstance(stamped, int) and not isinstance(stamped, bool)
     assert before <= stamped <= int(time.time())
+
+
+# --- attestation is checked by shape, not by truthiness ---------------------
+#
+# The old rules were `if kind == "tee-attested" and not attestation` and
+# `if kind != "tee-attested" and attestation`. Both are truthiness checks: they
+# ask whether the value is *empty*, not whether it is `None`, or an object of
+# the required shape. `{}`, `[]`, `""` and `0` are falsy but not `None`, and any
+# non-empty string, list, or dict is truthy regardless of its contents, so
+# neither rule actually enforced the contract the docstring and the spec
+# describe.
+
+
+@pytest.mark.parametrize("bogus_attestation", [{}, [], "", 0, False])
+def test_non_tee_record_rejects_any_non_null_attestation(bogus_attestation: object) -> None:
+    """Non-TEE `attestation` must be `null`, not merely falsy JSON.
+
+    Every value here is falsy and used to sail past `and attestation`, so a
+    `publisher-asserted` record carrying it built cleanly despite the spec's
+    `attestation | null otherwise` contract.
+    """
+    with pytest.raises(ProvenanceError, match="attestation evidence"):
+        _record(attestation=bogus_attestation)
+
+
+@pytest.mark.parametrize(
+    "bogus_attestation",
+    ["hello", ["anything"], {}, 1, True, {"platform": "intel-tdx"}],
+)
+def test_tee_attested_rejects_evidence_of_the_wrong_shape(bogus_attestation: object) -> None:
+    """`tee-attested` evidence must be a `runtime`-shaped object, not merely truthy.
+
+    Every value here is truthy and used to sail past `not attestation`: a bare
+    string, a list, an empty object, a number, a bool, and an object missing the
+    required `measurement`. None of them is evidence.
+    """
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(kind="tee-attested", attestation=bogus_attestation)
+
+
+def test_tee_attested_rejects_an_unknown_platform() -> None:
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "bogus-platform", "measurement": DIGEST},
+        )
+
+
+def test_tee_attested_rejects_a_malformed_measurement_digest() -> None:
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": "sha256:not-hex"},
+        )
+
+
+def test_tee_attested_accepts_a_well_formed_runtime_shaped_attestation() -> None:
+    """The positive case: a real attestation, in the shape §3.1 `runtime` uses."""
+    rec = _record(
+        kind="tee-attested",
+        attestation={"platform": "intel-tdx", "measurement": DIGEST},
+    )
+    assert rec["attestation"] == {"platform": "intel-tdx", "measurement": DIGEST}
+
+
+def test_tee_attested_accepts_the_optional_runtime_fields() -> None:
+    attestation = {
+        "platform": "amd-sev-snp",
+        "measurement": DIGEST,
+        "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/example",
+        "nonce": "abc123",
+        "firmware_version": "1.55",
+    }
+    rec = _record(kind="tee-attested", attestation=attestation)
+    assert rec["attestation"] == attestation
+
+
+@pytest.mark.parametrize("bogus_attestation", ["not-actually-attestation", {}, ["x"], 0, False])
+def test_the_verifier_rejects_a_hand_forged_tee_attested_record_with_bad_shape(
+    bogus_attestation: object,
+) -> None:
+    """The exact attack: a correctly-signed record carrying junk as `attestation`.
+
+    `build_record` refusing bad shapes is necessary but not sufficient, per #142:
+    a record does not have to come from `build_record`. This signs the forged JSON
+    directly, the way an attacker holding a publisher key would, and confirms
+    `verify_record`'s copy of the same structural rule (`_check_structure`) still
+    catches it.
+    """
+    key = generate_key()
+    signed = sign_record(
+        _forged(kind="tee-attested", attestation=bogus_attestation), key
+    )
+    with pytest.raises(ProvenanceError, match="attestation"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bogus_attestation", [{}, [], "", 0, False])
+def test_the_verifier_rejects_a_non_null_attestation_on_a_non_tee_record(
+    bogus_attestation: object,
+) -> None:
+    key = generate_key()
+    signed = sign_record(_forged(attestation=bogus_attestation), key)
+    with pytest.raises(ProvenanceError, match="attestation evidence"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_tee_attested_rejects_software_only_as_the_named_platform() -> None:
+    """Shape-valid is not the same claim as a hardware root.
+
+    `attestation.platform: "software-only"` passes `RuntimeInfo`'s own validation
+    -- it is a legitimate value there, for an honestly non-attested Trust Record --
+    but `docs/platforms/index.md` documents it as carrying no hardware assurance,
+    and §1 defines `tee-attested` as "the server itself, from inside a TEE". A
+    `tee-attested` record naming `software-only` is the claim without the backing,
+    just spelled as a well-formed object instead of `null` or a bad type.
+    """
+    with pytest.raises(ProvenanceError, match="software-only"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "software-only", "measurement": DIGEST},
+        )
+
+
+@pytest.mark.parametrize(
+    "platform",
+    ["intel-tdx", "amd-sev-snp", "azure-cvm-sev-snp", "nvidia-h100", "tpm2"],
+)
+def test_tee_attested_accepts_every_hardware_platform(platform: str) -> None:
+    """The software-only rejection must not overreach onto real hardware roots."""
+    rec = _record(
+        kind="tee-attested",
+        attestation={"platform": platform, "measurement": DIGEST},
+    )
+    assert rec["attestation"]["platform"] == platform
+
+
+def test_the_verifier_rejects_a_shape_valid_software_only_tee_attested_record() -> None:
+    """The forged-record mirror: `RuntimeInfo`-valid but not a hardware claim."""
+    key = generate_key()
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "software-only", "measurement": DIGEST},
+        ),
+        key,
+    )
+    with pytest.raises(ProvenanceError, match="software-only"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_the_verifier_accepts_a_well_formed_tee_attested_record() -> None:
+    """The positive case must still verify end to end after the tightened check."""
+    key = generate_key()
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": DIGEST},
+        ),
+        key,
+    )
+    verify_record(signed, key_to_jwk(key))
