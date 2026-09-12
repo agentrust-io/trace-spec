@@ -235,7 +235,12 @@ def build_record(
             "a record needs artifact identity, endpoint identity, or both. One with "
             "neither identifies nothing."
         )
-    stamped_at = int(issued_at if issued_at is not None else time.time())
+    # An explicitly supplied value reaches _check_structure untouched: coercing first
+    # defeats the guard there, whose whole subject is what the caller actually passed
+    # (#320). int() on a bool, a float, or a numeric string yields something the
+    # isinstance test then accepts, and int() on anything else raises a class this
+    # module does not document.
+    stamped_at = issued_at if issued_at is not None else int(time.time())
     _check_structure(
         kind=kind,
         artifact=artifact,
