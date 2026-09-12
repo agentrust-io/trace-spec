@@ -99,7 +99,15 @@ trace-verify \
   --batch-id 2026-06-12-001
 ```
 
-Exit code 0 means the record is proven included in that batch. Exit code 1 means it is not, and there is no partial result between the two.
+Exit code 0 means the record is proven included in that batch **and** its producer's signature verified. Exit code 1 means one of those failed, and there is no partial result between the two.
+
+You do not need a clone of the registry for this. Swap `--entry` for `--entry-url` and both the entry and the producer key that signed the record are fetched over https, from an allowlisted host only:
+
+```bash
+trace-verify   --claim your-record.json   --proof your-record.proof.json   --entry-url https://raw.githubusercontent.com/agentrust-io/trace-registry/main/registry/2026/06/12.ndjson
+```
+
+Needs `trace-verify` 0.4.1 or later. The command reports which producer key it used and where it came from, because a key fetched from a host is a different trust statement from one you already held.
 
 The verifier is standard library only and small enough to read in one sitting. Read it, or reimplement it from [Anchor Format v1 §5.1](../../spec/registry-anchor-v1.md), which is written so you can. Verifying with a tool the registry operator wrote is better than nothing, and weaker than verifying with one you wrote.
 
@@ -115,7 +123,15 @@ Keep the signed object unchanged with its proof and registry entry. Adding `tran
 
 Inclusion verifies the exact signed object against the supplied batch root. Authenticity and timing depend on the separately trusted registry entry or checkpoint.
 
-It does not validate the signature or establish that the record's contents are true. Signature verification against a trusted producer key is a separate step (spec §3.3). Inclusion alone does not establish complete logging, a trustworthy timestamp, or an append-only history.
+Signature verification is a separate question from inclusion, and `trace-verify` answers both: it verifies the producer's Ed25519 signature against the registered key unless you pass `--no-verify-signature`, which warns loudly, because inclusion alone does not prove the named producer signed anything. Exit code 0 means both passed.
+
+Neither says the record's contents are true. Inclusion alone does not establish complete logging, a trustworthy timestamp, or an append-only history either. For the last of those, ask the registry's own history the question directly:
+
+```bash
+trace-verify chain registry/2026/09/01.ndjson
+```
+
+That checks the checkpoint chain is internally consistent and that it still matches the entries stored under it. The second half is what catches an entry edited after it was anchored.
 
 ---
 
