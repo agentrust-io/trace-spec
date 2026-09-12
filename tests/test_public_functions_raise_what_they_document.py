@@ -53,7 +53,7 @@ import pytest
 
 import agentrust_trace as at
 from agentrust_trace import (content_marking, generate_key, intent_bridge, key_to_jwk,
-                             provenance, revocation, sign, validate)
+                             provenance, revocation, sign, successor_observation, validate)
 
 #: Values a caller can supply where an object, a string, a key or bytes is expected.
 #: The last five are the ones that separate a strict canonicalizer from a permissive
@@ -72,6 +72,7 @@ DOCUMENTED: dict[str, tuple[str, ...]] = {
     "provenance": ("ProvenanceError", "ToolCatalogMismatch"),
     "revocation": ("ValueError", "UnanchorableValue"),
     "sign": ("ValueError", "UnanchorableValue", "InvalidSignature"),
+    "successor_observation": ("SuccessorObservationError",),
     "validate": ("ValueError", "ValidationError"),
     "models": ("ValidationError",),
     "adapters": ("ValueError", "ValidationError"),
@@ -109,6 +110,18 @@ CALLS: dict[str, Callable[[Any], Any]] = {
     "provenance.sign_record": lambda v: provenance.sign_record(v, _KEY),
     "provenance.tool_catalog_hash": provenance.tool_catalog_hash,
     "provenance.verify_record": lambda v: provenance.verify_record(v, _JWK),
+    "successor_observation.evaluate_successor_observation": lambda v: (
+        successor_observation.evaluate_successor_observation(
+            v,
+            expected_successor_digest="sha256:" + "0" * 64,
+            trusted_observers={"observer-1"},
+            executor_id="executor-1",
+            independence_required=True,
+            now=160,
+            max_age_seconds=30,
+            predicate=lambda obs: obs.get("reachable") is True,
+        )
+    ),
     "revocation.bundle_digest": revocation.bundle_digest,
     "revocation.check_bundle": lambda v: revocation.check_bundle(
         v, trusted_key_identifiers=[], trusted_bundle_keys=[_JWK], now=1785000000,
@@ -151,6 +164,12 @@ _BRIDGE_AUTH = {
 }
 _BRIDGE = intent_bridge.sign_bridge(_BRIDGE_AUTH, _KEY)
 _TRANSCRIPT = {"before": {"tool_call": dict(_TOOL_CALL)}, "after": {"status": "accepted"}}
+_SUCCESSOR_AFTER = {
+    "observation": {"commit": "abc123", "reachable": True},
+    "observer": "observer-1",
+    "observed_at": 150,
+}
+_SUCCESSOR_DIGEST = intent_bridge.digest_jcs(_SUCCESSOR_AFTER)
 _TOOLS = [{"name": "search", "description": "search", "input_schema": {"type": "object"}}]
 _ARTIFACT = {"package": "pkg:npm/%40acme/mcp-search@2.1.0", "digest": "sha256:" + "0" * 64}
 _PROVENANCE = provenance.build_record(
@@ -188,6 +207,20 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
                      "tool_call": _TOOL_CALL, "transcript": _TRANSCRIPT, "now": 150},
         ("bridge", "trusted_authorizer_jwk", "declaration", "pic_intent_digest",
          "pic_args_digest", "tool_call", "transcript", "now"),
+    ),
+    "successor_observation.evaluate_successor_observation": (
+        lambda: {
+            "after": _SUCCESSOR_AFTER,
+            "expected_successor_digest": _SUCCESSOR_DIGEST,
+            "trusted_observers": {"observer-1"},
+            "executor_id": "executor-1",
+            "independence_required": True,
+            "now": 160,
+            "max_age_seconds": 30,
+            "predicate": lambda obs: obs.get("reachable") is True,
+        },
+        ("expected_successor_digest", "trusted_observers", "executor_id",
+         "independence_required", "now", "max_age_seconds", "predicate"),
     ),
     "provenance.build_record": (
         lambda: {"kind": "publisher-asserted", "publisher": "did:web:acme.example",
@@ -286,6 +319,7 @@ def test_every_public_function_is_either_swept_or_declared_unsweepable() -> None
 def _module_of(name: str) -> Any:
     return {"content_marking": content_marking, "intent_bridge": intent_bridge,
             "provenance": provenance, "revocation": revocation, "sign": sign,
+            "successor_observation": successor_observation,
             "validate": validate}[name.split(".")[0]]
 
 
@@ -359,6 +393,8 @@ KEYWORD_REACHES: dict[str, tuple[str, Any, str]] = {
     "content_marking.verify_assertion": ("record_bytes", None, "ContentMarkingError"),
     "intent_bridge.sign_bridge": ("key", None, "IntentBridgeError"),
     "intent_bridge.verify_bridge": ("now", "a-string", "IntentBridgeError"),
+    "successor_observation.evaluate_successor_observation":
+        ("expected_successor_digest", None, "SuccessorObservationError"),
     "provenance.build_record": ("publisher", 123, "ProvenanceError"),
     "provenance.check_tool_catalog": ("tools", None, "ProvenanceError"),
     "provenance.sign_record": ("key", None, "ProvenanceError"),
@@ -567,6 +603,8 @@ REACHES: dict[str, tuple[Any, str]] = {
     "provenance.sign_record": (None, "ProvenanceError"),
     "provenance.tool_catalog_hash": (None, "ProvenanceError"),
     "provenance.verify_record": (None, "ProvenanceError"),
+    "successor_observation.evaluate_successor_observation":
+        ("a-string", "SuccessorObservationError"),
     "revocation.bundle_digest": (None, "ValueError"),
     "sign.anchor_bytes": (b"bytes", "UnanchorableValue"),
     "sign.jwk_thumbprint": (None, "ValueError"),
