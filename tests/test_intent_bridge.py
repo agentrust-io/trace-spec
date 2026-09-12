@@ -355,3 +355,19 @@ def test_transcript_call_that_is_not_an_object_stays_an_authorization_mismatch(
             transcript={"before": {"tool_call": bad}, "after": {"status": "accepted"}},
             now=150,
         )
+
+@pytest.mark.parametrize("bad", [{"approved": 2**60}, {"approved": float("nan")}])
+def test_uncanonicalizable_transcript_call_is_intentbridgeerror_not_mismatch(
+    bad: dict,
+) -> None:
+    """An unrepresentable transcript call cannot be evaluated; it is not a mismatch."""
+    bridge, key, declaration, intent, args, tool_call, _ = _fixture()
+    transcript_call = {"name": "send_invoice", "arguments": bad}
+    with pytest.raises(IntentBridgeError, match="transcript.before.tool_call") as excinfo:
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript={"before": {"tool_call": transcript_call}, "after": {"status": "accepted"}},
+            now=150,
+        )
+    assert not isinstance(excinfo.value, AuthorizationMismatch)

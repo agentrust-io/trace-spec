@@ -240,20 +240,17 @@ def verify_bridge(
         if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
             raise AuthorizationMismatch("a full before/after transcript is required")
         before = transcript.get("before")
-        if not isinstance(before, dict) or not isinstance(before.get("tool_call"), dict):
+        before_call = before.get("tool_call") if isinstance(before, dict) else None
+        if not isinstance(before_call, dict):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
         # Host-language equality is not this bridge's identity relation. Python holds
-        # True == 1 and False == 0, nested objects included, so comparing the two call
-        # objects with != accepts a transcript whose call has different JCS bytes from
-        # the one the authorization digested (#317). Every other comparison in this
-        # function is over canonical bytes; so is this one.
-        try:
-            before_digest = digest_jcs(before["tool_call"])
-        except IntentBridgeError:
-            raise AuthorizationMismatch(
-                "transcript.before.tool_call does not match execution"
-            ) from None
-        if not compare_digest(before_digest, tool_call_digest):
+        # True == 1 and False == 0, nested objects included, so compare the exact RFC
+        # 8785 bytes instead. If either object has no canonical form, _jcs raises
+        # IntentBridgeError: that input cannot be evaluated, which is not a mismatch.
+        if not compare_digest(
+            _jcs(before_call, "transcript.before.tool_call"),
+            _jcs(tool_call, "tool_call"),
+        ):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
         if not isinstance(transcript.get("after"), dict):
             raise AuthorizationMismatch("transcript.after must contain the execution result")
