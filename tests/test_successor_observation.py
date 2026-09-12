@@ -34,10 +34,10 @@ def _evaluate(
     predicate=lambda obs: obs.get("reachable") is True,
 ):
     if expected is None:
-        expected = digest_jcs(after["observation"]) if after is not None else "sha256:" + "0" * 64
+        expected = digest_jcs(after) if after is not None else "sha256:" + "0" * 64
     return evaluate_successor_observation(
         after,
-        expected_observation_digest=expected,
+        expected_successor_digest=expected,
         trusted_observers=trusted or {"observer-1"},
         executor_id=executor_id,
         independence_required=independence_required,
@@ -66,10 +66,26 @@ def test_missing_successor_is_not_established() -> None:
 
 def test_substituted_successor_fails_the_binding() -> None:
     original = _after()
-    expected = digest_jcs(original["observation"])
+    expected = digest_jcs(original)
     substituted = _after({"commit": "def456", "reachable": True})
     with pytest.raises(SuccessorObservationError, match="expected digest binding"):
         _evaluate(substituted, expected=expected)
+
+
+def test_observer_metadata_is_inside_the_binding() -> None:
+    original = _after(observer="observer-1")
+    expected = digest_jcs(original)
+    relabelled = _after(observer="trusted-observer")
+    with pytest.raises(SuccessorObservationError, match="expected digest binding"):
+        _evaluate(relabelled, expected=expected, trusted={"trusted-observer"})
+
+
+def test_observation_time_is_inside_the_binding() -> None:
+    original = _after(observed_at=150)
+    expected = digest_jcs(original)
+    retimed = _after(observed_at=159)
+    with pytest.raises(SuccessorObservationError, match="expected digest binding"):
+        _evaluate(retimed, expected=expected)
 
 
 @pytest.mark.parametrize(
