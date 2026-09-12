@@ -23,6 +23,7 @@ from typing import Any
 import rfc8785
 
 from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
     RevocationStore,
     _b64url_decode,
     _canonical_bytes,
@@ -206,11 +207,21 @@ def _check_structure(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
         )
-    # bool is an int subclass, and True would otherwise pass as a timestamp.
-    if not isinstance(issued_at, int) or isinstance(issued_at, bool) or issued_at < 0:
+    # bool is an int subclass, and True would otherwise pass as a timestamp. The upper
+    # bound is the same JCS safe-integer limit #219 applies to every other signed integer
+    # in this package: above it there is no portable canonical form, so the producer would
+    # accept a timestamp it cannot sign and the caller would meet `rfc8785`'s
+    # `IntegerDomainError` instead of the class this module documents.
+    if (
+        not isinstance(issued_at, int)
+        or isinstance(issued_at, bool)
+        or issued_at < 0
+        or issued_at > JCS_SAFE_INTEGER
+    ):
         raise ProvenanceError(
-            "issued_at must be a non-negative integer Unix timestamp. A record with no "
-            "issue time cannot be aged, so a consumer has no way to reject a stale one."
+            "issued_at must be a non-negative integer Unix timestamp within the JCS "
+            "safe-integer range. A record with no usable issue time cannot be aged, so "
+            "a consumer has no way to reject a stale one."
         )
 
 

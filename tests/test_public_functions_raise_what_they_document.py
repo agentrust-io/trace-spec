@@ -95,6 +95,12 @@ CALLS: dict[str, Callable[[Any], Any]] = {
     # #320: every argument is keyword-only, which is why this was listed as
     # unsweepable and why a coercion in front of the validator went unnoticed.
     # Only issued_at varies; the rest are valid so a refusal can only come from it.
+    #
+    # `KEYWORD_CALLS` below also sweeps this function, and over every parameter rather
+    # than this one. The overlap is deliberate and is left for the maintainer to
+    # collapse or keep: this entry arrived with #334 and deleting a test that landed
+    # hours ago, inside a pull request about something else, is not this branch's call.
+    # Keeping both costs one duplicated `issued_at` sweep and no coverage.
     "provenance.build_record": lambda v: provenance.build_record(
         kind="publisher-asserted", publisher="did:web:example.com", tools=[],
         artifact={"package": "x", "digest": "sha256:" + "a" * 64}, issued_at=v,
@@ -232,9 +238,14 @@ UNSWEPT_PARAMETERS: dict[str, str] = {}
 
 #: (function, parameter) pairs whose leaks are known, filed, and owned by someone
 #: else's fix. Strict: the day the fix lands, the entry has to go, or this fails.
-LEAKS_FILED: dict[tuple[str, str], str] = {
-    ("provenance.build_record", "issued_at"): "#320",
-}
+#: It held `("provenance.build_record", "issued_at"): "#320"` until 2026-09-12, and the
+#: marker did its job twice. #334 landed the reordering half and the leak case went
+#: `XPASS(strict)` on the rebase, which is what took the entry off the exception class.
+#: The producer-and-verifier case did not flip, because the other half of #320 is the
+#: safe-integer bound and #334 did not carry it; the one value that case still reported
+#: was `10000000000000000000`. That bound is now in `_check_structure`, so both cases
+#: pass and nothing is filed.
+LEAKS_FILED: dict[tuple[str, str], str] = {}
 
 
 def _public_functions() -> dict[str, Any]:
