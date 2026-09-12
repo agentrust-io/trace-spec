@@ -141,3 +141,28 @@ def test_indeterminate_predicate_is_not_established() -> None:
 def test_predicate_must_return_three_state_value() -> None:
     with pytest.raises(SuccessorObservationError, match="True, False, or None"):
         _evaluate(_after(), predicate=lambda obs: "yes")
+
+
+@pytest.mark.parametrize(
+    "trusted",
+    ["observer-1", b"observer-1", {"observer-1": True}, {"", "observer-1"}],
+)
+def test_trusted_observers_must_be_an_actual_identity_collection(trusted) -> None:
+    after = _after()
+    with pytest.raises(SuccessorObservationError, match="trusted_observers"):
+        evaluate_successor_observation(
+            after,
+            expected_successor_digest=digest_jcs(after),
+            trusted_observers=trusted,
+            executor_id="executor-1",
+            independence_required=True,
+            now=160,
+            max_age_seconds=30,
+            predicate=lambda obs: True,
+        )
+
+
+def test_executor_identity_shape_is_validated() -> None:
+    after = _after()
+    with pytest.raises(SuccessorObservationError, match="executor_id"):
+        _evaluate(after, executor_id="")
