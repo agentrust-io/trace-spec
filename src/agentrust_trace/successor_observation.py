@@ -72,7 +72,8 @@ def evaluate_successor_observation(
     if not isinstance(independence_required, bool):
         raise SuccessorObservationError("independence_required must be boolean")
     if (
-        isinstance(trusted_observers, (str, bytes, bytearray, dict))
+        not isinstance(trusted_observers, Collection)
+        or isinstance(trusted_observers, (str, bytes, bytearray, dict))
         or not all(isinstance(item, str) and item for item in trusted_observers)
     ):
         raise SuccessorObservationError(
