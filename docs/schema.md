@@ -1,4 +1,6 @@
-# Schema Reference
+<a id="schema-reference"></a>
+
+# Schema Reference {#trace-schema}
 
 JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
 
@@ -8,7 +10,9 @@ unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and 
 can share one. A value that needs to be larger is carried as a string. The same bound applies to members a
 `cnf.jwk` carries that this schema does not name.
 
-## Top-level fields
+<a id="top-level-fields"></a>
+
+## Top-level fields {#trace-fields}
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -29,7 +33,9 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
 | `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
 
-## `model`
+<a id="model"></a>
+
+## `model` {#trace-field-model}
 
 Binds the model artifact used in this session.
 
@@ -41,7 +47,9 @@ Binds the model artifact used in this session.
 | `weights_digest` | string | no | SHA-256 digest of model weights artifact |
 | `aibom_uri` | string | no | URI to the AI Bill of Materials (SPDX/CycloneDX) |
 
-## `runtime`
+<a id="runtime"></a>
+
+## `runtime` {#trace-field-runtime}
 
 Binds the execution environment. Platform-specific fields vary by TEE type.
 
@@ -53,7 +61,9 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 | `firmware_version` | string | no | TEE firmware version |
 | `nonce` | string | no | Freshness nonce: ties this record to a specific attestation challenge |
 
-## `policy`
+<a id="policy"></a>
+
+## `policy` {#trace-field-policy}
 
 Binds the governance policy in force during this session.
 
@@ -64,7 +74,9 @@ Binds the governance policy in force during this session.
 | `version` | string | no | Policy bundle version string |
 | `policy_uri` | string | no | URI to the policy bundle for inspection |
 
-## `data_class`
+<a id="data_class"></a>
+
+## `data_class` {#trace-field-data-class}
 
 String. Sensitivity classification applied to the data processed in this session.
 
@@ -72,7 +84,9 @@ Defined values: `public`, `internal`, `confidential`, `restricted`, `secret`.
 
 Custom values are allowed and should follow your organization's data classification policy.
 
-## `tool_transcript`
+<a id="tool_transcript"></a>
+
+## `tool_transcript` {#trace-field-tool-transcript}
 
 Audit summary of tool invocations during the session.
 
@@ -82,7 +96,9 @@ Audit summary of tool invocations during the session.
 | `call_count` | integer | **yes** | Number of tool invocations recorded |
 | `transcript_uri` | string | no | URI to the full per-call transcript (may be encrypted) |
 
-## `delegation`
+<a id="delegation"></a>
+
+## `delegation` {#trace-field-delegation}
 
 A2A profile. Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
 
@@ -91,7 +107,9 @@ A2A profile. Present when this execution acted on authority delegated by another
 | `parent_record_hash` | string | **yes** | `sha256:`/`sha384:` digest of the parent hop's Trust Record |
 | `credential_id` | string | **yes** | Identifier of the delegation credential this hop acted under |
 
-## `origin`
+<a id="origin"></a>
+
+## `origin` {#trace-field-origin}
 
 Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
 
@@ -106,7 +124,9 @@ It exists because `runtime.platform: "software-only"` is ambiguous on its own: i
 
 A record whose `kind` is not `self` **must** carry `runtime.platform: "software-only"`. An importer holding someone else's log has no quote to present, so a hardware platform on such a record is untrue rather than stronger. Both the reference model and `schema/trace-claim.json` reject the combination.
 
-## `references`
+<a id="references"></a>
+
+## `references` {#trace-field-references}
 
 An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace. What the signature attests is that this record points there, not the truth of what it points at.
 
@@ -124,7 +144,9 @@ An array of pointers to facts held outside this record: an authorization decided
 
 Spec section 3.1.2 also binds verifiers: one **must not** reject a record because an entry cannot be resolved, and **must not** treat a resolved entry as attested evidence. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold. Both are verifier behaviour, so neither the schema nor the reference model can enforce them; they are conformance-suite rules. What the schema and the model do enforce is the shape, and that a producer who cannot name a `resolver` cannot emit an empty one.
 
-## `build_provenance`
+<a id="build_provenance"></a>
+
+## `build_provenance` {#trace-field-build-provenance}
 
 Build-time provenance binding the deployed artifact.
 
@@ -136,7 +158,9 @@ Build-time provenance binding the deployed artifact.
 | `provenance_uri` | string | no | URI to the SLSA provenance document (e.g., Rekor entry) |
 | `provenance_depth` | string | no | Depth the issuer claims: `surface`, `builder` or `transitive`. Absent is read as `surface` |
 
-## `appraisal`
+<a id="appraisal"></a>
+
+## `appraisal` {#trace-field-appraisal}
 
 Verifier judgment on the evidence in this record.
 
@@ -148,11 +172,15 @@ Verifier judgment on the evidence in this record.
 | `timestamp` | integer | no | Unix epoch seconds when appraisal was performed |
 | `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
 
-## `transparency`
+<a id="transparency"></a>
+
+## `transparency` {#trace-field-transparency}
 
 String. URI of the SCITT transparency log entry anchoring this record. Omitted, or `null`, when the record is not anchored at issuance: anchoring may happen asynchronously. Never an empty string: the reference model rejects one (`min_length=1`).
 
-## `cnf`
+<a id="cnf"></a>
+
+## `cnf` {#trace-field-cnf}
 
 Confirmation method. Contains the signing key bound to this record.
 
@@ -162,7 +190,9 @@ Confirmation method. Contains the signing key bound to this record.
 
 For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
 
-## Wire formats
+<a id="wire-formats"></a>
+
+## Wire formats {#trace-wire-formats}
 
 TRACE v0.2 supports two wire formats:
 
@@ -170,7 +200,9 @@ TRACE v0.2 supports two wire formats:
 
 **CBOR-COSE** (constrained devices): COSE_Sign1 structure with TRACE claims as the payload. Defined in §3.2 of the spec: deferred to a future profile for constrained-device deployments.
 
-## Example: AMD SEV-SNP
+<a id="example-amd-sev-snp"></a>
+
+## Example: AMD SEV-SNP {#trace-example-sev-snp}
 
 ```json
 {
