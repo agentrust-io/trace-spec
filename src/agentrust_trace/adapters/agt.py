@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import rfc8785
 from agentrust_trace.models import (
@@ -95,10 +95,19 @@ class TraceAGTAdapter:
         build_provenance_builder: str | None = None,
         build_provenance_uri: str | None = None,
         transparency: str,
+        appraisal_status: Literal["affirming", "warning", "contraindicated", "none"] = "none",
         appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
         enforcement_mode: str = "enforce",
     ) -> None:
+        """
+        Args:
+            appraisal_status: Defaults to ``"none"``. ``appraisal.status`` is a
+                verifier-owned field (spec section 3.3.1): a record is not appraised by
+                being built, and stamping ``affirming`` on an unappraised record puts a
+                verdict in the field a consumer reads to find out whether anybody
+                checked. Set this only when an appraisal actually happened.
+        """
         self._model = ModelInfo(
             provider=model_provider,
             model_id=model_id,
@@ -112,6 +121,7 @@ class TraceAGTAdapter:
             provenance_uri=build_provenance_uri,
         )
         self._transparency = transparency
+        self._appraisal_status = appraisal_status
         self._appraisal_verifier = appraisal_verifier
         self._appraisal_policy_ref = appraisal_policy_ref
         self._enforcement_mode = enforcement_mode
@@ -160,7 +170,7 @@ class TraceAGTAdapter:
             ).model_dump(exclude_none=True),
             "build_provenance": self._build_provenance.model_dump(exclude_none=True),
             "appraisal": Appraisal(
-                status="affirming",
+                status=self._appraisal_status,
                 verifier=self._appraisal_verifier,
                 policy_ref=self._appraisal_policy_ref,
                 timestamp=session.iat,

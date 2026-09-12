@@ -253,3 +253,36 @@ def test_different_chain_tips_produce_different_measurements() -> None:
     m1 = adapter.build_trust_record(s1)["runtime"]["measurement"]
     m2 = adapter.build_trust_record(s2)["runtime"]["measurement"]
     assert m1 != m2
+
+
+# ---------------------------------------------------------------------------
+# appraisal.status is verifier-owned (#331)
+# ---------------------------------------------------------------------------
+
+def test_appraisal_status_defaults_to_none() -> None:
+    """`appraisal.status` was hardcoded to `affirming` with no way to change it, so every
+    record this adapter produced claimed an appraisal that had not happened. Spec section
+    3.3.1 makes the field the verifier's: building a record is not appraising it."""
+    record = _make_adapter().build_trust_record(_make_session())
+    assert record["appraisal"]["status"] == "none"
+
+
+def test_appraisal_status_is_configurable_when_one_actually_happened() -> None:
+    record = _make_adapter(appraisal_status="affirming").build_trust_record(_make_session())
+    assert record["appraisal"]["status"] == "affirming"
+
+
+@pytest.mark.parametrize("status", ["affirming", "warning", "contraindicated", "none"])
+def test_every_appraisal_status_the_model_allows_reaches_the_record(status: str) -> None:
+    record = _make_adapter(appraisal_status=status).build_trust_record(_make_session())
+    assert record["appraisal"]["status"] == status
+    TrustRecord.model_validate(record)
+
+
+def test_an_unappraised_record_still_signs_and_verifies() -> None:
+    """The default must not cost a caller a valid record; `none` is a legitimate value."""
+    record = _make_adapter().build_trust_record(_make_session())
+    key = generate_key()
+    signed = sign_record(record, key)
+    assert verify_record(signed, public_key_or_jwk=key_to_jwk(key)) is not None
+    assert signed["appraisal"]["status"] == "none"

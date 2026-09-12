@@ -27,8 +27,8 @@ adapter = TraceAGTAdapter(
 record = adapter.build_trust_record(session)
 # The adapter currently requires a URI argument but performs no registration.
 record.pop("transparency")
-# Synthetic input has not been appraised; do not keep the adapter's default verdict.
-record["appraisal"]["status"] = "none"
+# `appraisal.status` defaults to "none", which is correct here: synthetic input has not
+# been appraised. Pass appraisal_status only when an appraisal actually happened.
 key = generate_key()
 trusted_key = key.public_key()
 signed = sign_record(record, key)
@@ -46,7 +46,7 @@ The nonzero build digest is illustrative metadata, not verified build provenance
 
 Supply the exact policy bytes used for the session, audit entries as plain dictionaries, the session's chain tip, and its authenticated identity. The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
 
-The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. Likewise, its default `affirming` appraisal is not an independent assessment. Set the record's claims to the checks actually performed before signing.
+The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
 
 ## Verify and extend
 
