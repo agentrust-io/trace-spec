@@ -101,14 +101,16 @@ def _jwk_identity(jwk: dict) -> tuple[object, object, object]:
 
 def test_embedded_key_is_not_external_verifier_context() -> None:
     vector = json.loads(
-        (VECTOR_DIR / "reject-embedded-key-as-trust-root.json").read_text(encoding="utf-8")
+        (VECTOR_DIR / "context-embedded-key-not-trusted.json").read_text(encoding="utf-8")
     )
     record = vector["record"]
     rules.check_envelope(record)
     assert rules.appraise(record) == "platform-attested"
+
     external_keys = vector["context"]["trusted_root_keys"]
-    assert external_keys == []
+    assert external_keys, "the trust context must be non-empty or this case is vacuous"
+
     embedded = _jwk_identity(record["cnf"]["jwk"])
     configured = {_jwk_identity(jwk) for jwk in external_keys}
     assert embedded not in configured
-    assert vector["expected"]["signer_trust"] == "untrusted"
+    assert vector["expected"]["signer_trust"] == "not-established"
