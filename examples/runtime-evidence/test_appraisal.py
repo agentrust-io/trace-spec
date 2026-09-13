@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 import pytest
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import generate as rules
@@ -99,7 +100,7 @@ def _jwk_identity(jwk: dict) -> tuple[object, object, object]:
     return (jwk.get("kty"), jwk.get("crv"), jwk.get("x"))
 
 
-def test_embedded_key_is_not_external_verifier_context() -> None:
+def test_embedded_signer_is_not_established_by_external_context() -> None:
     vector = json.loads(
         (VECTOR_DIR / "context-embedded-key-not-trusted.json").read_text(encoding="utf-8")
     )
@@ -113,4 +114,14 @@ def test_embedded_key_is_not_external_verifier_context() -> None:
     embedded = _jwk_identity(record["cnf"]["jwk"])
     configured = {_jwk_identity(jwk) for jwk in external_keys}
     assert embedded not in configured
+
+    # The distinction is cryptographic, not just metadata: the record verifies under
+    # its embedded key, while the relying party's configured trusted key does not
+    # authenticate this signature.
+    signature = rules.unb64u(record["signature"])
+    body = rules._canonical_bytes({k: v for k, v in record.items() if k != "signature"})
+    for trusted_jwk in external_keys:
+        with pytest.raises(InvalidSignature):
+            rules._pubkey_from_jwk(trusted_jwk).verify(signature, body)
+
     assert vector["expected"]["signer_trust"] == "not-established"
