@@ -34,14 +34,18 @@ objects.
 The verifier checks that the executed tool is in `scope.tools`, the declaration
 impact is in `scope.impacts`, and both bridge-specific digests match. If
 `transcript_required` is true, a complete `before` and `after` transcript is
-required, and `before.tool_call` must equal the executed call. This binds the
-authorization to the call and its execution evidence without claiming that
-TRACE proves the real-world outcome of the call.
+required. `before.tool_call` must equal the executed call, and `after` must be
+the successor-observation envelope whose RFC 8785 / SHA-256 digest equals the
+signed `authorization.successor_observation_digest`. Because that digest is
+inside the signed authorization, a caller cannot substitute both a new
+observation and a matching expected digest. This binds the authorization to the
+exact call and exact successor envelope without claiming that TRACE proves the
+real-world outcome of the call.
 
 ### Successor-observation binding
 
-A profile that elects to make a successor-state claim uses a successor envelope with
-exactly three fields:
+When `transcript_required` is true, `transcript.after` is the successor envelope and
+has exactly three fields:
 
 ~~~json
 {
@@ -52,8 +56,10 @@ exactly three fields:
 ~~~
 
 The bridge identity relation is the SHA-256 digest of the RFC 8785 canonical bytes of
-that complete envelope. The binding therefore covers the observation content, observer
-identity, and observation timestamp together. Relabelling a genuine observation to a
+that complete envelope. The expected digest is carried in the signed
+`authorization.successor_observation_digest`; it is not supplied independently by the
+caller. The binding therefore covers the observation content, observer identity, and
+observation timestamp together. Relabelling a genuine observation to a
 different observer, retiming it, or altering its content changes the binding.
 
 A matching binding establishes **integrity**, not **sufficiency**. It does not by itself
@@ -69,9 +75,11 @@ The successor-evaluation surface has three evidence outcomes:
   either conclusion.
 
 Malformed successor artifacts and binding failures are refusals, not a fourth evidence
-outcome. An absent `after` is `not-established`, not a refusal: the bridge cannot
-distinguish a profile that elected a successor claim from one that did not merely from
-absence, and absence must not become a positive conclusion.
+outcome. At the bridge layer, an absent `after` is a refusal when
+`transcript_required` is true because the signed authorization explicitly requires the
+successor binding. At the separate successor-evaluation surface, where an observation may
+be absent before bridge verification is attempted, absence remains
+`not-established` and never becomes a positive conclusion.
 
 Observation independence is policy, not a universal rule. Where verifier policy
 requires an observer independent of the executing principal, executor-supplied
