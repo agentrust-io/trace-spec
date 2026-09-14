@@ -203,6 +203,12 @@ MEASURED_ELSEWHERE = {
                         "which examples/runtime-evidence/test_appraisal.py runs in the "
                         "dedicated runtime-evidence job against agent-manifest's verifier "
                         "at a pinned commit",
+    # Not loadable here: every record in this set is a valid Trust Record, and the
+    # cases differ only in what the reference resolves to in a separate CHAP log,
+    # so there is no per-file accept/reject outcome for the criteria to grade.
+    "chap-approval-outcome": "tests/test_chap_approval_outcome_fixtures.py, which "
+                             "recomputes every verdict from the committed record and "
+                             "CHAP log instead of reading expected.json",
 }
 
 
