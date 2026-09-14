@@ -111,7 +111,7 @@ def _nonempty_string(value: Any, field: str) -> str:
 
 
 def _bind_successor_observation(
-    after: dict[str, Any], expected_successor_digest: str
+    after: Any, expected_successor_digest: str
 ) -> dict[str, Any]:
     """Bind the exact successor envelope using the bridge identity relation.
 
