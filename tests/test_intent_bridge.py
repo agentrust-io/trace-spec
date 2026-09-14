@@ -349,7 +349,7 @@ def test_transcript_call_is_compared_over_canonical_bytes_not_python_equality(
 ) -> None:
     """#317: `True == 1` in Python, so `!=` accepted a JSON-distinct transcript call."""
     call = {"name": "send_invoice", "arguments": executed}
-    bridge, key, declaration, intent, args, tool_call, _ = _fixture(tool_call=call)
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture(tool_call=call)
     substituted = {"name": "send_invoice", "arguments": transcribed}
     assert substituted == tool_call, "the substitution must be Python-equal to be a regression"
     assert digest_jcs(substituted) != digest_jcs(tool_call)
@@ -357,7 +357,7 @@ def test_transcript_call_is_compared_over_canonical_bytes_not_python_equality(
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": substituted}, "after": _fixture(tool_call=call)[6]["after"]},
+            transcript={"before": {"tool_call": substituted}, "after": transcript["after"]},
             now=150,
         )
 
