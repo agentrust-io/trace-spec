@@ -234,6 +234,41 @@ def test_a_declaration_with_no_impact_at_all_is_refused() -> None:
         _verify(*_fixture(declaration={"purpose": "send invoice"}))
 
 
+def test_successor_digest_is_required_iff_transcript_is_required() -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+
+    missing = copy.deepcopy(bridge["authorization"])
+    del missing["successor_observation_digest"]
+    missing_bridge = sign_bridge(missing, key)
+    with pytest.raises(IntentBridgeError, match="successor_observation_digest is required"):
+        verify_bridge(
+            missing_bridge, {**key_to_jwk(key), "kid": "key-7"},
+            declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
+            tool_call=tool_call, transcript=transcript, now=150,
+        )
+
+    no_transcript = copy.deepcopy(bridge["authorization"])
+    no_transcript["transcript_required"] = False
+    del no_transcript["successor_observation_digest"]
+    no_transcript_bridge = sign_bridge(no_transcript, key)
+    result = verify_bridge(
+        no_transcript_bridge, {**key_to_jwk(key), "kid": "key-7"},
+        declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
+        tool_call=tool_call, transcript=None, now=150,
+    )
+    assert result["transcript_required"] is False
+
+    contradictory = copy.deepcopy(no_transcript)
+    contradictory["successor_observation_digest"] = digest_jcs(transcript["after"])
+    contradictory_bridge = sign_bridge(contradictory, key)
+    with pytest.raises(IntentBridgeError, match="must be absent"):
+        verify_bridge(
+            contradictory_bridge, {**key_to_jwk(key), "kid": "key-7"},
+            declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
+            tool_call=tool_call, transcript=None, now=150,
+        )
+
+
 def test_expiry_and_required_transcript_are_enforced() -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     with pytest.raises(IntentBridgeError, match="expired"):
