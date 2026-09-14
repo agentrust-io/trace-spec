@@ -53,7 +53,7 @@ BASE_RECORD: dict[str, Any] = {
     # the property under test, not staleness.
     "iat": 1785000000,
     "subject": "spiffe://factory.example/agent/payments/prod",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+    "model": {"provider": "example-provider", "model_id": "example-model-1"},
     "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
     "policy": {"bundle_hash": "sha256:" + "a" * 64, "enforcement_mode": "enforce"},
     "data_class": "confidential",

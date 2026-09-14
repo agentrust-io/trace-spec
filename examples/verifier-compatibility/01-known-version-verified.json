@@ -23,8 +23,8 @@
     "iat": 1785000000,
     "subject": "spiffe://factory.example/agent/payments/prod",
     "model": {
-      "provider": "anthropic",
-      "model_id": "claude-sonnet-4-6"
+      "provider": "example-provider",
+      "model_id": "example-model-1"
     },
     "runtime": {
       "platform": "software-only",
@@ -51,7 +51,7 @@
         "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
       }
     },
-    "signature": "_kxTMPJeRBIceEHkwbkmgHyRamGZVkkuNVKebfQ93XIRfGkXqpwy4X_90DSx7fQ5up5VztTfAByT1QgxTYICAA"
+    "signature": "yG9rlff2_KlMwnhgSz5u-yAiTl7XVZOu5jXXD3plPm5YWaUCcWq3VmA_xtwcRg3JCDKRRYLZHH-TpSjDMYrKCA"
   },
   "expected": {
     "outcome": "verified",
