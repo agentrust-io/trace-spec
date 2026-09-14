@@ -55,7 +55,7 @@ A signed field is a producer's claim. Signature verification alone does not esta
 
 ## What it is built on
 
-TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring. A related standardization track runs in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai).
+TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
 
 ## Status and governance
 
