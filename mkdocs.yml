@@ -48,15 +48,12 @@ theme:
         name: Switch to light mode
   features:
     - navigation.instant
-    - navigation.instant.progress
     - navigation.tracking
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
-    - navigation.expand
     - navigation.top
     - navigation.path
-    - navigation.footer
     - search.suggest
     - search.highlight
     - search.share
@@ -182,65 +179,69 @@ extra_css:
   - https://agentrust-io.com/design-system.css
 
 nav:
+  # Five tabs, the same labels and order on every AgenTrust docs site:
+  # Home, Get started, Specification, Guides, Project.
   - Home: index.md
-  - Getting Started:
+  - Get started:
       - Quickstart: docs/quickstart.md
-      - Trust Levels: docs/trust-levels.md
+      - Trust levels: docs/trust-levels.md
       - Verification: docs/verification.md
-      - Build Provenance Depth: docs/build-provenance-depth.md
-      - Verification Outcome Statements: docs/verification-outcome-statements.md
-      - Schema Reference: docs/schema.md
       - Glossary: docs/glossary.md
-  - Tutorials:
-      - Sign your first trust record: docs/tutorials/signing-your-first-trust-record.md
-      - Verify a trust record: docs/tutorials/verifying-a-trust-record.md
-      - Hardware attestation platforms: docs/tutorials/hardware-attestation-platforms.md
-      - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
-      - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
-      - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
-      - AGT adapter: docs/tutorials/agt-adapter.md
   - Specification:
-      - TRACE v0.2: spec/trace-v0.2.md
-      - Registry Anchor Format v1: spec/registry-anchor-v1.md
-      - MCP Server Provenance v1: spec/server-provenance-v1.md
-      - Content Marking v1: spec/content-marking-v1.md
-      - TRACE v0.1 (superseded): spec/trace-v0.1.md
-  - Integration:
-      - AGT: docs/integration/agt.md
-      - NVIDIA OpenShell: docs/integration/openshell.md
-      - cMCP: docs/integration/cmcp.md
-      - Sandboxed agent runtimes: docs/integration/sandbox-runtime.md
-      - PIC/TRACE authorization bridge: docs/integration/pic-trace-bridge-v1.md
-  - Platforms:
-      - Overview: docs/platforms/index.md
-      - AMD SEV-SNP: docs/platforms/amd-sev-snp.md
-      - Intel TDX: docs/platforms/intel-tdx.md
-      - NVIDIA H100: docs/platforms/nvidia-h100.md
-  - Crosswalks:
-      - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
-      - Acta Decision Receipts: docs/crosswalks/acta-decision-receipts.md
-      - CHAP Review Decisions: docs/crosswalks/chap-review-decisions.md
-      - N'KEMBA Institutional Reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
-  - Test Suite: https://tests.agentrust-io.com
-  - Method:
-      - How the conformance vectors are built: docs/conformance-method.md
-  - RFCs:
-      - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
-      - A2A delegation-link verification profile: docs/rfcs/a2a-delegation-profile.md
-      - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
+      - Documents:
+          - TRACE v0.2: spec/trace-v0.2.md
+          - Registry anchor format v1: spec/registry-anchor-v1.md
+          - MCP server provenance v1: spec/server-provenance-v1.md
+          - Content marking v1: spec/content-marking-v1.md
+          - TRACE v0.1 (superseded): spec/trace-v0.1.md
+      - Reference:
+          - Schema reference: docs/schema.md
+          - Verification outcome statements: docs/verification-outcome-statements.md
+          - Build provenance depth: docs/build-provenance-depth.md
+          - How the conformance vectors are built: docs/conformance-method.md
+      - RFCs:
+          - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
+          - A2A delegation-link verification profile: docs/rfcs/a2a-delegation-profile.md
+          - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
+      - Crosswalks:
+          - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
+          - Acta decision receipts: docs/crosswalks/acta-decision-receipts.md
+          - CHAP review decisions: docs/crosswalks/chap-review-decisions.md
+          - N'KEMBA institutional reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
+  - Guides:
+      - Tutorials:
+          - Sign your first trust record: docs/tutorials/signing-your-first-trust-record.md
+          - Verify a trust record: docs/tutorials/verifying-a-trust-record.md
+          - Hardware attestation platforms: docs/tutorials/hardware-attestation-platforms.md
+          - Integration with cMCP: docs/tutorials/integrating-with-cmcp.md
+          - Anchor to the registry: docs/tutorials/anchoring-to-the-registry.md
+          - Verify the tool transcript: docs/tutorials/verifying-the-audit-chain.md
+          - AGT adapter: docs/tutorials/agt-adapter.md
+      - Integration:
+          - AGT: docs/integration/agt.md
+          - NVIDIA OpenShell: docs/integration/openshell.md
+          - cMCP: docs/integration/cmcp.md
+          - Sandboxed agent runtimes: docs/integration/sandbox-runtime.md
+          - PIC/TRACE authorization bridge: docs/integration/pic-trace-bridge-v1.md
+      - Platforms:
+          - Overview: docs/platforms/index.md
+          - AMD SEV-SNP: docs/platforms/amd-sev-snp.md
+          - Intel TDX: docs/platforms/intel-tdx.md
+          - NVIDIA H100: docs/platforms/nvidia-h100.md
+      - Conformance test suite: https://tests.agentrust-io.com
   - Project:
       - Limitations: LIMITATIONS.md
+      - Roadmap: ROADMAP.md
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
-      - Technical Charter: CHARTER.md
-      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Technical charter: CHARTER.md
       - Maintainers: MAINTAINERS.md
       - Sponsors: SPONSORS.md
-      - Roadmap: ROADMAP.md
+      - Code of conduct: CODE_OF_CONDUCT.md
       - Privacy: PRIVACY.md
       - Scope: Governance/Scope.md
-      - Contributor License Agreement: Governance/CLA.md
+      - Contributor license agreement: Governance/CLA.md
       - Licenses: Governance/License.md
       - Community Specification License: Governance/COMMUNITY-SPECIFICATION-LICENSE.md
       - Notices: Governance/Notices.md
