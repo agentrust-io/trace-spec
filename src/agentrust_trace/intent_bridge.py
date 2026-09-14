@@ -294,11 +294,13 @@ def verify_bridge(
     successor_digest_present = "successor_observation_digest" in authorization
     if authorization["transcript_required"] and not successor_digest_present:
         raise IntentBridgeError(
-            "authorization.successor_observation_digest is required when transcript_required is true"
+            "authorization.successor_observation_digest is required when "
+            "transcript_required is true"
         )
     if not authorization["transcript_required"] and successor_digest_present:
         raise IntentBridgeError(
-            "authorization.successor_observation_digest must be absent when transcript_required is false"
+            "authorization.successor_observation_digest must be absent when "
+            "transcript_required is false"
         )
     if authorization["transcript_required"]:
         if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
