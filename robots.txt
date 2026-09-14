@@ -1,10 +1,10 @@
-# TRACE specification docs (https://trace.agentrust-io.com)
-# Search engines and AI answer engines are welcome to crawl and cite these docs.
+# trace.agentrust-io.com: search and answer-engine crawlers are welcome.
 
 User-agent: *
 Allow: /
+# Cloudflare email-obfuscation endpoint: not a page
+Disallow: /cdn-cgi/
 
-# Explicitly welcome major AI and answer-engine crawlers.
 User-agent: GPTBot
 Allow: /
 
@@ -17,13 +17,16 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
-User-agent: Claude-Web
+User-agent: Claude-SearchBot
 Allow: /
 
-User-agent: anthropic-ai
+User-agent: Claude-User
 Allow: /
 
 User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
 Allow: /
 
 User-agent: Google-Extended

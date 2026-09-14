@@ -2,9 +2,9 @@
 
 > Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects.
 
-TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for signed AI agent runtime evidence. A TRACE Trust Record connects workload identity, policy, data classification, and transcript commitments. Software signing, hardware attestation, and transparency inclusion establish different properties and require separate checks. Start with a local signed record and tamper detection, then choose the evidence required by your verifier. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite.
+TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for signed AI agent runtime evidence. A TRACE Trust Record connects workload identity, policy, data classification, and transcript commitments. Software signing, hardware attestation, and transparency inclusion establish different properties and require separate checks. Start with a local signed record and tamper detection, then choose the evidence required by your verifier. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite. TRACE is part of AgenTrust, open specifications for verifiable AI: https://agentrust-io.com
 
-## Getting started
+## Get started
 
 - [Home](https://trace.agentrust-io.com/index.md)
 - [Quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md)
@@ -15,16 +15,30 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 ## Specification
 
 - [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
+- [Registry anchor format v1](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md)
+- [MCP server provenance v1](https://trace.agentrust-io.com/spec/server-provenance-v1/index.md)
+- [Content marking v1](https://trace.agentrust-io.com/spec/content-marking-v1/index.md)
 - [Schema reference](https://trace.agentrust-io.com/docs/schema/index.md)
+- [Verification outcome statements](https://trace.agentrust-io.com/docs/verification-outcome-statements/index.md)
+- [Runtime evidence and verifier grades](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md)
 
-## Integration
+## Guides
 
+- [Sign your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md)
+- [Verify a trust record](https://trace.agentrust-io.com/docs/tutorials/verifying-a-trust-record/index.md)
+- [Hardware attestation platforms](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md)
+- [Anchor to the registry](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md)
+- [Integration with cMCP](https://trace.agentrust-io.com/docs/tutorials/integrating-with-cmcp/index.md)
 - [AGT](https://trace.agentrust-io.com/docs/integration/agt/index.md)
 - [NVIDIA OpenShell](https://trace.agentrust-io.com/docs/integration/openshell/index.md)
 - [cMCP](https://trace.agentrust-io.com/docs/integration/cmcp/index.md)
 - [Sandboxed agent runtimes](https://trace.agentrust-io.com/docs/integration/sandbox-runtime/index.md)
-
-## Platforms
-
 - [Overview](https://trace.agentrust-io.com/docs/platforms/index.md)
+
+## Project
+
+- [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md)
+- [Roadmap](https://trace.agentrust-io.com/ROADMAP/index.md)
+- [Governance](https://trace.agentrust-io.com/GOVERNANCE/index.md)
+- [Changelog](https://trace.agentrust-io.com/CHANGELOG/index.md)
 

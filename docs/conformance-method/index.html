@@ -1,4 +1,4 @@
-<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects."><link href=https://trace.agentrust-io.com/docs/conformance-method/ rel=canonical><link href=../build-provenance-depth/ rel=prev><link href=../rfcs/composable-zk-assurance/ rel=next><link rel=icon href=../assets/icon.svg><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.7"><title>How the conformance vectors are built - TRACE</title><link rel=stylesheet href=../../assets/stylesheets/main.ec1eaa64.min.css><link rel=stylesheet href=../../assets/stylesheets/palette.ab4e12ef.min.css><link rel=stylesheet href=../../assets/_mkdocstrings.css><link rel=stylesheet href="https://agentrust-io.com/design-system.css?v=22"><script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script><meta property=og:type content=website><meta property=og:site_name content=TRACE><meta property=og:title content="How the conformance vectors are built - TRACE"><meta property=og:description content="Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects."><meta content=https://trace.agentrust-io.com/docs/conformance-method/ property=og:url><meta property=og:image content=https://trace.agentrust-io.com/docs/assets/og.png><meta property=og:image:width content=1200><meta property=og:image:height content=630><meta property=og:image:alt content="TRACE, a Series of LF Projects"><meta name=twitter:card content=summary_large_image><meta name=twitter:title content="How the conformance vectors are built - TRACE"><meta name=twitter:description content="Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects."><meta name=twitter:image content=https://trace.agentrust-io.com/docs/assets/og.png><script type=application/ld+json>
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="Informative. This page describes method, not requirements, and carries no RFC 2119 keywords."><link href=https://trace.agentrust-io.com/docs/conformance-method/ rel=canonical><link href=../build-provenance-depth/ rel=prev><link href=../rfcs/composable-zk-assurance/ rel=next><link rel=icon href=../assets/icon.svg><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.7"><title>How the conformance vectors are built - TRACE</title><link rel=stylesheet href=../../assets/stylesheets/main.ec1eaa64.min.css><link rel=stylesheet href=../../assets/stylesheets/palette.ab4e12ef.min.css><link rel=stylesheet href=../../assets/_mkdocstrings.css><link rel=stylesheet href="https://agentrust-io.com/design-system.css?v=22"><script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script><meta property=og:type content=website><meta property=og:site_name content=AgenTrust><meta property=og:title content="How the conformance vectors are built - TRACE"><meta property=og:description content="Informative. This page describes method, not requirements, and carries no RFC 2119 keywords."><meta content=https://trace.agentrust-io.com/docs/conformance-method/ property=og:url><meta property=og:image content=https://trace.agentrust-io.com/docs/assets/og.png><meta property=og:image:width content=1200><meta property=og:image:height content=630><meta property=og:image:alt content="TRACE, a Series of LF Projects"><meta name=twitter:card content=summary_large_image><meta name=twitter:title content="How the conformance vectors are built - TRACE"><meta name=twitter:description content="Informative. This page describes method, not requirements, and carries no RFC 2119 keywords."><meta name=twitter:image content=https://trace.agentrust-io.com/docs/assets/og.png><script type=application/ld+json>
   {
     "@context": "https://schema.org",
     "@graph": [
@@ -6,30 +6,43 @@
         "@type": "Organization",
         "@id": "https://agentrust-io.com/#organization",
         "name": "AgenTrust",
-        "url": "https://agentrust-io.com",
+        "url": "https://agentrust-io.com/",
         "sameAs": [
-          "https://github.com/agentrust-io"
+          "https://github.com/agentrust-io",
+          "https://trace.agentrust-io.com",
+          "https://manifest.agentrust-io.com",
+          "https://cmcp.agentrust-io.com",
+          "https://ca2a.agentrust-io.com",
+          "https://wcm.agentrust-io.com",
+          "https://tests.agentrust-io.com",
+          "https://governance.agentrust-io.com"
         ]
       },
       {
         "@type": "WebSite",
         "@id": "https://trace.agentrust-io.com/#website",
-        "url": "https://trace.agentrust-io.com/",
         "name": "TRACE",
+        "url": "https://trace.agentrust-io.com/",
         "description": "Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects.",
         "publisher": { "@id": "https://agentrust-io.com/#organization" }
       },
       {
-        "@type": "SoftwareApplication",
-        "name": "TRACE",
-        "alternateName": "Trust Runtime Attestation and Compliance Evidence",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Cross-platform",
-        "url": "https://trace.agentrust-io.com/",
-        "downloadUrl": "https://pypi.org/project/agentrust-trace/",
-        "codeRepository": "https://github.com/agentrust-io/trace-spec",
-        "description": "Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects.",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "@type": "TechArticle",
+        "@id": "https://trace.agentrust-io.com/docs/conformance-method/#page",
+        "url": "https://trace.agentrust-io.com/docs/conformance-method/",
+        "name": "How the conformance vectors are built - TRACE",
+        "headline": "How the conformance vectors are built - TRACE",
+        "description": "Informative. This page describes method, not requirements, and carries no RFC 2119 keywords.",
+        "inLanguage": "en",
+        "isPartOf": { "@id": "https://trace.agentrust-io.com/#website" },
+        "publisher": { "@id": "https://agentrust-io.com/#organization" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "TRACE", "item": "https://trace.agentrust-io.com/" },
+          { "@type": "ListItem", "position": 2, "name": "How the conformance vectors are built", "item": "https://trace.agentrust-io.com/docs/conformance-method/" }
+        ]
       }
     ]
   }
