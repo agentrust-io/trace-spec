@@ -152,6 +152,12 @@ _RECORD_JSON = json.dumps({
 _ASSERTION = content_marking.build_assertion(_RECORD_JSON, url="https://r.example/r.json")
 _DECLARATION = {"impact": "external-side-effect", "purpose": "send invoice"}
 _TOOL_CALL = {"name": "send_invoice", "arguments": {"approved": 1}}
+_SUCCESSOR_AFTER = {
+    "observation": {"commit": "abc123", "reachable": True},
+    "observer": "observer-1",
+    "observed_at": 150,
+}
+_SUCCESSOR_DIGEST = intent_bridge.digest_jcs(_SUCCESSOR_AFTER)
 _BRIDGE_AUTH = {
     "authorization_id": "auth-1", "decision": "allow", "authorizer": "finance-policy",
     "authorizer_key_id": "key-1", "authorized_at": 100, "expires_at": 200,
@@ -160,16 +166,11 @@ _BRIDGE_AUTH = {
             "args_digest": "sha256:" + "2" * 64},
     "declaration_digest": intent_bridge.digest_jcs(_DECLARATION),
     "tool_call_digest": intent_bridge.digest_jcs(_TOOL_CALL),
+    "successor_observation_digest": _SUCCESSOR_DIGEST,
     "transcript_required": True,
 }
 _BRIDGE = intent_bridge.sign_bridge(_BRIDGE_AUTH, _KEY)
-_TRANSCRIPT = {"before": {"tool_call": dict(_TOOL_CALL)}, "after": {"status": "accepted"}}
-_SUCCESSOR_AFTER = {
-    "observation": {"commit": "abc123", "reachable": True},
-    "observer": "observer-1",
-    "observed_at": 150,
-}
-_SUCCESSOR_DIGEST = intent_bridge.digest_jcs(_SUCCESSOR_AFTER)
+_TRANSCRIPT = {"before": {"tool_call": dict(_TOOL_CALL)}, "after": _SUCCESSOR_AFTER}
 _TOOLS = [{"name": "search", "description": "search", "input_schema": {"type": "object"}}]
 _ARTIFACT = {"package": "pkg:npm/%40acme/mcp-search@2.1.0", "digest": "sha256:" + "0" * 64}
 _PROVENANCE = provenance.build_record(
