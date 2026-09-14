@@ -1,0 +1,47 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "xr1B3T6C0toRmLJmX8fcgRs-fcCLMr6i24OapAGVfDY"
+  },
+  "chap_version": "0.2.13",
+  "resolver": "https://chap.example.org/workspaces/wsp_refund_review",
+  "cases": {
+    "01-approval-confirmed.json": {
+      "log": "chap-audit-log.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "decision": "decide.approve",
+      "chain_replays": true,
+      "verdict": "approval-confirmed"
+    },
+    "02-approval-altered-after-issue.json": {
+      "log": "chap-audit-log-altered.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "decision": "decide.approve",
+      "chain_replays": false,
+      "verdict": "approval-contradicted"
+    },
+    "03-decision-is-a-rejection.json": {
+      "log": "chap-audit-log.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "decision": "decide.reject",
+      "chain_replays": true,
+      "verdict": "not-an-approval"
+    },
+    "04-reference-unresolvable.json": {
+      "log": "chap-audit-log.json",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "decision": null,
+      "chain_replays": true,
+      "verdict": "approval-unconfirmed"
+    }
+  }
+}
