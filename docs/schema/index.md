@@ -29,13 +29,13 @@ Every field typed `integer` here is bounded to -9007199254740991 through 9007199
 
 Binds the model artifact used in this session.
 
-| Field            | Type   | Required | Description                                          |
-| ---------------- | ------ | -------- | ---------------------------------------------------- |
-| `provider`       | string | **yes**  | Model provider (e.g., `anthropic`, `openai`, `meta`) |
-| `model_id`       | string | **yes**  | Model identifier (e.g., `claude-sonnet-4-6`)         |
-| `version`        | string | **yes**  | Model version or date stamp                          |
-| `weights_digest` | string | no       | SHA-256 digest of model weights artifact             |
-| `aibom_uri`      | string | no       | URI to the AI Bill of Materials (SPDX/CycloneDX)     |
+| Field            | Type   | Required | Description                                      |
+| ---------------- | ------ | -------- | ------------------------------------------------ |
+| `provider`       | string | **yes**  | Model provider (e.g., `example-provider`)        |
+| `model_id`       | string | **yes**  | Model identifier (e.g., `example-model-1`)       |
+| `version`        | string | **yes**  | Model version or date stamp                      |
+| `weights_digest` | string | no       | SHA-256 digest of model weights artifact         |
+| `aibom_uri`      | string | no       | URI to the AI Bill of Materials (SPDX/CycloneDX) |
 
 ## `runtime`
 
@@ -174,8 +174,8 @@ TRACE v0.2 supports two wire formats:
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model-1",
     "version": "20251001"
   },
   "runtime": {

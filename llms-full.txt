@@ -1,6 +1,6 @@
 # TRACE
 
-> Trust Runtime Attestation and Compliance Evidence: open attestation standard for agentic AI governance
+> Trust Runtime Attestation and Compliance Evidence: portable, signed runtime evidence for AI agents. A Series of LF Projects.
 
 TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specification for signed AI agent runtime evidence. A TRACE Trust Record connects workload identity, policy, data classification, and transcript commitments. Software signing, hardware attestation, and transparency inclusion establish different properties and require separate checks. Start with a local signed record and tamper detection, then choose the evidence required by your verifier. It builds on RFC 9711 (CWT/EAT), RFC 9334 (RATS), and SCITT, and ships a Python library, agentrust-trace, with a conformance suite.
 
@@ -1211,13 +1211,13 @@ Every field typed `integer` here is bounded to -9007199254740991 through 9007199
 
 Binds the model artifact used in this session.
 
-| Field            | Type   | Required | Description                                          |
-| ---------------- | ------ | -------- | ---------------------------------------------------- |
-| `provider`       | string | **yes**  | Model provider (e.g., `anthropic`, `openai`, `meta`) |
-| `model_id`       | string | **yes**  | Model identifier (e.g., `claude-sonnet-4-6`)         |
-| `version`        | string | **yes**  | Model version or date stamp                          |
-| `weights_digest` | string | no       | SHA-256 digest of model weights artifact             |
-| `aibom_uri`      | string | no       | URI to the AI Bill of Materials (SPDX/CycloneDX)     |
+| Field            | Type   | Required | Description                                      |
+| ---------------- | ------ | -------- | ------------------------------------------------ |
+| `provider`       | string | **yes**  | Model provider (e.g., `example-provider`)        |
+| `model_id`       | string | **yes**  | Model identifier (e.g., `example-model-1`)       |
+| `version`        | string | **yes**  | Model version or date stamp                      |
+| `weights_digest` | string | no       | SHA-256 digest of model weights artifact         |
+| `aibom_uri`      | string | no       | URI to the AI Bill of Materials (SPDX/CycloneDX) |
 
 ## `runtime`
 
@@ -1356,8 +1356,8 @@ TRACE v0.2 supports two wire formats:
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model-1",
     "version": "20251001"
   },
   "runtime": {
@@ -1548,8 +1548,8 @@ from agentrust_trace.adapters import SandboxSessionResult, TraceSandboxAdapter
 
 # Configure once per deployment.
 adapter = TraceSandboxAdapter(
-    model_provider="anthropic",
-    model_id="claude-sonnet-4-6",
+    model_provider="example-provider",
+    model_id="example-model-1",
     data_class="confidential",
 )
 
