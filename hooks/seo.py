@@ -10,10 +10,19 @@ import re
 LIMIT = 155
 MINIMUM = 50
 
-# Lines that are not prose: headings, admonitions, fences, HTML, tables, quotes,
-# lists, attribute lists, rules, and the chain label that opens landing pages
-# ("[01 \u00b7 Weights: ...](https://agentrust-io.com/#chain)").
-_NOT_PROSE = re.compile(r'^(#|!!!|\?\?\?|<|\||>|[-*+] |\d+\. |\{|:::|---|\*\*\*|\[\d\d \u00b7 )')
+# Lines that are not prose: headings, admonitions, HTML, tables, quotes, lists,
+# attribute lists, rules, snippet includes, and the chain label that opens
+# landing pages ("[01 \u00b7 Weights: ...](https://agentrust-io.com/#chain)").
+_NOT_PROSE = re.compile(r'^(#|!!!|\?\?\?|<|\||>|[-*+] |\d+\. |\{|:::|---|\*\*\*|--8<--|\[\d\d \u00b7 )')
+
+# Front-of-page metadata such as "**Status**: Accepted" or "Last updated: 2026-08-01".
+_METADATA = re.compile(
+    r'^(\*\*[^*]+\*\*\s*:|\*\*[^*]+:\*\*|'
+    '(Status|Date|Last updated|Updated|Stability|Document status|Applies to|Written|'
+    'Authors?|Contact|Owner|Organisation|Organization|Version|Scope|Target|'
+    r'Spec section|Related issues|Supersedes|Superseded by)\s*:)',
+    re.IGNORECASE,
+)
 
 
 def _plain(text):
@@ -26,13 +35,17 @@ def _plain(text):
     text = re.sub(r'(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])', r'\1', text)
     text = re.sub(r'<[^>]+>', '', text)
     # House style has no em or en dashes; source text sometimes does.
-    text = text.replace(' \u2014 ', ', ').replace('\u2014', ', ').replace('\u2013', ' to ')
-    return re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'\s*\u2014\s*', ', ', text).replace('\u2013', ' to ')
+    # Material writes the description into content="..." without escaping it.
+    text = text.replace('"', "'").replace('\u201c', "'").replace('\u201d', "'")
+    text = re.sub(r'\s+', ' ', text).strip()
+    return re.sub(r'\s+,', ',', text)
 
 
 def first_paragraph(markdown):
     fence = None
     lines = []
+    skipping = False
     for raw in markdown.splitlines():
         line = raw.strip()
         if fence:
@@ -47,12 +60,18 @@ def first_paragraph(markdown):
         if not line:
             if lines:
                 break
+            skipping = False
             continue
-        if raw.startswith(('    ', '\t')) and not lines:
+        # Indented lines before any prose are admonition bodies; after a skipped
+        # list item or metadata line they are its wrapped continuation.
+        if raw[:1] in (' ', '\t') and (not lines or skipping):
             continue
-        if _NOT_PROSE.match(line):
+        if _NOT_PROSE.match(line) or _METADATA.match(line):
             if lines:
                 break
+            skipping = True
+            continue
+        if skipping and not lines:
             continue
         lines.append(line)
     return _plain(' '.join(lines))
@@ -72,10 +91,12 @@ def cap(text, limit=LIMIT):
 
 def on_page_markdown(markdown, page, config, files):
     if page.meta.get('description'):
+        # Hand-written descriptions reach the same unescaped attribute.
+        page.meta['description'] = _plain(str(page.meta['description']))
         return markdown
     text = first_paragraph(markdown)
     if len(text) >= MINIMUM:
         page.meta['description'] = cap(text)
     elif page.title:
-        page.meta['description'] = cap(f'{page.title}. {config["site_description"]}')
+        page.meta['description'] = cap(_plain(f'{page.title}. {config["site_description"]}'))
     return markdown
