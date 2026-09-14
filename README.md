@@ -31,13 +31,13 @@
 
 > **Developer Preview.** Launched at Confidential Computing Summit, 23 June 2026. Spec v0.2 is current. See [LIMITATIONS.md](LIMITATIONS.md) before relying on it in production.
 
-An open specification for hardware-attested AI agent governance records. TRACE defines the format, anchoring protocol, and verification rules for cryptographically provable evidence that an AI agent ran under a specific policy, in a verified hardware environment, on classified data, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
+An open specification for portable, signed runtime evidence about AI agent runs. TRACE defines the format, anchoring protocol, and verification rules for a record of what an agent ran, where, under which policy, touching which data, and calling which tools, signed so any third party can check it offline. A v0.2 signature proves who produced a record and that it has not changed; hardware provenance needs attestation verified against a trusted root, which the proposed [v0.3 runtime evidence profile](docs/rfcs/runtime-evidence-profile.md) adds.
 
-A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can verify without trusting the operator.
+A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can check offline without asking the operator.
 
-## What a Trust Record proves
+## What a Trust Record claims
 
-Each question maps to a claim a third party can check for themselves.
+Each question maps to a field in the record. The signature shows who made each claim and that it has not changed; whether a claim is true needs evidence the verifier checks independently, as [LIMITATIONS.md](LIMITATIONS.md) describes.
 
 | Question | TRACE claim |
 |---|---|
@@ -64,7 +64,7 @@ record = {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": int(time.time()),
     "subject": "spiffe://trust.example.org/agent/payments-processor",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+    "model": {"provider": "example-provider", "model_id": "example-model-1"},
     "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
     "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
     "data_class": "confidential",

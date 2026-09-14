@@ -30,8 +30,8 @@ from agentrust_trace.adapters import SandboxSessionResult, TraceSandboxAdapter
 
 # Configure once per deployment.
 adapter = TraceSandboxAdapter(
-    model_provider="anthropic",
-    model_id="claude-sonnet-4-6",
+    model_provider="example-provider",
+    model_id="example-model-1",
     data_class="confidential",
 )
 
