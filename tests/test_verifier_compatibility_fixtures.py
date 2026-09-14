@@ -1,0 +1,331 @@
+"""Portable verifier-compatibility vectors (agentrust-io/trace-spec#116).
+
+These fixtures encode behaviour that is **proposed and under review**, not accepted
+normative text.
+
+Unlike the vectors in `test_sign.py`, nothing here is written against this library's
+API: each fixture states a signed record, the profile set a verifier declares, and
+the outcome any conformant verifier must produce. This module is the adapter that
+runs them against `agentrust_trace`; another implementation writes its own adapter
+and runs the same JSON.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from agentrust_trace import verify_record
+from agentrust_trace.sign import TRACE_PROFILE_V0_2
+from agentrust_trace.validate import profiles_with_schema
+
+FIXTURE_DIR = Path(__file__).parent.parent / "examples" / "verifier-compatibility"
+PROFILE = "trace.verifier_compatibility.proposal.v0"
+
+# Failure labels are part of the vector contract, so they must not be matched against
+# prose that is free to change. Each maps to a fragment this implementation emits.
+FAILURE_MARKERS = {
+    "profile_not_accepted": "not in this verifier's accepted set",
+    "profile_absent": "no 'eat_profile'",
+    "no_accepted_profiles": "accepted_profiles is empty",
+    "superseded_profile_in_accepted_set": "superseded v0.1 identifier",
+    "unschemaed_profile_in_accepted_set": "which this build carries no schema for",
+    # A record *carrying* the v0.1 identifier is refused with upstream #125's tailored
+    # message, distinct from the generic not-in-accepted-set refusal above.
+    "superseded_profile_refused": "superseded v0.1 profile",
+}
+
+V0_1 = "tag:agentrust.io,2026:trace-v0.1"
+
+RECORD_SCHEMA_PROFILE = TRACE_PROFILE_V0_2
+"""The one profile a record may carry and still reach the signature check.
+
+`verify_record` validates every record against the v0.2 schema, which pins
+`eat_profile` with a const, so this is a property of the record schema rather than of
+the accepted set. Named separately from the set ceiling because the two coincide only
+by accident of there being one usable profile today.
+"""
+
+# Which failure labels are a complaint about a specific member of the declared set,
+# and how to find the member the message has to name. A rule name is not an entry: a
+# verifier that reported `unschemaed_profile_in_accepted_set` without saying which
+# profile it meant would leave the operator to diff their own configuration.
+#
+# This exists because the proposal's table states, for three of its rows, that the
+# refusal names the entry, and until 2026-09-12 nothing here asserted it. The
+# implementation does interpolate the entry; a change that stopped would have left
+# every vector green and the table's third column false. Same shape as the
+# `downgraded` key removed the same day.
+NAMES_AN_ENTRY = {
+    "unschemaed_profile_in_accepted_set":
+        lambda accepted: [p for p in accepted if p not in profiles_with_schema()],
+    "superseded_profile_in_accepted_set":
+        lambda accepted: [p for p in accepted if p == V0_1],
+}
+
+
+def _assert_the_refusal_names_the_entry(fixture_path, expected, verifier, error):
+    """For a complaint about the declared set, the message must name the member."""
+    find = NAMES_AN_ENTRY.get(expected["failure"])
+    if find is None:
+        return
+    offending = find(verifier["accepted_profiles"])
+    assert offending, (
+        f"{fixture_path.name}: expected {expected['failure']!r} but no member of "
+        f"{verifier['accepted_profiles']} is the kind of entry that label describes, "
+        "so this vector cannot be checking what it says")
+    text = str(error)
+    missing = [p for p in offending if p not in text]
+    assert not missing, (
+        f"{fixture_path.name}: the refusal does not name {missing}. The label alone "
+        "tells an operator which rule fired and not which entry of their declared set "
+        "tripped it, which is what the proposal's table promises.")
+
+
+def _check_preconditions(fixture_path: Path, fixture: dict[str, Any]) -> None:
+    """A vector whose expectation depends on a fact about the reader states that fact.
+
+    Every other vector in this set is self-contained: the record and the declared set
+    are both in the file, and the conformant outcome follows from them. Vectors 04 and
+    09 are not. They expect `unschemaed_profile_in_accepted_set`, which is a refusal
+    because the *verifier* carries no schema for the profile the declared set names --
+    a property of whoever is running the vector.
+
+    `tag:example.com,2025:trace-v0.0` is uncheckable for this build and need not be for
+    another. Measured, packaging a schema whose `eat_profile` const is that identifier:
+    both vectors fail with pytest's `DID NOT RAISE ValueError`, which reads as this
+    verifier being non-conformant when what happened is that it grew a capability and
+    the vector's premise lapsed. The README offers this set to other implementations,
+    so the diagnosis a foreign adapter gets is the deliverable, not a detail.
+
+    Failing rather than skipping, because a lapsed premise means the rule stopped being
+    tested here and a set that quietly stops testing a rule still reports green.
+    """
+    premise = fixture.get("preconditions")
+    if premise is None:
+        return
+    checkable = [p for p in premise["unschemaed_for_the_verifier_under_test"]
+                 if p in profiles_with_schema()]
+    assert not checkable, (
+        f"{fixture_path.name}: this vector's premise no longer holds. It needs "
+        f"{premise['unschemaed_for_the_verifier_under_test']} to be profiles this "
+        f"verifier carries no schema for, and it now carries one for {checkable}. "
+        "This is not a conformance failure: the rule is that a verifier refuses a "
+        "declared set naming a profile whose shape it cannot check, and that rule is "
+        "untouched. Substitute an identifier this build cannot check and regenerate, "
+        "or the rule is no longer covered by this set.")
+
+
+FIXTURE_PATHS = sorted(FIXTURE_DIR.glob("*.json"))
+
+
+def _load(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_vector_set_is_complete() -> None:
+    assert [path.name for path in FIXTURE_PATHS] == [
+        "01-known-version-verified.json",
+        "02-unknown-version-refused.json",
+        "03-superseded-version-refused.json",
+        "04-unschemaed-profile-refused.json",
+        "05-downgrade-silent-is-impossible.json",
+        "06-empty-accepted-set-refused.json",
+        "07-profile-absent-refused.json",
+        "08-dual-accept-configuration-refused.json",
+        "09-unschemaed-profile-first-in-set-refused.json",
+        "11-empty-profile-string-refused.json",
+    ]
+
+
+@pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda path: path.stem)
+def test_verifier_compatibility_vector(fixture_path: Path) -> None:
+    fixture = _load(fixture_path)
+
+    assert fixture["profile"] == PROFILE
+    assert fixture["proposal"]["issue"] == "agentrust-io/trace-spec#116"
+    assert "not accepted normative text" in fixture["proposal"]["status"]
+
+    _check_preconditions(fixture_path, fixture)
+
+    verifier = fixture["verifier"]
+    expected = fixture["expected"]
+    # Freshness is disabled by every vector: version skew is the property under test,
+    # and a fixed iat would otherwise make the set expire.
+    assert verifier["check_freshness"] is False
+
+    if expected["outcome"] == "refused":
+        with pytest.raises(ValueError) as excinfo:
+            verify_record(
+                fixture["record"],
+                fixture["trusted_key"],
+                max_age_seconds=None,
+                accepted_profiles=verifier["accepted_profiles"],
+            )
+        marker = FAILURE_MARKERS[expected["failure"]]
+        assert marker in str(excinfo.value), (
+            f"{fixture_path.name}: refused for the wrong reason. "
+            f"expected {expected['failure']!r}, got: {excinfo.value}"
+        )
+        _assert_the_refusal_names_the_entry(fixture_path, expected, verifier, excinfo.value)
+        return
+
+    statement = verify_record(
+        fixture["record"],
+        fixture["trusted_key"],
+        max_age_seconds=None,
+        accepted_profiles=verifier["accepted_profiles"],
+    )
+    want = expected["statement"]
+    assert statement.profile == want["profile"]
+    assert list(statement.accepted_profiles) == want["accepted_profiles"]
+
+    # Every key the vector names is compared, and nothing is derived here. A key the
+    # adapter computes from the statement it was just handed is compared against
+    # itself: that is how `downgraded` sat in this set asserting nothing until
+    # 2026-09-12. If a future key cannot be read off the result, it does not belong
+    # in the expectation.
+    assert set(want) == {"profile", "accepted_profiles"}, (
+        f"{fixture_path.name}: the statement expectation names {sorted(want)}; this "
+        "adapter reads two keys and would silently ignore the rest")
+
+
+def test_every_fixture_signature_is_genuine() -> None:
+    """No vector may pass or fail because its signature was malformed.
+
+    All eleven records are correctly signed. If one were not, a "refused" expectation
+    could be satisfied by the signature check rather than by the profile rule, and the
+    vector would silently stop testing what it claims to test.
+    """
+    for path in FIXTURE_PATHS:
+        fixture = _load(path)
+        record = fixture["record"]
+        profile = record.get("eat_profile")
+        # Only a record carrying the profile this build's *record* schema accepts can
+        # reach the signature check inside verify_record. `validate_json` runs the v0.2
+        # schema unconditionally and that schema pins `eat_profile` with a const, so
+        # every other record is refused before the signature is read.
+        #
+        # This read `profile not in profiles_with_schema()` until 2026-09-12, which is
+        # a different set that happens to exclude the same records today. Packaging a
+        # second usable profile schema separates them: measured, a schema for
+        # `tag:example.com,2025:trace-v0.0` stopped vector 05's record being skipped
+        # and this test failed on the v0.2 schema's const, reporting a bad signature
+        # for a record whose signature is fine.
+        #
+        # Every record in this directory, including the skipped ones, is re-verified
+        # through an independent cryptographic path by
+        # test_fixture_signatures_independent.py, which is the stronger check anyway
+        # because it does not run the code under test.
+        if profile != RECORD_SCHEMA_PROFILE:
+            continue
+        # Accept whatever this record carries, so only the signature can fail here.
+        verify_record(
+            record,
+            fixture["trusted_key"],
+            max_age_seconds=None,
+            accepted_profiles=[profile],
+        )
+
+
+@pytest.mark.parametrize(
+    "unschemaed",
+    [
+        "tag:example.test,2026:made-up-v9",
+        "tag:agentrust-io.com,2027:trace-v0.3",
+        "urn:not-a-profile",
+    ],
+)
+def test_the_ceiling_refuses_any_profile_no_schema_covers(unschemaed: str) -> None:
+    """The ceiling is enforced for every profile outside it, not only for the ones
+    a vector happens to name.
+
+    `profiles_with_schema()` is the ceiling on any accepted set: a verifier can only
+    honestly accept a profile whose shape it can check. Two things guard that today
+    and neither guards this. `test_sign.py` pins the ceiling's *contents*, which a
+    widening at the call site does not touch; vector 04 proves one specific
+    unschemaed profile is refused, which a widening that admits a *different* one
+    leaves green.
+
+    Measured: adding a single fictional identifier to the set the enforcement
+    consults, and changing nothing else, passed all 932 tests. This is the test that
+    fails on it. Synthetic identifiers rather than vector ones, so it cannot be
+    satisfied by whatever the corpus currently contains.
+    """
+    from agentrust_trace.validate import profiles_with_schema
+
+    assert unschemaed not in profiles_with_schema(), (
+        f"{unschemaed} is now a packaged profile, so it is the wrong probe for this"
+    )
+
+    fixture = _load(FIXTURE_DIR / "01-known-version-verified.json")
+    with pytest.raises(ValueError, match="carries no schema|carry no schema|can check"):
+        verify_record(
+            fixture["record"],
+            fixture["trusted_key"],
+            max_age_seconds=None,
+            accepted_profiles=[unschemaed],
+        )
+
+
+def test_the_precondition_check_fires_and_covers_every_vector_that_needs_one() -> None:
+    """Positive control on `_check_preconditions`, and on which vectors declare one.
+
+    Two ways this goes quiet. The check never fires, and a lapsed premise is reported
+    as a conformance failure again. Or a vector that needs a premise stops declaring
+    one, which a regeneration can do silently because every other assertion here still
+    passes.
+
+    The second list is derived, not written down: a vector needs a premise exactly when
+    its expected failure is the one whose truth depends on the reader's schema
+    inventory. `unschemaed_profile_in_accepted_set` is that failure and it is the only
+    one, because every other label in this set is decided by the record and the
+    declared set, both of which are in the file.
+    """
+    needs = {path.name for path in FIXTURE_PATHS
+             if _load(path)["expected"].get("failure") == "unschemaed_profile_in_accepted_set"}
+    declares = {path.name for path in FIXTURE_PATHS if "preconditions" in _load(path)}
+    assert needs, "positive control: no vector expects the reader-dependent failure"
+    assert declares == needs, (
+        f"vectors expecting 'unschemaed_profile_in_accepted_set' are {sorted(needs)} and "
+        f"vectors declaring a premise are {sorted(declares)}. A vector whose expectation "
+        "depends on what the reader can check has to say so.")
+
+    lapsed = {
+        "preconditions": {
+            # A profile this build certainly carries a schema for, standing in for the
+            # world where the vector's own identifier becomes checkable.
+            "unschemaed_for_the_verifier_under_test": [TRACE_PROFILE_V0_2],
+            "why": "control",
+        }
+    }
+    with pytest.raises(AssertionError, match="premise no longer holds"):
+        _check_preconditions(Path("control.json"), lapsed)
+
+
+def test_the_readme_states_the_real_fixture_count() -> None:
+    """The counts in the README are computed here rather than trusted there.
+
+    The proposal document's count was the one this test used to read, and it said "seven
+    fixtures" until 2026-09-12, wrong since the set grew past seven, because nothing read
+    it. That document has left this branch; the README's two counts, the table and the
+    "self-contained" sentence, were read by nothing at all, measured by mutating one and
+    watching every test stay green. This is the test that reads them.
+    """
+    words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
+             7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve"}
+    readme = (FIXTURE_DIR / "README.md").read_text(encoding="utf-8")
+    count = len(FIXTURE_PATHS)
+    rows = [line for line in readme.splitlines()
+            if line.startswith("| `") and ".json`" in line]
+    assert len(rows) == count, (
+        f"README table lists {len(rows)} fixtures, the directory holds {count}")
+    with_premise = sum("preconditions" in _load(p) for p in FIXTURE_PATHS)
+    self_contained = count - with_premise
+    assert count in words and self_contained in words, "write the numeral out"
+    claim = f"{words[self_contained].capitalize()} of the {words[count]} are self-contained"
+    assert claim in readme, (
+        f"README does not state the current counts; the sentence should read {claim!r}.")

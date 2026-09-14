@@ -70,6 +70,11 @@ def build_provenance_depth() -> list[Vector]:
                  lambda e: deepest(e)["outcome"], codes, separates_at)
 
 
+def verifier_compatibility() -> list[Vector]:
+    return _load("verifier-compatibility",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 def canonicalization_boundary() -> list[Vector]:
     return _load("canonicalization-boundary",
                  lambda e: e["outcome"], lambda e: [e.get("failure")])
@@ -130,6 +135,7 @@ SETS = {
     "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
+    "verifier-compatibility": (verifier_compatibility, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
@@ -161,7 +167,46 @@ def test_no_set_is_satisfied_by_an_unconditional_answer(name: str) -> None:
 
 # The shortfall this repository currently carries, stated exactly. Widening it fails
 # here; closing it fails here too, and the entry is then deleted.
-KNOWN_THIN: dict[str, dict[str, str]] = {}
+KNOWN_THIN: dict[str, dict[str, str]] = {
+    # This fork's own set, and the shape #124 established as insufficient. It was four
+    # of the five refusal rules. One has since been closed by writing the second
+    # vector: `profile_absent` by 11, which carries a profile claim that is present and
+    # empty rather than absent. `superseded_profile_in_accepted_set` was closed by 10 for
+    # a day and is thin again: 10 left the set on 2026-09-13 under the #116 ruling that
+    # the v0.1 cutover is merged normative text and not this issue's to pin, and the
+    # configuration-side rule it exercised is now tested in `test_sign.py` beside the
+    # cutover's own tests. 08 is the vector that remains, and it is gate-covered.
+    #
+    # The two below were measured and are not closable, which is different from
+    # not yet done, so the reason is recorded here rather than left as an open task:
+    #
+    #   no_accepted_profiles       The rule fires on the verifier's own configuration
+    #                              before any record is read, and the configuration has
+    #                              one shape: the accepted set is empty. The one other
+    #                              axis, pairing the empty set with a second defect the
+    #                              verifier would catch later, needs `check_freshness`,
+    #                              which every vector in the set asserts is False, for
+    #                              a good reason: a fixed `iat` would make the set
+    #                              expire. Varying the record instead pins nothing, as
+    #                              no plausible implementation branches on record
+    #                              content when deciding an empty set accepts nothing.
+    #
+    #   superseded_profile_refused The record must carry the v0.1 identifier and the
+    #                              accepted set must exclude it. The set can hold only
+    #                              v0.2, because any other member trips
+    #                              `unschemaed_profile_in_accepted_set` first, so there
+    #                              is no second configuration to present. What is left
+    #                              is varying record content, which again pins nothing.
+    #
+    # A second vector written to close a count rather than to catch a defect an
+    # implementation could plausibly have makes this record worse, not better: it
+    # reports a margin that does not exist.
+    "verifier-compatibility": {
+        "no_accepted_profiles": "06-empty-accepted-set-refused",
+        "superseded_profile_in_accepted_set": "08-dual-accept-configuration-refused",
+        "superseded_profile_refused": "03-superseded-version-refused",
+    },
+}
 
 
 @pytest.mark.parametrize("name", sorted(SETS))

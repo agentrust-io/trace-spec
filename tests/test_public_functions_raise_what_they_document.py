@@ -130,6 +130,10 @@ CALLS: dict[str, Callable[[Any], Any]] = {
 #: arguments are keyword arguments and are swept below.
 NO_ARGUMENT_TO_SWEEP = {
     "sign.generate_key", "sign.load_signing_key",
+    # Takes nothing: reads the packaged schema files and returns the eat_profile URIs they
+    # declare. Its one failure mode is a build with no usable schema, which it raises
+    # RuntimeError for and which `test_sign.py` covers.
+    "validate.profiles_with_schema",
 }
 
 _RECORD_JSON = json.dumps({
@@ -225,10 +229,10 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
                      "revocation_bundle": _CTX["bundle"],
                      "trusted_bundle_keys": _CTX["trusted_bundle_keys"],
                      "max_bundle_age_seconds": _CTX["max_bundle_age_seconds"],
-                     "now": _CTX["now"]},
+                     "now": _CTX["now"], "accepted_profiles": sign.DEFAULT_ACCEPTED_PROFILES},
         ("public_key_or_jwk", "allow_embedded_key", "max_age_seconds",
          "max_future_skew_seconds", "expected_nonce", "revocation", "revocation_bundle",
-         "trusted_bundle_keys", "max_bundle_age_seconds", "now"),
+         "trusted_bundle_keys", "max_bundle_age_seconds", "now", "accepted_profiles"),
     ),
 }
 

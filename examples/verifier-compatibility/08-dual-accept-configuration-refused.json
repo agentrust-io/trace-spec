@@ -1,0 +1,62 @@
+{
+  "name": "dual-accept-configuration-refused",
+  "description": "A verifier configured to accept the v0.1 identifier alongside v0.2, presented with a correctly signed v0.1 record, the one case disclosed downgrade cannot save. The spec's cutover is cutover, not coexistence: the v0.1 identifier lives on a domain the project does not own, and a v0.2 verifier MUST NOT accept both, whatever its configuration claims. The configuration itself is the non-conformant object; the observable requirement is that no record verifies under it.",
+  "profile": "trace.verifier_compatibility.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#116",
+    "status": "under review, not accepted normative text"
+  },
+  "verifier": {
+    "accepted_profiles": [
+      "tag:agentrust-io.com,2026:trace-v0.2",
+      "tag:agentrust.io,2026:trace-v0.1"
+    ],
+    "verification_time": 1785000100,
+    "check_freshness": false
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust.io,2026:trace-v0.1",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "5eFnOBBJdxfftJ48ARZ-0z3fjoTyF-auFXWIhZiiZmh_vfEs_oCJUsXJ1UNQAYO6QxxA5NaWj1keAGFvSfdhBg"
+  },
+  "expected": {
+    "outcome": "refused",
+    "failure": "superseded_profile_in_accepted_set",
+    "statement": null
+  }
+}

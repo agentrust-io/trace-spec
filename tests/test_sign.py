@@ -10,14 +10,17 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from agentrust_trace import (
+    DEFAULT_ACCEPTED_PROFILES,
     TRACE_PROFILE_V0_2,
     TrustRecord,
+    VerificationResult,
     generate_key,
     jwk_thumbprint,
     key_to_jwk,
     sign_record,
     verify_record,
 )
+from agentrust_trace.sign import _TRACE_PROFILE_V0_1
 from agentrust_trace.sign import _canonical_bytes
 
 
@@ -189,7 +192,7 @@ def _fresh_record_with_profile(profile) -> dict:
 
 
 def test_verify_record_rejects_superseded_v0_1_profile():
-    """spec/trace-v0.2.md section 2: a v0.2 verifier MUST reject the v0.1 identifier.
+    """spec/trace-v0.2.md, under 'Changes from v0.1': a v0.2 verifier MUST reject v0.1.
 
     The signature is genuine; the refusal must come from the profile, not from
     tampering, or this would test the wrong check.
@@ -201,6 +204,25 @@ def test_verify_record_rejects_superseded_v0_1_profile():
 
     with pytest.raises(ValueError, match="superseded v0.1 profile"):
         verify_record(record, key_to_jwk(key))
+
+
+def test_verify_record_rejects_v0_1_in_the_accepted_set():
+    """The configuration side of the same cutover: a verifier may not declare v0.1 in
+    its accepted set, whatever record it is shown. Moved here from the #116 vector set
+    on 2026-09-13 under the ruling that the cutover is merged normative text and its
+    coverage belongs with the cutover, not with a proposal. The record is an ordinary
+    v0.2 one so the refusal can only come from the set.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record_with_profile(TRACE_PROFILE_V0_2), key)
+
+    with pytest.raises(ValueError, match="superseded v0.1 identifier"):
+        verify_record(record, key_to_jwk(key),
+                      accepted_profiles=(_TRACE_PROFILE_V0_1, TRACE_PROFILE_V0_2))
+
+    # Control: the same record and key with the v0.1 tag removed from the set verifies,
+    # so the refusal above is the set's and not the record's.
+    verify_record(record, key_to_jwk(key), accepted_profiles=(TRACE_PROFILE_V0_2,))
 
 
 def test_verify_record_rejects_unknown_profile():
@@ -822,6 +844,269 @@ def test_round_trip_with_non_ascii_payload():
     verify_record(signed, key_to_jwk(key))  # must not raise
 
 
+# ---------------------------------------------------------------------------
+# Format-versioning and verifier-compatibility vectors (agentrust-io#116).
+#
+# Evidence outlives verifier builds: a compliance artifact is verified years
+# after issuance, so a verifier that meets an unrecognised profile must refuse
+# rather than verify on a best-effort basis, and must say which semantics it
+# verified under. The four vectors below are the ones named in the issue.
+#
+# The first also implements a requirement already merged into spec/trace-v0.2.md
+# ("Changes from v0.1"): a v0.2 verifier MUST reject the v0.1 identifier and MUST
+# NOT accept both.
+# ---------------------------------------------------------------------------
+
+
+def _record_with_profile(profile: str) -> tuple[dict, dict]:
+    """Return a correctly signed record carrying *profile*, plus its trusted JWK.
+
+    The signature is genuine in every case. That is the point of these vectors:
+    the question is never "does the signature check out", it is "does this build
+    implement what the record was written under".
+    """
+    key = generate_key()
+    record = _fresh_record()
+    record["eat_profile"] = profile
+    signed = sign_record(record, key)
+    return signed, key_to_jwk(key)
+
+
+def test_vector_unknown_version_is_refused():
+    """Vector 1: unknown-version artifact must be refused, not best-effort verified."""
+    record, jwk = _record_with_profile("tag:example.com,2031:trace-v9.9")
+
+    with pytest.raises(ValueError, match="not in this verifier's accepted set"):
+        verify_record(record, jwk)
+
+
+def test_vector_superseded_v0_1_profile_is_refused():
+    """spec/trace-v0.2.md: a v0.2 verifier MUST reject the v0.1 identifier."""
+    record, jwk = _record_with_profile(_TRACE_PROFILE_V0_1)
+
+    # Upstream #125's tailored message for this case, kept through the merge: the
+    # v0.1 identifier is named as superseded, not merely absent from the accepted set.
+    with pytest.raises(ValueError, match="superseded v0.1 profile"):
+        verify_record(record, jwk)
+
+    assert _TRACE_PROFILE_V0_1 not in DEFAULT_ACCEPTED_PROFILES, (
+        "the default accepted set must not carry the superseded identifier; "
+        "accepting both is what the v0.2 cutover forbids"
+    )
+
+
+def test_dual_accept_configuration_is_unrepresentable():
+    """spec/trace-v0.2.md: a v0.2 verifier MUST NOT accept both identifiers.
+
+    Enforced at configuration, not per record: a set containing the v0.1 tag is
+    refused before any record is examined, so the dual-accepting verifier the
+    cutover forbids cannot be built from this library at all — even when the record
+    presented is a perfectly good v0.2 one.
+    """
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+
+    with pytest.raises(ValueError, match="superseded v0.1 identifier"):
+        verify_record(
+            record,
+            jwk,
+            accepted_profiles=(TRACE_PROFILE_V0_2, _TRACE_PROFILE_V0_1),
+        )
+
+    v01_record, v01_jwk = _record_with_profile(_TRACE_PROFILE_V0_1)
+    with pytest.raises(ValueError, match="superseded v0.1 identifier"):
+        verify_record(v01_record, v01_jwk, accepted_profiles=(_TRACE_PROFILE_V0_1,))
+
+
+def test_vector_known_version_verifies_and_echoes_the_profile():
+    """Vector 2: a supported version verifies, and the statement names it."""
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+
+    statement = verify_record(record, jwk)
+
+    assert isinstance(statement, VerificationResult)
+    assert statement.profile == TRACE_PROFILE_V0_2
+    assert statement.accepted_profiles == DEFAULT_ACCEPTED_PROFILES
+    # `trusted_key_thumbprint` is upstream's, and it is what `key_source` was reaching
+    # for before this branch was synced: the result names the key it verified against
+    # rather than leaving the reader to assume which one ran.
+    assert statement.trusted_key_thumbprint == jwk_thumbprint(jwk)
+
+
+def test_vector_widening_to_an_unschemaed_profile_is_refused():
+    """Vector 3: a verifier may only accept a profile whose shape it can check.
+
+    This asserted the opposite until the set was measured: widening was treated as a
+    disclosed downgrade and expected to verify. It never did. The record was refused
+    a few lines later by the schema, whose ``eat_profile`` is a ``const``, so the
+    declared set could be widened but no record could ever be verified under the
+    addition. Refusing the configuration says that at the point the claim is made,
+    rather than reporting a structural failure for a record that has nothing wrong
+    with it.
+    """
+    older = "tag:example.com,2025:trace-v0.0"
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+
+    with pytest.raises(ValueError, match="carries no schema for"):
+        verify_record(record, jwk, accepted_profiles=(TRACE_PROFILE_V0_2, older))
+
+    assert older not in DEFAULT_ACCEPTED_PROFILES
+
+
+def test_a_disclosed_downgrade_is_unreachable_in_this_build():
+    """The consequence of the rule above, pinned rather than left to be rediscovered.
+
+    ``VerificationResult`` can express a run under a profile other than the newest
+    the verifier declared. This build cannot produce one: the only profiles it carries
+    a schema for are v0.2 and the v0.1 identifier, and the cutover forbids accepting
+    v0.1 under any configuration. So every accepted set this build permits is exactly
+    ``(v0.2,)``, and a statement's profile is always its first element.
+
+    That is a property of a single-schema build, not of the design. A build shipping a
+    second acceptable schema would reach it, which is why the field stays.
+    """
+    from agentrust_trace.validate import profiles_with_schema
+
+    permitted = profiles_with_schema() - {_TRACE_PROFILE_V0_1}
+    assert permitted == {TRACE_PROFILE_V0_2}, (
+        "a second acceptable schema is now shipped, so a disclosed downgrade is "
+        "reachable and this test should be replaced by one that exercises it"
+    )
+
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+    statement = verify_record(record, jwk, accepted_profiles=(TRACE_PROFILE_V0_2,))
+    assert statement.profile == statement.accepted_profiles[0]
+
+
+def test_vector_silent_downgrade_has_no_code_path():
+    """Vector 4: silent fallback must fail conformance — here it is unrepresentable.
+
+    There is no argument to ``verify_record`` that verifies a profile outside the
+    declared set, so a downgrade cannot happen without appearing in
+    ``accepted_profiles``. The vector is satisfied structurally rather than by a
+    runtime check that could itself be bypassed.
+    """
+    older = "tag:example.com,2025:trace-v0.0"
+    record, jwk = _record_with_profile(older)
+
+    # Default set: refused.
+    with pytest.raises(ValueError):
+        verify_record(record, jwk)
+
+    # A set that excludes the record's profile: still refused, however the other
+    # arguments are relaxed.
+    with pytest.raises(ValueError):
+        verify_record(record, jwk, max_age_seconds=None, accepted_profiles=(TRACE_PROFILE_V0_2,))
+
+
+def test_verify_record_rejects_record_without_a_profile():
+    """A missing profile cannot be supplied by assumption."""
+    key = generate_key()
+    record = _fresh_record()
+    del record["eat_profile"]
+    signed = sign_record(record, key)
+
+    with pytest.raises(ValueError, match="no 'eat_profile'"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_verify_record_rejects_empty_accepted_profiles():
+    """A verifier that supports nothing must say so, not accept everything."""
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+
+    with pytest.raises(ValueError, match="accepted_profiles is empty"):
+        verify_record(record, jwk, accepted_profiles=())
+
+
+def test_verification_statement_reports_check_coverage():
+    """The result distinguishes "checked and passed" from "never checked".
+
+    This asserted four booleans this branch had added to a type of its own:
+    `key_source`, `freshness_checked`, `nonce_checked` and `revocation_checked`. None of
+    them is in #116, which asks for the profile and nothing else, and the branch was
+    synced onto a main where `VerificationResult` already reports revocation coverage
+    properly, as an outcome rather than a boolean. So the three that upstream does not
+    carry are gone rather than ported: they were scope this proposal never claimed, and
+    carrying them would have widened a #116 pull request by four fields nobody asked
+    for. What survives is the property they were reaching for, asserted against the
+    field upstream already ships.
+    """
+    record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
+
+    # Documented in LIMITATIONS.md: without a store or a bundle, non-revocation is
+    # unproven rather than disproven, and the result has to say which of the two.
+    offline = verify_record(record, jwk)
+    assert offline.revocation.outcome == "no_check_performed"
+
+    nonce_key = generate_key()
+    with_nonce = _fresh_record()
+    with_nonce["runtime"]["nonce"] = "abc123"
+    resigned = sign_record(with_nonce, nonce_key)
+    checked = verify_record(
+        resigned,
+        key_to_jwk(nonce_key),
+        max_age_seconds=None,
+        expected_nonce="abc123",
+        revocation=frozenset(),
+    )
+    assert checked.revocation.outcome != "no_check_performed"
+    assert checked.profile == TRACE_PROFILE_V0_2
+
+
+# --- the parameter's own type, not the shape inside it ------------------------
+#
+# verify_record documents ValueError and InvalidSignature; jwk_thumbprint
+# documents ValueError. Both dereferenced their first parameter with `.get(...)`
+# before establishing it was a mapping, so every non-dict input left through an
+# AttributeError instead, which a caller's `except ValueError` does not catch.
+#
+# This is about the parameter itself rather than any field within it. Guards on
+# fields inside a record cannot reach it: `record["identity"]` is only checkable
+# once `record` is known to be a dict.
+
+NON_OBJECTS = [None, 5, 0, "a string", "", [], [1, 2], True, False, b"bytes"]
+
+
+@pytest.mark.parametrize("bad", NON_OBJECTS)
+def test_verify_record_refuses_a_non_object_record(bad):
+    key = generate_key()
+    with pytest.raises(ValueError, match="record must be a JSON object"):
+        verify_record(bad, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bad", NON_OBJECTS)
+def test_jwk_thumbprint_refuses_a_non_object_jwk(bad):
+    with pytest.raises(ValueError, match="jwk must be a JSON object"):
+        jwk_thumbprint(bad)
+
+
+@pytest.mark.parametrize("body", [b"[1,2,3]", b'"a string"', b"null", b"42", b"true"])
+def test_a_caller_catching_valueerror_catches_an_untrusted_body(body):
+    """The shape this actually takes in a caller.
+
+    A verifier receives bytes, parses them, and rejects what does not verify.
+    Every one of these bodies is valid JSON and none is an object. With the
+    parameter unchecked they raised AttributeError, which is not a ValueError,
+    so they escaped the rejection branch entirely and surfaced as an unhandled
+    error in whatever was calling the verifier.
+    """
+    key = generate_key()
+    try:
+        verify_record(json.loads(body), key_to_jwk(key))
+    except ValueError:
+        return
+    pytest.fail(f"{body!r} was accepted, or left through something ValueError misses")
+
+
+def test_the_record_type_is_checked_before_the_record_is_read():
+    """Ordering: verifier-configuration errors still come first.
+
+    `accepted_profiles` is the verifier's own configuration and is wrong before
+    any record is involved, so it keeps reporting first. The record's type is
+    checked after that and before the record is read.
+    """
+    key = generate_key()
+    with pytest.raises(ValueError, match="accepted_profiles is empty"):
+        verify_record(None, key_to_jwk(key), accepted_profiles=())
 #: Values a caller can hand a function that documents an object argument. The last
 #: five are the ones a record assembled from parsed JSON can actually carry.
 _NOT_AN_OBJECT = ("a-string", 123, None, [1, 2], True, False, 0, "", b"bytes", 1.5)
