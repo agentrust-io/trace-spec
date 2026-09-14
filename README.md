@@ -85,7 +85,7 @@ See the [Quickstart guide](https://trace.agentrust-io.com/docs/quickstart/) for 
 | 🔍 Schema | [schema/trace-claim.json](schema/trace-claim.json) |
 | 📦 PyPI | [agentrust-trace](https://pypi.org/project/agentrust-trace/) |
 | 🧪 Test suite | [trace-tests](https://github.com/agentrust-io/trace-tests) |
-| 🗂 Registry | `trace-registry` (not public yet) |
+| 🗂 Registry | [trace-registry](https://github.com/agentrust-io/trace-registry) |
 | 🔗 Reference implementation | [cmcp](https://github.com/agentrust-io/cmcp) |
 | 💬 Discussions | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions) |
 | 📋 Changelog | [CHANGELOG.md](CHANGELOG.md) |
@@ -106,7 +106,7 @@ A single signed Trust Record answers, in a form any third party can verify witho
 
 ### What standards is TRACE built on?
 
-TRACE builds on open IETF and IRTF standards: RFC 9711 (CBOR Web Token / EAT) for the claim envelope, RFC 9334 (RATS) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring. It is designed for CoSAI WS4 interoperability.
+TRACE builds on open IETF and IRTF standards: RFC 9711 (CBOR Web Token / EAT) for the claim envelope, RFC 9334 (RATS) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
 
 ### How do I create and verify a Trust Record?
 

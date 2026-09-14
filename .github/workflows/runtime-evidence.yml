@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Fetched into RUNNER_TEMP rather than checked out into the workspace.
       # `tools/check_dashes.py` walks the repository root and would report every em
@@ -52,7 +52,7 @@ jobs:
           git -C "$RUNNER_TEMP/agent-manifest" checkout -q FETCH_HEAD
           test "$(git -C "$RUNNER_TEMP/agent-manifest" rev-parse HEAD)" = "$AGENT_MANIFEST_COMMIT"
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
