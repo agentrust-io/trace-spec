@@ -657,9 +657,7 @@ the reference implementation at the MCP tool-call boundary.
 
 **The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
-This supersedes the earlier proposal to split the technical workstream to CoSAI and the spec, IP and trademark to the Linux Foundation entity hosting the Model Context Protocol. That arrangement made TRACE a guest of two hosts, neither of which owned the conformance mark outright.
-
-Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups), CoSAI (WS4 interoperability).
+Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
 
 ### 6.2 Target contributing organizations
 
@@ -680,7 +678,7 @@ Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential
 
 These need input before v1.0. Two are now resolved and are kept here, marked, so a reader tracking them can see how they landed.
 
-1. ~~**Host organization.** CoSAI, Linux Foundation, or a federated arrangement?~~ **Resolved:** the Linux Foundation, as TRACE's own series. See §6.1.
+1. ~~**Host organization.** Which organization hosts the specification?~~ **Resolved:** the Linux Foundation, as TRACE's own series. See §6.1.
 2. **AI-agent profile vs general profile.** One inclusive profile or split agent execution and generic confidential workload from day one?
 3. **Transparency log operator(s).** One canonical SCITT log, federated logs, or BYO with conformance criteria?
 4. **Policy language.** TRACE binds a policy *hash*. Does v1.0 also specify a policy *language* (Cedar, Rego, custom DSL), or stay language-agnostic?

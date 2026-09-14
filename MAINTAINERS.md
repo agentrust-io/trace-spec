@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Imran Siddique | AgenTrust-io | @imran-siddique | imransiddique@live.com |
 
-The Project Lead has final decision authority on specification changes, AAIF/CoSAI submission scope, conformance requirements, and Maintainer appointments.
+The Project Lead has final decision authority on specification changes, submission of TRACE deliverables to other organizations, conformance requirements, and Maintainer appointments.
 
 ## Spec Editors
 
