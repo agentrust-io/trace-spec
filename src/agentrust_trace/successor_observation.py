@@ -61,10 +61,9 @@ def evaluate_successor_observation(
 ) -> SuccessorOutcome:
     """Evaluate a successor observation without conflating binding with closure.
 
-    `expected_successor_digest` is supplied by the caller to represent whatever
-    binding mechanism the profile eventually chooses. This prototype deliberately
-    does not decide whether that digest belongs in the signed authorization, the
-    transcript, or a detached observation artifact.
+    `expected_successor_digest` is the authenticated binding value established by
+    the bridge profile. In the PIC/TRACE bridge it comes from the signed
+    `authorization.successor_observation_digest`, not from the observed envelope.
 
     The predicate is application-defined and returns True when the requested
     transition is established by the observation, False when trusted evidence
