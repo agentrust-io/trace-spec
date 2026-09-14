@@ -111,6 +111,38 @@ def test_stale_successor_is_not_established() -> None:
     assert "stale" in outcome.reason
 
 
+
+def test_future_successor_is_not_established() -> None:
+    outcome = _evaluate(_after(observed_at=161), now=160, max_age_seconds=30)
+    assert outcome.status == "not-established"
+    assert "future" in outcome.reason
+
+
+def test_zero_age_accepts_only_same_instant_observation() -> None:
+    same = _evaluate(_after(observed_at=160), now=160, max_age_seconds=0)
+    assert same.status == "established"
+
+    older = _evaluate(_after(observed_at=159), now=160, max_age_seconds=0)
+    assert older.status == "not-established"
+    assert "stale" in older.reason
+
+
+def test_empty_trusted_observer_set_is_valid_but_establishes_nothing() -> None:
+    after = _after()
+    outcome = evaluate_successor_observation(
+        after,
+        expected_successor_digest=digest_jcs(after),
+        trusted_observers=set(),
+        executor_id="executor-1",
+        independence_required=True,
+        now=160,
+        max_age_seconds=30,
+        predicate=lambda obs: True,
+    )
+    assert outcome.status == "not-established"
+    assert "not trusted" in outcome.reason
+
+
 def test_untrusted_successor_is_not_established() -> None:
     outcome = _evaluate(_after(observer="observer-2"), trusted={"observer-1"})
     assert outcome.status == "not-established"
