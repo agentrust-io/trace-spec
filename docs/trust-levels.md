@@ -2,7 +2,9 @@
 description: Understand TRACE's software, hardware, and transparency evidence levels and the checks a relying party still needs to perform.
 ---
 
-# Trust Levels
+<a id="trust-levels"></a>
+
+# Trust Levels {#trace-trust-levels}
 
 TRACE's conformance suite groups checks into three levels. A level describes required checks; it is not a blanket guarantee that an agent behaved correctly. The recipient supplies trust anchors, evidence, and an acceptance policy.
 
@@ -16,7 +18,9 @@ TRACE's conformance suite groups checks into three levels. A level describes req
 
 See the [suite's level definitions](https://tests.agentrust-io.com/docs/levels/) for required modules and its [limitations](https://tests.agentrust-io.com/LIMITATIONS/) for what a pass establishes. Record-format checks must not be described as a fresh hardware appraisal unless that evidence was actually verified.
 
-## Level 0: software-only
+<a id="level-0-software-only"></a>
+
+## Level 0: software-only {#trace-l0}
 
 A software-held key signs the record. `software-only` identifies the absence of hardware assurance. A recipient checks the signature against a key obtained through its own trust channel; the key embedded in an incoming record cannot establish its own authority.
 
@@ -24,7 +28,9 @@ A valid signature authenticates the key's statement. It does not prove that a po
 
 `runtime.measurement` is required on every record, including `software-only` ones. Under `software-only`, the field is not a hardware measurement: it is a software commitment defined by the producing profile (for example, a hash over an image digest and policy bundle, or over a chain-tip), and that profile must document its preimage so a verifier can recompute it. All-zero (`sha256:000...000`) is reserved for a producer that has no commitment to offer at all, such as a bare development record with nothing measured; it is not the default for `software-only` in general. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path. Use the [quick start](quickstart.md) for a complete runnable record rather than copying abbreviated field examples.
 
-## Level 1: hardware evidence
+<a id="level-1-hardware-evidence"></a>
+
+## Level 1: hardware evidence {#trace-l1}
 
 | Build-provenance field | Schema range |
 |---|---|
@@ -36,7 +42,9 @@ Use the standalone platform identifiers from the [schema](https://github.com/age
 
 `agentrust_trace.verify_record` does not itself appraise hardware quotes. A producing runtime's verifier must perform the relevant evidence checks. cMCP uses a different envelope; see [cMCP verification](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/).
 
-## Level 2: transparency anchoring
+<a id="level-2-transparency-anchoring"></a>
+
+## Level 2: transparency anchoring {#trace-l2}
 
 Level 2 adds transparency and transcript requirements to the lower levels. A `transparency` URI is a reference, not an inclusion proof. The verifier needs proof bound to the record and a log or checkpoint it independently trusts. Inclusion does not establish that every event was logged or that each claim is true.
 
@@ -44,7 +52,9 @@ Changing any signed field, including `transparency`, changes the signature preim
 
 For the worked sequence, see [anchoring to the registry](tutorials/anchoring-to-the-registry.md). A software-only record does not become hardware-backed simply because it is logged.
 
-## Choosing an acceptance policy
+<a id="choosing-an-acceptance-policy"></a>
+
+## Choosing an acceptance policy {#trace-acceptance-policy}
 
 Decide which issuer, hardware evidence, artifact commitments, freshness, revocation status, and log you require for the operation. A successful signature check is only one input to that decision. These levels do not certify regulatory compliance or replace application authorization.
 
