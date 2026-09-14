@@ -212,7 +212,7 @@ def verify_bridge(
     fields = {
         "authorization_id", "decision", "authorizer", "authorizer_key_id",
         "authorized_at", "expires_at", "scope", "pic", "declaration_digest",
-        "tool_call_digest", "transcript_required",
+        "tool_call_digest", "successor_observation_digest", "transcript_required",
     }
     authorization = _object(root.get("authorization"), "authorization", fields)
     missing = fields - set(authorization)
@@ -309,6 +309,10 @@ def verify_bridge(
             ) from None
         if not compare_digest(before_digest, tool_call_digest):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
-        if not isinstance(transcript.get("after"), dict):
-            raise AuthorizationMismatch("transcript.after must contain the execution result")
+        after = transcript.get("after")
+        expected_successor_digest = _digest(
+            authorization["successor_observation_digest"],
+            "authorization.successor_observation_digest",
+        )
+        _bind_successor_observation(after, expected_successor_digest)
     return authorization
