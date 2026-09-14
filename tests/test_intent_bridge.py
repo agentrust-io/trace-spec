@@ -77,6 +77,23 @@ def test_successor_observation_is_bound_to_signed_authorization() -> None:
         )
 
 
+def test_successor_envelope_rejects_unknown_fields_even_when_signed() -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    extended = copy.deepcopy(transcript)
+    extended["after"]["extra"] = "signed-but-not-part-of-profile"
+
+    authorization = copy.deepcopy(bridge["authorization"])
+    authorization["successor_observation_digest"] = digest_jcs(extended["after"])
+    resigned = sign_bridge(authorization, key)
+
+    with pytest.raises(AuthorizationMismatch, match="unknown successor fields"):
+        verify_bridge(
+            resigned, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript=extended, now=150,
+        )
+
+
 def test_caller_cannot_substitute_successor_and_matching_digest_without_resigning() -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
     tampered = copy.deepcopy(bridge)
