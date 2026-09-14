@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 import rfc8785
 from agentrust_trace.models import (
+    JCS_SAFE_INTEGER,
     Appraisal,
     BuildProvenance,
     ModelInfo,
@@ -57,7 +58,17 @@ class AGTSessionResult:
 
     iat: int = field(default_factory=lambda: int(time.time()))
     """Issuance timestamp. Defaults to now."""
-
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.iat, int)
+            or isinstance(self.iat, bool)
+            or self.iat < 0
+            or self.iat > JCS_SAFE_INTEGER
+        ):
+            raise ValueError(
+                f"iat must be a non-negative integer Unix timestamp within the JCS "
+                f"safe-integer range, got {self.iat!r}"
+            )
 
 class TraceAGTAdapter:
     """Build Level 0 TRACE Trust Records from AGT govern() session output.
