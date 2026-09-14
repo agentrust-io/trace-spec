@@ -214,8 +214,9 @@ def verify_bridge(
         "authorized_at", "expires_at", "scope", "pic", "declaration_digest",
         "tool_call_digest", "successor_observation_digest", "transcript_required",
     }
+    required_fields = fields - {"successor_observation_digest"}
     authorization = _object(root.get("authorization"), "authorization", fields)
-    missing = fields - set(authorization)
+    missing = required_fields - set(authorization)
     if missing:
         raise IntentBridgeError(f"authorization is missing fields: {sorted(missing)}")
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
@@ -290,6 +291,15 @@ def verify_bridge(
 
     if not isinstance(authorization["transcript_required"], bool):
         raise IntentBridgeError("transcript_required must be boolean")
+    successor_digest_present = "successor_observation_digest" in authorization
+    if authorization["transcript_required"] and not successor_digest_present:
+        raise IntentBridgeError(
+            "authorization.successor_observation_digest is required when transcript_required is true"
+        )
+    if not authorization["transcript_required"] and successor_digest_present:
+        raise IntentBridgeError(
+            "authorization.successor_observation_digest must be absent when transcript_required is false"
+        )
     if authorization["transcript_required"]:
         if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
             raise AuthorizationMismatch("a full before/after transcript is required")
