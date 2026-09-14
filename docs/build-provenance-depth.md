@@ -1,5 +1,5 @@
 ---
-description: What each build_provenance verification depth does not assure. Surface, Builder-chain and Dependency-chain, and which unknowns a deployment accepts when it stops early.
+description: What each build_provenance verification depth does not assure, and which unknowns a deployment accepts when it stops at Surface or Builder-chain.
 ---
 
 # Build provenance verification depth

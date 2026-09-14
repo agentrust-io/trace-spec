@@ -2,34 +2,51 @@
 
 {#
   SEO and AEO head additions for the TRACE docs.
-  Adds OpenGraph and Twitter card meta plus JSON-LD structured data
-  (Organization, WebSite, SoftwareApplication) so search engines and
-  AI answer engines can describe and cite the specification accurately.
-  Material already emits the canonical link when site_url is set, so it
-  is not repeated here.
+
+  Title: Material appends " - TRACE" to every page title, which repeated the
+  site name ("TRACE v0.2 - TRACE"). The home page now uses its front-matter
+  title alone, and a title that already names the site gets no suffix. Open
+  Graph and Twitter use the same title string.
+
+  JSON-LD: one AgenTrust Organization node under the hub's @id, the WebSite,
+  and a node for the page itself (WebPage on the home page, TechArticle
+  elsewhere) carrying its own title, description and canonical URL. Inner pages
+  add a BreadcrumbList; the home page adds the SoftwareApplication node for the
+  agentrust-trace library. Page descriptions come from hooks/seo.py when the
+  front matter has none. Material already emits the canonical link.
 #}
+
+{% block htmltitle %}
+  {%- set t = page.meta.title if page and page.meta and page.meta.title else (page.title | striptags if page and page.title and not page.is_homepage else "") -%}
+  {%- if not t %}
+    <title>{{ config.site_name }}</title>
+  {%- elif (page and page.is_homepage) or config.site_name in t %}
+    <title>{{ t }}</title>
+  {%- else %}
+    <title>{{ t }} - {{ config.site_name }}</title>
+  {%- endif %}
+{% endblock %}
 
 {% block extrahead %}
   {{ super() }}
-
-  {# page.title is the nav label ("Home"); page.meta.title is the front matter. #}
-  {% set page_name = (page.meta.title if page and page.meta and page.meta.title else (page.title if page else None)) %}
-  {% set page_title = page_name ~ " - " ~ config.site_name if page_name else config.site_name %}
-  {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
-  {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
+  {%- set t = page.meta.title if page and page.meta and page.meta.title else (page.title | striptags if page and page.title and not page.is_homepage else "") -%}
+  {%- set is_home = page and page.is_homepage -%}
+  {%- set page_title = config.site_name if not t else (t if is_home or config.site_name in t else t ~ " - " ~ config.site_name) -%}
+  {%- set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description -%}
+  {%- set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
 
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="{{ config.site_name }}">
-  <meta property="og:title" content="{{ page_title }}">
-  <meta property="og:description" content="{{ page_desc }}">
+  <meta property="og:site_name" content="AgenTrust">
+  <meta property="og:title" content="{{ page_title | e }}">
+  <meta property="og:description" content="{{ page_desc | e }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:image" content="https://trace.agentrust-io.com/docs/assets/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="TRACE, a Series of LF Projects">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ page_title }}">
-  <meta name="twitter:description" content="{{ page_desc }}">
+  <meta name="twitter:title" content="{{ page_title | e }}">
+  <meta name="twitter:description" content="{{ page_desc | e }}">
   <meta name="twitter:image" content="https://trace.agentrust-io.com/docs/assets/og.png">
 
   <script type="application/ld+json">
@@ -40,31 +57,62 @@
         "@type": "Organization",
         "@id": "https://agentrust-io.com/#organization",
         "name": "AgenTrust",
-        "url": "https://agentrust-io.com",
+        "url": "https://agentrust-io.com/",
         "sameAs": [
-          "https://github.com/agentrust-io"
+          "https://github.com/agentrust-io",
+          "https://trace.agentrust-io.com",
+          "https://manifest.agentrust-io.com",
+          "https://cmcp.agentrust-io.com",
+          "https://ca2a.agentrust-io.com",
+          "https://wcm.agentrust-io.com",
+          "https://tests.agentrust-io.com",
+          "https://governance.agentrust-io.com"
         ]
       },
       {
         "@type": "WebSite",
-        "@id": "{{ config.site_url }}#website",
-        "url": "{{ config.site_url }}",
-        "name": "{{ config.site_name }}",
-        "description": "{{ config.site_description }}",
+        "@id": {{ (config.site_url ~ "#website") | tojson }},
+        "name": {{ config.site_name | tojson }},
+        "url": {{ config.site_url | tojson }},
+        "description": {{ config.site_description | tojson }},
         "publisher": { "@id": "https://agentrust-io.com/#organization" }
       },
+      {
+        "@type": {{ ("WebPage" if is_home else "TechArticle") | tojson }},
+        "@id": {{ (page_url ~ "#page") | tojson }},
+        "url": {{ page_url | tojson }},
+        "name": {{ page_title | tojson }},
+        "headline": {{ page_title | tojson }},
+        "description": {{ page_desc | tojson }},
+        "inLanguage": "en",
+        "isPartOf": { "@id": {{ (config.site_url ~ "#website") | tojson }} },
+        "publisher": { "@id": "https://agentrust-io.com/#organization" }
+      }
+      {%- if is_home %},
       {
         "@type": "SoftwareApplication",
         "name": "TRACE",
         "alternateName": "Trust Runtime Attestation and Compliance Evidence",
+        "description": {{ config.site_description | tojson }},
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Cross-platform",
-        "url": "{{ config.site_url }}",
+        "url": {{ config.site_url | tojson }},
         "downloadUrl": "https://pypi.org/project/agentrust-trace/",
-        "codeRepository": "https://github.com/agentrust-io/trace-spec",
-        "description": "{{ config.site_description }}",
+        "codeRepository": {{ config.repo_url | tojson }},
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "author": { "@id": "https://agentrust-io.com/#organization" },
+        "publisher": { "@id": "https://agentrust-io.com/#organization" },
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
+      {%- elif page and page.canonical_url %},
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": {{ config.site_name | tojson }}, "item": {{ config.site_url | tojson }} },
+          { "@type": "ListItem", "position": 2, "name": {{ (t or page_title) | tojson }}, "item": {{ page_url | tojson }} }
+        ]
+      }
+      {%- endif %}
     ]
   }
   </script>

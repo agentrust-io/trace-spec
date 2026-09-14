@@ -10,6 +10,7 @@ copyright: "© 2026 TRACE Specification contributors. Specification: Community S
 exclude_docs: |
   .github/
   overrides/
+  hooks/
   node_modules/
   src/
   tests/
@@ -66,6 +67,10 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+# Gives each page its own meta description; see hooks/seo.py.
+hooks:
+  - hooks/seo.py
+
 plugins:
   - search:
       lang: en
@@ -80,9 +85,10 @@ plugins:
         Start with a local signed record and tamper detection, then choose the
         evidence required by your verifier. It builds on RFC 9711 (CWT/EAT), RFC 9334
         (RATS), and SCITT, and ships a Python library, agentrust-trace, with a
-        conformance suite.
+        conformance suite. TRACE is part of AgenTrust, open specifications for
+        verifiable AI: https://agentrust-io.com
       sections:
-        Getting started:
+        Get started:
           - index.md
           - docs/quickstart.md
           - docs/trust-levels.md
@@ -90,14 +96,28 @@ plugins:
           - docs/glossary.md
         Specification:
           - spec/trace-v0.2.md
+          - spec/registry-anchor-v1.md
+          - spec/server-provenance-v1.md
+          - spec/content-marking-v1.md
           - docs/schema.md
-        Integration:
+          - docs/verification-outcome-statements.md
+          - docs/rfcs/runtime-evidence-profile.md
+        Guides:
+          - docs/tutorials/signing-your-first-trust-record.md
+          - docs/tutorials/verifying-a-trust-record.md
+          - docs/tutorials/hardware-attestation-platforms.md
+          - docs/tutorials/anchoring-to-the-registry.md
+          - docs/tutorials/integrating-with-cmcp.md
           - docs/integration/agt.md
           - docs/integration/openshell.md
           - docs/integration/cmcp.md
           - docs/integration/sandbox-runtime.md
-        Platforms:
           - docs/platforms/index.md
+        Project:
+          - LIMITATIONS.md
+          - ROADMAP.md
+          - GOVERNANCE.md
+          - CHANGELOG.md
   - minify:
       minify_html: true
   - mkdocstrings:
