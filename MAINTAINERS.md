@@ -4,7 +4,7 @@
 
 | Name | Affiliation | GitHub | Contact |
 |---|---|---|---|
-| Imran Siddique | AgenTrust-io | @imran-siddique | imransiddique@live.com |
+| Imran Siddique | AgenTrust-io | @imran-siddique | [GitHub profile](https://github.com/imran-siddique) |
 
 The Project Lead has final decision authority on specification changes, submission of TRACE deliverables to other organizations, conformance requirements, and Maintainer appointments.
 
