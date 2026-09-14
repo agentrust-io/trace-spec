@@ -900,7 +900,7 @@ def test_dual_accept_configuration_is_unrepresentable():
 
     Enforced at configuration, not per record: a set containing the v0.1 tag is
     refused before any record is examined, so the dual-accepting verifier the
-    cutover forbids cannot be built from this library at all — even when the record
+    cutover forbids cannot be built from this library at all, even when the record
     presented is a perfectly good v0.2 one.
     """
     record, jwk = _record_with_profile(TRACE_PROFILE_V0_2)
@@ -978,7 +978,7 @@ def test_a_disclosed_downgrade_is_unreachable_in_this_build():
 
 
 def test_vector_silent_downgrade_has_no_code_path():
-    """Vector 4: silent fallback must fail conformance — here it is unrepresentable.
+    """Vector 4: silent fallback must fail conformance. Here it is unrepresentable.
 
     There is no argument to ``verify_record`` that verifies a profile outside the
     declared set, so a downgrade cannot happen without appearing in

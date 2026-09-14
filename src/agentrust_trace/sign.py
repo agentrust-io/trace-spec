@@ -493,7 +493,7 @@ def verify_record(
         "the signature checks out" says nothing about whether this code implements
         the semantics the record was written under. `spec/trace-v0.2.md` requires
         exactly this of a v0.2 verifier, and forbids accepting the v0.1 identifier
-        alongside it — passing a set containing ``_TRACE_PROFILE_V0_1`` raises
+        alongside it. Passing a set containing ``_TRACE_PROFILE_V0_1`` raises
         ``ValueError`` before any record is examined, so the dual-accepting verifier
         the cutover forbids cannot be configured here at all. Declared downgrade to
         other, legitimately owned older profiles remains representable.
