@@ -53,7 +53,7 @@ Composed this way, a Trust Record and a CHAP log establish that the record point
 
 ## Conformance fixtures
 
-Four records and two CHAP logs in [`examples/chap-approval-outcome/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/chap-approval-outcome/), produced by `chap-coordinator` 0.2.13: approval confirmed, approval altered after the record was issued, a rejection in place of an approval, and an unresolvable reference. [`tests/test_chap_approval_outcome_fixtures.py`](https://github.com/agentrust-io/trace-spec/blob/main/tests/test_chap_approval_outcome_fixtures.py) re-verifies all of them in CI with this repository's own dependencies.
+Four records and two CHAP logs in [`examples/chap-approval-outcome/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/chap-approval-outcome/), produced by `chap-coordinator` 0.2.13: approval confirmed, approval altered after the record was issued, a rejection in place of an approval, and an unresolvable reference. [`tests/test_chap_approval_outcome_fixtures.py`](https://github.com/agentrust-io/trace-spec/blob/main/tests/test_chap_approval_outcome_fixtures.py) re-verifies all of them in CI with this repository's own dependencies. The generator is part of the [CHAP integration](https://github.com/agentrust-io/integrations/tree/main/integrations/chap), whose CI runs it against a live coordinator.
 
 ## References
 

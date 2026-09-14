@@ -2,7 +2,7 @@
   "trace_signer_jwk": {
     "kty": "OKP",
     "crv": "Ed25519",
-    "x": "AMK-t0kTSwY4anG-AktnnxxkVDXJpT9lck6pswQa6zQ"
+    "x": "xr1B3T6C0toRmLJmX8fcgRs-fcCLMr6i24OapAGVfDY"
   },
   "chap_version": "0.2.13",
   "resolver": "https://chap.example.org/workspaces/wsp_refund_review",

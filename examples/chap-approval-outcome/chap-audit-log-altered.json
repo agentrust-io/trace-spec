@@ -2,20 +2,20 @@
   "format": "chap-audit-export/fixture-1",
   "generated_by": "chap-coordinator 0.2.13",
   "workspace": "wsp_refund_review",
-  "chain_head": "sha256:b5a444eba652f131afba5a8b52e97a60158ee641d8e3c038de19f3e960f1012b",
+  "chain_head": "sha256:af6936b56e73ebb082f2ca207a2ea3e8784784186cca1392b7b960c13bc64d96",
   "chap_verify_chain": {
     "status": "verified",
     "ok": true,
-    "entries_total": 9,
-    "entries_checked": 9,
+    "entries_total": 12,
+    "entries_checked": 12,
     "entries_unchecked": 0,
     "checked_from_seq": 0,
-    "chain_head": "sha256:b5a444eba652f131afba5a8b52e97a60158ee641d8e3c038de19f3e960f1012b"
+    "chain_head": "sha256:af6936b56e73ebb082f2ca207a2ea3e8784784186cca1392b7b960c13bc64d96"
   },
   "entries": [
     {
       "seq": 0,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.590Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "1",
@@ -28,7 +28,7 @@
     },
     {
       "seq": 1,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.590Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "2",
@@ -44,7 +44,7 @@
     },
     {
       "seq": 2,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "3",
@@ -60,7 +60,7 @@
     },
     {
       "seq": 3,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "4",
@@ -79,14 +79,14 @@
     },
     {
       "seq": 4,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "5",
         "method": "review.request",
         "params": {
           "workspace": "wsp_refund_review",
-          "task_id": "tsk_01M2GJF997RMCH0MSAEGQGBQ3R",
+          "task_id": "tsk_01M2GP0TJQ34NXBAB10JYF6ZFB",
           "artefact": {
             "order": "1042",
             "action": "refund",
@@ -100,7 +100,7 @@
     },
     {
       "seq": 5,
-      "arrived": "2026-09-14T18:22:05.095Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "6",
@@ -115,18 +115,18 @@
           "from": "agent:refund-bot"
         }
       },
-      "prev_hash": "sha256:d8030963db649777115c28a87a33d2361fb1a7dbf75cd30ce5a011e2c09e77fc"
+      "prev_hash": "sha256:00f9c00f6f79ee87ed22f81df6cacb61f21cbbb75ad30593cd8327780f5d7b90"
     },
     {
       "seq": 6,
-      "arrived": "2026-09-14T18:22:05.096Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "7",
         "method": "review.request",
         "params": {
           "workspace": "wsp_refund_review",
-          "task_id": "tsk_01M2GJF9975J2BJAA02903PYF4",
+          "task_id": "tsk_01M2GP0TJQT9D39HRC8WWPQPGY",
           "artefact": {
             "order": "1043",
             "action": "refund",
@@ -136,36 +136,76 @@
           "from": "agent:refund-bot"
         }
       },
-      "prev_hash": "sha256:cc223b34614ae239c32e5e081cd1cbb456ccbea1c7c02b87343ae7cd8a7593bf"
+      "prev_hash": "sha256:1d7d9c65c15a37c917d3e063d5cbc857413567cdc8149ff3a5e01e713195ab30"
     },
     {
       "seq": 7,
-      "arrived": "2026-09-14T18:22:05.096Z",
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
         "id": "8",
+        "method": "task.create",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "kind": "refund_decision",
+          "input": {
+            "order": "1044"
+          },
+          "assignee": "agent:refund-bot",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:c10dbc2b718a705e669d9727c8e76a275777ea880d452cb2a7a02399a6409179"
+    },
+    {
+      "seq": 8,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "9",
+        "method": "review.request",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQME3VPQZTTBWQJJVV",
+          "artefact": {
+            "order": "1044",
+            "action": "refund",
+            "amount_minor": 4000
+          },
+          "to": "human:alice@example.org",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:772ff01e74427725c58bcdb759f14bf95945734b25da3721ac77fff77ee392e1"
+    },
+    {
+      "seq": 9,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "10",
         "method": "decide.approve",
         "params": {
           "workspace": "wsp_refund_review",
-          "task_id": "tsk_01M2GJF997RMCH0MSAEGQGBQ3R",
+          "task_id": "tsk_01M2GP0TJQ34NXBAB10JYF6ZFB",
           "comment": "Approved after escalation.",
           "tags": [],
           "approved_artefact_digest": "sha256:580a9b57ee97ae0d385e362bf4a8cbb1ad569ba934ed0fe2b48a02d0a5ed9653",
           "from": "human:alice@example.org"
         }
       },
-      "prev_hash": "sha256:85b58a2114c12a74f3da00969862e3cc03e052bf254213173ca77eeb60c25409"
+      "prev_hash": "sha256:3d5fca6786ed70a2b54602fe9d23fd6d05bc1dd38d4d3fb76c012a6af2ab6817"
     },
     {
-      "seq": 8,
-      "arrived": "2026-09-14T18:22:05.096Z",
+      "seq": 10,
+      "arrived": "2026-09-14T19:24:05.591Z",
       "envelope": {
         "jsonrpc": "2.0",
-        "id": "9",
+        "id": "11",
         "method": "decide.reject",
         "params": {
           "workspace": "wsp_refund_review",
-          "task_id": "tsk_01M2GJF9975J2BJAA02903PYF4",
+          "task_id": "tsk_01M2GP0TJQT9D39HRC8WWPQPGY",
           "comment": "Above the refund limit.",
           "reason": "Above the refund limit.",
           "tags": [],
@@ -173,7 +213,33 @@
           "from": "human:alice@example.org"
         }
       },
-      "prev_hash": "sha256:f7620c8f831154f752e360fe92da38f8351a2e8df525f73a7b88a19c6fb1fa86"
+      "prev_hash": "sha256:3e27cb94bb1f30c129cbd154f3309caebf3bab245019dab81f71a8a0befb1d28"
+    },
+    {
+      "seq": 11,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "12",
+        "method": "decide.override",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQME3VPQZTTBWQJJVV",
+          "rationale": "Partial refund only.",
+          "comment": "Partial refund only.",
+          "tags": [],
+          "diff": [
+            {
+              "op": "replace",
+              "path": "/amount_minor",
+              "value": 2000
+            }
+          ],
+          "approved_artefact_digest": "sha256:ae50a5a82f1626e7e69ad07c41bc4e0f2fd44d7a625f3d50b2c085d493f42361",
+          "from": "human:alice@example.org"
+        }
+      },
+      "prev_hash": "sha256:f6540bfa2e3e799ba11c27a5522231a1dec6df4ba54b6a3f57cdf96ac7d36aad"
     }
   ],
   "altered_after_export": "decide.approve params.comment changed; chain_head left as exported"

@@ -10,9 +10,11 @@ Full mapping and rationale: [`docs/crosswalks/chap-review-decisions.md`](../../d
 
 Every CHAP envelope here was produced by `chap-coordinator` 0.2.13, CHAP's Python
 reference coordinator, running a workspace with `core/1.0`, `review/1.0` and
-`audit-scitt/1.0`: one refund draft approved, one rejected. CHAP verified its own
-chain before export. [`generate_with_chap.py`](generate_with_chap.py) produced every
-file and is not run by CI, because CHAP is not a dependency of this repository.
+`audit-scitt/1.0`: one refund draft approved, one rejected, one overridden. CHAP
+verified its own chain before export. The generator lives in the CHAP integration,
+[`integrations/chap/examples/generate_trace_spec_fixtures.py`](https://github.com/agentrust-io/integrations/blob/main/integrations/chap/examples/generate_trace_spec_fixtures.py),
+whose CI runs it against a live CHAP coordinator on every change. It is not run
+here, because CHAP is not a dependency of this repository.
 [`tests/test_chap_approval_outcome_fixtures.py`](../../tests/test_chap_approval_outcome_fixtures.py)
 re-verifies all of it on every run without importing CHAP: the TRACE signatures, each
 reference digest recomputed with `rfc8785`, and the CHAP hash chain replayed from the
@@ -44,6 +46,6 @@ points at is reported as unconfirmed, which is a different answer from "no appro
 python -m pytest tests/test_chap_approval_outcome_fixtures.py
 ```
 
-To regenerate, install `chap-coordinator==0.2.13` and `agentrust-trace`, then run the
-generator. A new run issues a new signing key and new CHAP identifiers, so it replaces
-every file here.
+To regenerate, run that script from a checkout of `agentrust-io/integrations` with
+`--out` pointing at this directory. A new run issues a new signing key and new CHAP
+identifiers, so it replaces every file here.

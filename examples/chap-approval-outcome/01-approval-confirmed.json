@@ -1,6 +1,6 @@
 {
   "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-  "iat": 1789410125,
+  "iat": 1789413845,
   "subject": "spiffe://trust.example.org/agent/refund-bot",
   "model": {
     "provider": "example",
@@ -27,17 +27,17 @@
     "jwk": {
       "kty": "OKP",
       "crv": "Ed25519",
-      "x": "AMK-t0kTSwY4anG-AktnnxxkVDXJpT9lck6pswQa6zQ"
+      "x": "xr1B3T6C0toRmLJmX8fcgRs-fcCLMr6i24OapAGVfDY"
     }
   },
   "references": [
     {
       "rel": "approval-outcome",
-      "id": "audit/7",
+      "id": "audit/9",
       "resolver": "https://chap.example.org/workspaces/wsp_refund_review",
-      "retention": "P1Y",
-      "digest": "sha256:e521e54f21503554386828f2c64c51e5fe6e375f74d2c72d2c5a1533412296c8"
+      "digest": "sha256:ef21916beb9cb5671e95f3c08b3f40c0d41cfd0f79184912eb9ca0f78fddb2e4",
+      "retention": "P1Y"
     }
   ],
-  "signature": "kBUxX3BgDuaK3SgfF2UuyxyRTE1YsmjrypH1oIRE_RHQXulclk5sLjk-xZNKFpdVen3R7rMfr71F2_D0KgeeBA"
+  "signature": "tvhF2w1UuZSYOGPVVUWzMrRzmaJmXfPbdQ_CYVWKUNqmtuqE5b_lhajv_C06vmOFCA3BlS1g-z-DQ-g0uKvvDw"
 }

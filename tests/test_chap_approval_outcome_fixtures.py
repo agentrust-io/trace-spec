@@ -1,8 +1,9 @@
 """CHAP review decisions as TRACE `approval-outcome` references.
 
 Re-verifies examples/chap-approval-outcome/ without importing CHAP. The fixtures were
-produced by chap-coordinator 0.2.13 (generate_with_chap.py in that directory), which
-also wrote expected.json. A generator's own summary of its output is a claim, so every
+produced by chap-coordinator 0.2.13 through the generator in agentrust-io/integrations
+(integrations/chap/examples/generate_trace_spec_fixtures.py), which also wrote
+expected.json. A generator's own summary of its output is a claim, so every
 outcome here is recomputed from the committed bytes with this repository's
 dependencies and compared with expected.json, never read from it.
 """
