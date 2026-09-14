@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
-**Conformance material:** [`examples/runtime-evidence/`](../../examples/runtime-evidence/): 13 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
+**Conformance material:** [`examples/runtime-evidence/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence): 13 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
 **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
@@ -168,7 +168,7 @@ Two earlier versions of this rule overstated the boundary: the first read `evide
 
 ## 7. Measurement
 
-[`examples/runtime-evidence/generate.py`](../../examples/runtime-evidence/) implements §4 against two genuine Intel TDX v4 quotes captured from a GCP C3 confidential VM on 2026-07-21, committed at `agentrust-io/agent-manifest`. No quote in the corpus is minted. A synthetic quote is built to the parser's own idea of the layout, so a corpus of them measures a parser against itself.
+[`examples/runtime-evidence/generate.py`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence) implements §4 against two genuine Intel TDX v4 quotes captured from a GCP C3 confidential VM on 2026-07-21, committed at `agentrust-io/agent-manifest`. No quote in the corpus is minted. A synthetic quote is built to the parser's own idea of the layout, so a corpus of them measures a parser against itself.
 
 The verifier is `agent-manifest`'s, imported unmodified. TRACE does not implement attestation and this proposal does not start; it carries evidence to verifiers that already exist.
 
