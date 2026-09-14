@@ -9,7 +9,7 @@
     "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"},
     "authorization": {
       "type": "object", "additionalProperties": false,
-      "required": ["authorization_id", "decision", "authorizer", "authorizer_key_id", "authorized_at", "expires_at", "scope", "pic", "declaration_digest", "tool_call_digest", "transcript_required"],
+      "required": ["authorization_id", "decision", "authorizer", "authorizer_key_id", "authorized_at", "expires_at", "scope", "pic", "declaration_digest", "tool_call_digest", "successor_observation_digest", "transcript_required"],
       "properties": {
         "authorization_id": {"type": "string", "minLength": 1},
         "decision": {"enum": ["allow", "deny"]},
@@ -25,6 +25,7 @@
           "profile": {"const": "PIC-CJSON/1.0"}, "intent_digest": {"$ref": "#/$defs/digest"}, "args_digest": {"$ref": "#/$defs/digest"}
         }},
         "declaration_digest": {"$ref": "#/$defs/digest"}, "tool_call_digest": {"$ref": "#/$defs/digest"},
+        "successor_observation_digest": {"$ref": "#/$defs/digest"},
         "transcript_required": {"type": "boolean"}
       }
     }
