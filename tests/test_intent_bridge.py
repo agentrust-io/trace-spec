@@ -24,6 +24,11 @@ def _fixture(
     key = Ed25519PrivateKey.generate()
     declaration = declaration or {"impact": "external-side-effect", "purpose": "send invoice"}
     tool_call = tool_call or {"name": "send_invoice", "arguments": {"invoice_id": "INV-7"}}
+    after = {
+        "observation": {"status": "accepted"},
+        "observer": "observer-1",
+        "observed_at": 150,
+    }
     authorization = {
         "authorization_id": "auth-7",
         "decision": "allow",
@@ -39,10 +44,11 @@ def _fixture(
         },
         "declaration_digest": digest_jcs(declaration),
         "tool_call_digest": digest_jcs(tool_call),
+        "successor_observation_digest": digest_jcs(after),
         "transcript_required": True,
     }
     bridge = sign_bridge(authorization, key)
-    transcript = {"before": {"tool_call": tool_call}, "after": {"status": "accepted"}}
+    transcript = {"before": {"tool_call": tool_call}, "after": after}
     return (
         bridge, key, declaration, authorization["pic"]["intent_digest"],
         authorization["pic"]["args_digest"], tool_call, transcript,
@@ -57,6 +63,32 @@ def test_verify_bridge_accepts_authorized_bound_execution() -> None:
         pic_args_digest=args, tool_call=tool_call, transcript=transcript, now=150,
     )
     assert result["authorization_id"] == "auth-7"
+
+
+def test_successor_observation_is_bound_to_signed_authorization() -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    substituted = copy.deepcopy(transcript)
+    substituted["after"]["observation"]["status"] = "different"
+    with pytest.raises(AuthorizationMismatch, match="expected digest binding"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript=substituted, now=150,
+        )
+
+
+def test_caller_cannot_substitute_successor_and_matching_digest_without_resigning() -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    tampered = copy.deepcopy(bridge)
+    substituted = copy.deepcopy(transcript)
+    substituted["after"]["observation"]["status"] = "different"
+    tampered["authorization"]["successor_observation_digest"] = digest_jcs(substituted["after"])
+    with pytest.raises(IntentBridgeError, match="authorization signature is invalid"):
+        verify_bridge(
+            tampered, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
+            transcript=substituted, now=150,
+        )
 
 
 @pytest.mark.parametrize("field", ["authorization", "signature"])
@@ -325,7 +357,7 @@ def test_transcript_call_is_compared_over_canonical_bytes_not_python_equality(
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": substituted}, "after": {"status": "accepted"}},
+            transcript={"before": {"tool_call": substituted}, "after": _fixture(tool_call=call)[6]["after"]},
             now=150,
         )
 
@@ -347,11 +379,12 @@ def test_transcript_call_that_is_not_an_object_stays_an_authorization_mismatch(
     bad: object,
 ) -> None:
     """Comparing digests must not turn a malformed transcript into a different class."""
-    bridge, key, declaration, intent, args, tool_call, _ = _fixture()
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    transcript_after = transcript["after"]
     with pytest.raises(AuthorizationMismatch, match="transcript.before.tool_call"):
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": bad}, "after": {"status": "accepted"}},
+            transcript={"before": {"tool_call": bad}, "after": transcript_after},
             now=150,
         )
