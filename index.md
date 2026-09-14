@@ -1,6 +1,9 @@
 ---
 title: "TRACE: evidence for AI agent runs"
 description: TRACE defines portable, signed runtime evidence about AI agent runs. Start with software signing and tamper detection, then evaluate hardware attestation and transparency verification.
+hide:
+  - navigation
+  - toc
 ---
 
 [04 · Evidence: can a third party verify all of it offline, years later?](https://agentrust-io.com/#chain)
