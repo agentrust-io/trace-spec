@@ -302,6 +302,67 @@ def test_the_precondition_check_fires_and_covers_every_vector_that_needs_one() -
         _check_preconditions(Path("control.json"), lapsed)
 
 
+ROOT = FIXTURE_DIR.parent.parent
+SURFACE = (
+    FIXTURE_DIR / "README.md",
+    FIXTURE_DIR / "gen_vectors.py",
+    ROOT / "tests" / "test_verifier_compatibility_fixtures.py",
+    ROOT / "tests" / "test_verifier_compatibility_separation.py",
+    ROOT / "tests" / "test_verifier_compatibility_diagnostics.py",
+)
+
+
+def _cited(pattern: str) -> set[str]:
+    found: set[str] = set()
+    for path in SURFACE:
+        text = path.read_text(encoding="utf-8")
+        # URLs carry paths that belong to other repositories, so they go first.
+        text = re.sub(r"https?://\S+", " ", text)
+        found |= set(re.findall(pattern, text))
+    return found
+
+
+def test_every_name_this_set_cites_resolves() -> None:
+    """Nothing in the set's own surface may point at something that is not there.
+
+    Three defects of this shape shipped inside one change: the README sent an adapter
+    author to a constant that had moved to another module, two places named a test file
+    that has never existed here, and the generator pointed at a vector the same change
+    had deleted. Each was found by a reader, and each was then fixed by a guard aimed at
+    that one shape. This is the general form of those three, so the next one does not
+    need its own.
+
+    Deliberately not a list of names to keep up to date: the citations are recovered from
+    the files, which is what makes it cover a citation added tomorrow.
+    """
+    # The lookbehind matters: a repository name ending in one of these words, followed
+    # by a path, otherwise yields a match starting mid-word. The first thing this test
+    # caught was exactly that, in a comment here that spelled the bad match out; the
+    # comment is worded rather than quoted now, because a guard whose explanation trips
+    # it teaches the reader to weaken the guard.
+    paths = _cited(r"(?<![-/\w])((?:tests|examples|src|docs|schema|spec)/[A-Za-z0-9_./-]+)")
+    assert paths, "positive control: no paths cited, so this test is measuring nothing"
+    missing = sorted(p for p in paths if not (ROOT / p).exists())
+    assert not missing, f"the set cites paths that do not exist: {missing}"
+
+    names = _cited(r"`(test_[a-z0-9_]+)`")
+    assert names, "positive control: no test names cited"
+    tree = "".join(p.read_text(encoding="utf-8")
+                   for p in sorted((ROOT / "tests").rglob("*.py")))
+    tree += "".join(p.read_text(encoding="utf-8")
+                    for p in sorted((ROOT / "examples").rglob("*.py")))
+    undefined = sorted(n for n in names if f"def {n}" not in tree)
+    assert not undefined, f"the set cites tests that are not defined: {undefined}"
+
+    constants = _cited(r"`([A-Z][A-Z_]{3,})`")
+    assert constants, "positive control: no constant names cited"
+    everywhere = tree + "".join(
+        p.read_text(encoding="utf-8") for p in sorted((ROOT / "src").rglob("*.py")))
+    unknown = sorted(c for c in constants if f"{c} =" not in everywhere
+                     and f"{c}:" not in everywhere and f"{c}[" not in everywhere)
+    assert not unknown, f"the set cites names that are defined nowhere: {unknown}"
+
+
 def test_the_published_artifacts_name_no_vector_that_is_not_here() -> None:
     """The README and the generator are offered to other implementations, so a pointer
     in either to a vector that is not in this directory is a broken reference in somebody
