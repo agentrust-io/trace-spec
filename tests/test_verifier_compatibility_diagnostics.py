@@ -30,19 +30,13 @@ from agentrust_trace.validate import profiles_with_schema
 
 FIXTURE_DIR = Path(__file__).parent.parent / "examples" / "verifier-compatibility"
 FIXTURE_PATHS = sorted(FIXTURE_DIR.glob("*.json"))
-V0_1 = "tag:agentrust.io,2026:trace-v0.1"
-
 # Each informative label maps to a fragment this implementation emits. Matched against a
 # fragment rather than the whole message so the prose stays free to change.
 FAILURE_MARKERS = {
     "profile_not_accepted": "not in this verifier's accepted set",
     "profile_absent": "no 'eat_profile'",
     "no_accepted_profiles": "accepted_profiles is empty",
-    "superseded_profile_in_accepted_set": "superseded v0.1 identifier",
     "unschemaed_profile_in_accepted_set": "which this build carries no schema for",
-    # A record *carrying* the v0.1 identifier is refused with upstream #125's tailored
-    # message, distinct from the generic not-in-accepted-set refusal above.
-    "superseded_profile_refused": "superseded v0.1 profile",
 }
 
 # Which labels are a complaint about a specific member of the declared set, and how to
@@ -52,9 +46,14 @@ FAILURE_MARKERS = {
 NAMES_AN_ENTRY = {
     "unschemaed_profile_in_accepted_set":
         lambda accepted: [p for p in accepted if p not in profiles_with_schema()],
-    "superseded_profile_in_accepted_set":
-        lambda accepted: [p for p in accepted if p == V0_1],
 }
+"""One label, carried by 04 and 09.
+
+It was two until 2026-09-15. `superseded_profile_in_accepted_set` was the other, and the
+vector that carried it, 08, left for the cutover's own coverage, where the message is
+pinned by `test_verify_record_rejects_v0_1_in_the_accepted_set`. A lambda for a label no
+vector uses would be a row of this table that never runs, which is the shape of claim
+this file exists to keep honest."""
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -118,3 +117,10 @@ def test_every_label_the_set_uses_has_a_marker() -> None:
     assert used, "positive control: no refusal vectors found"
     unknown = used - set(FAILURE_MARKERS)
     assert not unknown, f"the set uses labels this file cannot recognise: {sorted(unknown)}"
+    # And the other direction, which is the one that went quiet: a marker for a label no
+    # vector carries is a row that never runs. Two of them sat here for as long as it
+    # took a reader to notice, after the vectors that used them were retired.
+    unused = set(FAILURE_MARKERS) - used
+    assert not unused, (
+        f"this file carries markers no vector uses: {sorted(unused)}. Either a vector was "
+        "retired and its row left behind, or a label was renamed on one side only.")

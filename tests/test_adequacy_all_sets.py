@@ -169,16 +169,16 @@ def test_no_set_is_satisfied_by_an_unconditional_answer(name: str) -> None:
 # here; closing it fails here too, and the entry is then deleted.
 KNOWN_THIN: dict[str, dict[str, str]] = {
     # This fork's own set, and the shape #124 established as insufficient. It was four
-    # of the five refusal rules. One has since been closed by writing the second
-    # vector: `profile_absent` by 11, which carries a profile claim that is present and
-    # empty rather than absent. `superseded_profile_in_accepted_set` was closed by 10 for
-    # a day and is thin again: 10 left the set on 2026-09-13 under the #116 ruling that
-    # the v0.1 cutover is merged normative text and not this issue's to pin, and the
-    # configuration-side rule it exercised is now tested in `test_sign.py` beside the
-    # cutover's own tests. 08 is the vector that remains, and it is gate-covered.
+    # of the five refusal rules. Three have since closed, each by a different route.
+    # `profile_absent` closed by writing the second vector, 11, which carries a profile
+    # claim that is present and empty rather than absent. `superseded_profile_refused`
+    # and `superseded_profile_in_accepted_set` closed by leaving: 03 and 08 followed 10
+    # out of the set on 2026-09-15 under the #116 ruling that the v0.1 cutover is merged
+    # normative text and not this issue's to pin, and both rules are now tested in
+    # `test_sign.py` beside the cutover's own tests.
     #
-    # The two below were measured and are not closable, which is different from
-    # not yet done, so the reason is recorded here rather than left as an open task:
+    # The one below was measured and is not closable, which is different from not yet
+    # done, so the reason is recorded here rather than left as an open task:
     #
     #   no_accepted_profiles       The rule fires on the verifier's own configuration
     #                              before any record is read, and the configuration has
@@ -190,13 +190,6 @@ KNOWN_THIN: dict[str, dict[str, str]] = {
     #                              expire. Varying the record instead pins nothing, as
     #                              no plausible implementation branches on record
     #                              content when deciding an empty set accepts nothing.
-    #
-    #   superseded_profile_refused The record must carry the v0.1 identifier and the
-    #                              accepted set must exclude it. The set can hold only
-    #                              v0.2, because any other member trips
-    #                              `unschemaed_profile_in_accepted_set` first, so there
-    #                              is no second configuration to present. What is left
-    #                              is varying record content, which again pins nothing.
     #
     # A second vector written to close a count rather than to catch a defect an
     # implementation could plausibly have makes this record worse, not better: it

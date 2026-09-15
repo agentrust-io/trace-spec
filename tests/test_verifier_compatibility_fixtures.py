@@ -174,9 +174,10 @@ def test_a_generic_refusal_passes_this_set(fixture_path: Path) -> None:
     Positive control on the portable contract rather than on a vector. It runs the same
     expectations through `_verify_refusing_generically`, which erases the reason and
     keeps the verdict, and every vector must still pass. Before the review that asked
-    for this, the adapter asserted a rule name out of `expected.failure` and four
-    vectors refused this verifier, so the set failed a conformant implementation and
-    said so nowhere a foreign adapter would see.
+    for this, the adapter asserted a rule name out of `expected.failure`, and every one of
+    the seven refusal vectors refused this verifier: the set failed a conformant
+    implementation, and said so nowhere a foreign adapter would see. Measured by putting
+    the assertion back, not recalled.
 
     This control fails the day an assertion on the refusal's cause comes back into
     `_check_vector`, which is the only thing that would make the set stricter than its
@@ -190,7 +191,7 @@ def test_a_generic_refusal_passes_this_set(fixture_path: Path) -> None:
 def test_every_fixture_signature_is_genuine() -> None:
     """No vector may pass or fail because its signature was malformed.
 
-    All eleven records are correctly signed. If one were not, a "refused" expectation
+    All eight records are correctly signed. If one were not, a "refused" expectation
     could be satisfied by the signature check rather than by the profile rule, and the
     vector would silently stop testing what it claims to test.
     """
@@ -210,10 +211,10 @@ def test_every_fixture_signature_is_genuine() -> None:
         # and this test failed on the v0.2 schema's const, reporting a bad signature
         # for a record whose signature is fine.
         #
-        # Every record in this directory, including the skipped ones, is re-verified
-        # through an independent cryptographic path by
-        # test_fixture_signatures_independent.py, which is the stronger check anyway
-        # because it does not run the code under test.
+        # The skipped records are not re-verified anywhere in this repository. An
+        # earlier revision of this comment sent the reader to
+        # test_fixture_signatures_independent.py, which has never existed here; the
+        # README says what is and is not covered instead of promising a file.
         if profile != RECORD_SCHEMA_PROFILE:
             continue
         # Accept whatever this record carries, so only the signature can fail here.
@@ -245,7 +246,7 @@ def test_the_ceiling_refuses_any_profile_no_schema_covers(unschemaed: str) -> No
     leaves green.
 
     Measured: adding a single fictional identifier to the set the enforcement
-    consults, and changing nothing else, passed all 932 tests. This is the test that
+    consults, and changing nothing else, passed the whole suite. This is the test that
     fails on it. Synthetic identifiers rather than vector ones, so it cannot be
     satisfied by whatever the corpus currently contains.
     """

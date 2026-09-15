@@ -34,7 +34,7 @@ whole proposal. Killing it shows the vectors are not vacuous and nothing more. T
 question a reader actually has is which rows they may delete, and that is answered only
 by the fix a competent implementer would have written and that looks right.
 
-`PANEL` below is ten such near misses, each a plausible reading of #116 rather than an
+`PANEL` below is eight such near misses, each a plausible reading of #116 rather than an
 absence of one, and `SEPARATION` records what each one is caught by. Read down a column
 rather than across: a vector that is the only entry in some column is one nobody may
 delete, and a column that is empty is a wrong implementation this set cannot see.
@@ -174,7 +174,7 @@ def _separates(vector: dict) -> bool:
     return expected.get("statement") is not None and statement is None
 
 
-# Recorded, not asserted as a threshold. The honest figure is 4 of 10 and a test that
+# Recorded, not asserted as a threshold. The honest figure is 4 of 8 and a test that
 # demanded more would be failing on a truth rather than on a regression. Adding a
 # separating vector fails this and the entry is updated; losing one fails it too.
 #
@@ -372,24 +372,23 @@ def _v_wrong_reason(record, jwk, accepted):
     """Every rule of the reference, every refusal reported under one generic label.
 
     The near miss nothing in this module could see until 2026-09-12. It reaches the
-    right verdict on all ten vectors and reaches it by applying the right rules; what
+    right verdict on all eight vectors and reaches it by applying the right rules; what
     it does not do is say which rule fired, so an operator handed `profile_not_accepted`
     for an empty declared set goes looking at the record instead of at their own
     configuration.
 
-    Whether #116 obliges this is an open question and the honest answer is that the
-    draft text does not oblige it. The draft normative text for #116, held for a
-    maintainer to carry and not part of this change, says a verifier SHOULD report
-    refusal-for-an-unimplemented-profile distinguishably from a verification failure,
-    which is a coarser distinction and a SHOULD, and its "what is deliberately not
-    required" paragraph declines to mandate any field name.
-    The vector set is meanwhile stricter than the text it encodes: every refusal vector
-    carries an `expected.failure` naming the rule, and
-    `tests/test_verifier_compatibility_fixtures.py` asserts it. That gap is the finding,
-    and it is recorded here rather than resolved, because resolving it is the
-    maintainer's call: either the text gains a requirement that a refusal identify the
-    rule, or `failure` is informative and the adapter asserts more than the set can ask
-    of a foreign implementation.
+    Whether #116 obliges this was the open question on the pull request, and the review
+    settled it: it does not. `expected.failure` is informative, the portable adapter
+    asserts the verdict and the statement and nothing about which rule refused, and this
+    verifier is conformant rather than a near miss. It is kept here as the control that
+    nothing in the set may separate, which is why it sits outside `PANEL`.
+
+    The draft normative text for #116, held for a maintainer to carry and not part of
+    this change, says a verifier SHOULD report refusal-for-an-unimplemented-profile
+    distinguishably from a verification failure, which is a coarser distinction and a
+    SHOULD, and its "what is deliberately not required" paragraph declines to mandate any
+    field name. Asserting a rule name was the set asking more of a foreign implementation
+    than the text it encodes.
     """
     profile = _base_checks(record, jwk)
     try:
@@ -886,7 +885,7 @@ def test_the_readings_split_is_arithmetic_not_a_measurement() -> None:
 def test_the_committed_fixtures_already_take_the_stronger_reading() -> None:
     """Which side of that disagreement the committed fixtures already take.
 
-    Vectors 04, 09 and 10 carry declared sets the two readings disagree about, and all
+    Vectors 04 and 09 carry declared sets the two readings disagree about, and both
     three expect a refusal, which is the stronger reading's answer. As set values they
     are two, not three: 04 and 09 differ only in the order of the same two members. A
     reader deciding the ruling should know the fixtures are not neutral.
@@ -933,7 +932,7 @@ def test_exactly_one_declared_set_is_conformant_today() -> None:
 
 # Nominal margin and separating margin, per rule this set names. `KNOWN_THIN` in
 # `tests/test_adequacy_all_sets.py` records which rules are carried by a single vector,
-# which is #124's property. It counts vectors. Three rules here have two vectors and
+# which is #124's property. It counts vectors. Two rules here have two vectors and
 # fewer than two that separate anything, so the margin they report is made of vectors a
 # defect in the rule would not move. Recorded rather than repaired: the vectors that do
 # not separate are the gate-covered ones, and no vector written against this build can

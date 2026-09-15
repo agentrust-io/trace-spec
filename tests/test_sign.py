@@ -256,9 +256,13 @@ def test_the_two_retired_cutover_vectors_are_covered_here():
         verify_record(v01, jwk,
                       accepted_profiles=(TRACE_PROFILE_V0_2, _TRACE_PROFILE_V0_1))
 
-    # Control: the same record verifies under a verifier that declares v0.1 alone only
-    # if the cutover is not enforced. It is, so this refuses too, and the two refusals
-    # above cannot both be the record simply being unacceptable everywhere.
+    # A verifier declaring v0.1 alone is refused for its configuration too, so the two
+    # refusals above are not this record being unacceptable under every set.
+    with pytest.raises(ValueError, match="superseded v0.1 identifier"):
+        verify_record(v01, jwk, accepted_profiles=(_TRACE_PROFILE_V0_1,))
+
+    # Control: an ordinary v0.2 record verifies under the same declared set that refused
+    # the v0.1 one, so the first refusal is the record's profile and not the set.
     v02 = sign_record(_fresh_record_with_profile(TRACE_PROFILE_V0_2), key)
     verify_record(v02, jwk, accepted_profiles=(TRACE_PROFILE_V0_2,))
 

@@ -33,7 +33,10 @@ silent.
 signature checks out; they ask whether a verifier implements the semantics the record
 was written under. A vector that failed because its signature was malformed would
 silently stop testing the thing it names, so `tests/test_verifier_compatibility_fixtures.py`
-asserts each signature independently.
+re-verifies the signature of every record the v0.2 record schema admits, with the accepted
+set widened so that only the signature can fail. The four records carrying another profile
+are refused by that schema before the signature is read, so this repository does not check
+them a second time; an adapter that wants that check runs its own verifier over them.
 
 ## Format
 
@@ -68,8 +71,10 @@ against the vector's own declaration, so the assertion held for every implementa
 and could not fail. A key no implementation reports, tested by an assertion that
 cannot fail, is a claim to test obligation 4 that this set does not make good on.
 
-`failure` names **which rule refused**, not a wire format or a message. An adapter maps
-it to whatever its own implementation emits; this one does so in `FAILURE_MARKERS`.
+`failure` names **which rule refused**, not a wire format or a message, and it is
+informative: see the next section. Nothing in the portable adapter reads it. This
+repository maps it to its own messages in `tests/test_verifier_compatibility_diagnostics.py`,
+which is about this implementation and not about conformance.
 
 ## What `failure` is and is not
 
