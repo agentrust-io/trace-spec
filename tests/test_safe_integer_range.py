@@ -469,6 +469,7 @@ OTHER_ARTIFACTS: dict[str, dict[str, Any]] = {
             },
             "declaration_digest": "sha256:" + "c" * 64,
             "tool_call_digest": "sha256:" + "d" * 64,
+            "successor_observation_digest": "sha256:" + "e" * 64,
             "transcript_required": True,
         },
         "signature": "x" * 86,

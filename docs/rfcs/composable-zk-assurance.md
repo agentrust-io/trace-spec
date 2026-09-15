@@ -2,7 +2,6 @@
 
 **Status:** Draft issue proposal
 **Author:** Florian Kluge
-**Contact:** florian.kluge@o1labs.org
 **Organisation:** o1Labs
 **Scope:** Informative assurance-model proposal; normative implementation requires follow-up changes
 **Target:** TRACE specification

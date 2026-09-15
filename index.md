@@ -1,16 +1,58 @@
 ---
-title: Create and verify signed runtime evidence
-description: TRACE defines portable signed runtime evidence. Start with software signing and tamper detection, then explore hardware attestation and transparency verification.
+title: "TRACE: evidence for AI agent runs"
+description: Portable, signed runtime evidence about AI agent runs. Start with software signing and tamper detection, then add attestation and transparency checks.
+hide:
+  - navigation
+  - toc
 ---
 
-# Sign a runtime record. Check its evidence.
+[04 · Evidence: can a third party verify all of it offline, years later?](https://agentrust-io.com/#chain)
 
-TRACE is an open specification for portable, signed runtime evidence. Its record format connects workload identity, policy, data classification, and tool-transcript commitments. A verifier checks the signature and the evidence required by its trust policy.
+# Evidence a third party can check, years later
+
+TRACE specifies the record, anchoring protocol and verification rules that tie an agent run to its workload, policy, data class and tool transcript, so anyone holding the record can verify it offline.
 
 [Create and verify your first record](docs/quickstart.md){ .md-button .md-button--primary }
-[Understand the trust levels](docs/trust-levels.md){ .md-button }
+[What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
-The first example needs Python 3.11+ and no cloud account. It signs synthetic declarations in software, verifies with a separately retained key, and demonstrates tamper detection. Hardware provenance and registry inclusion require additional evidence and checks.
+!!! tip "TL;DR"
+    Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.10.0 reference library sign and verify records in software with no cloud account, and a v0.2 signature proves who produced a record and that it has not changed while every hardware field in it is still the producer's claim. The proposed [runtime evidence profile](docs/rfcs/runtime-evidence-profile.md) grades inlined quotes as platform-attested or attested, and the attested grade is specified but not yet demonstrated.
+
+<div class="grid cards" markdown>
+
+-   __Run it__
+
+    ---
+
+    Sign a record, verify it with a separately retained key, and see what a failed check looks like.
+
+    [Quickstart](docs/quickstart.md)
+
+-   __What it proves, and what it does not__
+
+    ---
+
+    A signed field is a producer's claim. The verification protocol sets out what a verifier still has to check.
+
+    [Verification protocol](docs/verification.md)
+
+-   __Hardware evidence__
+
+    ---
+
+    TRACE carries evidence to verifiers that already exist; the runtime evidence profile uses agent-manifest's TDX verifier. Check a real TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+
+    [Runtime evidence profile](docs/rfcs/runtime-evidence-profile.md)
+
+-   __The chain__
+
+    ---
+
+    TRACE is the evidence step. Anchor records in the [TRACE Registry](https://agentrust-io.com/registry/) and score them with the [conformance suite](https://tests.agentrust-io.com).
+
+    [See the chain](https://agentrust-io.com/#chain)
+
+</div>
 
 ## What the record contains
 
@@ -25,43 +67,11 @@ The first example needs Python 3.11+ and no cloud account. It signs synthetic de
 
 A signed field is a producer's claim. Signature verification alone does not establish that the described execution occurred or that a policy was enforced. See the [verification protocol](docs/verification.md) for the full evaluation path.
 
-## Where to start
+## Where to go next
 
-<div class="grid cards" markdown>
-
--   __Run it__
-
-    ---
-
-    Sign a record, verify it, and see what a failed check looks like.
-
-    [Quickstart](docs/quickstart.md)
-
--   __Read it__
-
-    ---
-
-    The normative specification, with the claim set, the anchoring protocol, and the verification rules.
-
-    [TRACE v0.2](spec/trace-v0.2.md)
-
--   __Test it__
-
-    ---
-
-    Score an implementation against the spec by conformance level before claiming compliance.
-
-    [Conformance suite](https://tests.agentrust-io.com)
-
--   __Integrate it__
-
-    ---
-
-    Emit and consume Trust Records from AGT, cMCP, and sandboxed agent runtimes.
-
-    [Integration guides](docs/integration/agt.md)
-
-</div>
+- [TRACE v0.2](spec/trace-v0.2.md): the normative specification, with the claim set, the anchoring protocol, and the verification rules.
+- [Conformance suite](https://tests.agentrust-io.com): score an implementation by conformance level before claiming compliance.
+- [Integration guides](docs/integration/agt.md): emit and consume Trust Records from AGT, cMCP, and sandboxed agent runtimes.
 
 ## What it is built on
 
@@ -71,4 +81,6 @@ TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (
 
 The specification is a **Developer Preview**. v0.2 is current and published with a conformance test suite. Read [Limitations](LIMITATIONS.md) for the scope boundaries before relying on it in production.
 
-TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). See [Governance](GOVERNANCE.md) for how decisions are made and [Contributing](CONTRIBUTING.md) for how to propose a change.
+TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](GOVERNANCE.md) for how decisions are made and [Contributing](CONTRIBUTING.md) for how to propose a change.
+
+**Status:** spec v0.2 · agentrust-trace 0.10.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.

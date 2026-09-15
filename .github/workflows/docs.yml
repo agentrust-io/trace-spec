@@ -11,6 +11,7 @@ on:
       - "Governance/**"
       - "PRIVACY.md"
       - "overrides/**"
+      - "hooks/**"
       - "robots.txt"
       - "mkdocs.yml"
       - "requirements-docs.txt"

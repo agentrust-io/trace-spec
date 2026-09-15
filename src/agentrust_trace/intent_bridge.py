@@ -11,7 +11,12 @@ from typing import Any
 import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from agentrust_trace.sign import _b64url_decode, _canonical_bytes, _pubkey_from_jwk
+from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
+    _b64url_decode,
+    _canonical_bytes,
+    _pubkey_from_jwk,
+)
 
 BRIDGE_PROFILE = "tag:agentrust-io.com,2026:pic-trace-bridge-v1"
 PIC_PROFILE = "PIC-CJSON/1.0"
@@ -105,6 +110,55 @@ def _nonempty_string(value: Any, field: str) -> str:
     return value
 
 
+def _bind_successor_observation(
+    after: Any, expected_successor_digest: str
+) -> dict[str, Any]:
+    """Bind the exact successor envelope using the bridge identity relation.
+
+    The digest covers observation content, observer identity, and observation time.
+    This establishes integrity only. Trust, freshness, independence, and predicate
+    sufficiency are deliberately evaluated separately.
+    """
+    if not isinstance(after, dict):
+        raise AuthorizationMismatch("transcript.after must be a successor observation object")
+    required = {"observation", "observer", "observed_at"}
+    missing = required - set(after)
+    unknown = set(after) - required
+    if missing:
+        raise AuthorizationMismatch(
+            f"transcript.after is missing successor fields: {sorted(missing)}"
+        )
+    if unknown:
+        raise AuthorizationMismatch(
+            f"transcript.after contains unknown successor fields: {sorted(unknown)}"
+        )
+    if not isinstance(after["observation"], dict):
+        raise AuthorizationMismatch("transcript.after.observation must be an object")
+    _nonempty_string(after["observer"], "transcript.after.observer")
+    observed_at = after["observed_at"]
+    if (
+        not isinstance(observed_at, int)
+        or isinstance(observed_at, bool)
+        or observed_at < 0
+        or observed_at > JCS_SAFE_INTEGER
+    ):
+        raise IntentBridgeError(
+            "transcript.after.observed_at must be a non-negative integer within "
+            "the JCS safe-integer range"
+        )
+    expected = _digest(expected_successor_digest, "expected_successor_digest")
+    try:
+        actual = digest_jcs(after)
+    except IntentBridgeError:
+        raise AuthorizationMismatch(
+            "transcript.after has no RFC 8785 canonical form"
+        ) from None
+    if not compare_digest(expected, actual):
+        raise AuthorizationMismatch(
+            "transcript.after does not match the expected digest binding"
+        )
+    return after
+
 
 def _decision(value: Any) -> str:
     """Return a valid authorization decision or refuse a malformed value."""
@@ -158,10 +212,11 @@ def verify_bridge(
     fields = {
         "authorization_id", "decision", "authorizer", "authorizer_key_id",
         "authorized_at", "expires_at", "scope", "pic", "declaration_digest",
-        "tool_call_digest", "transcript_required",
+        "tool_call_digest", "successor_observation_digest", "transcript_required",
     }
+    required_fields = fields - {"successor_observation_digest"}
     authorization = _object(root.get("authorization"), "authorization", fields)
-    missing = fields - set(authorization)
+    missing = required_fields - set(authorization)
     if missing:
         raise IntentBridgeError(f"authorization is missing fields: {sorted(missing)}")
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
@@ -236,6 +291,17 @@ def verify_bridge(
 
     if not isinstance(authorization["transcript_required"], bool):
         raise IntentBridgeError("transcript_required must be boolean")
+    successor_digest_present = "successor_observation_digest" in authorization
+    if authorization["transcript_required"] and not successor_digest_present:
+        raise IntentBridgeError(
+            "authorization.successor_observation_digest is required when "
+            "transcript_required is true"
+        )
+    if not authorization["transcript_required"] and successor_digest_present:
+        raise IntentBridgeError(
+            "authorization.successor_observation_digest must be absent when "
+            "transcript_required is false"
+        )
     if authorization["transcript_required"]:
         if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
             raise AuthorizationMismatch("a full before/after transcript is required")
@@ -255,6 +321,10 @@ def verify_bridge(
             ) from None
         if not compare_digest(before_digest, tool_call_digest):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
-        if not isinstance(transcript.get("after"), dict):
-            raise AuthorizationMismatch("transcript.after must contain the execution result")
+        after = transcript.get("after")
+        expected_successor_digest = _digest(
+            authorization["successor_observation_digest"],
+            "authorization.successor_observation_digest",
+        )
+        _bind_successor_observation(after, expected_successor_digest)
     return authorization

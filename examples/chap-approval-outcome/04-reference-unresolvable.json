@@ -1,0 +1,43 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1789413845,
+  "subject": "spiffe://trust.example.org/agent/refund-bot",
+  "model": {
+    "provider": "example",
+    "model_id": "example-model"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "confidential",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "xr1B3T6C0toRmLJmX8fcgRs-fcCLMr6i24OapAGVfDY"
+    }
+  },
+  "references": [
+    {
+      "rel": "approval-outcome",
+      "id": "audit/61",
+      "resolver": "https://chap.example.org/workspaces/wsp_refund_review",
+      "digest": "sha256:ef21916beb9cb5671e95f3c08b3f40c0d41cfd0f79184912eb9ca0f78fddb2e4",
+      "retention": "P1Y"
+    }
+  ],
+  "signature": "Y4XkrjB6NGDZ1JUe73qQ0dctuIp_wJ0cMDYyGD4Ezc8IFBqkNKc9z-osABOPCk9pBEbzQIWr9BZ64iWBkcBEBg"
+}

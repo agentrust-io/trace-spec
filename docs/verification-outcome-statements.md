@@ -1,5 +1,5 @@
 ---
-description: How a relying party or auditor turns a TRACE verifier outcome into a bounded statement - what each outcome supports, what it never claims, and what evidence to retain.
+description: "How a relying party turns a TRACE verifier outcome into a bounded statement: what it supports, what it never claims, and what evidence to keep."
 ---
 
 # Verification outcome statements
