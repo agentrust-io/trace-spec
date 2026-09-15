@@ -190,9 +190,10 @@ def _separates(vector: dict) -> bool:
 # the verifier's declared configuration, which no schema can catch. A vector aimed at
 # a configuration rule has to carry a record with nothing wrong with it.
 #
-# That rule is what 10 was written to, and it is why 10 separates where 08 does not
-# although both pin the same boundary: 08 presents a v0.1 record, which the schema
-# refuses on its own. Vector 10, which put the v0.1 identifier first in the accepted set
+# That rule is what 10 was written to, and it is why 10 separated where 08 did not
+# although both pinned the same boundary: 08 presented a v0.1 record, which the schema
+# refuses on its own. Both have since left, 08 on 2026-09-15 for the same reason 10 left
+# before it. Vector 10, which put the v0.1 identifier first in the accepted set
 # against an innocent record, left this set on 2026-09-13: the Project Lead ruled on #116
 # that the v0.1 cutover is merged normative text, so a vector for it tests an existing
 # rule rather than pinning an obligation this issue proposes, and it belongs with the

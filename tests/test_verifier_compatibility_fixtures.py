@@ -25,6 +25,7 @@ implementation's messages and is not part of the portable contract.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -299,6 +300,28 @@ def test_the_precondition_check_fires_and_covers_every_vector_that_needs_one() -
     }
     with pytest.raises(AssertionError, match="premise no longer holds"):
         _check_preconditions(Path("control.json"), lapsed)
+
+
+def test_the_published_artifacts_name_no_vector_that_is_not_here() -> None:
+    """The README and the generator are offered to other implementations, so a pointer
+    in either to a vector that is not in this directory is a broken reference in somebody
+    else's hands.
+
+    Retiring a vector leaves these behind: `gen_vectors.py` carried "(see vector 08)" for
+    the length of the change that deleted 08, and the README sent adapter authors to a
+    constant that had moved out of the adapter. History belongs in the test modules,
+    which are ours to read; these two files describe the set as it stands.
+    """
+    present = {path.stem.split("-")[0] for path in FIXTURE_PATHS}
+    assert present, "positive control: no fixtures found"
+    for name in ("README.md", "gen_vectors.py"):
+        text = (FIXTURE_DIR / name).read_text(encoding="utf-8")
+        named = set(re.findall(r"vector (\d\d)\b", text))
+        named |= set(re.findall(r"\b(\d\d)-[a-z-]+\.json", text))
+        missing = sorted(named - present)
+        assert not missing, (
+            f"{name} names vector(s) {missing}, which are not in this directory. A reader "
+            "of the published set follows that pointer and finds nothing.")
 
 
 def test_the_readme_states_the_real_fixture_count() -> None:

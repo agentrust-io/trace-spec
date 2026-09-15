@@ -177,8 +177,9 @@ def main() -> None:
                 "null verifier: that record was reaching the schema and being refused "
                 "there, so the vector separated the schema rule rather than the profile "
                 "rule it named. The older profile is deliberately not the v0.1 "
-                "identifier, which no accepted set may contain for a different reason "
-                "(see vector 08).",
+                "identifier, which no accepted set may contain for a different reason: "
+                "the cutover in spec/trace-v0.2.md, whose coverage lives in "
+                "tests/test_sign.py rather than in this set.",
                 record_profile=V0_2,
                 accepted_profiles=[V0_2, OLDER],
                 expected={
