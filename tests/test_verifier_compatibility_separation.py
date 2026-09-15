@@ -52,13 +52,17 @@ One column is empty. It is recorded in `SHORTFALLS` with the reason and the cond
 under which the reason expires, and `test_recorded_shortfalls_have_not_closed` fails
 when it does, which is the only way a shortfall gets revisited rather than inherited.
 
-Vector 09 is the one live vector with nothing unique to it, and it is kept: separation
-is not the only adequacy property. 09 carries the second vector for
+Every live vector is the only entry in some column, so on this measurement none of them
+is deletable: 06 for an empty set read as a wildcard, 04 for a verifier checking only the
+first declared member, 09 for one checking only the last, and 01 for obligation 3 being
+absent. `test_no_live_vector_is_redundant` pins that, and it is written to fail in both
+directions, because "nothing here is redundant" is the kind of claim that stops being
+true quietly. It read "09 is the one live vector with nothing unique to it" until
+2026-09-15, which was wrong in the file that exists to keep this honest: 09 has had that
+column to itself throughout. 09 also carries the second vector for
 `unschemaed_profile_in_accepted_set`, which is the margin property recorded in
-`tests/test_adequacy_all_sets.py`, and a rule carried by one vector is what #124
-established as insufficient. A row can be redundant under one measurement and
-load-bearing under another, which is the argument for keeping both measurements rather
-than reducing the set to whichever one was run last.
+`tests/test_adequacy_all_sets.py`, so it would be kept even if some other vector took its
+column: a row can be redundant under one measurement and load-bearing under another.
 """
 from __future__ import annotations
 import itertools
@@ -496,6 +500,22 @@ Recorded rather than fixed, because no vector written against this build can fix
 them. The test below fails when one expires, so the set is revisited at that point
 instead of inheriting a figure that has quietly stopped being true.
 """
+
+
+def test_no_live_vector_is_redundant() -> None:
+    """Each of the four is the sole entry in some column, measured rather than asserted.
+
+    The docstring at the top of this module made a claim of this shape and had it wrong
+    for as long as nobody recomputed it. Written to fail in both directions: a vector
+    that stops being anyone's only catch, and a vector that becomes one.
+    """
+    fixtures = _fixtures()
+    live = {n for n, v in fixtures.items() if _separates(v)}
+    sole = {sorted(caught)[0] for caught in SEPARATION.values() if len(caught) == 1}
+    assert sole == live, (
+        f"the vectors that are some column's only catch are {sorted(sole)} and the live "
+        f"vectors are {sorted(live)}; the module's account of which rows are deletable is "
+        "stale in whichever direction they differ")
 
 
 def test_a_generic_refusal_is_separated_by_nothing() -> None:
