@@ -80,6 +80,7 @@ from typing import Any, Literal, get_args
 import rfc8785
 
 from agentrust_trace.models import (
+    JCS_SAFE_INTEGER,
     Appraisal,
     BuildProvenance,
     ModelInfo,
@@ -227,7 +228,18 @@ class SandboxSessionResult:
         if not _DIGEST_RE.match(self.image_digest):
             raise ValueError(
                 f"image_digest {self.image_digest!r} must be a sha256: or sha384: digest."
+               )
+        if (
+            not isinstance(self.iat, int)
+            or isinstance(self.iat, bool)
+            or self.iat < 0
+            or self.iat > JCS_SAFE_INTEGER
+        ):
+            raise ValueError(
+                f"iat must be a non-negative integer Unix timestamp within the JCS "
+                f"safe-integer range, got {self.iat!r}"
             )
+
 
 
 class TraceSandboxAdapter:
