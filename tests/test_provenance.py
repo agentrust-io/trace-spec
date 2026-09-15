@@ -865,22 +865,16 @@ def test_an_omitted_issued_at_is_still_stamped_with_the_current_time() -> None:
 
 # --- attestation is checked by shape, not by truthiness ---------------------
 #
-# The old rules were `if kind == "tee-attested" and not attestation` and
-# `if kind != "tee-attested" and attestation`. Both are truthiness checks: they
-# ask whether the value is *empty*, not whether it is `None`, or an object of
-# the required shape. `{}`, `[]`, `""` and `0` are falsy but not `None`, and any
-# non-empty string, list, or dict is truthy regardless of its contents, so
-# neither rule actually enforced the contract the docstring and the spec
-# describe.
+# #325 already rejected non-object attestation values. These cases retain
+# that coverage and exercise the remaining object-shape and null-only rules.
 
 
 @pytest.mark.parametrize("bogus_attestation", [{}, [], "", 0, False])
 def test_non_tee_record_rejects_any_non_null_attestation(bogus_attestation: object) -> None:
     """Non-TEE `attestation` must be `null`, not merely falsy JSON.
 
-    Every value here is falsy and used to sail past `and attestation`, so a
-    `publisher-asserted` record carrying it built cleanly despite the spec's
-    `attestation | null otherwise` contract.
+    The empty object passed the post-#325 guard. Other falsy non-null values
+    were already refused and remain regression coverage.
     """
     with pytest.raises(ProvenanceError, match="attestation evidence"):
         _record(attestation=bogus_attestation)
@@ -893,9 +887,8 @@ def test_non_tee_record_rejects_any_non_null_attestation(bogus_attestation: obje
 def test_tee_attested_rejects_evidence_of_the_wrong_shape(bogus_attestation: object) -> None:
     """`tee-attested` evidence must be a `runtime`-shaped object, not merely truthy.
 
-    Every value here is truthy and used to sail past `not attestation`: a bare
-    string, a list, an empty object, a number, a bool, and an object missing the
-    required `measurement`. None of them is evidence.
+    Cover non-object values, an empty object, and an object missing the
+    required measurement. These are structural checks, not hardware appraisal.
     """
     with pytest.raises(ProvenanceError, match="attestation"):
         _record(kind="tee-attested", attestation=bogus_attestation)
@@ -918,7 +911,7 @@ def test_tee_attested_rejects_a_malformed_measurement_digest() -> None:
 
 
 def test_tee_attested_accepts_a_well_formed_runtime_shaped_attestation() -> None:
-    """The positive case: a real attestation, in the shape §3.1 `runtime` uses."""
+    """A synthetic object in the runtime shape passes structural validation."""
     rec = _record(
         kind="tee-attested",
         attestation={"platform": "intel-tdx", "measurement": DIGEST},
@@ -995,7 +988,7 @@ _HARDWARE_PLATFORMS = sorted(
     p
     for p in get_args(RuntimeInfo.model_fields["platform"].annotation)
     if p != "software-only"
- )
+)
 
 
 @pytest.mark.parametrize("platform", _HARDWARE_PLATFORMS)
@@ -1011,10 +1004,9 @@ def test_tee_attested_accepts_every_hardware_platform(platform: str) -> None:
 def test_hardware_platform_list_is_actually_populated() -> None:
     """Guard on the derivation itself.
 
-    `pytest.mark.parametrize` over an empty list silently collects zero test
-    cases and the run still shows green, which is exactly how the previous,
-    hand-copied five-of-nine list could have quietly become five-of-zero and
-    nobody would have noticed from the test count alone.
+    Pytest collects a skipped case for an empty parameter list. Require the
+    platform coverage to stay populated instead of silently losing coverage
+    through a skip.
     """
     assert "software-only" not in _HARDWARE_PLATFORMS
     all_platforms = get_args(RuntimeInfo.model_fields["platform"].annotation)
@@ -1048,3 +1040,36 @@ def test_the_verifier_accepts_a_well_formed_tee_attested_record() -> None:
         key,
     )
     verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("consumer", ["builder", "verifier"])
+@pytest.mark.parametrize(
+    ("field", "bad_value"),
+    [
+        ("vendor_note", "unexpected member"),
+        ("rim_uri", {"a": 1}),
+        ("nonce", 5),
+        ("firmware_version", ["1.55"]),
+    ],
+)
+def test_attestation_shape_constraints(consumer, field, bad_value) -> None:
+    """Each refusal has a valid control through the same public entry point."""
+    attestation = {
+        "platform": "intel-tdx",
+        "measurement": DIGEST,
+        "rim_uri": "https://example.com/rim",
+        "nonce": "abc123",
+        "firmware_version": "1.55",
+    }
+    key = generate_key()
+
+    def consume(value):
+        if consumer == "builder":
+            return _record(kind="tee-attested", attestation=value)
+        # Sign directly: a builder refusal must not mask a verifier bypass.
+        signed = sign_record(_forged(kind="tee-attested", attestation=value), key)
+        return verify_record(signed, key_to_jwk(key))
+
+    consume(attestation)
+    with pytest.raises(ProvenanceError, match=field):
+        consume({**attestation, field: bad_value})

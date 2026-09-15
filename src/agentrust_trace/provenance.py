@@ -20,9 +20,7 @@ import re
 import time
 from typing import Any
 
-
 import rfc8785
-
 from pydantic import ValidationError
 
 from agentrust_trace.models import RuntimeInfo
@@ -195,11 +193,9 @@ def _check_structure(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
             )
-        # §3: attestation must be present and runtime-shaped iff kind == "tee-attested",
-    # else null. Checking this by truthiness alone isn't enough: falsy-but-not-null
-    # values ({}, [], "", 0) would pass as "null", and any truthy value ("hello",
-    # ["x"]) would pass as "attestation" regardless of shape. Checked by identity
-    # and shape below instead.
+    # Section 3 requires a runtime-shaped object for tee-attested and null
+    # for every other kind. #325 already refused non-object values; the
+    # remaining empty-object and object-shape gaps need these checks.
     #
     # No separate isinstance(dict) guard here: RuntimeInfo.model_validate already
     # rejects non-objects for tee-attested, and the elif below rejects any non-None
