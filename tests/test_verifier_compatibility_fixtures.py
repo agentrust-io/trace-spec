@@ -8,6 +8,18 @@ API: each fixture states a signed record, the profile set a verifier declares, a
 the outcome any conformant verifier must produce. This module is the adapter that
 runs them against `agentrust_trace`; another implementation writes its own adapter
 and runs the same JSON.
+
+`expected.failure` is **informative**. It names the rule this set believes refused the
+record, and no portable assertion is made on it: a verifier that applies every rule
+agreed here and reports one generic refusal for all of them conforms, and
+`test_a_generic_refusal_passes_this_set` is the control that proves this module lets it.
+The draft text for #116 says a verifier SHOULD report refusal-for-an-unimplemented-profile
+distinguishably from a verification failure, which is coarser than a rule name and is a
+SHOULD, so asserting the label here would have been this set asking more of a foreign
+implementation than the text it encodes. The label is kept because it tells a reader of
+the JSON what each vector is for, and because this library's own diagnostics are worth
+pinning: that is `tests/test_verifier_compatibility_diagnostics.py`, which is about this
+implementation's messages and is not part of the portable contract.
 """
 
 from __future__ import annotations
@@ -25,19 +37,6 @@ from agentrust_trace.validate import profiles_with_schema
 FIXTURE_DIR = Path(__file__).parent.parent / "examples" / "verifier-compatibility"
 PROFILE = "trace.verifier_compatibility.proposal.v0"
 
-# Failure labels are part of the vector contract, so they must not be matched against
-# prose that is free to change. Each maps to a fragment this implementation emits.
-FAILURE_MARKERS = {
-    "profile_not_accepted": "not in this verifier's accepted set",
-    "profile_absent": "no 'eat_profile'",
-    "no_accepted_profiles": "accepted_profiles is empty",
-    "superseded_profile_in_accepted_set": "superseded v0.1 identifier",
-    "unschemaed_profile_in_accepted_set": "which this build carries no schema for",
-    # A record *carrying* the v0.1 identifier is refused with upstream #125's tailored
-    # message, distinct from the generic not-in-accepted-set refusal above.
-    "superseded_profile_refused": "superseded v0.1 profile",
-}
-
 V0_1 = "tag:agentrust.io,2026:trace-v0.1"
 
 RECORD_SCHEMA_PROFILE = TRACE_PROFILE_V0_2
@@ -48,42 +47,6 @@ RECORD_SCHEMA_PROFILE = TRACE_PROFILE_V0_2
 the accepted set. Named separately from the set ceiling because the two coincide only
 by accident of there being one usable profile today.
 """
-
-# Which failure labels are a complaint about a specific member of the declared set,
-# and how to find the member the message has to name. A rule name is not an entry: a
-# verifier that reported `unschemaed_profile_in_accepted_set` without saying which
-# profile it meant would leave the operator to diff their own configuration.
-#
-# This exists because the proposal's table states, for three of its rows, that the
-# refusal names the entry, and until 2026-09-12 nothing here asserted it. The
-# implementation does interpolate the entry; a change that stopped would have left
-# every vector green and the table's third column false. Same shape as the
-# `downgraded` key removed the same day.
-NAMES_AN_ENTRY = {
-    "unschemaed_profile_in_accepted_set":
-        lambda accepted: [p for p in accepted if p not in profiles_with_schema()],
-    "superseded_profile_in_accepted_set":
-        lambda accepted: [p for p in accepted if p == V0_1],
-}
-
-
-def _assert_the_refusal_names_the_entry(fixture_path, expected, verifier, error):
-    """For a complaint about the declared set, the message must name the member."""
-    find = NAMES_AN_ENTRY.get(expected["failure"])
-    if find is None:
-        return
-    offending = find(verifier["accepted_profiles"])
-    assert offending, (
-        f"{fixture_path.name}: expected {expected['failure']!r} but no member of "
-        f"{verifier['accepted_profiles']} is the kind of entry that label describes, "
-        "so this vector cannot be checking what it says")
-    text = str(error)
-    missing = [p for p in offending if p not in text]
-    assert not missing, (
-        f"{fixture_path.name}: the refusal does not name {missing}. The label alone "
-        "tells an operator which rule fired and not which entry of their declared set "
-        "tripped it, which is what the proposal's table promises.")
-
 
 def _check_preconditions(fixture_path: Path, fixture: dict[str, Any]) -> None:
     """A vector whose expectation depends on a fact about the reader states that fact.
@@ -130,27 +93,41 @@ def test_vector_set_is_complete() -> None:
     assert [path.name for path in FIXTURE_PATHS] == [
         "01-known-version-verified.json",
         "02-unknown-version-refused.json",
-        "03-superseded-version-refused.json",
         "04-unschemaed-profile-refused.json",
         "05-downgrade-silent-is-impossible.json",
         "06-empty-accepted-set-refused.json",
         "07-profile-absent-refused.json",
-        "08-dual-accept-configuration-refused.json",
         "09-unschemaed-profile-first-in-set-refused.json",
         "11-empty-profile-string-refused.json",
     ]
 
 
-@pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda path: path.stem)
-def test_verifier_compatibility_vector(fixture_path: Path) -> None:
-    fixture = _load(fixture_path)
+def _verify(record, key, accepted):
+    """The verifier under test, as a foreign adapter would wrap its own."""
+    return verify_record(record, key, max_age_seconds=None, accepted_profiles=accepted)
 
-    assert fixture["profile"] == PROFILE
-    assert fixture["proposal"]["issue"] == "agentrust-io/trace-spec#116"
-    assert "not accepted normative text" in fixture["proposal"]["status"]
 
-    _check_preconditions(fixture_path, fixture)
+def _verify_refusing_generically(record, key, accepted):
+    """Every rule of the reference applied, every refusal under one label.
 
+    The control for the portable contract. This verifier is conformant: it reaches the
+    same verdict on every vector and declines only to say which rule it reached it by.
+    A set that this cannot pass is asking for a diagnostic the draft text does not
+    require, which is the finding the review resolved by making `expected.failure`
+    informative.
+    """
+    try:
+        return _verify(record, key, accepted)
+    except ValueError:
+        raise ValueError("refused") from None
+
+
+def _check_vector(fixture_path: Path, fixture: dict[str, Any], verify) -> None:
+    """The portable expectation: the verdict, and every key the statement names.
+
+    The refusal's stated cause is deliberately not compared. `expected.failure` is
+    informative; see this module's docstring.
+    """
     verifier = fixture["verifier"]
     expected = fixture["expected"]
     # Freshness is disabled by every vector: version skew is the property under test,
@@ -158,27 +135,12 @@ def test_verifier_compatibility_vector(fixture_path: Path) -> None:
     assert verifier["check_freshness"] is False
 
     if expected["outcome"] == "refused":
-        with pytest.raises(ValueError) as excinfo:
-            verify_record(
-                fixture["record"],
-                fixture["trusted_key"],
-                max_age_seconds=None,
-                accepted_profiles=verifier["accepted_profiles"],
-            )
-        marker = FAILURE_MARKERS[expected["failure"]]
-        assert marker in str(excinfo.value), (
-            f"{fixture_path.name}: refused for the wrong reason. "
-            f"expected {expected['failure']!r}, got: {excinfo.value}"
-        )
-        _assert_the_refusal_names_the_entry(fixture_path, expected, verifier, excinfo.value)
+        with pytest.raises(ValueError):
+            verify(fixture["record"], fixture["trusted_key"], verifier["accepted_profiles"])
         return
 
-    statement = verify_record(
-        fixture["record"],
-        fixture["trusted_key"],
-        max_age_seconds=None,
-        accepted_profiles=verifier["accepted_profiles"],
-    )
+    statement = verify(
+        fixture["record"], fixture["trusted_key"], verifier["accepted_profiles"])
     want = expected["statement"]
     assert statement.profile == want["profile"]
     assert list(statement.accepted_profiles) == want["accepted_profiles"]
@@ -191,6 +153,38 @@ def test_verifier_compatibility_vector(fixture_path: Path) -> None:
     assert set(want) == {"profile", "accepted_profiles"}, (
         f"{fixture_path.name}: the statement expectation names {sorted(want)}; this "
         "adapter reads two keys and would silently ignore the rest")
+
+
+@pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda path: path.stem)
+def test_verifier_compatibility_vector(fixture_path: Path) -> None:
+    fixture = _load(fixture_path)
+
+    assert fixture["profile"] == PROFILE
+    assert fixture["proposal"]["issue"] == "agentrust-io/trace-spec#116"
+    assert "not accepted normative text" in fixture["proposal"]["status"]
+
+    _check_preconditions(fixture_path, fixture)
+    _check_vector(fixture_path, fixture, _verify)
+
+
+@pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda path: path.stem)
+def test_a_generic_refusal_passes_this_set(fixture_path: Path) -> None:
+    """A verifier that applies every agreed rule and names none of them conforms.
+
+    Positive control on the portable contract rather than on a vector. It runs the same
+    expectations through `_verify_refusing_generically`, which erases the reason and
+    keeps the verdict, and every vector must still pass. Before the review that asked
+    for this, the adapter asserted a rule name out of `expected.failure` and four
+    vectors refused this verifier, so the set failed a conformant implementation and
+    said so nowhere a foreign adapter would see.
+
+    This control fails the day an assertion on the refusal's cause comes back into
+    `_check_vector`, which is the only thing that would make the set stricter than its
+    text again.
+    """
+    fixture = _load(fixture_path)
+    _check_preconditions(fixture_path, fixture)
+    _check_vector(fixture_path, fixture, _verify_refusing_generically)
 
 
 def test_every_fixture_signature_is_genuine() -> None:

@@ -5,17 +5,17 @@ it. Nothing in the set's own tests checks that claim: they run *this* verifier a
 compare verdicts, so they pass whether or not any other implementation could pass too.
 
 Measured against a verifier implementing none of the four obligations in
-agentrust-io/trace-spec#116, the set separates 4 of its 10 vectors. The figure lives
+agentrust-io/trace-spec#116, the set separates 4 of its 8 vectors. The figure lives
 in one place, next to `SEPARATING` below, and this paragraph names it only because a
 reader arrives here first: it read `3 of 8` for as long as it took someone to notice,
 which is the drift this module exists to prevent, happening to the module's own
-headline number. Six refusal vectors separate nothing, and the reason is structural
+headline number. Four refusal vectors separate nothing, and the reason is structural
 rather than a flaw in how they were written:
 
 `schema/trace-claim.json` pins `eat_profile` with a `const`, so a record carrying any
 other profile is schema-invalid. Since upstream #156 made `verify_record` validate
 against that schema, every such record is refused by the schema whether or not the
-verifier implements a single profile rule. Vectors 02, 03, 05, 07, 08 and 11 all carry
+verifier implements a single profile rule. Vectors 02, 05, 07 and 11 all carry
 exactly those records, and their `expected.statement` is null, so there is no second
 signal to separate on either. The rule underneath is exact in both directions and is
 asserted below: **a vector separates the null verifier if and only if its record is
@@ -39,13 +39,14 @@ absence of one, and `SEPARATION` records what each one is caught by. Read down a
 rather than across: a vector that is the only entry in some column is one nobody may
 delete, and a column that is empty is a wrong implementation this set cannot see.
 
-It was nine, and two columns were empty. The tenth is a verifier that applies every rule
-the reference applies and reports one generic label for every refusal, and the reason it
-was invisible is that `_panel_separates` compared verdicts and statements and never the
-refusal's stated cause. Widening the comparison catches it with four vectors, and moves
-one recorded figure: the membership reading now also fails vector 06, which it refuses
-for the right verdict under the wrong rule. The headline `4 of 10` is measured against
-the null verifier and does not move.
+It was nine for three days. The tenth was a verifier that applies every rule the
+reference applies and reports one generic label for every refusal, added on 2026-09-12
+by widening `_panel_separates` to compare the refusal's stated cause. The review on the
+pull request settled that this verifier is conformant, so the widening is reverted and
+that entry is now a control that nothing here may separate, beside `_v_reference`. The
+panel is eight. The one figure the revert moved is the membership reading, which no
+longer fails vector 06: it refused that vector for the right verdict under a different
+rule, and a different rule is not a wrong answer any more.
 
 One column is empty. It is recorded in `SHORTFALLS` with the reason and the condition
 under which the reason expires, and `test_recorded_shortfalls_have_not_closed` fails
@@ -418,49 +419,35 @@ PANEL = {
     "no rule that a declared member be checkable": _v_v01_rule_only,
     "obligation 2 in full, obligation 3 absent": _v_no_statement,
     "obligations 2 and 3, statement hardcoded": _v_hardcoded_profile,
-    "every rule applied, every refusal one generic label": _v_wrong_reason,
 }
 
 
 def _panel_separates(verifier, vector: dict) -> bool:
-    """Outcome, then the refusal's stated cause, then every key the statement names.
+    """Outcome, then every key the statement names. Wider than `_separates`, which
+    compares presence only.
 
-    Wider than `_separates`, which compares presence only.
-
-    The cause was not compared until 2026-09-12, and the second empty column in the
-    panel was the consequence: `_v_wrong_reason` applies every rule the reference
-    applies and reports one generic label for all of them, and it was separated by
-    nothing at all. Under the comparison it is separated by four. A vector's
-    `expected.failure` names which rule fired, and a verifier that reaches the right
-    verdict by the right rule and cannot say which rule it was leaves the operator to
-    diff their own configuration -- which is the same defect
-    `tests/test_verifier_compatibility_fixtures.py` records under `NAMES_AN_ENTRY`, one
-    level up.
-
-    A gate refusal is exempt. `_base_checks` refuses a non-v0.2 record through the
-    profile const and the schema, neither of which knows which obligation would have
-    applied, so `GATE` is not a wrong answer to a question about rules -- it is the
-    absence of an answer. Measured: without the exemption the reference implementation
-    is separated by the six gate-covered vectors and the panel has no control left.
+    The refusal's stated cause is deliberately not compared, and was, between
+    2026-09-12 and 2026-09-15. Comparing it made `_v_wrong_reason` look like a wrong
+    implementation, and the review settled that it is not one: `expected.failure` is
+    informative, a verifier that applies every agreed rule and reports one generic
+    refusal conforms, and a panel that separates it is measuring this library's
+    diagnostics rather than #116's obligations. `_v_wrong_reason` is now a control that
+    must be separated by nothing, beside `_v_reference`, and
+    `tests/test_verifier_compatibility_fixtures.py` carries the portable half of the
+    same control.
     """
     expected = vector["expected"]
-    reason = None
     try:
         outcome, statement = verifier(
             vector["record"], vector["trusted_key"],
             vector["verifier"]["accepted_profiles"])
-    except Refused as exc:
-        outcome, statement, reason = "refused", None, str(exc)
     except Exception:
         outcome, statement = "refused", None
     if outcome != expected["outcome"]:
         return True
     if outcome == "refused":
-        want_failure = expected.get("failure")
-        return bool(want_failure
-                    and reason is not None
-                    and reason != GATE
-                    and reason != want_failure)
+        # The refusal's stated cause is not compared; see this function's docstring.
+        return False
     want = expected.get("statement")
     if want is None:
         return False
@@ -477,10 +464,6 @@ SEPARATION = {
         "09-unschemaed-profile-first-in-set-refused"}),
     "obligation 2 as worded: a membership test": frozenset({
         "04-unschemaed-profile-refused",
-        # Refuses the empty declared set, and refuses it as `profile_not_accepted`:
-        # the record's profile is not in a set containing nothing. Right verdict,
-        # and the rule it applied was membership rather than the rule about the set.
-        "06-empty-accepted-set-refused",
         "09-unschemaed-profile-first-in-set-refused"}),
     "an empty declared set read as a wildcard": frozenset({
         "06-empty-accepted-set-refused"}),
@@ -494,10 +477,6 @@ SEPARATION = {
     "obligation 2 in full, obligation 3 absent": frozenset({
         "01-known-version-verified"}),
     "obligations 2 and 3, statement hardcoded": frozenset(),
-    "every rule applied, every refusal one generic label": frozenset({
-        "04-unschemaed-profile-refused",
-        "06-empty-accepted-set-refused",
-        "09-unschemaed-profile-first-in-set-refused"}),
 }
 """What each near miss is caught by. Read down a column rather than across: the rows
 that appear once are the ones whose deletion would cost coverage, and the entry whose
@@ -518,6 +497,22 @@ Recorded rather than fixed, because no vector written against this build can fix
 them. The test below fails when one expires, so the set is revisited at that point
 instead of inheriting a figure that has quietly stopped being true.
 """
+
+
+def test_a_generic_refusal_is_separated_by_nothing() -> None:
+    """The control the review asked for, at the panel's level.
+
+    `_v_wrong_reason` applies every rule the reference applies and reports one generic
+    label for all of them. It is conformant, so nothing in this set may separate it.
+    This fails the day `_panel_separates` starts comparing the refusal's stated cause
+    again, which is the one change that would make the set stricter than the text it
+    encodes.
+    """
+    fixtures = _fixtures()
+    separated = sorted(n for n, v in fixtures.items() if _panel_separates(_v_wrong_reason, v))
+    assert not separated, (
+        f"a verifier that names no rule is separated by {separated}; this set is asking "
+        "for a diagnostic #116's draft text does not require")
 
 
 @pytest.mark.parametrize("label", sorted(PANEL))
@@ -572,44 +567,44 @@ def test_recorded_shortfalls_have_not_closed() -> None:
         "'obligations 2 and 3, statement hardcoded' and remove the entry.")
 
 
-def test_the_cause_comparison_is_live_and_the_gate_exemption_is_load_bearing() -> None:
-    """Both halves of `_panel_separates`'s refusal branch, each shown to matter.
+def test_the_comparison_does_not_look_at_the_refusal_cause_and_that_is_deliberate() -> None:
+    """The revert of 2026-09-12's widening, pinned with the control that shows it is one.
 
-    The comparison: `_v_wrong_reason` reaches the right verdict on all ten vectors,
-    so verdict alone cannot see it. Enumerated rather than asserted as a count, because
-    "it is caught" is satisfied by a verdict disagreement this test exists to rule out.
+    Between 2026-09-12 and 2026-09-15 `_panel_separates` compared the refusal's stated
+    cause, which made `_v_wrong_reason` look like a wrong implementation. The review on
+    the pull request settled that it is not: `expected.failure` is informative and a
+    verifier that applies every agreed rule and names none of them conforms.
 
-    The exemption: a gate refusal carries no claim about which rule fired, and dropping
-    the exemption separates the reference implementation, which is the panel's control.
-    The six are exactly the gate-covered vectors named in this module's docstring.
+    Two halves, and the second is what makes the first mean something. The live
+    comparison separates that verifier by nothing. A comparison that does look at the
+    cause separates it by three, so the difference between the two is real and the
+    choice between them is a decision rather than an accident of how the code is
+    written. If the second assertion ever measures nothing, this test has stopped
+    being able to tell the two comparisons apart and the first one is worthless.
     """
     fixtures = _fixtures()
 
-    verdicts = set()
-    for vector in fixtures.values():
-        try:
-            outcome, _ = _v_wrong_reason(
-                vector["record"], vector["trusted_key"],
-                vector["verifier"]["accepted_profiles"])
-        except Refused:
-            outcome = "refused"
-        verdicts.add((outcome, vector["expected"]["outcome"]))
-    assert all(got == want for got, want in verdicts), (
-        f"`_v_wrong_reason` now disagrees on a verdict {sorted(verdicts)}, so what "
-        "separates it is no longer only the refusal's stated cause and this test has "
-        "stopped measuring the cause comparison")
+    live = sorted(n for n, v in fixtures.items() if _panel_separates(_v_wrong_reason, v))
+    assert not live, f"the live comparison separates the generic refuser by {live}"
 
-    def verdict_only(verifier, vector) -> bool:
-        """`_panel_separates` as it stood before the cause was compared."""
+    def compares_the_cause(verifier, vector) -> bool:
+        """`_panel_separates` as it stood while the cause was compared."""
         expected = vector["expected"]
+        reason = None
         try:
             outcome, statement = verifier(
                 vector["record"], vector["trusted_key"],
                 vector["verifier"]["accepted_profiles"])
+        except Refused as exc:
+            outcome, statement, reason = "refused", None, str(exc)
         except Exception:
             outcome, statement = "refused", None
         if outcome != expected["outcome"]:
             return True
+        if outcome == "refused":
+            want_failure = expected.get("failure")
+            return bool(want_failure and reason is not None
+                        and reason != GATE and reason != want_failure)
         want = expected.get("statement")
         if want is None:
             return False
@@ -617,44 +612,14 @@ def test_the_cause_comparison_is_live_and_the_gate_exemption_is_load_bearing() -
             return True
         return any(statement.get(key) != value for key, value in want.items())
 
-    assert not [n for n, v in fixtures.items() if verdict_only(_v_wrong_reason, v)], (
-        "the old comparison now catches it, so the widening is no longer what does")
-    assert [n for n, v in fixtures.items() if _panel_separates(_v_wrong_reason, v)], (
-        "and the live comparison catches it by nothing, so the refusal branch of "
-        "`_panel_separates` is no longer comparing the cause at all")
+    would_separate = sorted(
+        n for n, v in fixtures.items() if compares_the_cause(_v_wrong_reason, v))
+    assert would_separate, (
+        "positive control: a comparison that looks at the cause separates the generic "
+        "refuser by nothing either, so this test cannot tell the two apart")
 
-    def no_exemption(verifier, vector) -> bool:
-        expected = vector["expected"]
-        reason = None
-        try:
-            outcome, _ = verifier(
-                vector["record"], vector["trusted_key"],
-                vector["verifier"]["accepted_profiles"])
-        except Refused as exc:
-            outcome, reason = "refused", str(exc)
-        except Exception:
-            outcome = "refused"
-        if outcome != expected["outcome"]:
-            return True
-        if outcome == "refused":
-            want_failure = expected.get("failure")
-            return bool(want_failure and reason is not None and reason != want_failure)
-        return False
-
-    unexempted = {n for n, v in fixtures.items() if no_exemption(_v_reference, v)}
-    assert unexempted == {
-        "02-unknown-version-refused",
-        "03-superseded-version-refused",
-        "05-downgrade-silent-is-impossible",
-        "07-profile-absent-refused",
-        "08-dual-accept-configuration-refused",
-        "11-empty-profile-string-refused"}, (
-        f"without the gate exemption the reference is separated by {sorted(unexempted)}. "
-        "The recorded six are the gate-covered vectors; a different set means the gates "
-        "moved and this module's account of which vectors are inert is stale.")
-    assert not [n for n, v in fixtures.items() if _panel_separates(_v_reference, v)], (
-        "positive control: with the exemption the reference must still be separated by "
-        "nothing, or the exemption is not what rescues it")
+    assert not [n for n, v in fixtures.items() if compares_the_cause(_v_reference, v)], (
+        "positive control: the reference must be separated by neither comparison")
 
 
 def test_every_panel_entry_is_either_caught_or_a_recorded_shortfall() -> None:
@@ -977,8 +942,6 @@ MARGIN = {
     "no_accepted_profiles":               (1, 1),
     "profile_absent":                     (2, 0),
     "profile_not_accepted":               (2, 0),
-    "superseded_profile_in_accepted_set": (1, 0),
-    "superseded_profile_refused":         (1, 0),
     "unschemaed_profile_in_accepted_set": (2, 2),
     "verified":                           (1, 1),
 }

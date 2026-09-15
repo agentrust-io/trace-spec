@@ -158,26 +158,6 @@ def main() -> None:
             ),
         ),
         (
-            "03-superseded-version-refused.json",
-            fixture(
-                "superseded-version-refused",
-                "The v0.1 identifier. spec/trace-v0.2.md requires a v0.2 verifier to "
-                "reject it and forbids accepting both, so this must refuse even though "
-                "the older profile is well known.",
-                record_profile=V0_1,
-                accepted_profiles=[V0_2],
-                expected={
-                    "outcome": "refused",
-                    # `verify_record` takes a dedicated branch for the v0.1 identifier
-                    # and raises the tailored message, so this vector separates that
-                    # rule and not the generic one. The committed fixture has said so
-                    # since the tailored branch landed; the generator had not.
-                    "failure": "superseded_profile_refused",
-                    "statement": None,
-                },
-            ),
-        ),
-        (
             "04-unschemaed-profile-refused.json",
             fixture(
                 "unschemaed-profile-refused",
@@ -279,27 +259,6 @@ def main() -> None:
                 expected={
                     "outcome": "refused",
                     "failure": "no_accepted_profiles",
-                    "statement": None,
-                },
-            ),
-        ),
-        (
-            "08-dual-accept-configuration-refused.json",
-            fixture(
-                "dual-accept-configuration-refused",
-                "A verifier configured to accept the v0.1 identifier alongside v0.2, "
-                "presented with a correctly signed v0.1 record, the one case "
-                "disclosed downgrade cannot save. The spec's cutover is cutover, not "
-                "coexistence: the v0.1 identifier lives on a domain the project does "
-                "not own, and a v0.2 verifier MUST NOT accept both, whatever its "
-                "configuration claims. The configuration itself is the non-conformant "
-                "object; the observable requirement is that no record verifies under "
-                "it.",
-                record_profile=V0_1,
-                accepted_profiles=[V0_2, V0_1],
-                expected={
-                    "outcome": "refused",
-                    "failure": "superseded_profile_in_accepted_set",
                     "statement": None,
                 },
             ),

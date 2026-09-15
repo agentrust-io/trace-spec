@@ -203,8 +203,6 @@ KNOWN_THIN: dict[str, dict[str, str]] = {
     # reports a margin that does not exist.
     "verifier-compatibility": {
         "no_accepted_profiles": "06-empty-accepted-set-refused",
-        "superseded_profile_in_accepted_set": "08-dual-accept-configuration-refused",
-        "superseded_profile_refused": "03-superseded-version-refused",
     },
 }
 

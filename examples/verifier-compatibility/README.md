@@ -22,12 +22,10 @@ silent.
 |---|---|---|
 | `01-known-version-verified.json` | verified | The statement names the profile verification ran under. |
 | `02-unknown-version-refused.json` | refused | A future profile is refused, not best-effort verified. |
-| `03-superseded-version-refused.json` | refused | The v0.1 identifier, which `spec/trace-v0.2.md` requires a v0.2 verifier to reject. |
 | `04-unschemaed-profile-refused.json` | refused | A verifier declaring a profile it carries no schema for, given an ordinary v0.2 record. The record is innocent; the configuration is the defect, which is what makes this vector separate at all. It read `verified, downgraded` until the set was measured. Carries a `preconditions` block: see below. |
 | `05-downgrade-silent-is-impossible.json` | refused | The same record where the older profile was never declared. Silent fallback has no outcome. |
 | `06-empty-accepted-set-refused.json` | refused | An empty set means "nothing", never "anything". |
 | `07-profile-absent-refused.json` | refused | A missing profile cannot be supplied by assumption. |
-| `08-dual-accept-configuration-refused.json` | refused | A verifier declaring both v0.2 and v0.1, given a correctly signed v0.1 record. The spec's cutover forbids the configuration itself ("MUST NOT accept both"); the observable requirement is that nothing verifies under it. An earlier revision of vector 04 used v0.1 as its downgrade target and thereby encoded exactly this non-conformant verifier as a positive case. |
 | `09-unschemaed-profile-first-in-set-refused.json` | refused | The same defect as 04 with the unusable entry first in the declared set. Every declared profile has to be checked, not one of them; an implementation reading only the head or only the tail agrees with one of the pair and not the other. Carries the same `preconditions` block. |
 | `11-empty-profile-string-refused.json` | refused | The profile claim is present and empty. 07 removes the member outright, so an implementation testing `"eat_profile" not in record` passes 07 and reads this as an unrecognised profile, or as absent and therefore current. A claim that is present and says nothing is not a claim. |
 
@@ -52,8 +50,8 @@ Nothing in a fixture names a language or an API:
   "record":      { "eat_profile": "...", "signature": "..." },
   "expected": {
     "outcome":   "verified" | "refused",
+    // informative, see "What `failure` is and is not" below
     "failure":   null | "profile_not_accepted" | "profile_absent" | "no_accepted_profiles"
-               | "superseded_profile_refused" | "superseded_profile_in_accepted_set"
                | "unschemaed_profile_in_accepted_set",
     "statement": null | { "profile": "...", "accepted_profiles": [...] }
   },
@@ -73,15 +71,26 @@ cannot fail, is a claim to test obligation 4 that this set does not make good on
 `failure` names **which rule refused**, not a wire format or a message. An adapter maps
 it to whatever its own implementation emits; this one does so in `FAILURE_MARKERS`.
 
-Worth saying plainly, because the set is stricter here than the text it encodes: the
-draft normative text for #116, held for a maintainer to carry and not part of this
-change, says a verifier SHOULD report refusal-for-an-unimplemented-profile distinguishably from a verification failure,
-which is coarser and is a SHOULD, and it declines to mandate any field name. Every
-refusal vector here nonetheless states a rule and the adapter asserts it. A verifier that
-applies all four obligations and reports one generic label for every refusal is caught by
-four of these vectors and is not obviously non-conformant to the draft. Whether the text
-gains a requirement or `failure` becomes informative is the maintainer's call;
-`tests/test_verifier_compatibility_separation.py` measures what the set does today.
+## What `failure` is and is not
+
+**`failure` is informative.** It names the rule this set believes refused the record, and
+no conformance assertion is made on it. A verifier that applies every rule agreed here and
+reports one generic refusal for all of them conforms, and two controls hold that open:
+`test_a_generic_refusal_passes_this_set` in the adapter, and
+`test_a_generic_refusal_is_separated_by_nothing` in the separation module. Both fail the
+day an assertion on the refusal's cause comes back.
+
+This was settled on review, and the set was stricter than its text until it was. The draft
+normative text for #116, held for a maintainer to carry and not part of this change, says
+a verifier SHOULD report refusal-for-an-unimplemented-profile distinguishably from a
+verification failure, which is coarser than a rule name and is a SHOULD, and it declines
+to mandate any field name. Asserting the label was this set asking more of a foreign
+implementation than the text it encodes.
+
+The label stays in the JSON because it tells a reader what each vector is for. This
+library's own refusal messages are pinned separately, in
+`tests/test_verifier_compatibility_diagnostics.py`, which is about this implementation and
+is not part of the portable contract.
 
 `tests/test_verifier_compatibility_fixtures.py` is the adapter that runs these against
 `agentrust_trace`. Another implementation writes its own adapter and runs the same JSON;
@@ -89,7 +98,7 @@ that is the point of keeping the expectations out of the test code.
 
 ## What two vectors assume about you
 
-Eight of the ten are self-contained: the record and the declared set are both in the
+Six of the eight are self-contained: the record and the declared set are both in the
 file, and the conformant outcome follows from those two alone. Vectors 04 and 09 are
 not, and until 2026-09-12 they did not say so.
 

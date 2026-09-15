@@ -225,6 +225,44 @@ def test_verify_record_rejects_v0_1_in_the_accepted_set():
     verify_record(record, key_to_jwk(key), accepted_profiles=(TRACE_PROFILE_V0_2,))
 
 
+def test_the_two_retired_cutover_vectors_are_covered_here():
+    """Vectors 03 and 08 of the #116 set, moved here on 2026-09-15.
+
+    Both were cutover coverage under the same ruling that moved vector 10: the rule they
+    pin is merged normative text in `spec/trace-v0.2.md` under "Changes from v0.1", not
+    an obligation #116 proposes, and coverage that lives in a proposal's vector set
+    becomes unowned when the proposal closes. Their ids are retired rather than reused.
+
+    The two tests above already carry both rules on the default accepted set. What those
+    do not carry, and what these vectors did, is the explicit configuration each one
+    stated, so those exact pairings are pinned here rather than lost in the move.
+    """
+    key = generate_key()
+    v01 = sign_record(_fresh_record_with_profile(_TRACE_PROFILE_V0_1), key)
+    jwk = key_to_jwk(key)
+
+    # 03: a v0.1 record against a verifier that declares v0.2 and nothing else. The
+    # default set is this set, so this pins that the explicit spelling behaves the same.
+    assert DEFAULT_ACCEPTED_PROFILES == (TRACE_PROFILE_V0_2,), (
+        "this test spells out the default; if the default moves, so must the vector "
+        "it stands in for")
+    with pytest.raises(ValueError, match="superseded v0.1 profile"):
+        verify_record(v01, jwk, accepted_profiles=(TRACE_PROFILE_V0_2,))
+
+    # 08: a v0.1 record against a verifier that declares both. The configuration is
+    # refused before the record is looked at, so the message is the set's and not the
+    # record's, which is the distinction the vector existed to make.
+    with pytest.raises(ValueError, match="superseded v0.1 identifier"):
+        verify_record(v01, jwk,
+                      accepted_profiles=(TRACE_PROFILE_V0_2, _TRACE_PROFILE_V0_1))
+
+    # Control: the same record verifies under a verifier that declares v0.1 alone only
+    # if the cutover is not enforced. It is, so this refuses too, and the two refusals
+    # above cannot both be the record simply being unacceptable everywhere.
+    v02 = sign_record(_fresh_record_with_profile(TRACE_PROFILE_V0_2), key)
+    verify_record(v02, jwk, accepted_profiles=(TRACE_PROFILE_V0_2,))
+
+
 def test_verify_record_rejects_unknown_profile():
     """A future or foreign profile is refused, not best-effort verified."""
     key = generate_key()
