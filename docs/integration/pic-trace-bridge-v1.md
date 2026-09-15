@@ -42,6 +42,26 @@ observation and a matching expected digest. This binds the authorization to the
 exact call and exact successor envelope without claiming that TRACE proves the
 real-world outcome of the call.
 
+### PIC digest values at the bridge boundary
+
+PIC gives both values as 64 lowercase hexadecimal characters, and computes them
+differently: PIC Canonical JSON v1 section 8.1 digests the canonical bytes of
+`action.args`, while section 8.3 digests the UTF-8 bytes of the `intent` string with no
+JSON wrapping, escaping, or canonicalization. This bridge preserves whichever values the
+PIC verifier produced and does not recompute either one.
+
+What differs at the boundary is the representation. `schema/pic-trace-bridge-v1.json`
+constrains both fields through the `$defs/digest` it uses for every digest it carries,
+`^sha256:[0-9a-f]{64}$`, so an adapter serializes the PIC verifier's output as
+`sha256:<pic_hex>`, on the bridge artifact and on the values handed to the reference
+implementation alike. A bare hex value is refused by `agentrust_trace.intent_bridge`,
+which reports `authorization.pic.intent_digest must be a sha256 digest` for the artifact
+and `intent_digest must be a sha256 digest` for the argument.
+
+The prefix is a TRACE serialization of the same digest value. It is not a change to the
+PIC definition, and a consumer comparing across the boundary compares the hexadecimal
+that PIC defines.
+
 ### Successor-observation binding
 
 When `transcript_required` is true, `transcript.after` is the successor envelope and
@@ -107,3 +127,25 @@ raises `AuthorizationDenied`. A valid authorization whose scope, digest, or
 transcript does not match the execution raises `AuthorizationMismatch`.
 Consumers must fail closed when the profile is required and any of these
 conditions occurs.
+
+## References
+
+PIC is the source of authority for `PIC-CJSON/1.0`, `intent_digest` and `args_digest`:
+this bridge consumes those values and does not define them. It also compares a declaration's
+`impact` against the signed `scope.impacts`, and constrains neither to a vocabulary, so an
+integrator aligning with PIC's declaration semantics takes them from PIC's glossary below rather
+than from this document.
+
+- PIC Standard: <https://github.com/pic-standard/pic-standard>
+- PIC Canonical JSON v1 (`PIC-CJSON/1.0`), the canonicalization and digest profile this
+  bridge names:
+  <https://github.com/pic-standard/pic-standard/blob/main/docs/canonicalization.md>.
+  Section 8 gives the digest byte rules for `intent_digest` and `args_digest`.
+- PIC vocabulary, the glossary PIC asks downstream specifications to cite rather than
+  recoin, and which names a source for each term:
+  <https://github.com/pic-standard/pic-standard/blob/main/docs/vocabulary.md>
+- How this bridge carries those values:
+  [`schema/pic-trace-bridge-v1.json`](../../schema/pic-trace-bridge-v1.json)
+- TRACE v0.2 specification, section 3.2.2, for the canonical bytes this profile signs
+  over: [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md)
+- Origin issue: <https://github.com/agentrust-io/trace-spec/issues/361>
