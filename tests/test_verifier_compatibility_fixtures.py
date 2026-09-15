@@ -20,6 +20,12 @@ implementation than the text it encodes. The label is kept because it tells a re
 the JSON what each vector is for, and because this library's own diagnostics are worth
 pinning: that is `tests/test_verifier_compatibility_diagnostics.py`, which is about this
 implementation's messages and is not part of the portable contract.
+
+One test in this module does read `expected.failure`, and it is worth saying why before a
+reader grepping for the field finds it and concludes the contract is looser than it says.
+`test_the_precondition_check_fires_and_covers_every_vector_that_needs_one` uses the label
+to derive which fixtures must declare a premise. That is an assertion about the fixtures,
+not about a verifier: no run of any implementation can change its outcome.
 """
 
 from __future__ import annotations
