@@ -190,8 +190,9 @@ def test_nothing_validates_a_record_against_the_superseded_schema() -> None:
         "superseded schema's contents may be escaping the reader"
     )
 
-    # A third leg was written here and removed: that a record carrying the superseded
-    # profile is rejected on the `eat_profile` path. Every mutation that would break
+    # A fourth leg was written here and removed, beside the three above: that a
+    # record carrying the superseded profile is rejected on the `eat_profile` path.
+    # Every mutation that would break
     # it -- dropping the live const, setting it to the superseded identifier, setting
     # the superseded file's const to the live one -- fails the assertion above first,
     # so no positive control reaches it and it reported nothing. Recorded rather than
