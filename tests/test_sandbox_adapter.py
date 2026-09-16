@@ -25,6 +25,7 @@ from agentrust_trace.adapters import (
     SandboxSessionResult,
     TraceSandboxAdapter,
 )
+from agentrust_trace.models import JCS_SAFE_INTEGER
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -319,8 +320,11 @@ def test_a_bad_sandbox_id_fails_at_the_adapter_not_at_model_validate() -> None:
         _make_session(sandbox_id="build-7f2a")
 
 
-@pytest.mark.parametrize("iat", ["1800000000", True, False, -5, 1.5, 2**60])
-def test_iat_must_be_a_bounded_non_negative_integer(iat) -> None:
+@pytest.mark.parametrize(
+    "iat",
+    ["1800000000", True, False, -5, 0, 1, 1699999999, 1.5, 2**60, JCS_SAFE_INTEGER + 1],
+)
+def test_iat_must_be_within_the_trace_v0_2_range(iat) -> None:
     """Every other field here reaches the record through a models.py pydantic
     constructor, which coerces or refuses a bad type before it is dumped. `iat`
     used to reach build_trust_record's top-level "iat" key untouched, so a
@@ -328,7 +332,7 @@ def test_iat_must_be_a_bounded_non_negative_integer(iat) -> None:
     reported it valid (pydantic's lax mode coerces on the way in) while the wire
     bytes stayed the original, schema-invalid type. Same failure mode as
     provenance.build_record's pre-#320 issued_at coercion."""
-    with pytest.raises(ValueError, match="iat must be a non-negative integer"):
+    with pytest.raises(ValueError, match="iat must be an integer Unix timestamp"):
         _make_session(iat=iat)
 
 
@@ -336,6 +340,12 @@ def test_valid_iat_round_trips_as_an_int_on_the_wire() -> None:
     record = _make_adapter().build_trust_record(_make_session(iat=1800000000))
     assert record["iat"] == 1800000000
     assert isinstance(record["iat"], int)
+
+@pytest.mark.parametrize("iat", [1700000000, JCS_SAFE_INTEGER])
+def test_boundary_iat_values_are_accepted(iat) -> None:
+    """The exact contract bounds from models.py must construct, not just values
+    inside them."""
+    assert _make_session(iat=iat).iat == iat
 
 
 # ---------------------------------------------------------------------------

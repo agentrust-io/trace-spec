@@ -22,6 +22,11 @@ from agentrust_trace.models import (
     ToolTranscript,
 )
 
+# TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
+# schema/trace-v0.2.json. Below it a record is schema-invalid, which is the whole
+# failure this check exists to stop -- so the floor is the contract's, not zero.
+TRACE_MIN_IAT = 1700000000
+
 
 @dataclass
 class AGTSessionResult:
@@ -58,16 +63,17 @@ class AGTSessionResult:
 
     iat: int = field(default_factory=lambda: int(time.time()))
     """Issuance timestamp. Defaults to now."""
+
     def __post_init__(self) -> None:
         if (
             not isinstance(self.iat, int)
             or isinstance(self.iat, bool)
-            or self.iat < 0
+            or self.iat < TRACE_MIN_IAT
             or self.iat > JCS_SAFE_INTEGER
         ):
             raise ValueError(
-                f"iat must be a non-negative integer Unix timestamp within the JCS "
-                f"safe-integer range, got {self.iat!r}"
+                f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
+                f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {self.iat!r}"
             )
 
 class TraceAGTAdapter:
