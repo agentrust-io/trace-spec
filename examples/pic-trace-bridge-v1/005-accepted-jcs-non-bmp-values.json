@@ -1,0 +1,120 @@
+{
+  "id": "TRACE-PIC-BRIDGE-005",
+  "name": "accepted-jcs-non-bmp-values",
+  "description": "Supplementary-plane values remain literal UTF-8 under RFC 8785.",
+  "profile": "trace.pic-trace-bridge.conformance.v1",
+  "conformance": {
+    "status": "conformant"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-206-🤖",
+        "decision": "allow",
+        "authorizer": "policy-engine",
+        "authorizer_key_id": "key-206",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "send_invoice",
+            "archive_invoice"
+          ],
+          "impacts": [
+            "external-side-effect",
+            "internal-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc",
+        "tool_call_digest": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395",
+        "transcript_required": true
+      },
+      "signature": "6esiV24-qpyz9VRaI6qUZXJYScXi9uzcmWwltCpL_Jp5FlPTcSiAkSZFphffWJ4bdmpEhcZsCyLtqZ8hHpGqDw"
+    },
+    "trusted_authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg",
+      "kid": "key-206"
+    },
+    "declaration": {
+      "impact": "external-side-effect",
+      "purpose": "send invoice",
+      "metadata": {
+        "channel": "email",
+        "reference": "INV-7"
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "tool_call": {
+      "name": "send_invoice",
+      "arguments": {
+        "invoice_id": "INV-7",
+        "options": {
+          "notify": true
+        }
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "send_invoice",
+          "arguments": {
+            "invoice_id": "INV-7",
+            "options": {
+              "notify": true
+            }
+          }
+        }
+      },
+      "after": {
+        "status": "accepted",
+        "receipt_id": "receipt-206"
+      }
+    },
+    "now": 150
+  },
+  "reproducibility": {
+    "authorization_signature": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhdXRob3JpemF0aW9uIjp7ImF1dGhvcml6YXRpb25faWQiOiJhdXRoLTIwNi3wn6SWIiwiYXV0aG9yaXplZF9hdCI6MTAwLCJhdXRob3JpemVyIjoicG9saWN5LWVuZ2luZSIsImF1dGhvcml6ZXJfa2V5X2lkIjoia2V5LTIwNiIsImRlY2lzaW9uIjoiYWxsb3ciLCJkZWNsYXJhdGlvbl9kaWdlc3QiOiJzaGEyNTY6ZjQ2MzkxZWE2M2U0NWU2MGM1OGQzNmZmNjIzOGI5YmYwMjk5YzgzNTI0MTEzYWExZDY2MzNmNjVmODVlZDRjYyIsImV4cGlyZXNfYXQiOjIwMCwicGljIjp7ImFyZ3NfZGlnZXN0Ijoic2hhMjU2OjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJpbnRlbnRfZGlnZXN0Ijoic2hhMjU2OjExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJwcm9maWxlIjoiUElDLUNKU09OLzEuMCJ9LCJzY29wZSI6eyJpbXBhY3RzIjpbImV4dGVybmFsLXNpZGUtZWZmZWN0IiwiaW50ZXJuYWwtc2lkZS1lZmZlY3QiXSwidG9vbHMiOlsic2VuZF9pbnZvaWNlIiwiYXJjaGl2ZV9pbnZvaWNlIl19LCJ0b29sX2NhbGxfZGlnZXN0Ijoic2hhMjU2OjEwNmRhNjYzMWY0YWJmYTI3MjNiYTViMGE0OGM1NTI2NDUxNGEyM2Y5ZDliNDNkYzBiYjkyMDBkZjZlN2EzOTUiLCJ0cmFuc2NyaXB0X3JlcXVpcmVkIjp0cnVlfSwicHJvZmlsZSI6InRhZzphZ2VudHJ1c3QtaW8uY29tLDIwMjY6cGljLXRyYWNlLWJyaWRnZS12MSJ9",
+      "canonical_preimage_sha256": "sha256:4edfab3d0e695ca5bd85c32b7e1b61c800b770637a1ece12c675a471d745e895"
+    },
+    "declaration_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJpbXBhY3QiOiJleHRlcm5hbC1zaWRlLWVmZmVjdCIsIm1ldGFkYXRhIjp7ImNoYW5uZWwiOiJlbWFpbCIsInJlZmVyZW5jZSI6IklOVi03In0sInB1cnBvc2UiOiJzZW5kIGludm9pY2UifQ",
+      "canonical_preimage_sha256": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc"
+    },
+    "tool_call_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhcmd1bWVudHMiOnsiaW52b2ljZV9pZCI6IklOVi03Iiwib3B0aW9ucyI6eyJub3RpZnkiOnRydWV9fSwibmFtZSI6InNlbmRfaW52b2ljZSJ9",
+      "canonical_preimage_sha256": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395"
+    }
+  },
+  "coverage": {
+    "rule": null,
+    "variant": "jcs_non_bmp_values",
+    "declared_defect": "surrogate_escape_canonicalizer"
+  },
+  "expected": {
+    "case_schema": "valid",
+    "bridge_schema": "valid",
+    "conformant_runtime": {
+      "classification": "accepted",
+      "codes": [],
+      "result": {
+        "authorization_id": "auth-206-🤖",
+        "tool": "send_invoice",
+        "impact": "external-side-effect",
+        "transcript_bound": true
+      }
+    }
+  }
+}

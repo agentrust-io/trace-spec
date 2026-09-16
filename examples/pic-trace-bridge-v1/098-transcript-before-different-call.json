@@ -1,0 +1,112 @@
+{
+  "id": "TRACE-PIC-BRIDGE-098",
+  "name": "transcript-before-different-call",
+  "description": "transcript before different call exercises transcript_before_mismatch and must produce the exact mismatch classification and code.",
+  "profile": "trace.pic-trace-bridge.conformance.v1",
+  "conformance": {
+    "status": "conformant"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-206",
+        "decision": "allow",
+        "authorizer": "policy-engine",
+        "authorizer_key_id": "key-206",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "send_invoice",
+            "archive_invoice"
+          ],
+          "impacts": [
+            "external-side-effect",
+            "internal-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc",
+        "tool_call_digest": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395",
+        "transcript_required": true
+      },
+      "signature": "-_gsyZ9enXfg0YtqGKYF-8GnyDH3YaQYjXWnxH8WWtiUzbygfTEQUdB7p6vnoBbHAmm6ksSIjzyXVYEO4Ry1Dw"
+    },
+    "trusted_authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg",
+      "kid": "key-206"
+    },
+    "declaration": {
+      "impact": "external-side-effect",
+      "purpose": "send invoice",
+      "metadata": {
+        "channel": "email",
+        "reference": "INV-7"
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "tool_call": {
+      "name": "send_invoice",
+      "arguments": {
+        "invoice_id": "INV-7",
+        "options": {
+          "notify": true
+        }
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "other",
+          "arguments": {}
+        }
+      },
+      "after": {
+        "status": "accepted",
+        "receipt_id": "receipt-206"
+      }
+    },
+    "now": 150
+  },
+  "reproducibility": {
+    "authorization_signature": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhdXRob3JpemF0aW9uIjp7ImF1dGhvcml6YXRpb25faWQiOiJhdXRoLTIwNiIsImF1dGhvcml6ZWRfYXQiOjEwMCwiYXV0aG9yaXplciI6InBvbGljeS1lbmdpbmUiLCJhdXRob3JpemVyX2tleV9pZCI6ImtleS0yMDYiLCJkZWNpc2lvbiI6ImFsbG93IiwiZGVjbGFyYXRpb25fZGlnZXN0Ijoic2hhMjU2OmY0NjM5MWVhNjNlNDVlNjBjNThkMzZmZjYyMzhiOWJmMDI5OWM4MzUyNDExM2FhMWQ2NjMzZjY1Zjg1ZWQ0Y2MiLCJleHBpcmVzX2F0IjoyMDAsInBpYyI6eyJhcmdzX2RpZ2VzdCI6InNoYTI1NjoyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwiaW50ZW50X2RpZ2VzdCI6InNoYTI1NjoxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwicHJvZmlsZSI6IlBJQy1DSlNPTi8xLjAifSwic2NvcGUiOnsiaW1wYWN0cyI6WyJleHRlcm5hbC1zaWRlLWVmZmVjdCIsImludGVybmFsLXNpZGUtZWZmZWN0Il0sInRvb2xzIjpbInNlbmRfaW52b2ljZSIsImFyY2hpdmVfaW52b2ljZSJdfSwidG9vbF9jYWxsX2RpZ2VzdCI6InNoYTI1NjoxMDZkYTY2MzFmNGFiZmEyNzIzYmE1YjBhNDhjNTUyNjQ1MTRhMjNmOWQ5YjQzZGMwYmI5MjAwZGY2ZTdhMzk1IiwidHJhbnNjcmlwdF9yZXF1aXJlZCI6dHJ1ZX0sInByb2ZpbGUiOiJ0YWc6YWdlbnRydXN0LWlvLmNvbSwyMDI2OnBpYy10cmFjZS1icmlkZ2UtdjEifQ",
+      "canonical_preimage_sha256": "sha256:cb1a3fa8ba19fc811b90bf86038c8490ce04740c9c364ffb91f9f2ac255f7aae"
+    },
+    "declaration_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJpbXBhY3QiOiJleHRlcm5hbC1zaWRlLWVmZmVjdCIsIm1ldGFkYXRhIjp7ImNoYW5uZWwiOiJlbWFpbCIsInJlZmVyZW5jZSI6IklOVi03In0sInB1cnBvc2UiOiJzZW5kIGludm9pY2UifQ",
+      "canonical_preimage_sha256": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc"
+    },
+    "tool_call_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhcmd1bWVudHMiOnsiaW52b2ljZV9pZCI6IklOVi03Iiwib3B0aW9ucyI6eyJub3RpZnkiOnRydWV9fSwibmFtZSI6InNlbmRfaW52b2ljZSJ9",
+      "canonical_preimage_sha256": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395"
+    }
+  },
+  "coverage": {
+    "rule": "transcript_before_mismatch",
+    "variant": "transcript_before_different_call",
+    "declared_defect": "before_object_shape_only"
+  },
+  "expected": {
+    "case_schema": "valid",
+    "bridge_schema": "valid",
+    "conformant_runtime": {
+      "classification": "mismatch",
+      "codes": [
+        "transcript_before_mismatch"
+      ],
+      "result": null
+    }
+  }
+}
