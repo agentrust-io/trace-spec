@@ -80,6 +80,7 @@ _INLINE_CODE = re.compile(r"`([^`\n]+)`")
 # before any table is parsed, so a record pasted as an example is not a row.
 _FENCE = re.compile(r"^(```|~~~).*?^\1\s*$", re.MULTILINE | re.DOTALL)
 _HEADING = re.compile(r"^#{2,3} ", re.MULTILINE)
+_CELL_SEP = re.compile(r"(?<!\\)\|")
 
 # (dotted path of the containing object, member name).
 Field = tuple[str, str]
@@ -139,7 +140,9 @@ def _rows(section: str) -> dict[str, str]:
     for line in section.splitlines():
         if not line.startswith("| `"):
             continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        # Split on unescaped pipes only: a description that lists alternatives
+        # as `a` \| `b` is one cell, not two.
+        cells = [cell.strip() for cell in _CELL_SEP.split(line.strip().strip("|"))]
         rows.setdefault(cells[0].strip("`"), cells[-1])
     return rows
 
@@ -255,6 +258,11 @@ def test_fenced_examples_are_not_rows() -> None:
         "```\n| `b` | string | `v2` |\n```\n\n~~~json\n| `c` | string | `v3` |\n~~~\n"
     )
     assert _rows(_sections(page)["## `x`"]) == {"a": "`v1`"}
+
+
+def test_an_escaped_pipe_does_not_split_a_description_cell() -> None:
+    row = "| `a` | string | one of `v1` \\| `v2` |\n"
+    assert _rows(row) == {"a": "one of `v1` \\| `v2`"}
 
 
 def _with_field(schema: dict[str, Any], parent: str, name: str) -> dict[str, Any]:
