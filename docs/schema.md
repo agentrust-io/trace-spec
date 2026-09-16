@@ -70,7 +70,7 @@ Binds the governance policy in force during this session.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `bundle_hash` | string | **yes** | `sha256:` digest of the Cedar policy bundle bytes |
-| `enforcement_mode` | string | **yes** | One of: `enforce` (evaluated, blocked on deny), `advisory` (evaluated, logged, allowed), `silent` (evaluated and enforced with operational logs suppressed; the audit chain still records every would-have-denied decision), `declared` (the policy is named and bound into the signed record and nothing evaluated it: the honest value for a producer with no policy engine, never a default, and not evidence that any rule was checked). Defaults to `enforce`. Section 4.3 of the spec defines the four |
+| `enforcement_mode` | string | **yes** | One of: `enforce` (evaluated, blocked on deny), `advisory` (evaluated, logged, allowed), `silent` (evaluated and enforced with operational logs suppressed; the audit chain still records every would-have-denied decision), `declared` (the policy is named and bound into the signed record and nothing evaluated it: the honest value for a producer with no policy engine, never a default, and not evidence that any rule was checked). Defaults to `enforce`. Section 4.3 of the spec defines `enforce`, `silent` and `declared`; `advisory` is in the schema's closed set and its one-line meaning is the schema's own description, not spec text |
 | `version` | string | no | Policy bundle version string |
 | `policy_uri` | string | no | URI to the policy bundle for inspection |
 
@@ -192,7 +192,7 @@ For TEE-issued records, this key was generated inside the measured enclave and i
 
 ### `cnf.jwk` members {#trace-field-cnf-jwk}
 
-`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key with no material is refused. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
+`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key of one of those types with no material is refused by the schema; a `kty` outside the three passes the schema and is refused by the verifier, which accepts `OKP` only. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
