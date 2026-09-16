@@ -259,7 +259,7 @@ If re-execution requires state that only the producer's environment can supply, 
 |---|---|
 | `reproduced` | The re-run completed on the closure alone and the digest of its transcript equals `transcript_digest`. |
 | `diverged` | The re-run completed on the closure alone and the digests differ. The result MUST record the verifier's observed digest, because divergence localises nothing by itself: producer tampering, a function that is not the deterministic one it is named as, and verifier drift are indistinguishable until a third party can compare transcripts. |
-| `not-attempted` | A closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, or the re-run did not run to completion. The result MUST carry the reason. |
+| `not-attempted` | A closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, the re-run did not run to completion, or the verifier could not establish that the re-run used the closure alone. The result MUST carry the reason. |
 
 `not-attempted` MUST NOT be reported as `reproduced`, and MUST NOT be reported as `diverged`. Absent is not pass, and absent is not failure. This is the discipline §3.2.3 applies to a missing revocation bundle and §3.3.4 applies to a disclosure at the live tail of a chain: an inability to check is reported as that, with its cause, and is never rounded to either outcome a completed check would have produced.
 
