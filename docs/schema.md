@@ -70,7 +70,7 @@ Binds the governance policy in force during this session.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `bundle_hash` | string | **yes** | `sha256:` digest of the Cedar policy bundle bytes |
-| `enforcement_mode` | string | **yes** | `enforce` or `silent` (advisory) |
+| `enforcement_mode` | string | **yes** | One of: `enforce` (evaluated, blocked on deny), `advisory` (evaluated, logged, allowed), `silent` (evaluated and enforced with operational logs suppressed; the audit chain still records every would-have-denied decision), `declared` (the policy is named and bound into the signed record and nothing evaluated it: the honest value for a producer with no policy engine, never a default, and not evidence that any rule was checked). Defaults to `enforce`. Section 4.3 of the spec defines the four |
 | `version` | string | no | Policy bundle version string |
 | `policy_uri` | string | no | URI to the policy bundle for inspection |
 
@@ -189,6 +189,20 @@ Confirmation method. Contains the signing key bound to this record.
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
 For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+
+### `cnf.jwk` members {#trace-field-cnf-jwk}
+
+`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key with no material is refused. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `kty` | string | **yes** | Key type: `OKP`, `EC` or `RSA` |
+| `crv` | string | with `OKP` and `EC` | Curve name, for example `Ed25519` or `P-256` |
+| `x` | string | with `OKP` and `EC` | The public key (OKP) or the x coordinate (EC), base64url |
+| `y` | string | with `EC` | The y coordinate, base64url |
+| `n` | string | with `RSA` | Modulus, base64url |
+| `e` | string | with `RSA` | Public exponent, base64url |
+| `kid` | string | no | Key identifier (RFC 7517 section 4.5). Inside the signed record, so a producer that names its key here names it under the signature rather than beside it |
 
 <a id="wire-formats"></a>
 
