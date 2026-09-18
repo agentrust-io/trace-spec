@@ -63,6 +63,7 @@ import jsonschema
 import referencing
 import referencing.jsonschema
 
+from agentrust_trace.citation import CitationCheck
 from agentrust_trace.sign import (
     _b64url_decode,
     _canonical_bytes,
@@ -106,11 +107,15 @@ class VerificationResult:
 
     Every other rejection still raises, as before. This type exists so that the
     outcomes section 3.2.3 says may not be reported as an affirming appraisal have
-    somewhere to be reported, alongside the checks that passed.
+    somewhere to be reported, alongside the checks that passed. ``citations``
+    carries, for each surface in ``agentrust_trace.citation.SURFACES``, what the
+    caller's resolver did with the URI the record cites, and asserts nothing about
+    what the cited object binds.
     """
 
     revocation: RevocationCheck
     trusted_key_thumbprint: str
+    citations: dict[str, CitationCheck] = field(default_factory=dict)
 
 
 NO_CHECK = RevocationCheck(outcome="no_check_performed")

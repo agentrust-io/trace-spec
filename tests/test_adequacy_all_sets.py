@@ -191,6 +191,12 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # Not loadable here: every vector verifies, and the outcomes are per-surface
+    # resolvability rather than accept/reject, so `trivially_satisfied_by` would
+    # grade the set as passable by an implementation that accepts everything.
+    "citation-resolution": "tests/test_citation_resolution.py, which compares the "
+                           "citations mapping of every vector against its expected "
+                           "block and holds the invariants I1 to I11",
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
     # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,
