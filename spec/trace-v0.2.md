@@ -655,7 +655,7 @@ the reference implementation at the MCP tool-call boundary.
 
 ### 6.1 Host
 
-**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
+**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Project Contribution Agreement and the Technical Charter have been executed; when the Technical Charter takes effect, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
 This supersedes the earlier proposal to split the technical workstream to CoSAI and the spec, IP and trademark to the Linux Foundation entity hosting the Model Context Protocol. That arrangement made TRACE a guest of two hosts, neither of which owned the conformance mark outright.
 
