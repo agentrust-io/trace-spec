@@ -125,8 +125,17 @@ def revocation_bundle() -> list[Vector]:
                  lambda e: list(e.get("codes") or []))
 
 
+def reproducibility_claim() -> list[Vector]:
+    """The reproducibility-claim set (spec section 3.1.4). One code per rule the schema
+    holds, two vectors per code, and five accepting records: a claim with no result
+    and one result per outcome."""
+    return _load("reproducibility-claim",
+                 lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
+    "reproducibility-claim": (reproducibility_claim, None),
     "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
