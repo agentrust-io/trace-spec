@@ -655,7 +655,7 @@ the reference implementation at the MCP tool-call boundary.
 
 ### 6.1 Host
 
-**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
+**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Project Contribution Agreement and the Technical Charter have been executed; when the Technical Charter takes effect, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
 Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
 
