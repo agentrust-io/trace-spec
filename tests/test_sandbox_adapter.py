@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+from pathlib import Path
+
 import hashlib
 import json
 from typing import Any, get_args
@@ -25,7 +28,10 @@ from agentrust_trace.adapters import (
     SandboxSessionResult,
     TraceSandboxAdapter,
 )
+from agentrust_trace.adapters.sandbox import TRACE_MIN_IAT
 from agentrust_trace.models import JCS_SAFE_INTEGER
+
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "trace-claim.json"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -341,12 +347,54 @@ def test_valid_iat_round_trips_as_an_int_on_the_wire() -> None:
     assert record["iat"] == 1800000000
     assert isinstance(record["iat"], int)
 
-@pytest.mark.parametrize("iat", [1700000000, JCS_SAFE_INTEGER])
-def test_boundary_iat_values_are_accepted(iat) -> None:
-    """The exact contract bounds from models.py must construct, not just values
-    inside them."""
-    assert _make_session(iat=iat).iat == iat
 
+@pytest.mark.parametrize("iat", [1700000000, JCS_SAFE_INTEGER])
+def test_boundary_iat_values_reach_the_wire_and_validate(iat) -> None:
+    """The exact contract bounds must survive to the record, not merely construct.
+
+    Constructing the session says nothing about the value that gets signed, which
+    is what this file's iat tests are about, so the assertion is on the wire form
+    and on the schema."""
+    record = _make_adapter().build_trust_record(_make_session(iat=iat))
+    assert record["iat"] == iat
+    assert isinstance(record["iat"], int) and not isinstance(record["iat"], bool)
+    validate_json(record)
+
+
+
+@pytest.mark.parametrize("iat", ["1800000000", 1, 1699999999, JCS_SAFE_INTEGER + 1])
+def test_a_checked_iat_cannot_be_replaced_before_the_record_is_built(iat) -> None:
+    """Passing __post_init__ has to be a property of the value that gets signed.
+
+    While the session was a mutable dataclass it was not: one assignment between
+    construction and build_trust_record put any of these on the wire, where the
+    schema then rejected the record. #320 settled the same point for
+    provenance.build_record, which is why its check sits at the point of use."""
+    with pytest.raises(FrozenInstanceError):
+        _make_session().iat = iat
+    # frozen=True guards __setattr__ and nothing else. Each of these reaches the
+    # field, so the check that decides what gets signed is the one in
+    # build_trust_record. A fresh session per route, or the second assertion would
+    # pass on damage the first one did.
+    for reach in (lambda s: vars(s).__setitem__("iat", iat),
+                  lambda s: object.__setattr__(s, "iat", iat)):
+        session = _make_session()
+        reach(session)
+        assert session.iat == iat
+        with pytest.raises(ValueError, match="iat must be an integer Unix timestamp"):
+            _make_adapter().build_trust_record(session)
+
+
+def test_the_adapter_floor_is_the_one_the_record_contract_carries() -> None:
+    """TRACE_MIN_IAT is a literal here and in models.py. If they ever diverge the
+    adapter refuses records the schema accepts, or emits ones it rejects."""
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    assert schema["properties"]["iat"]["minimum"] == TRACE_MIN_IAT
+    assert schema["properties"]["iat"]["maximum"] == JCS_SAFE_INTEGER
+    bound = next(
+        m for m in TrustRecord.model_fields["iat"].metadata if getattr(m, "ge", None) is not None
+    )
+    assert bound.ge == TRACE_MIN_IAT
 
 # ---------------------------------------------------------------------------
 # 6. Transcript hashing uses JCS

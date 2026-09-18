@@ -23,12 +23,33 @@ from agentrust_trace.models import (
 )
 
 # TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
-# schema/trace-v0.2.json. Below it a record is schema-invalid, which is the whole
+# schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
 # failure this check exists to stop -- so the floor is the contract's, not zero.
 TRACE_MIN_IAT = 1700000000
 
 
-@dataclass
+def _check_iat(value: object) -> None:
+    """The bound ``TrustRecord.iat`` carries, applied to whatever is about to be signed.
+
+    Called from ``__post_init__`` and again where the value is written into the
+    record. ``frozen=True`` stops the ordinary reassignment; it does not stop
+    ``vars()`` or ``object.__setattr__``, and a guard can only speak about the value
+    it is shown, so the one that matters runs where the record is built. #320 settled
+    the same point for ``provenance.build_record``.
+    """
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < TRACE_MIN_IAT
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
+            f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {value!r}"
+        )
+
+
+@dataclass(frozen=True)
 class AGTSessionResult:
     """Minimal AGT session data needed to build a Level 0 TRACE Trust Record.
 
@@ -65,16 +86,8 @@ class AGTSessionResult:
     """Issuance timestamp. Defaults to now."""
 
     def __post_init__(self) -> None:
-        if (
-            not isinstance(self.iat, int)
-            or isinstance(self.iat, bool)
-            or self.iat < TRACE_MIN_IAT
-            or self.iat > JCS_SAFE_INTEGER
-        ):
-            raise ValueError(
-                f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
-                f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {self.iat!r}"
-            )
+        _check_iat(self.iat)
+
 
 class TraceAGTAdapter:
     """Build Level 0 TRACE Trust Records from AGT govern() session output.
@@ -166,6 +179,8 @@ class TraceAGTAdapter:
             if session.call_count is not None
             else len(session.audit_entries)
         )
+
+        _check_iat(session.iat)
 
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
