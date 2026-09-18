@@ -153,7 +153,7 @@ Information disclosed in connection with any Project activity, including but not
 
 TRACE Specification is hosted at the Linux Foundation as a Series of LF Projects, LLC. The Linux Foundation [announced the contribution of TRACE](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026.
 
-The technical home for ongoing specification work is not yet settled. Formation paperwork is also still in progress: the Technical Charter and Project Contribution Agreement are being executed with LF Projects, LLC. This document is the governance authority until the Technical Charter takes effect, at which point governance transitions to a Technical Steering Committee as described in [CHARTER.md](https://trace.agentrust-io.com/CHARTER/index.md), and the Technical Charter controls where the two differ.
+The Project Contribution Agreement with LF Projects, LLC was executed on 17 August 2026, and the Technical Charter has been executed but has not yet taken effect. This document is the governance authority until the Technical Charter takes effect, at which point governance transitions to a Technical Steering Committee as described in [CHARTER.md](https://trace.agentrust-io.com/CHARTER/index.md), and the Technical Charter controls where the two differ.
 
 ## Amendments
 
