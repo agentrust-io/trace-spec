@@ -1,7 +1,7 @@
 # Technical Charter: TRACE
 
-**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026. The technical home for ongoing specification work is not yet settled. This supersedes the earlier proposal to split the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol.  
-**Status**: Draft. The Linux Foundation has accepted the contribution; the Technical Charter and Project Contribution Agreement are still being executed with LF Projects, LLC. This charter is effective when the Technical Charter takes effect.
+**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026.  
+**Status**: Draft. The Linux Foundation has accepted the contribution, and the Project Contribution Agreement with LF Projects, LLC was executed on 17 August 2026. The Technical Charter has been executed and has not yet taken effect. This charter is effective when the Technical Charter takes effect.
 
 > **Note for external contributors:** The Linux Foundation has accepted TRACE, but this charter is still a working draft and the Technical Charter has not yet taken effect. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
 **Version**: 0.1 (aligned with spec v0.1)

@@ -125,8 +125,9 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `tool_transcript` | MCP / A2A tool calls invoked, parameters classified, responses filtered | MCP / A2A protocol transcripts bound to TEE measurement |
 | `origin` | OPTIONAL. Where the evidence came from, when that is not this runtime. See §3.1.1. |: |
 | `references` | OPTIONAL. Facts outside this record that it points at. Assurance-neutral: see §3.1.2. <!-- CHANGED: #197 - new optional assurance-neutral reference block --> |: |
+| `reproducibility` | OPTIONAL. Claim that a named deterministic function of the run, re-executed over a pinned input closure, yields a transcript with the stated digest. See §3.1.4. <!-- CHANGED: #249 - new optional reproducibility claim --> |: |
 | `build_provenance` | How the running code and model were built | SLSA Provenance v1.0 |
-| `appraisal` | Verifier's appraisal of evidence | EAR (EAT Attestation Results) |
+| `appraisal` | Verifier's appraisal of evidence. Carries `method` and a per-method result when the verifier re-executed a reproducibility claim: see §3.1.4. <!-- CHANGED: #249 - appraisal row names method --> | EAR (EAT Attestation Results) |
 | `transparency` | Inclusion proof on append-only log | SCITT Receipt URI |
 | `cnf` | Confirmation key: binds record to TEE-held signing key | EAT `cnf` claim (RFC 8747) |
 | `eat_profile` | Profile URI identifying this as a TRACE v0.2 record | EAT profile claim |
@@ -219,6 +220,104 @@ The other two readings fail for concrete reasons. Digesting the file's raw bytes
 
 **A near-miss here passes every vector but one.** The RFC 8785 key ordering that §3.2.2 describes, and the code-point ordering that `sort_keys=True` produces in several JSON libraries, agree across the Basic Multilingual Plane and diverge only once a key contains a supplementary-plane character. An implementation that takes the shortcut therefore computes correct chain digests for ASCII records indefinitely and produces an unverifiable chain the first time such a key appears.
 `examples/delegation-link/24-parent-key-supplementary-plane.json` is the vector that catches it: its parent record carries a key outside the Basic Multilingual Plane, where the two orderings disagree. Every other record's keys in that corpus are ASCII.
+
+#### 3.1.4 `reproducibility`: deterministic re-execution as evidence
+
+<!-- CHANGED: #249 - reproducibility claim: definition, verifier holdings, re-execution outcome, appraisal method -->
+
+A `software-only` record (§3.1.1) is defined by what it lacks: nothing attested the execution. Some software-only producers can offer positive evidence of a different kind. Where the producer's coordination logic is a deterministic function, anyone holding its inputs can run it again and compare. This block is the claim that they can, stated precisely enough for a verifier to check it and precisely enough that a producer cannot make it loosely.
+
+**Definition.** A reproducibility claim states that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals the claimed value. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and it is not the model calls, which are not deterministic. The boundary of the function is drawn around every non-deterministic interaction: each one is recorded, content-addressed, and enters the closure as an input like any other. What re-executes is the decision logic over those recorded inputs.
+
+The claim has three parts, all explicit in the record: the code and the function it exposes, the input closure, and the transcript digest.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `function` | yes | Name under which the implementation at `code_identity` exposes the deterministic function re-executed. The convention for invoking it is part of the artifact at `code_identity`, and so content-addressed with it; a convention held anywhere else is something a verifier needs from the producer to begin, which the holdings rule below excludes. |
+| `code_identity` | yes | `sha256:` or `sha384:` digest of the implementation artifact that contains `function`. It MUST resolve to an artifact a verifier can obtain without the producer. For a producer whose coordination logic ships in the artifact `build_provenance` names, this is the same value as `build_provenance.digest`. |
+| `code_resolver` | no | Where the artifact at `code_identity` is obtained, in the sense §3.1.2 gives `resolver`: the party obliged to retain it. Omitted when the digest alone locates the artifact, as on a package index; present otherwise, since a verifier that cannot obtain the artifact reports `not-attempted`. |
+| `input_closure` | yes | The complete content-addressed set of everything `function` reads: the initial configuration, and every recorded external interaction, model calls included. An array of `{id, digest, resolver}` entries, the shape §3.1.2 uses without `rel` or `retention`, since every entry stands in the same relation to the claim, and with `digest` required on every entry. |
+| `transcript_digest` | yes | `sha256:` or `sha384:` digest, in the algorithm its prefix names, over the RFC 8785 canonical bytes of the transcript `function` produces when re-executed over `input_closure`. |
+
+The transcript is the function's complete output as a JSON value: every decision the coordination logic took, in order. Its shape belongs to the producer and is described by the profile or annex that describes the function. What this section fixes is that it is a JSON value canonicalised with RFC 8785, so that two verifiers digest the same bytes, and that the canonicalisation is the one §3.1.3 and §3.2.2 already require, so a verifier carries exactly one.
+
+1. A claim whose closure omits anything that can change the transcript is **malformed**. That is the definition of the claim, not a quality bar on it: a closure that does not pin what it claims to pin is not a weak claim, it is not a claim. A malformed claim is detected at re-execution, as a read beyond the closure, and has the outcome the holdings rule below gives that read. A closure entry the function does not read is surplus and has no effect on the outcome.
+2. A reproducibility claim MUST NOT affect `runtime.platform`. A record carrying the block and no `origin` block is `self` and carries whatever platform value it actually earned. Re-executability is not attestation and does not become it.
+3. The record signature MUST cover `reproducibility`, under the canonicalisation in §3.2.2.
+
+**Verifier holdings.** A verifier MUST hold three things before it reports any outcome other than `not-attempted`. Each carries its own bar, because each is a different kind of thing:
+
+- the implementation at `code_identity`, obtained as a public artifact and without the producer. The bar is availability: an implementation is shipped software and can be required to be obtainable by anyone;
+- every blob in `input_closure`, each resolved through its own `resolver` and each matching its own `digest`. The bar is integrity, not provenance: a run's closure is run-private by construction, a producer that is the only party retaining it is within §3.1.2, and what the verifier requires is that what it obtained matches the digest the producer signed;
+- the claim itself, from the signed record. No bar: it is covered by the signature, and coming from the producer is the point of it.
+
+If re-execution requires state that only the producer's environment can supply, it is not reproduction. The claim is then an assertion about that environment, and belongs elsewhere in the record or nowhere. The operational form of the same rule: a verifier MUST supply the function nothing but the closure, and a read beyond the closure, whether the verifier's environment refused it or let it through, is an observation that fixes the outcome by itself. The outcome is `not-attempted`, with the read named as the reason, whatever the re-run would otherwise have produced: a re-run that completed on something the claim did not pin is not the re-run the claim describes, and a digest it matched or missed says nothing about the claim. This is the rule a reader will be tempted to relax, and it is the one that makes the claim decidable rather than aspirational. It is also why model interactions are inputs in the closure rather than something a verifier re-invokes: a model call cannot be re-run to the same answer, so the function's boundary is drawn around it and the recorded interaction is pinned by digest.
+
+**Outcome.** The re-execution result is one of three values, and a verifier MUST report the one that occurred:
+
+| Outcome | Meaning |
+|---|---|
+| `reproduced` | The re-run completed on the closure alone and the digest of its transcript equals `transcript_digest`. |
+| `diverged` | The re-run completed on the closure alone and the digests differ. The result MUST record the verifier's observed digest, because divergence localises nothing by itself: producer tampering, a function that is not the deterministic one it is named as, and verifier drift are indistinguishable until a third party can compare transcripts. |
+| `not-attempted` | A closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, the re-run did not run to completion, or the verifier could not establish that the re-run used the closure alone. The result MUST carry the reason. |
+
+`not-attempted` MUST NOT be reported as `reproduced`, and MUST NOT be reported as `diverged`. Absent is not pass, and absent is not failure. This is the discipline §3.2.3 applies to a missing revocation bundle and §3.3.4 applies to a disclosure at the live tail of a chain: an inability to check is reported as that, with its cause, and is never rounded to either outcome a completed check would have produced.
+
+A `reproduced` outcome establishes what the definition says and nothing more: the named function over the pinned closure yields the claimed transcript. It establishes nothing about the workload's side effects or about the model calls, which are inputs. A `diverged` outcome is evidence that resolves and contradicts the record, and §3.3.1's rule for that case applies: the verifier fails the appraisal and does not downgrade to escape the contradiction.
+
+One optional member of the result, carried on any outcome, lets results that disagree be read together. `verifier_code_identity` is the digest of the verifier's own implementation. It discriminates nothing on its own: it is the verifier naming its own build, self-asserted, and it carries no weight singly. It earns its place as a correlation key across results, since two verifiers at different implementations disagreeing over the same closure is verifier drift, and that reading is unavailable without it.
+
+| `verifier_code_identity` across the disagreeing results | Reading |
+|---|---|
+| differs | verifier drift |
+| same | no reproducing verifier found a benign explanation |
+
+The second row is the only one that accuses, and it accuses on absence. The record cannot distinguish a tampering producer from a cause nobody has thought of yet, so the row states what was not found rather than what was done.
+
+**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal made by the party that re-ran the function, with that party as `appraisal.verifier`. It is carried under an appraisal method discriminator, with the outcome scoped under the method:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `appraisal.method` | no | The method this appraisal used. A closed set, for the reason §3.1.1 gives for `origin.kind`: a verifier keys on it. This version defines one value, `re-execution`. |
+| `appraisal.re_execution` | when `method` is `re-execution` | The result block: `outcome`, one of `reproduced`, `diverged`, `not-attempted`; `observed_digest`, required when `outcome` is `diverged`; `reason`, required when `outcome` is `not-attempted`; and the optional `verifier_code_identity` described above. |
+
+`appraisal.re_execution` MUST be present when `method` is `re-execution` and MUST be absent otherwise. `appraisal.status` is untouched: it remains the closed EAR set of `affirming`, `warning`, `contraindicated` and `none`, and the outcome above is not folded into it.
+
+**Why `not-attempted` is not `appraisal.status: none`.** EAR's `none` says that no appraisal was performed on the record. Under re-execution an appraisal was performed: the verifier held a claim, tried to re-run it, and either succeeded, diverged, or could not proceed for a reason it can name. `none` is the wrong value on all three counts, and on the third it is the most misleading, because a generic no-claim value is read as "fine" by the next reader and the reason for the absence is lost. `not-attempted` with a `reason` is the distinction §3.3.4 draws between `receipt_gap_disclosed` and `receipt_missing_required`: a named absence and a generic one are different findings, and collapsing them discards the finding. Keeping the outcome scoped under `method` also keeps `status` closed, which is where #190 left it. A future edit that folds `not-attempted` into `none` on the grounds that they look alike is not a tidy-up; it removes the reason from the record.
+
+Example claim, on the record:
+
+```json
+"reproducibility": {
+  "function": "coordination/v1",
+  "code_identity": "sha256:e5f6a7b8c9d0e1f2...",
+  "code_resolver": "https://artifacts.example.org",
+  "input_closure": [
+    {"id": "config/initial", "digest": "sha256:1a2b3c4d...", "resolver": "https://artifacts.example.org"},
+    {"id": "model-call/0007", "digest": "sha256:9c8d7e6f...", "resolver": "https://artifacts.example.org"}
+  ],
+  "transcript_digest": "sha256:4f5e6d7c..."
+}
+```
+
+Example result, in the appraisal of a verifier that re-ran the function and obtained a different transcript:
+
+```json
+"appraisal": {
+  "status": "contraindicated",
+  "verifier": "https://verifier.example.org",
+  "method": "re-execution",
+  "re_execution": {
+    "outcome": "diverged",
+    "observed_digest": "sha256:7d3c2b1a...",
+    "verifier_code_identity": "sha256:c4d5e6f7..."
+  }
+}
+```
+
+**Two commitments on one record.** A `software-only` record can now carry two recomputable commitments: `runtime.measurement`, over the preimage its producing profile documents, and `transcript_digest`, over the preimage this section fixes. They commit to different objects, the producer's inputs and state against the coordination function's output, and neither outcome implies the other: a `reproduced` result says nothing about `runtime.measurement`, and a `runtime.measurement` that recomputes says nothing about the transcript. A profile whose `runtime.measurement` preimage is itself a function of the closure may say so, and then one closure pins both; absent that statement the two are checked separately.
+
+**Out of scope.** This section names no journal format, no transcript shape, and no way of storing or resolving a closure; those belong to the profile or annex that describes the function.
 
 ### 3.2 Wire format
 
@@ -655,7 +754,7 @@ the reference implementation at the MCP tool-call boundary.
 
 ### 6.1 Host
 
-**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
+**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Project Contribution Agreement and the Technical Charter have been executed; when the Technical Charter takes effect, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
 Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
 

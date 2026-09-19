@@ -20,8 +20,9 @@ The Project Lead has final decision authority on specification changes, submissi
 | Name | GitHub | Scope |
 |---|---|---|
 | Louie Lu | [@lywinged](https://github.com/lywinged) | TRACE specification and conformance requirements |
+| Rajnish Tiwari | [@rajnisht7](https://github.com/rajnisht7) | Adapters, provenance verification, and conformance vectors |
 
-Louie's appointment was [announced by the Project Lead](https://github.com/orgs/agentrust-io/discussions/33).
+Louie's appointment was [announced by the Project Lead](https://github.com/orgs/agentrust-io/discussions/33). Rajnish's was [announced here](https://github.com/orgs/agentrust-io/discussions/40).
 
 ## How to become a maintainer
 
