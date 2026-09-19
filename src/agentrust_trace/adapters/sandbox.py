@@ -80,6 +80,7 @@ from typing import Any, Literal, get_args
 import rfc8785
 
 from agentrust_trace.models import (
+    JCS_SAFE_INTEGER,
     Appraisal,
     BuildProvenance,
     ModelInfo,
@@ -87,6 +88,31 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
 )
+# TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
+# schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
+# failure this check exists to stop -- so the floor is the contract's, not zero.
+TRACE_MIN_IAT = 1700000000
+
+
+def _check_iat(value: object) -> None:
+    """The bound ``TrustRecord.iat`` carries, applied to whatever is about to be signed.
+
+    Called from ``__post_init__`` and again where the value is written into the
+    record. ``frozen=True`` stops the ordinary reassignment; it does not stop
+    ``vars()`` or ``object.__setattr__``, and a guard can only speak about the value
+    it is shown, so the one that matters runs where the record is built. #320 settled
+    the same point for ``provenance.build_record``.
+    """
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < TRACE_MIN_IAT
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
+            f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {value!r}"
+        )
 
 __all__ = ["SandboxAttestation", "SandboxSessionResult", "TraceSandboxAdapter"]
 
@@ -177,7 +203,7 @@ class SandboxAttestation:
             )
 
 
-@dataclass
+@dataclass(frozen=True)
 class SandboxSessionResult:
     """One sandbox session, as the runtime has it at close.
 
@@ -228,6 +254,7 @@ class SandboxSessionResult:
             raise ValueError(
                 f"image_digest {self.image_digest!r} must be a sha256: or sha384: digest."
             )
+        _check_iat(self.iat)
 
 
 class TraceSandboxAdapter:
@@ -315,6 +342,8 @@ class TraceSandboxAdapter:
         """
         bundle_hash = self.bundle_hash(session.policy_bundle_bytes)
         runtime = self._runtime(session, bundle_hash)
+
+        _check_iat(session.iat)
 
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
