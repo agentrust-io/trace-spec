@@ -274,8 +274,8 @@ PUBLISHED_TEST_KEY = bytes.fromhex(
 )
 
 
-def build_corpus() -> list[tuple[str, str, str | None, dict]]:
-    """Return (name, expected grade, expected model claim or None, record)."""
+def build_corpus() -> list[dict]:
+    """Return data-driven vector objects, including verifier context when needed."""
     key = Ed25519PrivateKey.from_private_bytes(PUBLISHED_TEST_KEY)
     quote_a = (HARDWARE / "tdx_quote.bin").read_bytes()
     quote_b = (HARDWARE / "tdx_quote_manifest.bin").read_bytes()
@@ -438,7 +438,41 @@ def build_corpus() -> list[tuple[str, str, str | None, dict]]:
         )
     )
 
-    return vectors
+    # Normalize the legacy tuple construction above into one data model. Context and
+    # extra expectations belong to the vector, not to filename-specific generator code.
+    corpus = [
+        {
+            "name": name,
+            "expected": {"grade": grade, "model_claim": model_claim},
+            "record": record,
+        }
+        for name, grade, model_claim, record in vectors
+    ]
+
+    # A valid embedded signing key proves internal signature consistency, not relying-
+    # party trust. Give the verifier a real but different external trust root so this
+    # case is discriminating: it would fail if an implementation silently promoted the
+    # embedded key into the configured trust set.
+    trusted_context_key = Ed25519PrivateKey.from_private_bytes(
+        bytes.fromhex("4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb")
+    )
+    trusted_context_record = base_record(quote_a, trusted_context_key)
+    corpus.append(
+        {
+            "name": "context-embedded-key-not-trusted",
+            "expected": {
+                "grade": "platform-attested",
+                "model_claim": "model claim: self-reported",
+                "signer_trust": "not-established",
+            },
+            "context": {
+                "trusted_root_keys": [trusted_context_record["cnf"]["jwk"]],
+            },
+            "record": copy.deepcopy(accept),
+        }
+    )
+
+    return corpus
 
 
 def main() -> int:
@@ -447,7 +481,11 @@ def main() -> int:
     args = ap.parse_args()
 
     rows: list[tuple[str, str, str, bool, str]] = []
-    for name, expected, expected_claim, record in build_corpus():
+    for vector in build_corpus():
+        name = vector["name"]
+        expected = vector["expected"]["grade"]
+        expected_claim = vector["expected"]["model_claim"]
+        record = vector["record"]
         try:
             grade = appraise(record)
         except Reject as e:
@@ -464,15 +502,13 @@ def main() -> int:
             # without re-deriving it. `record` stays a clean TRACE record, because a
             # vector carrying an extra top-level member would fail the very schema the
             # corpus exists to exercise.
+            wrapper = {
+                key: value
+                for key, value in vector.items()
+                if key != "name"
+            }
             (out / f"{name}.json").write_text(
-                json.dumps(
-                    {
-                        "expected": {"grade": expected, "model_claim": expected_claim},
-                        "record": record,
-                    },
-                    indent=2,
-                )
-                + "\n",
+                json.dumps(wrapper, indent=2) + "\n",
                 encoding="utf-8",
             )
 
