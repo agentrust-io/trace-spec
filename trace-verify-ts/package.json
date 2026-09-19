@@ -1,0 +1,36 @@
+{
+  "name": "trace-verify-ts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript verifier for TRACE v0.2 Trust Records: zero network, WebCrypto only.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "scripts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "generate": "node scripts/generate-validators.mjs",
+    "build": "npm run generate && tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "differential": "node differential/run.mjs"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "typescript": "7.0.2"
+  }
+}
