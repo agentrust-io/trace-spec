@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trace.agentrust-io.com/examples/pic-trace-bridge-v1/contract/case-v1.schema.json",
+  "title": "PIC/TRACE Bridge Conformance Case v1",
+  "description": "Portable, informative test-case envelope for the PIC/TRACE authorization bridge. The embedded bridge and runtime inputs may intentionally be malformed; their expected outcomes are recorded independently from validity of this envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "description",
+    "profile",
+    "conformance",
+    "inputs",
+    "reproducibility",
+    "coverage",
+    "expected"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TRACE-PIC-BRIDGE-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile": {
+      "const": "trace.pic-trace-bridge.conformance.v1"
+    },
+    "conformance": {
+      "$ref": "#/$defs/conformance"
+    },
+    "inputs": {
+      "$ref": "#/$defs/inputs"
+    },
+    "reproducibility": {
+      "$ref": "#/$defs/reproducibility"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "expected": {
+      "$ref": "#/$defs/expected"
+    }
+  },
+  "$defs": {
+    "conformance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "const": "conformant"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "tracker",
+            "counted_as_conformance",
+            "reference"
+          ],
+          "properties": {
+            "status": {
+              "const": "known_defect"
+            },
+            "tracker": {
+              "const": "https://github.com/agentrust-io/trace-spec/issues/247"
+            },
+            "counted_as_conformance": {
+              "const": false
+            },
+            "reference": {
+              "$ref": "#/$defs/referenceObservation"
+            }
+          }
+        }
+      ]
+    },
+    "referenceObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "baseline_commit",
+        "runtime"
+      ],
+      "properties": {
+        "implementation": {
+          "const": "agentrust_trace.intent_bridge.verify_bridge"
+        },
+        "baseline_commit": {
+          "const": "3c2f96375afaea6c615c49dea21d83a7969862e3"
+        },
+        "runtime": {
+          "$ref": "#/$defs/runtimeOutcome"
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bridge",
+        "trusted_authorizer_jwk",
+        "declaration",
+        "pic_intent_digest",
+        "pic_args_digest",
+        "tool_call",
+        "transcript",
+        "now"
+      ],
+      "properties": {
+        "bridge": {},
+        "trusted_authorizer_jwk": {},
+        "declaration": {},
+        "pic_intent_digest": {},
+        "pic_args_digest": {},
+        "tool_call": {},
+        "transcript": {},
+        "now": {}
+      }
+    },
+    "reproducibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_signature",
+        "declaration_digest",
+        "tool_call_digest"
+      ],
+      "properties": {
+        "authorization_signature": {
+          "$ref": "#/$defs/reproducibilityEntry"
+        },
+        "declaration_digest": {
+          "$ref": "#/$defs/reproducibilityEntry"
+        },
+        "tool_call_digest": {
+          "$ref": "#/$defs/reproducibilityEntry"
+        }
+      }
+    },
+    "reproducibilityEntry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "applicable",
+            "canonical_preimage_base64url",
+            "canonical_preimage_sha256"
+          ],
+          "properties": {
+            "applicable": {
+              "const": true
+            },
+            "canonical_preimage_base64url": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "canonical_preimage_sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applicable", "reason"],
+          "properties": {
+            "applicable": {
+              "const": false
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          }
+        }
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "variant", "declared_defect"],
+      "properties": {
+        "rule": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "variant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "declared_defect": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_schema",
+        "bridge_schema",
+        "conformant_runtime"
+      ],
+      "properties": {
+        "case_schema": {
+          "const": "valid"
+        },
+        "bridge_schema": {
+          "enum": ["valid", "invalid"]
+        },
+        "conformant_runtime": {
+          "$ref": "#/$defs/runtimeOutcome"
+        }
+      }
+    },
+    "runtimeOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "codes", "result"],
+      "properties": {
+        "classification": {
+          "enum": ["accepted", "invalid", "denied", "mismatch"]
+        },
+        "codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "result": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/acceptedResult"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "classification": {
+                "const": "accepted"
+              }
+            },
+            "required": ["classification"]
+          },
+          "then": {
+            "properties": {
+              "codes": {
+                "maxItems": 0
+              },
+              "result": {
+                "$ref": "#/$defs/acceptedResult"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "codes": {
+                "minItems": 1
+              },
+              "result": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "acceptedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "tool",
+        "impact",
+        "transcript_bound"
+      ],
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "impact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transcript_bound": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

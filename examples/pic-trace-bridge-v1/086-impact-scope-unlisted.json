@@ -1,0 +1,117 @@
+{
+  "id": "TRACE-PIC-BRIDGE-086",
+  "name": "impact-scope-unlisted",
+  "description": "impact unlisted exercises impact_outside_scope and must produce the exact mismatch classification and code.",
+  "profile": "trace.pic-trace-bridge.conformance.v1",
+  "conformance": {
+    "status": "conformant"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-206",
+        "decision": "allow",
+        "authorizer": "policy-engine",
+        "authorizer_key_id": "key-206",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "send_invoice",
+            "archive_invoice"
+          ],
+          "impacts": [
+            "external-side-effect",
+            "internal-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:6bd197fe0ca666449478c14a569967e6c0eda35ebefdef55c638bfdf69ec75c5",
+        "tool_call_digest": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395",
+        "transcript_required": true
+      },
+      "signature": "BQG7opzN401dkS9epr1bNHvrDO9yehrjLci43tsFz7iVvyG8pCPn7Wml8CpIWIoM-mRAiex91t-OELpXd-AwBA"
+    },
+    "trusted_authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg",
+      "kid": "key-206"
+    },
+    "declaration": {
+      "impact": "public-side-effect",
+      "purpose": "send invoice",
+      "metadata": {
+        "channel": "email",
+        "reference": "INV-7"
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "tool_call": {
+      "name": "send_invoice",
+      "arguments": {
+        "invoice_id": "INV-7",
+        "options": {
+          "notify": true
+        }
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "send_invoice",
+          "arguments": {
+            "invoice_id": "INV-7",
+            "options": {
+              "notify": true
+            }
+          }
+        }
+      },
+      "after": {
+        "status": "accepted",
+        "receipt_id": "receipt-206"
+      }
+    },
+    "now": 150
+  },
+  "reproducibility": {
+    "authorization_signature": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhdXRob3JpemF0aW9uIjp7ImF1dGhvcml6YXRpb25faWQiOiJhdXRoLTIwNiIsImF1dGhvcml6ZWRfYXQiOjEwMCwiYXV0aG9yaXplciI6InBvbGljeS1lbmdpbmUiLCJhdXRob3JpemVyX2tleV9pZCI6ImtleS0yMDYiLCJkZWNpc2lvbiI6ImFsbG93IiwiZGVjbGFyYXRpb25fZGlnZXN0Ijoic2hhMjU2OjZiZDE5N2ZlMGNhNjY2NDQ5NDc4YzE0YTU2OTk2N2U2YzBlZGEzNWViZWZkZWY1NWM2MzhiZmRmNjllYzc1YzUiLCJleHBpcmVzX2F0IjoyMDAsInBpYyI6eyJhcmdzX2RpZ2VzdCI6InNoYTI1NjoyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwiaW50ZW50X2RpZ2VzdCI6InNoYTI1NjoxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwicHJvZmlsZSI6IlBJQy1DSlNPTi8xLjAifSwic2NvcGUiOnsiaW1wYWN0cyI6WyJleHRlcm5hbC1zaWRlLWVmZmVjdCIsImludGVybmFsLXNpZGUtZWZmZWN0Il0sInRvb2xzIjpbInNlbmRfaW52b2ljZSIsImFyY2hpdmVfaW52b2ljZSJdfSwidG9vbF9jYWxsX2RpZ2VzdCI6InNoYTI1NjoxMDZkYTY2MzFmNGFiZmEyNzIzYmE1YjBhNDhjNTUyNjQ1MTRhMjNmOWQ5YjQzZGMwYmI5MjAwZGY2ZTdhMzk1IiwidHJhbnNjcmlwdF9yZXF1aXJlZCI6dHJ1ZX0sInByb2ZpbGUiOiJ0YWc6YWdlbnRydXN0LWlvLmNvbSwyMDI2OnBpYy10cmFjZS1icmlkZ2UtdjEifQ",
+      "canonical_preimage_sha256": "sha256:d440d72855f22aa3a665a8c7d5d785c5bcd94807309f36b8344d2b439ba06aeb"
+    },
+    "declaration_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJpbXBhY3QiOiJwdWJsaWMtc2lkZS1lZmZlY3QiLCJtZXRhZGF0YSI6eyJjaGFubmVsIjoiZW1haWwiLCJyZWZlcmVuY2UiOiJJTlYtNyJ9LCJwdXJwb3NlIjoic2VuZCBpbnZvaWNlIn0",
+      "canonical_preimage_sha256": "sha256:6bd197fe0ca666449478c14a569967e6c0eda35ebefdef55c638bfdf69ec75c5"
+    },
+    "tool_call_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhcmd1bWVudHMiOnsiaW52b2ljZV9pZCI6IklOVi03Iiwib3B0aW9ucyI6eyJub3RpZnkiOnRydWV9fSwibmFtZSI6InNlbmRfaW52b2ljZSJ9",
+      "canonical_preimage_sha256": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395"
+    }
+  },
+  "coverage": {
+    "rule": "impact_outside_scope",
+    "variant": "impact_unlisted",
+    "declared_defect": "impact_presence_only"
+  },
+  "expected": {
+    "case_schema": "valid",
+    "bridge_schema": "valid",
+    "conformant_runtime": {
+      "classification": "mismatch",
+      "codes": [
+        "impact_outside_scope"
+      ],
+      "result": null
+    }
+  }
+}
