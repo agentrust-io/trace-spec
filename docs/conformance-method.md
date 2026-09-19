@@ -179,7 +179,6 @@ is the part that was previously left to assumption.
 ```bash
 pip install -e ".[dev]"
 pytest tests/test_vector_completeness.py -v          # the completeness checks
-pytest tests/test_fixture_signatures_independent.py  # the independent signature path
 ```
 
 Signing keys are derived from published seeds, so every vector set regenerates
