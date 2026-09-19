@@ -226,6 +226,7 @@ nav:
           - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
       - Crosswalks:
           - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
+          - MITRE ATLAS: docs/crosswalks/mitre-atlas.md
           - Acta decision receipts: docs/crosswalks/acta-decision-receipts.md
           - CHAP review decisions: docs/crosswalks/chap-review-decisions.md
           - N'KEMBA institutional reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
