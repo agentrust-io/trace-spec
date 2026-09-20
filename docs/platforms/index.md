@@ -16,6 +16,14 @@ Standalone TRACE records use the names in the [canonical schema](https://github.
 
 The schema also registers other platform identifiers. Registration is not a claim that this Python SDK collects or appraises evidence for every platform.
 
+## Vendor annexes
+
+A vendor annex maps one producer onto the Trust Record. Annexes are informative and reviewed by the vendor author and one Maintainer, per GOVERNANCE.
+
+| Annex                                                                         | `runtime.platform` | What the producer's evidence is                                                                                                                               |
+| ----------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Bernstein](https://trace.agentrust-io.com/docs/platforms/bernstein/index.md) | `software-only`    | An Ed25519-signed record over a hash-chained run journal, with a deterministic coordination sequence a verifier can re-derive. No hardware assurance; Level 0 |
+
 ## What the SDK checks
 
 `agentrust_trace.verify_record` checks the standalone record's schema, profile, signature against a trusted key, freshness, and configured nonce/revocation inputs. It does not collect a hardware quote or turn a platform string into verified hardware evidence. There is no `agentrust-trace verify-hardware` command in this package.
