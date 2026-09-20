@@ -397,6 +397,24 @@ def _maximal_record() -> dict[str, Any]:
         "transcript_uri": "https://example.test/transcript",
     }
     record["appraisal"]["timestamp"] = 1785000000
+    # Section 3.1.4: the claim, and the result of the outcome that carries every member.
+    record["reproducibility"] = {
+        "function": "coordination/v1",
+        "code_identity": "sha256:" + "d" * 64,
+        "code_resolver": "https://example.test/artifacts",
+        "input_closure": [{
+            "id": "config/initial",
+            "digest": "sha256:" + "e" * 64,
+            "resolver": "https://example.test/artifacts",
+        }],
+        "transcript_digest": "sha256:" + "f" * 64,
+    }
+    record["appraisal"]["method"] = "re-execution"
+    record["appraisal"]["re_execution"] = {
+        "outcome": "diverged",
+        "observed_digest": "sha256:" + "1" * 64,
+        "verifier_code_identity": "sha256:" + "2" * 64,
+    }
     return record
 
 

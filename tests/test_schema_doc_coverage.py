@@ -73,6 +73,9 @@ SECTION_OF_PATH: dict[str, str] = {
     "appraisal": "## `appraisal`",
     "cnf": "## `cnf`",
     "cnf.jwk": "### `cnf.jwk` members",
+    "reproducibility": "## `reproducibility`",
+    "reproducibility.input_closure[]": "### `reproducibility.input_closure` entries",
+    "appraisal.re_execution": "### `appraisal.re_execution` members",
 }
 
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
