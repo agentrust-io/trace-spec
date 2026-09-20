@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
-**Conformance material:** [`examples/runtime-evidence/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence): 13 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
+**Conformance material:** [`examples/runtime-evidence/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence): 14 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one.
 **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
@@ -197,13 +197,14 @@ reasons.
 | `reject-platform-not-the-evidence` | reject, the platform is not what this evidence roots | not graded |
 | `advisory-binds-cannot-raise-a-claim` | `platform-attested` | self-reported |
 | `commitment-cannot-attest-model` | `platform-attested` | self-reported |
+| `context-embedded-key-not-trusted` | `platform-attested` | self-reported; signer trust `not-established` |
 
-The run closes with `13/13 vectors behaved as the profile says they must (1 of them documenting a limit
+The run closes with `14/14 vectors behaved as the profile says they must (1 of them documenting a limit
 of the rules rather than a success).`
 
 Each vector asserts both the record grade and the model-claim grade, because §6.1 is a claim about the relationship between the two and a corpus that checked only the first would not test it.
 
-The dedicated `runtime-evidence` CI job runs these rules with the external verifier pinned to `agent-manifest` commit `934809709a2815695d65cfacb45dc0a164286046`. It checks the committed grades and the specific reason for each rejection, then regenerates all 13 vectors and compares their bytes. Missing verifier code or missing captures fail that job rather than skipping it. The ordinary TRACE suite checks the schema, the record signatures and the evidence shapes independently, and does not depend on `agent-manifest`.
+The dedicated `runtime-evidence` CI job runs these rules with the external verifier pinned to `agent-manifest` commit `934809709a2815695d65cfacb45dc0a164286046`. It checks the committed grades and the specific reason for each rejection, then regenerates all 14 vectors and compares their bytes. Missing verifier code or missing captures fail that job rather than skipping it. The ordinary TRACE suite checks the schema, the record signatures and the evidence shapes independently, and does not depend on `agent-manifest`.
 
 ### 7.1 What the corpus found
 

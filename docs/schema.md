@@ -27,6 +27,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `delegation` | object | no | A2A profile: link to the delegating hop's Trust Record |
 | `origin` | object | no | Where the evidence came from, when that is not this runtime |
 | `references` | array | no | Facts outside this record that it points at. Assurance-neutral |
+| `reproducibility` | object | no | The claim that a named deterministic function of the run re-executes, over a pinned input closure, to a transcript with the stated digest. Producer-side; the result is an appraisal. Assurance-neutral |
 | `build_provenance` | object | **yes** | Build-time artifact provenance |
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
@@ -70,7 +71,7 @@ Binds the governance policy in force during this session.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `bundle_hash` | string | **yes** | `sha256:` digest of the Cedar policy bundle bytes |
-| `enforcement_mode` | string | **yes** | `enforce` or `silent` (advisory) |
+| `enforcement_mode` | string | **yes** | One of: `enforce` (evaluated, blocked on deny), `advisory` (evaluated, logged, allowed), `silent` (evaluated and enforced with operational logs suppressed; the audit chain still records every would-have-denied decision), `declared` (the policy is named and bound into the signed record and nothing evaluated it: the honest value for a producer with no policy engine, never a default, and not evidence that any rule was checked). Defaults to `enforce`. Section 4.3 of the spec defines `enforce`, `silent` and `declared`; `advisory` is in the schema's closed set and its one-line meaning is the schema's own description, not spec text |
 | `version` | string | no | Policy bundle version string |
 | `policy_uri` | string | no | URI to the policy bundle for inspection |
 
@@ -144,6 +145,34 @@ An array of pointers to facts held outside this record: an authorization decided
 
 Spec section 3.1.2 also binds verifiers: one **must not** reject a record because an entry cannot be resolved, and **must not** treat a resolved entry as attested evidence. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold. Both are verifier behaviour, so neither the schema nor the reference model can enforce them; they are conformance-suite rules. What the schema and the model do enforce is the shape, and that a producer who cannot name a `resolver` cannot emit an empty one.
 
+<a id="reproducibility"></a>
+
+## `reproducibility` {#trace-field-reproducibility}
+
+The claim that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals `transcript_digest`. Spec section 3.1.4. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and not the model calls, which are not deterministic; the boundary is drawn around every non-deterministic interaction, and each one enters the closure as a recorded, content-addressed input.
+
+The block is the claim, not its result. The result is an appraisal made by the party that re-ran the function, carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `function` | string | **yes** | Name under which the implementation at `code_identity` exposes the deterministic function re-executed. The convention for invoking it is part of that artifact, and so content-addressed with it |
+| `code_identity` | string | **yes** | `sha256:` or `sha384:` digest of the implementation artifact that contains `function`. Resolves to an artifact a verifier can obtain without the producer. Where the coordination logic ships in the artifact `build_provenance` names, this equals `build_provenance.digest` |
+| `code_resolver` | string | no | Where the artifact at `code_identity` is obtained: the party obliged to retain it, in the sense `references[].resolver` has. Omitted when the digest alone locates the artifact, as on a package index |
+| `input_closure` | array | **yes** | The complete content-addressed set of everything `function` reads: the initial configuration and every recorded external interaction, model calls included. Entries are described below. An entry the function does not read is surplus; an input the closure omits makes the claim malformed rather than weak, which is detected at re-execution and not by the schema |
+| `transcript_digest` | string | **yes** | `sha256:` or `sha384:` digest, in the algorithm its prefix names, over the RFC 8785 canonical bytes of the transcript `function` produces over `input_closure`. The transcript is the function's complete output as a JSON value; its shape belongs to the profile or annex that describes the function |
+
+### `reproducibility.input_closure` entries {#trace-field-reproducibility-input-closure}
+
+The shape a `references` entry has, without `rel` or `retention`, since every entry stands in the same relation to the claim, and with `digest` required on every entry, since an entry a verifier cannot check against the digest the producer signed pins nothing.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | **yes** | Identifier of the input within the resolver's system |
+| `digest` | string | **yes** | `sha256:` or `sha384:` digest of the input. A verifier holds the input only once what it obtained matches this value |
+| `resolver` | string | **yes** | Identifier of the party obliged to resolve `id`. A run's closure is run-private by construction, so the producer is an ordinary resolver here: the bar is integrity, not provenance |
+
+Signed vectors that exercise the claim and its result, two per rule the schema enforces, are in [`examples/reproducibility-claim/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/reproducibility-claim).
+
 <a id="build_provenance"></a>
 
 ## `build_provenance` {#trace-field-build-provenance}
@@ -171,6 +200,19 @@ Verifier judgment on the evidence in this record.
 | `policy_ref` | string | no | URI to the appraisal policy applied |
 | `timestamp` | integer | no | Unix epoch seconds when appraisal was performed |
 | `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
+| `method` | string | no | The method this appraisal used. A closed set, because a verifier keys on it; this version defines `re-execution`, the result of re-running the record's `reproducibility` claim. `status` is untouched by it: the outcome is not folded into the EAR set |
+| `re_execution` | object | when `method` is `re-execution` | The re-execution result, described below. Present exactly when `method` is `re-execution`, and absent otherwise |
+
+### `appraisal.re_execution` members {#trace-field-appraisal-re-execution}
+
+The result of re-running a `reproducibility` claim, made by the party named as `verifier`. `not-attempted` is not `status: none`: an appraisal was performed, and what it could not do is reported with its cause rather than rounded to either outcome a completed check would have produced. Spec section 3.1.4 says why the two are kept apart.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `outcome` | string | **yes** | `reproduced`: the re-run completed on the closure alone and its transcript digest equals `transcript_digest`. `diverged`: it completed on the closure alone and the digests differ. `not-attempted`: a closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, the re-run did not complete, or the verifier could not establish that it used the closure alone |
+| `observed_digest` | string | when `outcome` is `diverged` | The verifier's digest of the transcript its re-run produced. Divergence localises nothing by itself, so the two transcripts have to be comparable by a third party |
+| `reason` | string | when `outcome` is `not-attempted` | Why no outcome could be reported. A named absence and a generic one are different findings |
+| `verifier_code_identity` | string | no | Digest of the verifier's own implementation. Self-asserted and of no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over one closure is verifier drift |
 
 <a id="transparency"></a>
 
@@ -189,6 +231,20 @@ Confirmation method. Contains the signing key bound to this record.
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
 For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+
+### `cnf.jwk` members {#trace-field-cnf-jwk}
+
+`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key of one of those types with no material is refused by the schema; a `kty` outside the three passes the schema and is refused by the verifier, which accepts `OKP` only. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `kty` | string | **yes** | Key type: `OKP`, `EC` or `RSA` |
+| `crv` | string | with `OKP` and `EC` | Curve name, for example `Ed25519` or `P-256` |
+| `x` | string | with `OKP` and `EC` | The public key (OKP) or the x coordinate (EC), base64url |
+| `y` | string | with `EC` | The y coordinate, base64url |
+| `n` | string | with `RSA` | Modulus, base64url |
+| `e` | string | with `RSA` | Public exponent, base64url |
+| `kid` | string | no | Key identifier (RFC 7517 section 4.5). Inside the signed record, so a producer that names its key here names it under the signature rather than beside it |
 
 <a id="wire-formats"></a>
 

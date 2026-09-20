@@ -33,6 +33,11 @@ checking any archived record, including these.
   rejected by the depth in its filename, so a verifier's stopping point is visible in
   its verdicts. Informative: not Trust Records, not validated against
   `schema/trace-claim.json`. See that directory's README.
+- `reproducibility-claim/`: 21 signed Trust Records that pin the shape rules spec
+  section 3.1.4 states for the `reproducibility` claim and its `appraisal.re_execution`
+  result: two vectors per rule and five accepting records. Each file is a test-vector
+  envelope; the record is under `record`, and the digests the claim carries recompute
+  from the JSON under `context`. See that directory's README.
 - `canonicalization-boundary/`: three signed Trust Records that separate an
   RFC 8785-conformant canonicalizer from `json.dumps(sort_keys=True)`, which
   §3.2.2 requires and names as insufficient. Each file is a test-vector envelope;

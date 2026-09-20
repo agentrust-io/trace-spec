@@ -251,7 +251,7 @@ CANONICAL_SCHEMA: dict[str, Any] = json.loads(
 #: A record valid to both validators that carries every pattern-constrained field.
 #: ``BASE`` above is deliberately the minimum a producer must emit; five of the ten
 #: pattern constraints sit on optional members it omits, and an absent field cannot
-#: be mutated into a disagreement.
+#: be mutated into a disagreement. Section 3.1.4 added five more, all optional.
 FULL: dict[str, Any] = {
     **copy.deepcopy(BASE),
     "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6",
@@ -261,6 +261,20 @@ FULL: dict[str, Any] = {
     "references": [{"rel": "behavior-trace", "id": "run-1",
                     "resolver": "https://agt.example.org",
                     "digest": "sha256:" + "f" * 64, "retention": "P30D"}],
+    # Section 3.1.4: the claim, and a result of the one outcome that carries every
+    # optional digest, so each pattern under both blocks is a path the probes reach.
+    "reproducibility": {"function": "coordination/v1",
+                        "code_identity": "sha256:" + "1" * 64,
+                        "code_resolver": "https://artifacts.example.org",
+                        "input_closure": [{"id": "config/initial",
+                                           "digest": "sha256:" + "2" * 64,
+                                           "resolver": "https://artifacts.example.org"}],
+                        "transcript_digest": "sha256:" + "3" * 64},
+    "appraisal": {"status": "contraindicated", "verifier": "https://agt.example.org/verifier",
+                  "method": "re-execution",
+                  "re_execution": {"outcome": "diverged",
+                                   "observed_digest": "sha256:" + "4" * 64,
+                                   "verifier_code_identity": "sha256:" + "5" * 64}},
     "signature": "abcDEF-_123",
 }
 

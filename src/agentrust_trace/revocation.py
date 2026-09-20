@@ -63,6 +63,7 @@ import jsonschema
 import referencing
 import referencing.jsonschema
 
+from agentrust_trace.sign import TRACE_PROFILE_V0_2
 from agentrust_trace.sign import (
     _b64url_decode,
     _canonical_bytes,
@@ -107,10 +108,36 @@ class VerificationResult:
     Every other rejection still raises, as before. This type exists so that the
     outcomes section 3.2.3 says may not be reported as an affirming appraisal have
     somewhere to be reported, alongside the checks that passed.
+
+    ``profile`` and ``accepted_profiles`` are the verifier-compatibility obligations
+    proposed in agentrust-io/trace-spec#116 and are **not accepted normative text**.
+    They are fields on this type rather than on one of their own, which is the smaller
+    change and the one that follows from this type already existing: evidence outlives
+    verifier builds, and a result that does not name the semantics it ran under cannot
+    be re-read years later.
     """
 
     revocation: RevocationCheck
     trusted_key_thumbprint: str
+
+    profile: str = TRACE_PROFILE_V0_2
+    """The ``eat_profile`` the record was verified under. Always a member of
+    ``accepted_profiles``, and covered by the verified signature. Obligation 3 of #116.
+
+    Defaulted so that constructing a result without it stays valid while the proposal
+    is under review, and because exactly one profile is admissible in this build.
+    """
+
+    accepted_profiles: tuple[str, ...] = (TRACE_PROFILE_V0_2,)
+    """The full set the verifier declared it supports for this call.
+
+    Obligation 3 as #116 words it is the profile alone. The set is carried on the
+    ruling of 2026-09-13 in that thread: obligation 2 requires a verifier to declare
+    its set and says nothing about where the declaration survives, so recording it at
+    verification time is what makes obligation 2 auditable once the verifier build is
+    gone. The profile alone does not distinguish a verifier that supported only v0.2
+    from one that supported v0.2 and v0.3 and met a v0.2 record.
+    """
 
 
 NO_CHECK = RevocationCheck(outcome="no_check_performed")

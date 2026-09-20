@@ -312,6 +312,70 @@
         "additionalProperties": false
       }
     },
+    "reproducibility": {
+      "type": "object",
+      "description": "The claim that re-executing a named deterministic function of the run, the producer's coordination logic, over a pinned input closure yields a transcript whose RFC 8785 canonical digest equals transcript_digest. Spec section 3.1.4. Producer-side: the claim, not its result, which is an appraisal under appraisal.method. The block does not affect runtime.platform, and the record signature covers it. A closure that omits anything which can change the transcript makes the claim malformed rather than weak; that is detected at re-execution, not by this schema.",
+      "required": [
+        "function",
+        "code_identity",
+        "input_closure",
+        "transcript_digest"
+      ],
+      "properties": {
+        "function": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name under which the implementation at code_identity exposes the deterministic function re-executed. The convention for invoking it is part of the artifact at code_identity, and so content-addressed with it."
+        },
+        "code_identity": {
+          "type": "string",
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+          "description": "SHA-256 or SHA-384 digest of the implementation artifact that contains function. It resolves to an artifact a verifier can obtain without the producer. For a producer whose coordination logic ships in the artifact build_provenance names, this is the same value as build_provenance.digest."
+        },
+        "code_resolver": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the artifact at code_identity is obtained: the party obliged to retain it, in the sense section 3.1.2 gives resolver. Omitted when the digest alone locates the artifact, as on a package index; present otherwise, since a verifier that cannot obtain the artifact reports not-attempted."
+        },
+        "input_closure": {
+          "type": "array",
+          "description": "The complete content-addressed set of everything function reads: the initial configuration and every recorded external interaction, model calls included. An entry the function does not read is surplus and has no effect on the outcome.",
+          "items": {
+            "type": "object",
+            "description": "One content-addressed input of function. The shape section 3.1.2 gives a reference, without rel or retention, since every entry stands in the same relation to the claim, and with digest required on every entry.",
+            "required": [
+              "id",
+              "digest",
+              "resolver"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Identifier of the input within the resolver's system."
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+                "description": "SHA-256 or SHA-384 digest of the input. A verifier holds the input only once what it obtained matches this value, which the producer signed."
+              },
+              "resolver": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Identifier of the party obliged to resolve id, in the sense section 3.1.2 gives resolver. A run's closure is run-private by construction, so the producer is an ordinary resolver here; the bar is integrity, not provenance."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "transcript_digest": {
+          "type": "string",
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+          "description": "SHA-256 or SHA-384 digest, in the algorithm its prefix names, over the RFC 8785 canonical bytes of the transcript function produces when re-executed over input_closure. The transcript is the function's complete output as a JSON value; its shape belongs to the profile or annex that describes the function."
+        }
+      },
+      "additionalProperties": false
+    },
     "build_provenance": {
       "type": "object",
       "description": "SLSA provenance for the workload (agent code + container image).",
@@ -394,8 +458,114 @@
             "transitive"
           ],
           "description": "Depth at which this verifier actually checked build_provenance, which is not necessarily the depth the issuer claimed. A verifier may downgrade when deeper evidence does not resolve, and records the lower depth rather than a failure of the higher one. A verifier does not record a depth higher than it executed."
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "re-execution"
+          ],
+          "description": "The method this appraisal used. A closed set, for the reason section 3.1.1 gives origin.kind: a verifier keys on it. This version defines one value, re-execution, the result of re-running a record's reproducibility claim (section 3.1.4). appraisal.status is untouched by it: the outcome below is not folded into the EAR status."
+        },
+        "re_execution": {
+          "type": "object",
+          "description": "The re-execution result, made by the party that re-ran the function and named as appraisal.verifier. Spec section 3.1.4. Present exactly when method is re-execution.",
+          "required": [
+            "outcome"
+          ],
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "reproduced",
+                "diverged",
+                "not-attempted"
+              ],
+              "description": "reproduced: the re-run completed on the closure alone and the digest of its transcript equals transcript_digest. diverged: the re-run completed on the closure alone and the digests differ. not-attempted: a closure blob could not be resolved, code_identity could not be obtained, the function read beyond the closure, the re-run did not run to completion, or the verifier could not establish that the re-run used the closure alone. not-attempted is never reported as either of the other two: absent is not pass, and absent is not failure."
+            },
+            "observed_digest": {
+              "type": "string",
+              "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+              "description": "The verifier's digest of the transcript its re-run produced. Required when outcome is diverged, because divergence localises nothing by itself: producer tampering, a function that is not the deterministic one it is named as, and verifier drift are indistinguishable until a third party can compare transcripts."
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Why no outcome could be reported. Required when outcome is not-attempted: a named absence and a generic one are different findings, and this is where the finding is kept."
+            },
+            "verifier_code_identity": {
+              "type": "string",
+              "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+              "description": "Digest of the verifier's own implementation. Self-asserted and carrying no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over the same closure is verifier drift, and that reading is unavailable without it."
+            }
+          },
+          "allOf": [
+            {
+              "$comment": "Divergence without the observed digest cannot be compared by anyone.",
+              "if": {
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "const": "diverged"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "observed_digest"
+                ]
+              }
+            },
+            {
+              "$comment": "An inability to check is reported with its cause, never rounded to an outcome.",
+              "if": {
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "const": "not-attempted"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          ],
+          "additionalProperties": false
         }
       },
+      "allOf": [
+        {
+          "$comment": "Section 3.1.4: re_execution is present when method is re-execution and absent otherwise. Mirrors the cross-field check in the reference model.",
+          "if": {
+            "required": [
+              "method"
+            ],
+            "properties": {
+              "method": {
+                "const": "re-execution"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "re_execution"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "re_execution"
+              ]
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "transparency": {
