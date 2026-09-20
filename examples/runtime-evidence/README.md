@@ -73,6 +73,7 @@ is what a skipped test would have looked like: coverage that is none.
 | `reject-platform-not-the-evidence` | reject | `amd-sev-snp` claimed over a TDX quote |
 | `advisory-binds-cannot-raise-a-claim` | `platform-attested` | declares a binding it does not have; model claim stays self-reported |
 | `commitment-cannot-attest-model` | `platform-attested` | a recomputable `REPORT_DATA` match is a commitment, not model evidence |
+| `context-embedded-key-not-trusted` | `platform-attested` | runtime evidence can be valid while external signer trust remains `not-established` |
 
 Each vector asserts the record grade **and** the model-claim grade. The profile's §6.1
 is a claim about how those two relate, so a corpus checking only the first would not

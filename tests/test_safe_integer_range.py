@@ -30,7 +30,8 @@ import jsonschema
 import pytest
 import rfc8785
 
-from agentrust_trace.validate import validate_json
+from agentrust_trace.sign import TRACE_PROFILE_V0_2
+from agentrust_trace.validate import profiles_with_schema, validate_json
 
 REPO_ROOT = Path(__file__).parent.parent
 FIXTURE_DIR = REPO_ROOT / "examples" / "canonicalization-boundary"
@@ -74,9 +75,13 @@ BOUNDED_SCHEMAS = (
 )
 UNBOUNDED_SCHEMAS = {
     "src/agentrust_trace/schema/trace-v0.1.json": (
-        "superseded, and loaded by nothing: verify_record rejects the v0.1 profile "
-        "identifier outright, so no record in this repository is validated against "
-        "this file and editing it would change a published artifact for no effect"
+        "superseded, and validated against by nothing: verify_record rejects the v0.1 "
+        "profile identifier outright, so no record in this repository is validated "
+        "against this file and no integer in it is ever compared against a value. It "
+        "is read, by `validate.profiles_with_schema`, for its `eat_profile` const "
+        "alone, which is how the identifier can be refused as the cutover's own "
+        "violation rather than as a profile this build cannot check. Editing it would "
+        "change a published artifact for no effect"
     ),
 }
 
@@ -137,7 +142,7 @@ def test_every_schema_in_the_repository_is_classified() -> None:
     assert _schemas_on_disk() == set(BOUNDED_SCHEMAS) | set(UNBOUNDED_SCHEMAS)
 
 
-def test_the_superseded_schema_is_still_loaded_by_nothing() -> None:
+def test_nothing_validates_a_record_against_the_superseded_schema() -> None:
     """The exemption rests on a fact, so the fact is checked.
 
     `schema/pic-trace-bridge-v1.json` was exempted here on the reasoning that it
@@ -146,23 +151,52 @@ def test_the_superseded_schema_is_still_loaded_by_nothing() -> None:
     else, so the exemption was wrong and hid the identical defect. The lesson is
     that an exemption reason nobody measures is how a defect stays exempt.
 
-    The reason left is that nothing loads the v0.1 schema. That is checkable, and
-    the exclusion below is written as `Path(__file__).name` rather than as a
-    literal: the first version named the file it lived in, and renaming that file
-    made this test find its own mention and fail.
+    This test asserted a stronger claim than the exemption needs, that no Python
+    file mentions the schema by name, and that claim became false when
+    `validate.profiles_with_schema` began reading every packaged schema's
+    `eat_profile` const to bound what a verifier may declare. Reading a const is
+    not validating a record, and only validating a record can bring an integer in
+    this file into contact with a value. So the check below is the property the
+    exemption actually rests on, measured rather than proxied: the schema is never
+    built into a validator, and a record carrying its profile cannot reach one.
+
+    The exclusion is written as `Path(__file__).name` rather than as a literal:
+    the first version named the file it lived in, and renaming that file made this
+    test find its own mention and fail.
     """
-    referenced = [
-        str(path.relative_to(REPO_ROOT))
-        for path in sorted(REPO_ROOT.rglob("*.py"))
-        if ".venv" not in path.parts
-        and path.name != Path(__file__).name  # this file names it to exempt it
-        and "trace-v0.1.json" in path.read_text(encoding="utf-8")
-    ]
-    assert not referenced, (
-        f"trace-v0.1.json is now referenced by {referenced}, so it is no longer "
-        "exempt on the grounds that nothing loads it. Bound it or record a reason "
-        "that is true."
+    superseded = REPO_ROOT / "src/agentrust_trace/schema/trace-v0.1.json"
+    profile = json.loads(superseded.read_text(encoding="utf-8"))
+    const = profile["properties"]["eat_profile"]["const"]
+
+    # 1. It is in the declarable ceiling, which is why it is read at all.
+    assert const in profiles_with_schema(), (
+        "the superseded profile is no longer in the set read out of the packaged "
+        "schemas, so nothing reads this file and the exemption's reason should go "
+        "back to naming that"
     )
+
+    # 2. Its contents never become a validator. The only schema this package builds
+    #    a validator over is the current one, and the reader that touches the
+    #    superseded file hands back profile URIs, never a schema object.
+    from agentrust_trace import validate as _validate
+
+    live = _validate._schema()["properties"]["eat_profile"].get("const")
+    assert live is not None and live == TRACE_PROFILE_V0_2 != const, (
+        f"the packaged validator now validates against {live!r}; if that is this "
+        "file, its integers are load-bearing and must be bounded"
+    )
+    assert all(isinstance(entry, str) for entry in profiles_with_schema()), (
+        "profiles_with_schema returns something other than profile URIs, so the "
+        "superseded schema's contents may be escaping the reader"
+    )
+
+    # A fourth leg was written here and removed, beside the three above: that a
+    # record carrying the superseded profile is rejected on the `eat_profile` path.
+    # Every mutation that would break
+    # it -- dropping the live const, setting it to the superseded identifier, setting
+    # the superseded file's const to the live one -- fails the assertion above first,
+    # so no positive control reaches it and it reported nothing. Recorded rather than
+    # kept, because an assertion no control can reach reads as coverage and is not.
 
 
 @pytest.mark.parametrize("relative", sorted(UNBOUNDED_SCHEMAS))
