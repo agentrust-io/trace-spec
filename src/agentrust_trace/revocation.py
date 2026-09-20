@@ -64,6 +64,7 @@ import referencing
 import referencing.jsonschema
 
 from agentrust_trace.sign import TRACE_PROFILE_V0_2
+from agentrust_trace.citation import CitationCheck
 from agentrust_trace.sign import (
     _b64url_decode,
     _canonical_bytes,
@@ -115,10 +116,15 @@ class VerificationResult:
     change and the one that follows from this type already existing: evidence outlives
     verifier builds, and a result that does not name the semantics it ran under cannot
     be re-read years later.
+
+    ``citations`` carries, for each surface in ``agentrust_trace.citation.SURFACES``,
+    what the caller's resolver did with the URI the record cites, and asserts nothing
+    about what the cited object binds.
     """
 
     revocation: RevocationCheck
     trusted_key_thumbprint: str
+    citations: dict[str, CitationCheck] = field(default_factory=dict)
 
     profile: str = TRACE_PROFILE_V0_2
     """The ``eat_profile`` the record was verified under. Always a member of

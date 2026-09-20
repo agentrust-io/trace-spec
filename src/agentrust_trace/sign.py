@@ -473,6 +473,7 @@ def verify_record(
     trusted_bundle_keys: Iterable[dict[str, Any]] | None = None,
     max_bundle_age_seconds: int = 86400,
     now: int | None = None,
+    citation_resolver: Callable[[str], bytes] | None = None,
 ) -> VerificationResult:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -568,10 +569,27 @@ def verify_record(
         separate entry point, so a caller has to handle it to know it. A caller
         who discards the return has the fail-open behaviour the old signature
         had; the alternatives were worse, and the reasoning is on issue #190.
+
+        ``citation_resolver``, when supplied, is called with each URI the record
+        cites at ``appraisal.policy_ref``, ``runtime.rim_uri`` and
+        ``model.aibom_uri`` and returns the object's bytes. The result's
+        ``citations`` field reports, per surface, ``resolved`` with the digest
+        over those bytes, ``unresolvable`` when the resolver raised or returned
+        something other than bytes, or ``not_attempted`` when no resolver was
+        supplied, the field is absent, or the surface is deferred
+        (``transparency``). No outcome changes ``revocation``, the thumbprint,
+        or whether this function raises: resolvability is recorded, not
+        appraised, and ``references[]`` is never read (spec section 3.1.2 rule
+        3). A ``citation_resolver`` that is neither callable nor ``None`` is
+        refused with ``ValueError`` at entry. See ``agentrust_trace.citation``.
+        The resolver is called last, after the signature has verified and after
+        every check that can raise, so a record that fails verification drives
+        no resolution.
     """
     import time
     from hmac import compare_digest
 
+    from agentrust_trace.citation import check_citations
     from agentrust_trace.revocation import (
         NO_CHECK,
         RevocationCheck,
@@ -587,6 +605,8 @@ def verify_record(
         verification_time = now
     _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
+    if citation_resolver is not None and not callable(citation_resolver):
+        raise ValueError("citation_resolver must be callable or None")
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
@@ -785,9 +805,14 @@ def verify_record(
 
     pub.verify(sig_bytes, msg)  # raises InvalidSignature on failure
 
+    # Last, after the signature verified: a record that fails verification
+    # drives no resolution.
+    citations = check_citations(record, citation_resolver)
+
     return VerificationResult(
         profile=profile,
         accepted_profiles=accepted,
         revocation=revocation_check,
         trusted_key_thumbprint=jwk_thumbprint(trusted_jwk),
+        citations=citations,
     )
