@@ -11,6 +11,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Regenerate the v0.3 draft after canonical reproducibility additions and make
+  the schema inventory test use portable repository paths on Windows.
+
 ### Added
 
 - **The schema, the reference model and the schema reference carry the reproducibility claim (section 3.1.4).** `schema/trace-claim.json` and its packaged copy gain the optional top-level `reproducibility` object: `function`, `code_identity`, an optional `code_resolver`, `input_closure` as `{id, digest, resolver}` entries with every member required, and `transcript_digest`. `appraisal` gains `method`, the closed set `re-execution`, and `re_execution`: `outcome` of `reproduced`, `diverged` or `not-attempted`, `observed_digest`, `reason`, and an optional `verifier_code_identity`. The three presence rules the section states are schema conditionals and model validators alike: `re_execution` is present exactly when `method` is `re-execution`, `observed_digest` is required on `diverged`, `reason` is required on `not-attempted`. `models.py` adds `Reproducibility`, `ClosureEntry` and `ReExecution`; `docs/schema.md` documents every member in its section. `examples/reproducibility-claim/` holds 21 signed vectors from a seeded key: five accepted records, a claim with no result and one result per outcome, and sixteen rejected ones, two per rule, with the transcript and closure digests recomputable from the JSON they are taken over. Tracks #364; closes #366.

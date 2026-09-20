@@ -127,7 +127,7 @@ def _within_domain(node: dict[str, Any]) -> bool:
 
 def _schemas_on_disk() -> set[str]:
     return {
-        str(path.relative_to(REPO_ROOT))
+        path.relative_to(REPO_ROOT).as_posix()
         for path in list((REPO_ROOT / "schema").rglob("*.json"))
         + list((REPO_ROOT / "src" / "agentrust_trace" / "schema").rglob("*.json"))
     }
