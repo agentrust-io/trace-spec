@@ -279,6 +279,53 @@ class Reference(_TraceModel):
     digest: DigestStr | None = None
 
 
+class ClosureEntry(_TraceModel):
+    """One content-addressed input of the deterministic function. Spec section 3.1.4.
+
+    The shape section 3.1.2 gives a reference, without ``rel`` or ``retention``:
+    every entry stands in the same relation to the claim, so nothing distinguishes
+    them. ``digest`` is required where a reference's is optional, because an entry
+    a verifier cannot check against the digest the producer signed pins nothing,
+    and pinning is the whole of what an entry does.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: Annotated[str, Field(min_length=1)]
+    digest: DigestStr
+    resolver: Annotated[str, Field(min_length=1)]
+
+
+class Reproducibility(_TraceModel):
+    """The claim that a named deterministic function of the run re-executes, over a
+    pinned input closure, to a transcript with the stated RFC 8785 digest. Spec
+    section 3.1.4.
+
+    The function is the producer's coordination logic: the code that decided what
+    ran, in what order, on what inputs. It is not the workload's side effects and
+    not the model calls, which are not deterministic; the boundary is drawn around
+    every non-deterministic interaction, each recorded and pinned in the closure as
+    an input like any other.
+
+    Producer-side. The block is the claim; the result of re-running it is an
+    appraisal, under ``Appraisal.method``. A record carrying it earns no assurance
+    from it: re-executability is not attestation and does not become it, so
+    ``runtime.platform`` is untouched, exactly as ``references`` leaves it.
+
+    A closure that omits anything which can change the transcript makes the claim
+    malformed rather than weak. That is detected at re-execution, as a read beyond
+    the closure, and not here: the model fixes the shape.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    function: Annotated[str, Field(min_length=1)]
+    code_identity: DigestStr
+    code_resolver: Annotated[str, Field(min_length=1)] | None = None
+    input_closure: list[ClosureEntry]
+    transcript_digest: DigestStr
+
+
 class BuildProvenance(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -291,6 +338,46 @@ class BuildProvenance(_TraceModel):
     provenance_depth: Literal["surface", "builder", "transitive"] | None = None
 
 
+class ReExecution(_TraceModel):
+    """The result of re-running a record's reproducibility claim. Spec section 3.1.4.
+
+    Made by the party that re-ran the function, named as ``Appraisal.verifier``.
+    ``outcome`` is the one of three that occurred, and two of them carry what
+    makes them readable: ``diverged`` carries ``observed_digest``, because
+    divergence localises nothing by itself and the two transcripts have to be
+    comparable by a third party; ``not-attempted`` carries ``reason``, because a
+    named absence and a generic one are different findings, and the finding is
+    lost the moment the reason is. ``not-attempted`` is never reported as either
+    of the others: absent is not pass, and absent is not failure.
+
+    ``verifier_code_identity`` is the verifier naming its own build. Self-asserted,
+    no weight singly; a correlation key across results, since two verifiers at
+    different implementations disagreeing over one closure is verifier drift.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["reproduced", "diverged", "not-attempted"]
+    observed_digest: DigestStr | None = None
+    reason: Annotated[str, Field(min_length=1)] | None = None
+    verifier_code_identity: DigestStr | None = None
+
+    @model_validator(mode="after")
+    def _outcome_carries_what_makes_it_readable(self) -> ReExecution:
+        if self.outcome == "diverged" and self.observed_digest is None:
+            raise ValueError(
+                "outcome 'diverged' requires observed_digest: without the verifier's "
+                "digest nobody can compare the two transcripts, and the divergence "
+                "localises nothing"
+            )
+        if self.outcome == "not-attempted" and self.reason is None:
+            raise ValueError(
+                "outcome 'not-attempted' requires reason: an inability to check is "
+                "reported with its cause, and a generic absence is a different finding"
+            )
+        return self
+
+
 class Appraisal(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -300,6 +387,24 @@ class Appraisal(_TraceModel):
     timestamp: Annotated[JsonInt, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
+    # Closed, for the reason `Origin.kind` is: a verifier keys on it. `status` is
+    # untouched by it; the re-execution outcome is not folded into the EAR set.
+    method: Literal["re-execution"] | None = None
+    re_execution: ReExecution | None = None
+
+    @model_validator(mode="after")
+    def _re_execution_present_exactly_when_the_method_says_so(self) -> Appraisal:
+        """Section 3.1.4: ``re_execution`` is present when ``method`` is
+        ``re-execution`` and absent otherwise. A result under no method is a
+        result a verifier cannot key on; a method with no result reports nothing.
+        """
+        if (self.method == "re-execution") != (self.re_execution is not None):
+            raise ValueError(
+                "appraisal.re_execution must be present exactly when appraisal.method "
+                f"is 're-execution'; got method={self.method!r} and "
+                f"re_execution={'present' if self.re_execution is not None else 'absent'}"
+            )
+        return self
 
 
 # Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
@@ -366,6 +471,7 @@ class TrustRecord(_TraceModel):
     delegation: Delegation | None = None
     origin: Origin | None = None
     references: list[Reference] | None = None
+    reproducibility: Reproducibility | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None
