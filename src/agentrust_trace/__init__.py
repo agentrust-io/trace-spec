@@ -27,6 +27,7 @@ from agentrust_trace.models import (
     TrustRecord,
 )
 from agentrust_trace.sign import (
+    DEFAULT_ACCEPTED_PROFILES,
     TRACE_PROFILE_V0_2,
     RevocationStore,
     generate_key,
@@ -86,6 +87,7 @@ __all__ = [
     "RevocationStore",
     "VerificationResult",
     "check_bundle",
+    "DEFAULT_ACCEPTED_PROFILES",
     "TRACE_PROFILE_V0_2",
     "SCHEMA",
     "iter_errors",

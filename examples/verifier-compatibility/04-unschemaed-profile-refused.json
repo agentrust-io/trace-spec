@@ -1,0 +1,68 @@
+{
+  "name": "unschemaed-profile-refused",
+  "description": "The verifier declares support for an older profile it carries no schema for. The record does not use it and does not need to: the first sentence of this description said it did until 2026-09-12, contradicting the sentence three lines below that says the record is an ordinary v0.2 record, which it is and always was. Refused at configuration, not at the record: a verifier can only honestly accept a profile whose shape it can check, and declaring more than that is a claim it cannot make. The record is an ordinary v0.2 record and nothing about it is wrong, which is the point: the only defect is in what the verifier declared, so a verifier that checks the record and not its own configuration accepts this and is still non-conformant. This vector said 'verified, downgraded' over an older record until the set was measured against a null verifier: that record was reaching the schema and being refused there, so the vector separated the schema rule rather than the profile rule it named. The older profile is deliberately not the v0.1 identifier, which no accepted set may contain for a different reason: the cutover in spec/trace-v0.2.md, whose coverage lives in tests/test_sign.py rather than in this set.",
+  "profile": "trace.verifier_compatibility.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#116",
+    "status": "under review, not accepted normative text"
+  },
+  "verifier": {
+    "accepted_profiles": [
+      "tag:agentrust-io.com,2026:trace-v0.2",
+      "tag:example.com,2025:trace-v0.0"
+    ],
+    "verification_time": 1785000100,
+    "check_freshness": false
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "yG9rlff2_KlMwnhgSz5u-yAiTl7XVZOu5jXXD3plPm5YWaUCcWq3VmA_xtwcRg3JCDKRRYLZHH-TpSjDMYrKCA"
+  },
+  "expected": {
+    "outcome": "refused",
+    "failure": "unschemaed_profile_in_accepted_set",
+    "statement": null
+  },
+  "preconditions": {
+    "unschemaed_for_the_verifier_under_test": [
+      "tag:example.com,2025:trace-v0.0"
+    ],
+    "why": "The expectation is a refusal because the verifier carries no schema for this profile. That is a fact about the implementation running the vector, not about this file, so it is stated here rather than assumed. An implementation that does carry a schema for this identifier has not failed the vector: the premise no longer holds for it, and it substitutes an identifier of its own that it cannot check. The rule under test is that a verifier refuses a declared set naming a profile whose shape it cannot check, with an innocent record."
+  }
+}
