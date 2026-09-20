@@ -20,6 +20,35 @@ def _validator() -> jsonschema.Draft202012Validator:
     return jsonschema.Draft202012Validator(_schema(), format_checker=jsonschema.FormatChecker())
 
 
+@lru_cache(maxsize=1)
+def profiles_with_schema() -> frozenset[str]:
+    """The ``eat_profile`` URIs this build carries a schema for.
+
+    Read out of the packaged schema files rather than restated here. A verifier can
+    only honestly accept a profile whose shape it can check, so this is the ceiling
+    on any accepted set: see :func:`agentrust_trace.verify_record`, which refuses a
+    configuration naming anything outside it.
+
+    Carrying a schema is necessary, not sufficient. ``trace-v0.1.json`` ships so the
+    identifier can be recognised and refused with a specific message, and the cutover
+    forbids accepting it regardless.
+    """
+    found: set[str] = set()
+    for entry in (importlib.resources.files("agentrust_trace") / "schema").iterdir():
+        if not entry.name.endswith(".json"):
+            continue
+        schema = json.loads(entry.read_text(encoding="utf-8"))
+        const = schema.get("properties", {}).get("eat_profile", {}).get("const")
+        if isinstance(const, str):
+            found.add(const)
+    if not found:
+        raise RuntimeError(
+            "no packaged schema declares an eat_profile const: the accepted-set ceiling "
+            "would be empty and every configuration would be refused"
+        )
+    return frozenset(found)
+
+
 #: Canonical schema exposed for downstream tooling that needs the raw dict.
 #:
 #: A copy, deliberately. `_schema()` is `lru_cache`d and `_validator()` is built over

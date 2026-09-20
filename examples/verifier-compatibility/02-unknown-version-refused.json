@@ -1,0 +1,61 @@
+{
+  "name": "unknown-version-refused",
+  "description": "A future profile the verifier does not implement. The signature is valid and the record must still be refused: fail-open here means verifying semantics the build does not implement.",
+  "profile": "trace.verifier_compatibility.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#116",
+    "status": "under review, not accepted normative text"
+  },
+  "verifier": {
+    "accepted_profiles": [
+      "tag:agentrust-io.com,2026:trace-v0.2"
+    ],
+    "verification_time": 1785000100,
+    "check_freshness": false
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2031:trace-v9.9",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "4KNR8GtfmkEQ1HZywf23V35nxNTAsgnqLBaA3DtoMDDdJFk6smTA4QhhU_Q7mlzmdgf5RJ_Fv-UGN00PCpo6DQ"
+  },
+  "expected": {
+    "outcome": "refused",
+    "failure": "profile_not_accepted",
+    "statement": null
+  }
+}

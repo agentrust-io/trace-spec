@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import FrozenInstanceError
+from pathlib import Path
+
 import hashlib
 import rfc8785
 
@@ -10,6 +14,11 @@ from pydantic import ValidationError
 
 from agentrust_trace import TrustRecord, sign_record, generate_key, key_to_jwk, verify_record
 from agentrust_trace.adapters import AGTSessionResult, TraceAGTAdapter
+from agentrust_trace.adapters.agt import TRACE_MIN_IAT
+from agentrust_trace.models import JCS_SAFE_INTEGER
+from agentrust_trace.validate import validate_json
+
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "trace-claim.json"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -286,3 +295,80 @@ def test_an_unappraised_record_still_signs_and_verifies() -> None:
     signed = sign_record(record, key)
     assert verify_record(signed, public_key_or_jwk=key_to_jwk(key)) is not None
     assert signed["appraisal"]["status"] == "none"
+
+
+# ---------------------------------------------------------------------------
+# iat reaches the record untouched (same failure mode as #320)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "iat",
+    ["1800000000", True, False, -5, 0, 1, 1699999999, 1.5, 2**60, JCS_SAFE_INTEGER + 1],
+)
+def test_iat_must_be_within_the_trace_v0_2_range(iat) -> None:
+    """Every other field here reaches the record through a models.py pydantic
+    constructor, which coerces or refuses a bad type before it is dumped. `iat`
+    used to reach build_trust_record's top-level "iat" key untouched, with
+    AGTSessionResult performing no validation of any field at all: a numeric
+    string or a bool survived to the signed wire form, and TrustRecord.model_validate()
+    reported it valid (pydantic's lax mode coerces on the way in) while the wire
+    bytes stayed the original, schema-invalid type. Same failure mode as
+    provenance.build_record's pre-#320 issued_at coercion."""
+    with pytest.raises(
+        ValueError, match="iat must be an integer Unix timestamp within the TRACE v0.2 range"
+    ):
+        _make_session(iat=iat)
+
+
+def test_valid_iat_round_trips_as_an_int_on_the_wire() -> None:
+    record = _make_adapter().build_trust_record(_make_session(iat=1800000000))
+    assert record["iat"] == 1800000000
+    assert isinstance(record["iat"], int)
+
+
+@pytest.mark.parametrize("iat", [1700000000, JCS_SAFE_INTEGER])
+def test_boundary_iat_values_reach_the_wire_and_validate(iat) -> None:
+    """The exact contract bounds must survive to the record, not merely construct.
+
+    Constructing the session says nothing about the value that gets signed, which
+    is what this file's iat tests are about, so the assertion is on the wire form
+    and on the schema."""
+    record = _make_adapter().build_trust_record(_make_session(iat=iat))
+    assert record["iat"] == iat
+    assert isinstance(record["iat"], int) and not isinstance(record["iat"], bool)
+    validate_json(record)
+
+
+@pytest.mark.parametrize("iat", ["1800000000", 1, 1699999999, JCS_SAFE_INTEGER + 1])
+def test_a_checked_iat_cannot_be_replaced_before_the_record_is_built(iat) -> None:
+    """Passing __post_init__ has to be a property of the value that gets signed.
+
+    While the session was a mutable dataclass it was not: one assignment between
+    construction and build_trust_record put any of these on the wire, where the
+    schema then rejected the record. #320 settled the same point for
+    provenance.build_record, which is why its check sits at the point of use."""
+    with pytest.raises(FrozenInstanceError):
+        _make_session().iat = iat
+    # frozen=True guards __setattr__ and nothing else. Each of these reaches the
+    # field, so the check that decides what gets signed is the one in
+    # build_trust_record. A fresh session per route, or the second assertion would
+    # pass on damage the first one did.
+    for reach in (lambda s: vars(s).__setitem__("iat", iat),
+                  lambda s: object.__setattr__(s, "iat", iat)):
+        session = _make_session()
+        reach(session)
+        assert session.iat == iat
+        with pytest.raises(ValueError, match="iat must be an integer Unix timestamp"):
+            _make_adapter().build_trust_record(session)
+
+
+def test_the_adapter_floor_is_the_one_the_record_contract_carries() -> None:
+    """TRACE_MIN_IAT is a literal here and in models.py. If they ever diverge the
+    adapter refuses records the schema accepts, or emits ones it rejects."""
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    assert schema["properties"]["iat"]["minimum"] == TRACE_MIN_IAT
+    assert schema["properties"]["iat"]["maximum"] == JCS_SAFE_INTEGER
+    bound = next(
+        m for m in TrustRecord.model_fields["iat"].metadata if getattr(m, "ge", None) is not None
+    )
+    assert bound.ge == TRACE_MIN_IAT
