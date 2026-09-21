@@ -100,6 +100,7 @@ plugins:
           - spec/server-provenance-v1.md
           - spec/content-marking-v1.md
           - docs/schema.md
+          - docs/references-registry.md
           - docs/verification-outcome-statements.md
           - docs/rfcs/runtime-evidence-profile.md
         Guides:
@@ -220,6 +221,7 @@ nav:
           - TRACE v0.1 (superseded): spec/trace-v0.1.md
       - Reference:
           - Schema reference: docs/schema.md
+          - References registry: docs/references-registry.md
           - Verification outcome statements: docs/verification-outcome-statements.md
           - Build provenance depth: docs/build-provenance-depth.md
           - How the conformance vectors are built: docs/conformance-method.md
