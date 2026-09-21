@@ -674,11 +674,10 @@ def verify_record(
             "signature over semantics this build does not implement is not evidence."
         )
 
-    sig_b64 = record.get("signature")
-    if not sig_b64:
+    if "signature" not in record:
         raise ValueError("record has no 'signature' field")
 
-    sig_bytes = _b64url_decode(sig_b64, field="signature")
+    sig_bytes = _b64url_decode(record["signature"], field="signature")
 
     # Signature validity is not schema validity. Enforce the canonical profile
     # shape here so callers cannot accidentally treat a signed object carrying
