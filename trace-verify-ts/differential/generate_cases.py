@@ -411,7 +411,14 @@ def external_vector_cases(root: pathlib.Path | None) -> list[dict[str, Any]]:
             continue
         trusted_key = document.get("trusted_key") if isinstance(document, dict) else None
         issued = record.get("iat")
-        options: dict[str, Any] = {"now": issued if isinstance(issued, int) else NOW}
+        # `now` is the verifier's own argument and is refused outside the safe
+        # range before the record is read; a vector whose point is an `iat`
+        # outside that range must be judged at a valid `now`.
+        valid_now = (
+            isinstance(issued, int) and not isinstance(issued, bool)
+            and 0 <= issued <= 2**53 - 1
+        )
+        options: dict[str, Any] = {"now": issued if valid_now else NOW}
         if isinstance(trusted_key, dict):
             options["trusted_key"] = trusted_key
         else:
