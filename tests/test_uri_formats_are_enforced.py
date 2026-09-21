@@ -130,6 +130,18 @@ def test_the_base_record_is_valid() -> None:
 
 
 @pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+@pytest.mark.parametrize("tail", ["\n", "\r", "\u2028", "\u2029"])
+def test_uri_fields_reject_literal_line_terminators(path, tail):
+    with pytest.raises(jsonschema.ValidationError):
+        validate_json(_with(path, "https://example.org/a" + tail))
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+def test_uri_fields_accept_percent_encoded_newline(path):
+    validate_json(_with(path, "https://example.org/a%0A"))
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
 @pytest.mark.parametrize("address", ["01.2.3.4", "1.02.3.4", "1.2.03.4", "1.2.3.04"])
 def test_ipv6_embedded_ipv4_octets_cannot_have_leading_zeros(
     path: tuple[str, ...], address: str

@@ -4,11 +4,46 @@ import copy
 import importlib.resources
 import json
 import re
+from collections.abc import Iterator
 from functools import lru_cache
 from ipaddress import IPv6Address
 from typing import Any, cast
 
 import jsonschema
+from jsonschema.protocols import Validator
+
+
+# Only the four pattern forms shipped in TRACE v0.2 are adapted here. This is
+# not a general ECMA-262 translator: a new schema pattern needs explicit review.
+# None of these forms has a literal/escaped dot or dollar, or a dot in a class.
+_ECMA_PATTERNS = (
+    '^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$',
+    '^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$',
+    (r"^P(\d+W|(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
+     r"(T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))?"
+     r"|T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))$"),
+    '^[A-Za-z0-9_-]+$',
+)
+_PYTHON_PATTERNS = {
+    pattern: re.compile(
+        pattern.replace("$", r"\Z")
+        .replace(".", r"[^\n\r\u2028\u2029]")
+        .replace(r"\d", "[0-9]")
+    )
+    for pattern in _ECMA_PATTERNS
+}
+
+
+def _ecma_pattern(
+    validator: Validator, pattern: str, instance: Any, schema: Any
+) -> Iterator[jsonschema.ValidationError]:
+    if validator.is_type(instance, "string") and not _PYTHON_PATTERNS[pattern].search(instance):
+        yield jsonschema.ValidationError(f"{instance!r} does not match {pattern!r}")
+
+
+_TraceValidator = jsonschema.validators.extend(  # type: ignore[no-untyped-call]
+    jsonschema.Draft202012Validator, {"pattern": _ecma_pattern}
+)
 
 
 @lru_cache(maxsize=1)
@@ -18,14 +53,17 @@ def _schema() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
-def _validator() -> jsonschema.Draft202012Validator:
-    # Keep jsonschema's URI grammar, then close its permissive embedded-IPv4 check.
-    # Use instance-local registration so other consumers' format checkers are untouched.
+def _validator() -> Validator:
     base_uri_checker = jsonschema.FormatChecker(formats=["uri"])
     checker = jsonschema.FormatChecker()
 
+    # Convert IPv6Address failures into schema validation errors.
     @checker.checks("uri", raises=ValueError)
     def is_uri(value: Any) -> bool:
+        # URI grammar excludes literal line breaks; Python regex end anchors can
+        # otherwise accept a final LF. Percent-encoded characters remain valid.
+        if isinstance(value, str) and any(c in value for c in "\n\r\u2028\u2029"):
+            return False
         if not base_uri_checker.conforms(value, "uri"):
             return False
         if isinstance(value, str):
@@ -39,7 +77,7 @@ def _validator() -> jsonschema.Draft202012Validator:
                         IPv6Address(literal)
         return True
 
-    return jsonschema.Draft202012Validator(_schema(), format_checker=checker)
+    return cast(Validator, _TraceValidator(_schema(), format_checker=checker))
 
 
 @lru_cache(maxsize=1)
