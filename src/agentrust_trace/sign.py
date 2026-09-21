@@ -794,8 +794,12 @@ def verify_record(
 
     # Freshness: bind to a caller-supplied nonce when provided.
     if expected_nonce is not None:
+        if not isinstance(expected_nonce, str):
+            raise ValueError("expected_nonce must be a string")
         actual_nonce = record.get("runtime", {}).get("nonce")
-        if not isinstance(actual_nonce, str) or not compare_digest(actual_nonce, expected_nonce):
+        if not isinstance(actual_nonce, str) or not compare_digest(
+            actual_nonce.encode("utf-8"), expected_nonce.encode("utf-8")
+        ):
             raise ValueError("record runtime.nonce does not match expected_nonce")
 
     # Canonical bytes: record without "signature" key

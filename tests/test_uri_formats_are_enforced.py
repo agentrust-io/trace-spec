@@ -26,7 +26,8 @@ from typing import Any
 import jsonschema
 import pytest
 
-from agentrust_trace import validate_json
+from agentrust_trace import generate_key, key_to_jwk, sign_record, validate_json, verify_record
+from agentrust_trace.validate import iter_errors
 
 #: Every field in schema/trace-claim.json declaring `"format": "uri"`, recovered by hand
 #: from the schema and pinned by `test_the_set_is_every_field_that_declares_the_format`.
@@ -126,3 +127,71 @@ def test_the_uris_a_record_legitimately_carries_are_accepted(
 
 def test_the_base_record_is_valid() -> None:
     validate_json(BASE)
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+@pytest.mark.parametrize("tail", ["\n", "\r", "\u2028", "\u2029"])
+def test_uri_fields_reject_literal_line_terminators(path, tail):
+    with pytest.raises(jsonschema.ValidationError):
+        validate_json(_with(path, "https://example.org/a" + tail))
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+def test_uri_fields_accept_percent_encoded_newline(path):
+    validate_json(_with(path, "https://example.org/a%0A"))
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+@pytest.mark.parametrize("address", ["01.2.3.4", "1.02.3.4", "1.2.03.4", "1.2.3.04"])
+def test_ipv6_embedded_ipv4_octets_cannot_have_leading_zeros(
+    path: tuple[str, ...], address: str
+) -> None:
+    # RFC 3986 section 3.2.2: each dec-octet is either zero or starts with 1-9.
+    record = _with(path, f"https://[::{address}]/")
+    with pytest.raises(jsonschema.ValidationError):
+        validate_json(record)
+    errors = iter_errors(record)
+    assert len(errors) == 1
+    assert tuple(errors[0].path) == path
+    assert errors[0].validator == "format"
+
+
+@pytest.mark.parametrize("path", URI_FIELDS, ids=lambda p: ".".join(p))
+@pytest.mark.parametrize("uri", [
+    "https://[::1.2.3.4]/",
+    "https://[::ffff:192.0.2.128]/",
+    "https://[2001:db8::1]/",
+    "https://[::]/",
+    "https://user:password@[::1.2.3.4]:8443/a?b=c#d",
+    "https://[v1.example:future]/",
+    "https://1.2.3.04/",  # A reg-name, not a bracketed IPv6 literal.
+    "urn:example:1.2.3.04",
+    "https://example.org/a?address=%5B::1.2.3.04%5D",
+    "https://example.org/a#address=%5B::1.2.3.04%5D",
+])
+def test_uri_ip_literal_guard_preserves_valid_uris(path: tuple[str, ...], uri: str) -> None:
+    validate_json(_with(path, uri))
+
+
+@pytest.mark.parametrize("uri,valid", [
+    ("https://[::1.2.3.04]/", False),
+    ("https://user:password@[::1.2.3.04]:8443/a", False),
+    ("https://[::1.2.3.4]/", True),
+])
+def test_signed_record_uri_ip_literal_validation(uri: str, valid: bool) -> None:
+    key = generate_key()
+    record = sign_record(_with(("appraisal", "verifier"), uri), key)
+    if valid:
+        verify_record(record, key_to_jwk(key), now=BASE["iat"])
+    else:
+        with pytest.raises(ValueError, match="does not conform.*appraisal[.]verifier"):
+            verify_record(record, key_to_jwk(key), now=BASE["iat"])
+
+
+def test_uri_guard_does_not_change_jsonschema_global_checkers() -> None:
+    from agentrust_trace.validate import _validator
+
+    registered = jsonschema.FormatChecker.checkers.copy()
+    _validator.cache_clear()
+    validate_json(BASE)
+    assert jsonschema.FormatChecker.checkers == registered

@@ -300,8 +300,15 @@ def check_bundle(
 
     issued_at = bundle["issued_at"]
     valid_until = bundle["valid_until"]
+    try:
+        digest = bundle_digest(bundle)
+    except ValueError as exc:
+        return _unverified("bundle_malformed", {
+            "path": "/",
+            "error": f"bundle has no RFC 8785 form: {exc}",
+        })
     base = {
-        "bundle_digest": bundle_digest(bundle),
+        "bundle_digest": digest,
         "log_id": log_id,
         "issued_at": issued_at,
         "valid_until": valid_until,
