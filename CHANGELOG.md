@@ -11,6 +11,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Regenerate the v0.3 draft after canonical reproducibility additions and make
+  the schema inventory test use portable repository paths on Windows.
+
 ### Added
 
 - **The schema, the reference model and the schema reference carry the reproducibility claim (section 3.1.4).** `schema/trace-claim.json` and its packaged copy gain the optional top-level `reproducibility` object: `function`, `code_identity`, an optional `code_resolver`, `input_closure` as `{id, digest, resolver}` entries with every member required, and `transcript_digest`. `appraisal` gains `method`, the closed set `re-execution`, and `re_execution`: `outcome` of `reproduced`, `diverged` or `not-attempted`, `observed_digest`, `reason`, and an optional `verifier_code_identity`. The three presence rules the section states are schema conditionals and model validators alike: `re_execution` is present exactly when `method` is `re-execution`, `observed_digest` is required on `diverged`, `reason` is required on `not-attempted`. `models.py` adds `Reproducibility`, `ClosureEntry` and `ReExecution`; `docs/schema.md` documents every member in its section. `examples/reproducibility-claim/` holds 21 signed vectors from a seeded key: five accepted records, a claim with no result and one result per outcome, and sixteen rejected ones, two per rule, with the transcript and closure digests recomputable from the JSON they are taken over. Tracks #364; closes #366.
@@ -29,6 +32,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - **`verify_record()` reports whether the objects a record cites can be resolved (#190).** A record cites `appraisal.policy_ref`, `runtime.rim_uri` and `model.aibom_uri` as URIs the schema checks only for shape, and, until this change, nothing under `src/` read them. `verify_record()` now takes `citation_resolver`, a caller-supplied function from URI to bytes, and returns a `VerificationResult` whose new `citations` field carries one row per surface: `resolved` with the SHA-256 over exactly the returned bytes and their count, `unresolvable` with the cause and the exception's class name when the resolver raised or the returned value's type name when it returned non-bytes, or `not_attempted` when no resolver was supplied, the field is absent, or the surface is deferred. `transparency` is deferred to the coordination in agentrust-io/trace-tests#92 and section 7 open question 3, and every vector shows it so. The check records resolvability and asserts nothing about binding, which #280 holds; it never reads `references[]`, which keeps it inside section 3.1.2 rule 3 by construction; and it takes its resolver from the caller only, never from the record, per section 3.1.2. No outcome changes the revocation check, the thumbprint, or whether verification raises; a resolver that is neither callable nor `None` is refused at entry. `examples/citation-resolution/` carries sixteen generated vectors with the cited bytes in hand, and `tests/test_citation_resolution.py` holds eleven invariants over them, including that every revocation vector `verify_record()` accepted before still verifies with the same revocation result. The outcome names are not accepted normative text (#279). Informative only: no schema, wire-format or normative change.
 
 ### Fixed
+
+- **The v0.3 draft schema accepted the private half of a confirmation key.**
+  `schema/trace-claim-v0.3-draft.json` states that outside the profile
+  identifier and `runtime.evidence` it is byte-identical to
+  `schema/trace-claim.json`, but it was forked from an older revision and never
+  received the `cnf.jwk` private-key refusal (#296) or the RSA branch (#311), so a
+  v0.3 record carrying `d` validated against it. The shipped verifier refuses any
+  profile other than v0.2 before schema checks, so nothing accepted such a record
+  in practice. The draft is now produced by `scripts/gen_v03_draft_schema.py`
+  from the canonical schema plus its own declared members, and
+  `tests/test_v03_draft_schema.py` fails when the committed file drifts. Reported
+  by @saintmalik in #368.
 
 - **Server provenance records now enforce the existing attestation shape in both `build_record()` and `verify_record()`.** After #325, non-object values were already refused. The remaining gaps included an empty object on a non-TEE record, an unknown platform, and `platform: "software-only"` on a `tee-attested` record. Non-TEE records now require `attestation is None`; `tee-attested` records validate against `RuntimeInfo` and additionally reject `software-only`. This implements `spec/server-provenance-v1.md` section 3's reference to the TRACE v0.2 runtime shape. **Previously accepted signed records with extra attestation members or incorrectly typed optional fields are also refused.** `schema/trace-claim.json` disallows additional runtime properties and requires strings for `rim_uri`, `nonce`, and `firmware_version` when present. The existing `RuntimeInfo` model enforces the extra-member restriction and the types of non-null optional values; it is reused here without changing its behavior. Regression cases exercise the builder and verification of directly signed records, including extra members and each optional field's type, with valid controls. All nine hardware platform names accepted by the model remain accepted.
 
