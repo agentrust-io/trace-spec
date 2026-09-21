@@ -67,11 +67,11 @@ TRACE profiles, and does not replace:
 - **SLSA**: build provenance
 - **SPIFFE / SPIRE**: workload identity
 - **SCITT**: transparency anchoring
-- **EAR (draft-ietf-rats-ar4si)**: verifier appraisal
+- **EAR (draft-ietf-rats-ear)**: verifier appraisal, carrying AR4SI's trustworthiness tiers (draft-ietf-rats-ar4si)
 - **MCP / A2A**: agent execution surface
 - **AIBOM (SPDX 3.0, CycloneDX 1.7)**: model component inventory
 
-TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming profile, not a competing standard.
+TRACE participates in the IETF RATS and SCITT working groups as a consuming profile, not a competing standard.
 
 ## 8. Transition timeline
 

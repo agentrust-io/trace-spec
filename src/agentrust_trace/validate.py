@@ -3,7 +3,9 @@ from __future__ import annotations
 import copy
 import importlib.resources
 import json
+import re
 from functools import lru_cache
+from ipaddress import IPv6Address
 from typing import Any, cast
 
 import jsonschema
@@ -17,7 +19,27 @@ def _schema() -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _validator() -> jsonschema.Draft202012Validator:
-    return jsonschema.Draft202012Validator(_schema(), format_checker=jsonschema.FormatChecker())
+    # Keep jsonschema's URI grammar, then close its permissive embedded-IPv4 check.
+    # Use instance-local registration so other consumers' format checkers are untouched.
+    base_uri_checker = jsonschema.FormatChecker(formats=["uri"])
+    checker = jsonschema.FormatChecker()
+
+    @checker.checks("uri", raises=ValueError)
+    def is_uri(value: Any) -> bool:
+        if not base_uri_checker.conforms(value, "uri"):
+            return False
+        if isinstance(value, str):
+            authority = re.match(r"^[^:]+://([^/?#]*)", value)
+            if authority is not None:
+                host = authority[1].rsplit("@", 1)[-1]
+                if host.startswith("["):
+                    literal = host[1:host.index("]")]
+                    # IPvFuture has its own grammar; it is not an IPv6 address.
+                    if not literal.startswith(("v", "V")):
+                        IPv6Address(literal)
+        return True
+
+    return jsonschema.Draft202012Validator(_schema(), format_checker=checker)
 
 
 @lru_cache(maxsize=1)
