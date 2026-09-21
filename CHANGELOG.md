@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Report revocation bundles without an RFC 8785 form as `unverified_for_revocation`
+  with cause `bundle_malformed`, while continuing record verification (#382).
+  The direct bundle-digest API still refuses such input. Reported by @chernistry.
+
 - Regenerate the v0.3 draft after canonical reproducibility additions and make
   the schema inventory test use portable repository paths on Windows.
 
