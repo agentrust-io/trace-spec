@@ -4,6 +4,8 @@
 
 # TRACE: Trust, Runtime Attestation, and Compliance Evidence
 
+Community updates and contributor highlights: [AgenTrust on LinkedIn](https://www.linkedin.com/company/agentrust-io/).
+
 <p align="center">
   <a href="https://trace.agentrust-io.com">
     <img src="https://img.shields.io/badge/%F0%9F%93%96_Full_Documentation-trace.agentrust--io.com-8251EE?style=for-the-badge&logoColor=white" alt="Full Documentation" height="40">
