@@ -418,3 +418,39 @@ def test_the_generator_reproduces_the_committed_vectors_byte_for_byte(
     )
     for path in FILES:
         assert (target / path.name).read_bytes() == path.read_bytes(), path.name
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("log_id", "log.example/trace\ud800"), ("bundle_key_id", "key\udfff")],
+)
+def test_uncanonicalizable_bundle_is_unverified(field, value):
+    doc, ctx = _fresh()
+    assert _run(doc).revocation.outcome == "verified"
+    ctx["bundle"][field] = value
+    result = _run(doc)
+    assert result.revocation.outcome == "unverified_for_revocation"
+    assert result.revocation.cause == "bundle_malformed"
+    assert result.revocation.evidence["path"] == "/"
+    assert "RFC 8785" in result.revocation.evidence["error"]
+    assert "bundle_digest" not in result.revocation.evidence
+    json.dumps(result.revocation.evidence, ensure_ascii=False).encode("utf-8")
+
+
+def test_uncanonicalizable_bundle_does_not_skip_record_signature():
+    from cryptography.exceptions import InvalidSignature
+
+    doc, ctx = _fresh()
+    ctx["bundle"]["log_id"] += "\ud800"
+    doc["records"][0]["subject"] = "spiffe://example.org/changed"
+    with pytest.raises(InvalidSignature):
+        _run(doc)
+
+
+def test_bundle_digest_still_refuses_uncanonicalizable_input():
+    from agentrust_trace.revocation import bundle_digest
+
+    _, ctx = _fresh()
+    ctx["bundle"]["log_id"] += "\ud800"
+    with pytest.raises(ValueError):
+        bundle_digest(ctx["bundle"])
