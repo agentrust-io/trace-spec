@@ -694,7 +694,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 - **SLSA Provenance v1.0**: build-time provenance. Build Level 2 minimum for TRACE-conformant records in v1.0; Build Level 3 is the target for production reference implementations.
 - **SPIFFE / SPIRE**: workload identity. The SVID is bound to the TEE measurement so identity is rooted in hardware.
 - **SCITT**: append-only transparency log. TRACE defines a SCITT profile for Trust Record inclusion (Signed Statement registration, Receipt format, key rotation semantics).
-- **EAR (draft-ietf-rats-ar4si)**: verifier output format. Separates *what was claimed* from *what was accepted*.
+- **EAR (draft-ietf-rats-ear)**: verifier output format, carrying AR4SI's trustworthiness tiers (draft-ietf-rats-ar4si). Separates *what was claimed* from *what was accepted*.
 - **MCP**: Model Context Protocol tool surface. TRACE adds (a) cryptographic binding of the transcript hash into the EAT envelope and (b) a per-call `data_class` classification. The normative MCP profile is not in this version; it is targeted for v0.3.
 - **A2A**: Agent-to-Agent communication. TRACE adds transcript binding and cross-protocol identity threading via SPIFFE SVID. The `delegation` link block (§3.1) landed in v0.2 as the foundation; the normative A2A binding rules are targeted for v0.3.
 - **AIBOM (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM)**: component inventory for models, datasets, dependencies. Referenced by digest from `model`.
@@ -756,7 +756,7 @@ the reference implementation at the MCP tool-call boundary.
 
 **The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Project Contribution Agreement and the Technical Charter have been executed; when the Technical Charter takes effect, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
-Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups).
+Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS and SCITT working groups).
 
 ### 6.2 Target contributing organizations
 
@@ -817,7 +817,8 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 - EAT, Entity Attestation Token (RFC 9711), https://www.rfc-editor.org/rfc/rfc9711
 - SCITT Architecture (draft-ietf-scitt-architecture): https://datatracker.ietf.org/doc/draft-ietf-scitt-architecture/
 - SCITT Reference APIs (draft-ietf-scitt-scrapi): https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/
-- EAR / AR4SI (draft-ietf-rats-ar4si): https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/
+- EAR, EAT Attestation Results (draft-ietf-rats-ear): https://datatracker.ietf.org/doc/draft-ietf-rats-ear/
+- AR4SI, Attestation Results for Secure Interactions (draft-ietf-rats-ar4si): https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/
 - JWS (RFC 7515): https://www.rfc-editor.org/rfc/rfc7515
 - JWE (RFC 7516): https://www.rfc-editor.org/rfc/rfc7516
 - COSE (RFC 9052/9053): https://www.rfc-editor.org/rfc/rfc9052
