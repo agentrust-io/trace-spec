@@ -61,6 +61,7 @@ MESSAGE_CODES: list[tuple[str, str]] = [
     ("record has no 'eat_profile'", "profile_missing"),
     ("carries the superseded v0.1 profile", "profile_superseded"),
     ("is not 'tag:agentrust-io.com,2026:trace-v0.2'", "profile_unsupported"),
+    ("is not in this verifier's accepted set", "profile_unsupported"),
     ("record has no 'signature' field", "signature_missing"),
     ("signature must be a base64url string", "signature_malformed"),
     ("signature is not valid base64url", "signature_malformed"),
