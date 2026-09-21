@@ -79,11 +79,18 @@ so a schema edit that is not rebuilt fails rather than passing quietly.
 ## The differential harness
 
 ```
-python differential/generate_cases.py [--external <trace-tests>/tests/vectors]
+python differential/generate_cases.py --external <trace-tests>/tests/vectors
 python differential/oracle.py          # the Python implementation's verdicts
 node differential/run.mjs              # this implementation's verdicts
-python differential/compare.py
+python differential/compare.py --expect-external 12
 ```
+
+`--external` is a checkout of the published conformance vectors; CI pins one and passes
+`--expect-external` with the number of cases it must yield, so a checkout that did not
+happen fails the run rather than shrinking the corpus. Without it the corpus is 1632 cases
+and the published-vector row below is absent. `generate_cases.py` writes the SHA-256 of
+every vector file it read to `build/manifest.json`, and `compare.py` prints the count and
+the manifest digest.
 
 The corpus is one JSON file holding each record as *text*, because several cases exist to
 probe a difference that only survives in text. Both runners parse the same bytes with their
@@ -91,7 +98,10 @@ own JSON parser. A case agrees when both sides reach the same verdict for the sa
 reason, and every disagreement is argued in
 [`differential/known-divergences.json`](differential/known-divergences.json), matched on
 both the case and the pair of reported reasons, so a new disagreement in a family already
-listed is reported rather than absorbed.
+listed is reported rather than absorbed. The ledger holds in the other direction too: each
+entry declares how many cases land on it, and an entry, a pair or a count the run does not
+bear out fails it, so a divergence that stops happening on either side has to leave the
+ledger rather than stay as a claim nothing checks.
 
 Latest run, against agentrust-trace 0.10.0:
 
@@ -107,3 +117,4 @@ Latest run, against agentrust-trace 0.10.0:
 
 Every published vector agrees. The 364 remaining cases are 13 documented divergence classes
 in the adversarial matrix, each one appearing once per verifier configuration.
+

@@ -380,14 +380,19 @@ def repository_vector_cases() -> list[dict[str, Any]]:
 def external_vector_cases(root: pathlib.Path | None) -> list[dict[str, Any]]:
     """The published conformance vectors, read from a pinned checkout.
 
-    Nothing is vendored: the directory is passed in, and `manifest.json` beside
-    this file records the SHA-256 of every file the corpus was built from, so a
-    later run against a different checkout is detected rather than absorbed.
+    Nothing is vendored: the directory is passed in, and `build/manifest.json`
+    records the SHA-256 of every file the corpus was built from. A root that is
+    passed and cannot be read is an error, not an empty group: the workflow pins
+    the checkout and asserts the case count, and a silent empty group would print
+    the same `unexpected: 0` as a full one.
     """
-    if root is None or not root.is_dir():
-        return []
-    cases = []
-    manifest = {}
+    cases: list[dict[str, Any]] = []
+    manifest: dict[str, str] = {}
+    if root is None:
+        write_manifest(manifest)
+        return cases
+    if not root.is_dir():
+        raise SystemExit(f"--external {root}: not a directory")
     for path in sorted(root.rglob("*.json")):
         raw = path.read_bytes()
         name = path.relative_to(root).as_posix()
@@ -418,10 +423,18 @@ def external_vector_cases(root: pathlib.Path | None) -> list[dict[str, Any]]:
             "record_json": json.dumps(record, ensure_ascii=False),
             "options": options,
         })
+    write_manifest(manifest)
+    if not cases:
+        raise SystemExit(f"--external {root}: {len(manifest)} JSON files, no Trust Record in them")
+    return cases
+
+
+def write_manifest(manifest: dict[str, str]) -> None:
+    """Always written, empty when no vectors were read, so compare.py never reads a
+    manifest left behind by an earlier run against a different checkout."""
     (BUILD / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    return cases
 
 
 def build(external: pathlib.Path | None) -> dict[str, Any]:
