@@ -118,16 +118,28 @@ async function runJcs(item) {
 }
 
 async function runThumbprint(item) {
+  let value;
   try {
-    return { verdict: "thumbprint", value: await jwkThumbprint(JSON.parse(item.value_json)) };
+    value = JSON.parse(item.value_json);
+  } catch (error) {
+    return { verdict: "parse_error", detail: String(error?.message) };
+  }
+  try {
+    return { verdict: "thumbprint", value: await jwkThumbprint(value) };
   } catch (error) {
     return rejection(error);
   }
 }
 
 async function runChainDigest(item) {
+  let value;
   try {
-    return { verdict: "digest", value: await parentRecordHash(JSON.parse(item.value_json), item.algorithm) };
+    value = JSON.parse(item.value_json);
+  } catch (error) {
+    return { verdict: "parse_error", detail: String(error?.message) };
+  }
+  try {
+    return { verdict: "digest", value: await parentRecordHash(value, item.algorithm) };
   } catch (error) {
     return rejection(error);
   }

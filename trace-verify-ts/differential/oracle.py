@@ -107,6 +107,11 @@ def classify(exc: BaseException) -> dict[str, Any]:
         "InfError",
     }:
         return {"code": "canonicalization_failed", "detail": text}
+    if isinstance(exc, RecursionError):
+        # rfc8785 recurses once per nesting level; a value nested past the
+        # interpreter's stack has no canonical form this runner can produce,
+        # which is what the other side reports for the same text.
+        return {"code": "canonicalization_failed", "detail": f"RecursionError: {text}"}
     if isinstance(exc, ValueError):
         for fragment, code in MESSAGE_CODES:
             if fragment in text:
@@ -153,10 +158,35 @@ def scrub(evidence: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in evidence.items() if k not in {"error", "key"}}
 
 
+def parse(text: str) -> Any:
+    """json.loads with the two failures a corpus can provoke turned into one exception.
+
+    A case's text is arbitrary bytes from another repository; a text this parser
+    refuses, or nests deeper than the interpreter's stack, is a verdict on the
+    case, not a crash of the runner. `run.mjs` reports the same case as
+    `parse_error`, so the comparison sees a verdict on both sides.
+    """
+    try:
+        return json.loads(text)
+    except (ValueError, RecursionError) as exc:
+        raise ParseError(f"{type(exc).__name__}: {exc}") from exc
+
+
+class ParseError(Exception):
+    pass
+
+
 def run_verify(case: dict[str, Any]) -> dict[str, Any]:
     options = case["options"]
-    record = json.loads(case["record_json"])
+    try:
+        record = parse(case["record_json"])
+    except ParseError as exc:
+        return {"verdict": "parse_error", "detail": str(exc)}
     bundle_json = options.get("revocation_bundle_json")
+    try:
+        bundle = parse(bundle_json) if bundle_json is not None else None
+    except ParseError as exc:
+        return {"verdict": "parse_error", "detail": f"bundle: {exc}"}
     keywords: dict[str, Any] = {
         "allow_embedded_key": options.get("allow_embedded_key", False),
         "now": options.get("now"),
@@ -164,7 +194,7 @@ def run_verify(case: dict[str, Any]) -> dict[str, Any]:
         "max_bundle_age_seconds": options.get("max_bundle_age_seconds", 86400),
         "expected_nonce": options.get("expected_nonce"),
         "revocation": store_from(options.get("revocation")),
-        "revocation_bundle": json.loads(bundle_json) if bundle_json is not None else None,
+        "revocation_bundle": bundle,
         "trusted_bundle_keys": options.get("trusted_bundle_keys"),
     }
     if "max_age_seconds" in options:
@@ -188,8 +218,8 @@ def run_verify(case: dict[str, Any]) -> dict[str, Any]:
 
 def run_jcs(case: dict[str, Any]) -> dict[str, Any]:
     try:
-        value = json.loads(case["value_json"])
-    except ValueError as exc:
+        value = parse(case["value_json"])
+    except ParseError as exc:
         return {"verdict": "parse_error", "detail": str(exc)}
     try:
         return {"verdict": "canonical", "bytes": rfc8785.dumps(value).decode("utf-8")}
@@ -199,13 +229,20 @@ def run_jcs(case: dict[str, Any]) -> dict[str, Any]:
 
 def run_thumbprint(case: dict[str, Any]) -> dict[str, Any]:
     try:
-        return {"verdict": "thumbprint", "value": jwk_thumbprint(json.loads(case["value_json"]))}
+        value = parse(case["value_json"])
+    except ParseError as exc:
+        return {"verdict": "parse_error", "detail": str(exc)}
+    try:
+        return {"verdict": "thumbprint", "value": jwk_thumbprint(value)}
     except BaseException as exc:  # noqa: BLE001
         return {"verdict": "rejected", **classify(exc)}
 
 
 def run_chain_digest(case: dict[str, Any]) -> dict[str, Any]:
-    record = json.loads(case["value_json"])
+    try:
+        record = parse(case["value_json"])
+    except ParseError as exc:
+        return {"verdict": "parse_error", "detail": str(exc)}
     algorithm = case["algorithm"]
     try:
         canonical = rfc8785.dumps(record)
