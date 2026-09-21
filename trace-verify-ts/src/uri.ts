@@ -31,7 +31,7 @@ const IPV6ADDRESS = `(?:${[
   `(?:(?:${H16}:){0,5}${H16})?::${H16}`,
   `(?:(?:${H16}:){0,6}${H16})?::`,
 ].join("|")})`;
-const IPVFUTURE = `v${HEXDIG}+\\.(?:${UNRESERVED}|${SUB_DELIMS}|:)+`;
+const IPVFUTURE = `[vV]${HEXDIG}+\\.(?:${UNRESERVED}|${SUB_DELIMS}|:)+`;
 const IP_LITERAL = `\\[(?:${IPV6ADDRESS}|${IPVFUTURE})\\]`;
 const REG_NAME = `(?:${UNRESERVED}|${PCT_ENCODED}|${SUB_DELIMS})*`;
 const HOST = `(?:${IP_LITERAL}|${IPV4ADDRESS}|${REG_NAME})`;
