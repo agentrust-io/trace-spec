@@ -1,0 +1,91 @@
+{
+  "id": "TRACE-CRES-013",
+  "name": "aibom-uri-resolved",
+  "description": "The record cites model.aibom_uri and the resolver holds it. The surface reports resolved with the SHA-256 over exactly the returned bytes and their count.",
+  "spec": "spec/trace-v0.2.md#312-references-facts-this-record-points-at",
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+    },
+    "resolutions": {
+      "https://aibom.example/claude-sonnet-4-6/cyclonedx-1.7.json": {
+        "bytes_base64": "eyJib21Gb3JtYXQiOiAiQ3ljbG9uZURYIiwgInNwZWNWZXJzaW9uIjogIjEuNyIsICJub3RlIjogImNvbnRlbnQgaXMgaXJyZWxldmFudCB0byB0aGUgY29uc3VtZXIifQo="
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/citer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6",
+        "aibom_uri": "https://aibom.example/claude-sonnet-4-6/cyclonedx-1.7.json"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "transparency": "https://log.example/trace/receipts/1",
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+        }
+      },
+      "signature": "9SGaoNCUU-iAi88yMsSGUbg0mQ6O0iU0pBoHQiP9yuVOTgdhRqm1JYtYO-yrr0VdASRooDt6eRWx2uANR9NDAg"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "citations": {
+      "appraisal.policy_ref": {
+        "outcome": "not_attempted",
+        "cause": "field_absent",
+        "evidence": {}
+      },
+      "runtime.rim_uri": {
+        "outcome": "not_attempted",
+        "cause": "field_absent",
+        "evidence": {}
+      },
+      "model.aibom_uri": {
+        "outcome": "resolved",
+        "cause": null,
+        "evidence": {
+          "uri": "https://aibom.example/claude-sonnet-4-6/cyclonedx-1.7.json",
+          "sha256": "491a1587e6cbc143ae10c5943c69420aaadf05d1b27cb301eb36932f74b08ccb",
+          "bytes": 98
+        }
+      },
+      "transparency": {
+        "outcome": "not_attempted",
+        "cause": "surface_deferred",
+        "evidence": {
+          "reason": "coordinated in agentrust-io/trace-tests#92; spec section 7 open question 3"
+        }
+      }
+    }
+  }
+}

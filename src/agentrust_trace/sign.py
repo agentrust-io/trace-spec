@@ -14,7 +14,7 @@ import hashlib
 import json
 import os
 import warnings
-from collections.abc import Callable, Container, Iterable
+from collections.abc import Callable, Container, Iterable, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 if TYPE_CHECKING:
@@ -33,6 +33,14 @@ _TRACE_PROFILE_V0_1 = "tag:agentrust.io,2026:trace-v0.1"
 
 Named only so its rejection can say why. Deliberately not exported: no caller
 should be able to spell it without reading this file.
+"""
+
+DEFAULT_ACCEPTED_PROFILES: tuple[str, ...] = (TRACE_PROFILE_V0_2,)
+"""Profile URIs ``verify_record`` accepts unless the caller declares another set.
+
+`spec/trace-v0.2.md` ("Changes from v0.1") requires a v0.2 verifier to accept
+``tag:agentrust-io.com,2026:trace-v0.2``, to reject the v0.1 identifier, and not to
+accept both. This default is that rule.
 """
 
 RevocationStore: TypeAlias = Container[str] | Callable[[str], bool]
@@ -431,6 +439,26 @@ def _pubkey_from_jwk(jwk: dict[str, Any]) -> Any:
     return Ed25519PublicKey.from_public_bytes(x_bytes)
 
 
+def _profiles_of(value: Any) -> tuple[str, ...]:
+    """Materialise ``accepted_profiles``, refusing the shapes that iterate wrongly.
+
+    A ``str`` iterates as characters, so a bare profile URI became a declared set of
+    one-character profiles and was refused for the wrong reason. A ``dict`` iterates as
+    its keys. An ``int`` or ``None`` raised ``TypeError``, which this module does not
+    document. Same shape as ``revocation._sequence_of``, found by the same sweep.
+    """
+    if isinstance(value, (str, bytes, bytearray, dict)) or not hasattr(value, "__iter__"):
+        raise ValueError(
+            f"accepted_profiles must be an iterable of profile URI strings, got "
+            f"{type(value).__name__}. Pass DEFAULT_ACCEPTED_PROFILES or an explicit set."
+        )
+    items = tuple(value)
+    bad = sorted({type(v).__name__ for v in items if not isinstance(v, str)})
+    if bad:
+        raise ValueError(f"accepted_profiles must contain only str values, found {bad}")
+    return items
+
+
 def verify_record(
     record: dict[str, Any],
     public_key_or_jwk: Any = None,
@@ -440,10 +468,12 @@ def verify_record(
     max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
+    accepted_profiles: Sequence[str] = DEFAULT_ACCEPTED_PROFILES,
     revocation_bundle: dict[str, Any] | None = None,
     trusted_bundle_keys: Iterable[dict[str, Any]] | None = None,
     max_bundle_age_seconds: int = 86400,
     now: int | None = None,
+    citation_resolver: Callable[[str], bytes] | None = None,
 ) -> VerificationResult:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -451,25 +481,27 @@ def verify_record(
     *public_key_or_jwk* to verify against a key the caller already trusts.
 
     Raises ``InvalidSignature`` if the signature does not verify, and ``ValueError``
-    for every other rejection (wrong or missing profile, no signature, no trusted
-    key, malformed input, unsupported JWK type, stale record, nonce mismatch, or
-    revoked key). Returns a ``VerificationResult`` on success, carrying what the
-    revocation check reported; see below. All checks fail closed.
+    for every other rejection (no signature, unsupported profile, an accepted set this
+    build cannot honour, no trusted key, malformed input, unsupported JWK type, stale
+    record, nonce mismatch, or revoked key). Returns a ``VerificationResult`` on
+    success, carrying the profile it ran under, the set the verifier declared, and
+    what the revocation check reported; see below. All checks fail closed.
 
     Profile (fail closed):
-        The record's ``eat_profile`` must be exactly ``TRACE_PROFILE_V0_2``.
-        ``spec/trace-v0.2.md`` section 2 requires this of a v0.2 verifier: require
-        the v0.2 identifier, reject the superseded v0.1 identifier, and never accept
-        both. Any other profile is refused rather than verified on a best-effort
-        basis, because "the signature checks out" says nothing about whether this
-        code implements the semantics the record was written under. A missing
-        profile is refused for the same reason: a verifier cannot supply it by
-        assumption.
+        ``accepted_profiles`` is the set of ``eat_profile`` URIs this verifier claims
+        to implement; it defaults to TRACE v0.2 alone. A record carrying any other
+        profile is refused rather than verified on a best-effort basis, because
+        "the signature checks out" says nothing about whether this code implements
+        the semantics the record was written under. `spec/trace-v0.2.md` requires
+        exactly this of a v0.2 verifier, and forbids accepting the v0.1 identifier
+        alongside it. Passing a set containing ``_TRACE_PROFILE_V0_1`` raises
+        ``ValueError`` before any record is examined, so the dual-accepting verifier
+        the cutover forbids cannot be configured here at all. Declared downgrade to
+        other, legitimately owned older profiles remains representable.
 
-        The profile is read before any cryptographic work, which is safe because
-        the only action taken on the unauthenticated value is refusal; a record
-        that verifies has had its profile covered by the signature, since the
-        signature spans the whole record.
+        The profile is read before the signature is checked, so the refusal is cheap;
+        a record that returns successfully has had its profile covered by the verified
+        signature, since the signature spans the whole record.
 
     Trust anchoring (fail closed):
         Without a trusted key, the record cannot vouch for itself, so verification
@@ -537,10 +569,27 @@ def verify_record(
         separate entry point, so a caller has to handle it to know it. A caller
         who discards the return has the fail-open behaviour the old signature
         had; the alternatives were worse, and the reasoning is on issue #190.
+
+        ``citation_resolver``, when supplied, is called with each URI the record
+        cites at ``appraisal.policy_ref``, ``runtime.rim_uri`` and
+        ``model.aibom_uri`` and returns the object's bytes. The result's
+        ``citations`` field reports, per surface, ``resolved`` with the digest
+        over those bytes, ``unresolvable`` when the resolver raised or returned
+        something other than bytes, or ``not_attempted`` when no resolver was
+        supplied, the field is absent, or the surface is deferred
+        (``transparency``). No outcome changes ``revocation``, the thumbprint,
+        or whether this function raises: resolvability is recorded, not
+        appraised, and ``references[]`` is never read (spec section 3.1.2 rule
+        3). A ``citation_resolver`` that is neither callable nor ``None`` is
+        refused with ``ValueError`` at entry. See ``agentrust_trace.citation``.
+        The resolver is called last, after the signature has verified and after
+        every check that can raise, so a record that fails verification drives
+        no resolution.
     """
     import time
     from hmac import compare_digest
 
+    from agentrust_trace.citation import check_citations
     from agentrust_trace.revocation import (
         NO_CHECK,
         RevocationCheck,
@@ -556,16 +605,51 @@ def verify_record(
         verification_time = now
     _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
+    if citation_resolver is not None and not callable(citation_resolver):
+        raise ValueError("citation_resolver must be callable or None")
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
-    # Profile first: refuse semantics this build does not implement before spending
-    # any work on the record.
+    # Profile first: refuse semantics this build does not implement, before spending
+    # any work on the record. Reading it pre-signature is safe because the only action
+    # taken on an unauthenticated value here is refusal.
+    accepted = _profiles_of(accepted_profiles)
+    if not accepted:
+        raise ValueError(
+            "accepted_profiles is empty: a verifier that declares no supported profile "
+            "can verify nothing. Pass DEFAULT_ACCEPTED_PROFILES or an explicit set."
+        )
+    if _TRACE_PROFILE_V0_1 in accepted:
+        raise ValueError(
+            f"accepted_profiles contains the superseded v0.1 identifier "
+            f"{_TRACE_PROFILE_V0_1!r}. The v0.2 cutover is cutover, not coexistence: a "
+            "dual-accepting verifier lets records minted under a domain the project "
+            "does not own keep passing as conformant, which is the thing the cutover "
+            "exists to end. Remove the v0.1 tag from the set."
+        )
+    # A verifier may only accept a profile whose shape it can check. Without this,
+    # widening the set is accepted at configuration time and the record is then
+    # refused by the schema, which reports a structural failure for what is really a
+    # verifier that was configured to claim more than it carries.
+    from agentrust_trace.validate import profiles_with_schema
+
+    unschemaed = [p for p in accepted if p not in profiles_with_schema()]
+    if unschemaed:
+        raise ValueError(
+            f"accepted_profiles names {unschemaed!r}, which this build carries no schema "
+            f"for. It can check {sorted(profiles_with_schema())!r}. Declaring support for "
+            "a profile whose shape cannot be checked is a claim this verifier cannot "
+            "make: a valid signature over semantics this build does not implement is "
+            "not evidence."
+        )
     if not isinstance(record, dict):
         raise ValueError(
             f"record must be a JSON object, got {type(record).__name__}. A Trust Record "
             "is always an object, and what a verifier is handed is by definition not yet "
-            "established to be one."
+            "trusted to be one: `json.loads` of an untrusted body returns a list, a "
+            "string, a number or None just as readily as a dict. Refusing here keeps "
+            "that case on the ValueError path this function documents, instead of "
+            "raising AttributeError straight past a caller's `except ValueError`."
         )
     profile = record.get("eat_profile")
     if not isinstance(profile, str) or not profile:
@@ -573,18 +657,21 @@ def verify_record(
             "record has no 'eat_profile': the profile URI states which semantics the "
             "record was written under, and a verifier cannot supply it by assumption"
         )
-    if profile != TRACE_PROFILE_V0_2:
+    if profile not in accepted:
         if profile == _TRACE_PROFILE_V0_1:
+            # Upstream's #125 names this case specifically, and the tailored message
+            # is worth keeping: the generic refusal would be true but less useful.
             raise ValueError(
                 f"record carries the superseded v0.1 profile {profile!r}. "
-                "spec/trace-v0.2.md section 2: the cutover is cutover, not "
-                "coexistence: a v0.2 verifier rejects the v0.1 identifier, which "
+                "spec/trace-v0.2.md, under 'Changes from v0.1': the cutover is "
+                "cutover, not coexistence, and a v0.2 verifier rejects the v0.1 "
+                "identifier, which "
                 "was minted under a domain the project does not own."
             )
         raise ValueError(
-            f"record profile {profile!r} is not {TRACE_PROFILE_V0_2!r}. Verification "
-            "is refused rather than attempted: a valid signature over semantics this "
-            "build does not implement is not evidence."
+            f"record profile {profile!r} is not in this verifier's accepted set "
+            f"{list(accepted)}. Verification is refused rather than attempted: a valid "
+            "signature over semantics this build does not implement is not evidence."
         )
 
     sig_b64 = record.get("signature")
@@ -718,7 +805,14 @@ def verify_record(
 
     pub.verify(sig_bytes, msg)  # raises InvalidSignature on failure
 
+    # Last, after the signature verified: a record that fails verification
+    # drives no resolution.
+    citations = check_citations(record, citation_resolver)
+
     return VerificationResult(
+        profile=profile,
+        accepted_profiles=accepted,
         revocation=revocation_check,
         trusted_key_thumbprint=jwk_thumbprint(trusted_jwk),
+        citations=citations,
     )

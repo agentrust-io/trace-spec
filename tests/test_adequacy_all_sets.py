@@ -70,6 +70,11 @@ def build_provenance_depth() -> list[Vector]:
                  lambda e: deepest(e)["outcome"], codes, separates_at)
 
 
+def verifier_compatibility() -> list[Vector]:
+    return _load("verifier-compatibility",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 def canonicalization_boundary() -> list[Vector]:
     return _load("canonicalization-boundary",
                  lambda e: e["outcome"], lambda e: [e.get("failure")])
@@ -125,11 +130,21 @@ def revocation_bundle() -> list[Vector]:
                  lambda e: list(e.get("codes") or []))
 
 
+def reproducibility_claim() -> list[Vector]:
+    """The reproducibility-claim set (spec section 3.1.4). One code per rule the schema
+    holds, two vectors per code, and five accepting records: a claim with no result
+    and one result per outcome."""
+    return _load("reproducibility-claim",
+                 lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
+    "reproducibility-claim": (reproducibility_claim, None),
     "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
+    "verifier-compatibility": (verifier_compatibility, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
@@ -161,7 +176,37 @@ def test_no_set_is_satisfied_by_an_unconditional_answer(name: str) -> None:
 
 # The shortfall this repository currently carries, stated exactly. Widening it fails
 # here; closing it fails here too, and the entry is then deleted.
-KNOWN_THIN: dict[str, dict[str, str]] = {}
+KNOWN_THIN: dict[str, dict[str, str]] = {
+    # This fork's own set, and the shape #124 established as insufficient. It was four
+    # of the five refusal rules. Three have since closed, each by a different route.
+    # `profile_absent` closed by writing the second vector, 11, which carries a profile
+    # claim that is present and empty rather than absent. `superseded_profile_refused`
+    # and `superseded_profile_in_accepted_set` closed by leaving: 03 and 08 followed 10
+    # out of the set on 2026-09-15 under the #116 ruling that the v0.1 cutover is merged
+    # normative text and not this issue's to pin, and both rules are now tested in
+    # `test_sign.py` beside the cutover's own tests.
+    #
+    # The one below was measured and is not closable, which is different from not yet
+    # done, so the reason is recorded here rather than left as an open task:
+    #
+    #   no_accepted_profiles       The rule fires on the verifier's own configuration
+    #                              before any record is read, and the configuration has
+    #                              one shape: the accepted set is empty. The one other
+    #                              axis, pairing the empty set with a second defect the
+    #                              verifier would catch later, needs `check_freshness`,
+    #                              which every vector in the set asserts is False, for
+    #                              a good reason: a fixed `iat` would make the set
+    #                              expire. Varying the record instead pins nothing, as
+    #                              no plausible implementation branches on record
+    #                              content when deciding an empty set accepts nothing.
+    #
+    # A second vector written to close a count rather than to catch a defect an
+    # implementation could plausibly have makes this record worse, not better: it
+    # reports a margin that does not exist.
+    "verifier-compatibility": {
+        "no_accepted_profiles": "06-empty-accepted-set-refused",
+    },
+}
 
 
 @pytest.mark.parametrize("name", sorted(SETS))
@@ -191,6 +236,12 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # Not loadable here: every vector verifies, and the outcomes are per-surface
+    # resolvability rather than accept/reject, so `trivially_satisfied_by` would
+    # grade the set as passable by an implementation that accepts everything.
+    "citation-resolution": "tests/test_citation_resolution.py, which compares the "
+                           "citations mapping of every vector against its expected "
+                           "block and holds the invariants I1 to I11",
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
     # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,

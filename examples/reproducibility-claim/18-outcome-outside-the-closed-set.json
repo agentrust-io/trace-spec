@@ -1,0 +1,111 @@
+{
+  "name": "outcome-outside-the-closed-set",
+  "description": "outcome partial. The three outcomes are the whole set; a fourth is a reader rounding something the section says not to round.",
+  "spec": "spec/trace-v0.2.md#314-reproducibility-deterministic-re-execution-as-evidence",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://orchestrator.example/run/2026-09-18T09:00:00Z/exec/plan",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "reproducibility": {
+      "function": "coordination/v1",
+      "code_identity": "sha256:372b58895d5c283ec27746a368ffbe554d1c54c25bdc5e3845a318b7ad93482a",
+      "input_closure": [
+        {
+          "id": "config/initial",
+          "digest": "sha256:fc43ef460c5a9ab4c1e4f0a7fed2794be1b9e86e56c8ec71504c5a5d1eb4a461",
+          "resolver": "https://artifacts.example.org"
+        },
+        {
+          "id": "model-call/0007",
+          "digest": "sha256:c2ce7228be852dda864fdd76e15f50d3e5c9ceb91a6c7bc8b805277508432483",
+          "resolver": "https://artifacts.example.org"
+        }
+      ],
+      "transcript_digest": "sha256:66d4a9f540e3d88f955c5e690cb30c65c971593345de3621a3be84f4a24671ad"
+    },
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:372b58895d5c283ec27746a368ffbe554d1c54c25bdc5e3845a318b7ad93482a"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/re-execution",
+      "method": "re-execution",
+      "re_execution": {
+        "outcome": "partial",
+        "reason": "two of three steps"
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "rXsn8NO3GIFD15eLVHfps15OcGD6xn8b8R93Unzpv3E"
+      }
+    },
+    "signature": "TjtaKOpQdy71xu3Od1RQw4NIZu7LmFwBcGLotuobzEZlwikMlAD7g7RReo-BKxu1A1EYqM3Kw4xO72AI1jaQCw"
+  },
+  "expected": {
+    "outcome": "reject",
+    "codes": [
+      "unknown_outcome"
+    ]
+  },
+  "context": {
+    "closure": {
+      "config/initial": {
+        "tasks": [
+          "plan",
+          "review"
+        ],
+        "max_parallel": 1,
+        "merge": "gated"
+      },
+      "model-call/0007": {
+        "task": "plan",
+        "request_digest": "sha256:7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+        "response": "split into two steps: draft, then verify"
+      }
+    },
+    "transcript": {
+      "function": "coordination/v1",
+      "steps": [
+        {
+          "step": 0,
+          "read": "config/initial",
+          "decision": "schedule",
+          "task": "plan"
+        },
+        {
+          "step": 1,
+          "read": "model-call/0007",
+          "decision": "split",
+          "task": "plan",
+          "into": [
+            "plan/draft",
+            "plan/verify"
+          ]
+        },
+        {
+          "step": 2,
+          "read": "config/initial",
+          "decision": "gate",
+          "task": "plan/verify"
+        }
+      ]
+    }
+  }
+}

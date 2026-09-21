@@ -1,0 +1,91 @@
+{
+  "id": "TRACE-CRES-003",
+  "name": "policy-ref-resolved",
+  "description": "The record cites appraisal.policy_ref and the resolver holds it. The surface reports resolved with the SHA-256 over exactly the returned bytes and their count.",
+  "spec": "spec/trace-v0.2.md#312-references-facts-this-record-points-at",
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+    },
+    "resolutions": {
+      "https://policy.example/trace/appraisal-policy-v1.json": {
+        "bytes_base64": "eyJwb2xpY3kiOiAiYXBwcmFpc2FsLXBvbGljeS12MSIsICJub3RlIjogImNvbnRlbnQgaXMgaXJyZWxldmFudCB0byB0aGUgY29uc3VtZXIifQo="
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/citer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1",
+        "policy_ref": "https://policy.example/trace/appraisal-policy-v1.json"
+      },
+      "transparency": "https://log.example/trace/receipts/1",
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+        }
+      },
+      "signature": "3z4qlqlRxeb_1x2Ec7SclqzcgS3uJa8CewzQyAbsHIL1dBIpCNyAqrXaedEdkV3CN23X0gWFbaiCiUYbcs8iCw"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "citations": {
+      "appraisal.policy_ref": {
+        "outcome": "resolved",
+        "cause": null,
+        "evidence": {
+          "uri": "https://policy.example/trace/appraisal-policy-v1.json",
+          "sha256": "f11412d3a37fd50b111b1f629de045ba90cba4d76ee92b07d67a205bc1f291c3",
+          "bytes": 83
+        }
+      },
+      "runtime.rim_uri": {
+        "outcome": "not_attempted",
+        "cause": "field_absent",
+        "evidence": {}
+      },
+      "model.aibom_uri": {
+        "outcome": "not_attempted",
+        "cause": "field_absent",
+        "evidence": {}
+      },
+      "transparency": {
+        "outcome": "not_attempted",
+        "cause": "surface_deferred",
+        "evidence": {
+          "reason": "coordinated in agentrust-io/trace-tests#92; spec section 7 open question 3"
+        }
+      }
+    }
+  }
+}
