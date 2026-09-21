@@ -28,6 +28,44 @@ The rows are representative, not exhaustive. Each row reads: the outcome a verif
 
 ## Evidence statement guidance
 
+A successful `VerificationResult` is the outcome of one verification call under the inputs supplied to that call. By itself, it is not a complete assurance statement that can be saved and interpreted independently later. Current results retain the verified profile, the verifier's accepted profile set, the trusted-key thumbprint, revocation outcome and citation-resolution outcomes, but they do not retain the record-age limit, clock-skew limit or verification time used for the freshness decision.
+
+### Retaining one verification call
+
+For a result that will be cited later, retain the exact signed record, the complete `VerificationResult`, and the effective freshness context together. Record an explicit value when the age check is disabled rather than omitting the field. A stable policy or configuration version can identify configured bounds when that version remains retrievable; the actual verification time still needs to be retained.
+
+One concrete pattern is to pin the verification time in the call and preserve the same values beside its result:
+
+```
+from dataclasses import asdict
+
+verification_time = 1789875600
+max_age_seconds = None
+max_future_skew_seconds = 300
+
+result = verify_record(
+    record,
+    trusted_jwk,
+    max_age_seconds=max_age_seconds,
+    max_future_skew_seconds=max_future_skew_seconds,
+    now=verification_time,
+)
+
+retained_verification = {
+    "record": record,
+    "result": asdict(result),
+    "verification_context": {
+        "max_age_seconds": max_age_seconds,
+        "max_future_skew_seconds": max_future_skew_seconds,
+        "verification_time": verification_time,
+        # Optional when it names retrievable configuration:
+        "policy_version": "deployment-policy-17",
+    },
+}
+```
+
+The `None` value above is material: it records that the age check was disabled rather than leaving a later reader to guess whether the value was omitted. Likewise, changing either freshness bound or the verification time can change the accept/reject boundary for the same signed record, so those values belong with any retained statement that depends on the successful call. This external context does not change the signed Trust Record and does not turn the result into a broader claim than the checks actually performed.
+
 **Fields already in the record** that a bounded statement can cite:
 
 - `subject` - names the workload the statement is about (SPIFFE SVID or DID URI, [§3.1](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)).
