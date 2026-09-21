@@ -11,6 +11,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Compare challenge nonces as UTF-8 bytes so non-ASCII mismatches raise the documented ValueError instead of TypeError (#381). Matching strings remain accepted without Unicode normalization. Reported by @chernistry.
+
+
 - Regenerate the v0.3 draft after canonical reproducibility additions and make
   the schema inventory test use portable repository paths on Windows.
 
