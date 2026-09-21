@@ -6,6 +6,7 @@ import json
 import re
 from collections.abc import Iterator
 from functools import lru_cache
+from ipaddress import IPv6Address
 from typing import Any, cast
 
 import jsonschema
@@ -56,13 +57,25 @@ def _validator() -> Validator:
     base_uri_checker = jsonschema.FormatChecker(formats=["uri"])
     checker = jsonschema.FormatChecker()
 
-    @checker.checks("uri")
+    # Convert IPv6Address failures into schema validation errors.
+    @checker.checks("uri", raises=ValueError)
     def is_uri(value: Any) -> bool:
         # URI grammar excludes literal line breaks; Python regex end anchors can
         # otherwise accept a final LF. Percent-encoded characters remain valid.
         if isinstance(value, str) and any(c in value for c in "\n\r\u2028\u2029"):
             return False
-        return base_uri_checker.conforms(value, "uri")
+        if not base_uri_checker.conforms(value, "uri"):
+            return False
+        if isinstance(value, str):
+            authority = re.match(r"^[^:]+://([^/?#]*)", value)
+            if authority is not None:
+                host = authority[1].rsplit("@", 1)[-1]
+                if host.startswith("["):
+                    literal = host[1:host.index("]")]
+                    # IPvFuture has its own grammar; it is not an IPv6 address.
+                    if not literal.startswith(("v", "V")):
+                        IPv6Address(literal)
+        return True
 
     return cast(Validator, _TraceValidator(_schema(), format_checker=checker))
 
