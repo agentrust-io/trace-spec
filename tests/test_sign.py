@@ -1,6 +1,7 @@
 """Tests for agentrust_trace.sign."""
 
 import base64
+import hmac
 import json
 import time
 
@@ -1186,3 +1187,61 @@ def test_the_guards_do_not_refuse_what_they_should_accept():
 
     jwk_thumbprint(key_to_jwk(key))
     verify_record(record, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("nonce", ["abc123", "n\u00f8nce", "\U0001f512"])
+def test_verify_record_nonce_unicode_match(nonce):
+    key = generate_key()
+    record = _fresh_record()
+    record["runtime"]["nonce"] = nonce
+    signed = sign_record(record, key)
+    verify_record(signed, key_to_jwk(key), expected_nonce=nonce)
+
+
+@pytest.mark.parametrize(
+    ("actual", "expected"),
+    [
+        ("wrong", "abc123"),
+        ("n\u00f8nce", "a-nonce-value"),
+        ("a-nonce-value", "n\u00f8nce"),
+        ("\U0001f512", "\U0001f513"),
+        ("\u00e9", "e\u0301"),
+    ],
+)
+def test_verify_record_nonce_unicode_mismatch(actual, expected):
+    key = generate_key()
+    record = _fresh_record()
+    record["runtime"]["nonce"] = actual
+    signed = sign_record(record, key)
+    with pytest.raises(ValueError, match="record runtime.nonce does not match expected_nonce"):
+        verify_record(signed, key_to_jwk(key), expected_nonce=expected)
+
+
+@pytest.mark.parametrize("expected", [b"a-nonce-value", 123, [], True, {}])
+def test_verify_record_rejects_invalid_expected_nonce_configuration(expected):
+    key = generate_key()
+    record = _fresh_record()
+    record["runtime"]["nonce"] = "a-nonce-value"
+    signed = sign_record(record, key)
+    with pytest.raises(ValueError, match="^expected_nonce must be a string$"):
+        verify_record(signed, key_to_jwk(key), expected_nonce=expected)
+
+
+def test_nonce_verdict_uses_compare_digest_result(monkeypatch):
+    key = generate_key()
+    record = _fresh_record()
+    record["runtime"]["nonce"] = "n\u00f8nce"
+    signed = sign_record(record, key)
+    real_compare = hmac.compare_digest
+    seen = []
+
+    def refuse_nonce(a, b):
+        if isinstance(a, bytes) and isinstance(b, bytes):
+            seen.append((a, b))
+            return False
+        return real_compare(a, b)
+
+    monkeypatch.setattr(hmac, "compare_digest", refuse_nonce)
+    with pytest.raises(ValueError, match="record runtime.nonce does not match expected_nonce"):
+        verify_record(signed, key_to_jwk(key), expected_nonce="n\u00f8nce")
+    assert seen == [("n\u00f8nce".encode("utf-8"), "n\u00f8nce".encode("utf-8"))]
