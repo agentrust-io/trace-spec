@@ -74,7 +74,8 @@ npm test
 `npm run build` compiles the schemas ahead of time with ajv into
 `src/generated/validators.js`, so nothing is evaluated or fetched at run time, and records
 the SHA-256 of each schema file it read. A test compares those digests against `../schema`,
-so a schema edit that is not rebuilt fails rather than passing quietly.
+so the validators in a build are known to come from exactly those bytes: a build made
+against another schema directory (`TRACE_SCHEMA_DIR`) fails that test.
 
 ## The differential harness
 
@@ -118,3 +119,8 @@ Latest run, against agentrust-trace 0.10.0:
 Every published vector agrees. The 364 remaining cases are 13 documented divergence classes
 in the adversarial matrix, each one appearing once per verifier configuration.
 
+The differential compares verdicts, so it is silent on anything that does not change a
+verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
+and `codePointLength` cannot disagree with `value.length` on anything the current schema
+constrains (no `maxLength`; every `minLength` is 1). Those rest on the unit tests and on
+reading the code, not on the 1644.
