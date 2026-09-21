@@ -178,10 +178,13 @@ Registered `rel` values:
 - **`authorized-intent`**. An authorization decided before execution, held in another system.
 - **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
+- **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary.
 - `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 - The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
 - A verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence.
 - A producer that cannot name a `resolver` MUST omit the entry rather than emit one with an empty or self-asserted resolver.
+
+The registry of `rel` values above is informative and open: an unregistered `rel` is legal, and registering a value changes none of the four rules above. What each registered value's referenced object is, what a relying party may establish from a resolved one, and how a name is added are in `docs/references-registry.md`.
 
 Rule 3 is what makes the block safe to add. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold, and a reference that counted as evidence would be the assurance laundering §3.1.1 exists to prevent.
 

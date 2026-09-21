@@ -1,0 +1,67 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "n5qw3SPbw9K6oDU1ZHlcke2g6bvbgFJ4LvR2dLfHhA8"
+  },
+  "resolver": "https://gates.example.org/run/20260920-165918",
+  "issuer_keys": {
+    "TgykZrWlznGPOUBFv6DRWH1zxqXN-EiqG9GvwWBAe4I": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "qYKTRR2ig7RZ1Vj5JH6Q4_WGyfR9a5ashWp4Fru2S3o"
+    }
+  },
+  "cases": {
+    "01-appraisal-confirmed.json": {
+      "store": "appraisal-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": true,
+      "appraisal_verifies": true,
+      "outcome": "pass",
+      "verdict": "appraisal-confirmed"
+    },
+    "02-appraisal-altered-after-issue.json": {
+      "store": "appraisal-store-altered.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "issuer_key_configured": true,
+      "appraisal_verifies": false,
+      "outcome": "pass",
+      "verdict": "appraisal-contradicted"
+    },
+    "03-outcome-is-a-fail.json": {
+      "store": "appraisal-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": true,
+      "appraisal_verifies": true,
+      "outcome": "fail",
+      "verdict": "appraisal-confirmed"
+    },
+    "04-reference-unresolvable.json": {
+      "store": "appraisal-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "issuer_key_configured": null,
+      "appraisal_verifies": null,
+      "outcome": null,
+      "verdict": "appraisal-unconfirmed"
+    },
+    "05-issuer-key-not-configured.json": {
+      "store": "appraisal-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": false,
+      "appraisal_verifies": null,
+      "outcome": "pass",
+      "verdict": "appraisal-unverified"
+    }
+  }
+}
