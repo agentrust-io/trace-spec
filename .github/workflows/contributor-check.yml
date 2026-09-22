@@ -24,7 +24,8 @@ jobs:
       github.actor != 'github-actions[bot]' &&
       github.actor != 'copilot-swe-agent[bot]' &&
       github.actor != 'claude-code[bot]' &&
-      github.actor != 'imran-siddique'
+      github.actor != 'imran-siddique' &&
+      github.actor != 'lywinged'
     steps:
       - name: Checkout org action
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
