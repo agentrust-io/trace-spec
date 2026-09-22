@@ -1,21 +1,21 @@
-name: trace-verify-ts
+name: trust-record-verify
 
 on:
   push:
     branches: ["main", "feat/**", "fix/**"]
     paths:
-      - "trace-verify-ts/**"
+      - "trust-record-verify/**"
       - "schema/**"
       - "examples/**"
       - "src/agentrust_trace/**"
-      - ".github/workflows/trace-verify-ts.yml"
+      - ".github/workflows/trust-record-verify.yml"
   pull_request:
     paths:
-      - "trace-verify-ts/**"
+      - "trust-record-verify/**"
       - "schema/**"
       - "examples/**"
       - "src/agentrust_trace/**"
-      - ".github/workflows/trace-verify-ts.yml"
+      - ".github/workflows/trust-record-verify.yml"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -43,11 +43,11 @@ jobs:
 
       - name: Install
         run: npm ci
-        working-directory: trace-verify-ts
+        working-directory: trust-record-verify
 
       - name: Build and test
         run: npm test
-        working-directory: trace-verify-ts
+        working-directory: trust-record-verify
 
   differential:
     name: differential against the Python implementation
@@ -83,24 +83,24 @@ jobs:
         run: |
           pip install --require-hashes -r requirements/dev.txt
           pip install --no-deps -e .
-          npm ci --prefix trace-verify-ts
+          npm ci --prefix trust-record-verify
 
       - name: Lint the harness
-        run: ruff check trace-verify-ts/differential
+        run: ruff check trust-record-verify/differential
 
       - name: Build the verifier
-        run: npm run build --prefix trace-verify-ts
+        run: npm run build --prefix trust-record-verify
 
       - name: Generate the corpus
         run: python differential/generate_cases.py --external "$GITHUB_WORKSPACE/.vectors/tests/vectors"
-        working-directory: trace-verify-ts
+        working-directory: trust-record-verify
 
       - name: Run both implementations and compare
         run: |
           python differential/oracle.py
           node differential/run.mjs
           python differential/compare.py --expect-external 12 --report differential/build/report.json
-        working-directory: trace-verify-ts
+        working-directory: trust-record-verify
 
       - name: Upload the report
         if: always()
@@ -108,6 +108,6 @@ jobs:
         with:
           name: differential-report
           path: |
-            trace-verify-ts/differential/build/report.json
-            trace-verify-ts/differential/build/manifest.json
+            trust-record-verify/differential/build/report.json
+            trust-record-verify/differential/build/manifest.json
           if-no-files-found: ignore

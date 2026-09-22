@@ -34,8 +34,17 @@ NOW = 1785000000
 """The moment the repository's own vectors are written against."""
 
 
+CORPUS_SEED_DOMAIN = "trace-verify-ts/differential"
+"""Frozen: the label the corpus keys are derived from, not the package name.
+
+It keeps its original spelling deliberately. Changing it reissues every key in
+the corpus, which moves the outcomes the ledger in known-divergences.json pins
+by case and count, so the rename of the package leaves it alone.
+"""
+
+
 def seeded_key(label: str) -> Ed25519PrivateKey:
-    seed = hashlib.sha256(f"trace-verify-ts/differential/{label}".encode()).digest()
+    seed = hashlib.sha256(f"{CORPUS_SEED_DOMAIN}/{label}".encode()).digest()
     return Ed25519PrivateKey.from_private_bytes(seed)
 
 

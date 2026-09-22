@@ -1,5 +1,5 @@
 {
-  "name": "trace-verify-ts",
+  "name": "@agentrust-io/trust-record-verify",
   "version": "0.1.0",
   "private": true,
   "description": "TypeScript verifier for TRACE v0.2 Trust Records: zero network, WebCrypto only.",

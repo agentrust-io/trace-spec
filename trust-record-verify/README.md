@@ -1,4 +1,4 @@
-# trace-verify-ts
+# @agentrust-io/trust-record-verify
 
 A TypeScript verifier for TRACE v0.2 Trust Records.
 
@@ -15,7 +15,7 @@ a record without a Python runtime.
 ## Using it
 
 ```ts
-import { verifyRecord } from "trace-verify-ts";
+import { verifyRecord } from "@agentrust-io/trust-record-verify";
 
 const result = await verifyRecord(record, {
   trustedKey: issuerJwk,          // an Ed25519 public JWK the caller already trusts
