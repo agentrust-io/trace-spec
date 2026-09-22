@@ -246,7 +246,7 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
   }
 
   const encodedSignature = own(record, "signature");
-  if (encodedSignature === undefined || encodedSignature === null || encodedSignature === "") {
+  if (!Object.hasOwn(record, "signature")) {
     fail("signature_missing", "the record has no embedded signature");
   }
   if (typeof encodedSignature !== "string") {

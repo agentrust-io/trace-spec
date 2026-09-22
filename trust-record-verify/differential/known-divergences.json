@@ -1,6 +1,6 @@
 {
  "note": "Every entry is a case where the two implementations disagree, with the reason argued and the pair of reported outcomes pinned. An entry matches only when both the case and the pair match, so a new disagreement in the same family is reported rather than absorbed. Entries are tried in order and a case lands on the first that matches; count is how many cases land on the entry in the committed corpus, and compare.py fails when an entry, a pair or a count is not borne out by the run, so a divergence that stops happening has to leave the ledger. classification is one of: reference-defect (this implementation follows the specification and the reference does not), stricter-here (both reject and the stated reason differs because this implementation refuses a non-canonical encoding earlier), language-level (the two languages' number models differ and the specification does not settle it).",
- "reference": "agentrust-trace, this repository's implementation at the commit under test. The package version string reads 0.10.0, which is also the last release, but the behaviour recorded here is the tree's: #383, #386, #387 and #388 landed after 0.10.0 and closed five entries that were in this ledger.",
+ "reference": "agentrust-trace, this repository's implementation at the commit under test. The package version string reads 0.10.0, which is also the last release, but the behaviour recorded here is the tree's: #383, #386, #387, #388 and #390 landed after 0.10.0 and closed six entries that were in this ledger.",
  "divergences": [
   {
    "ids": [
@@ -139,23 +139,6 @@
     [
      "signature_malformed",
      "schema_invalid"
-    ]
-   ]
-  },
-  {
-   "ids": [
-    "*/m08-signature-zero",
-    "*/m09-signature-false",
-    "*/m11-signature-empty-array",
-    "*/m12-signature-empty-object"
-   ],
-   "count": 96,
-   "classification": "stricter-here",
-   "reason": "The signature member is present but is 0, false, [] or {}. Both implementations reject. The reference tests the member for truthiness, so all four read as a missing signature; this one distinguishes an absent member from a member of the wrong type and reports signature_malformed.",
-   "pairs": [
-    [
-     "signature_missing",
-     "signature_malformed"
     ]
    ]
   },

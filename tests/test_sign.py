@@ -1189,6 +1189,23 @@ def test_the_guards_do_not_refuse_what_they_should_accept():
     verify_record(record, key_to_jwk(key))
 
 
+@pytest.mark.parametrize("value", [None, 0, False, [], {}, 1, True, [0], {"a": 1}])
+def test_present_non_string_signature_reports_wrong_type(value):
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    record["signature"] = value
+    with pytest.raises(ValueError, match="^signature must be a base64url string$"):
+        verify_record(record, key_to_jwk(key), now=record["iat"])
+
+
+def test_present_empty_signature_is_invalid_not_missing():
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    record["signature"] = ""
+    with pytest.raises(ValueError, match="does not conform.*signature"):
+        verify_record(record, key_to_jwk(key), now=record["iat"])
+
+
 @pytest.mark.parametrize("nonce", ["abc123", "n\u00f8nce", "\U0001f512"])
 def test_verify_record_nonce_unicode_match(nonce):
     key = generate_key()

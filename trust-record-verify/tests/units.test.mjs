@@ -109,3 +109,19 @@ test("verifyRecord refuses to guess a trust anchor", async () => {
     "schema_invalid",
   );
 });
+
+// Match the Python verifier after #390: presence is separate from value/type.
+test("signature_missing is reserved for an absent member", async () => {
+  await rejects(verifyRecord({ eat_profile: TRACE_PROFILE_V0_2 }), "signature_missing");
+});
+for (const [label, signature] of [
+  ["null", null], ["zero", 0], ["false", false], ["array", []],
+  ["object", {}], ["undefined", undefined],
+]) {
+  test(`a present ${label} signature is malformed`, async () => {
+    await rejects(verifyRecord({ eat_profile: TRACE_PROFILE_V0_2, signature }), "signature_malformed");
+  });
+}
+test("an empty signature string reaches schema validation", async () => {
+  await rejects(verifyRecord({ eat_profile: TRACE_PROFILE_V0_2, signature: "" }), "schema_invalid");
+});
