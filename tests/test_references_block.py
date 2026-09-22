@@ -80,6 +80,7 @@ CASES: list[tuple[str, object, bool]] = [
     ("rel authorized-intent", [_entry(rel="authorized-intent")], True),
     ("rel approval-outcome", [_entry(rel="approval-outcome")], True),
     ("rel behavior-trace", [_entry(rel="behavior-trace")], True),
+    ("rel condition-appraisal", [_entry(rel="condition-appraisal")], True),
     ("sha384 digest", [_entry(digest="sha384:" + "b" * 96)], True),
     # rel is a registry rather than a closed set (spec 3.1.2, unlike 3.1.1 on kind),
     # so a value this schema has never heard of is accepted rather than rejected.
@@ -270,18 +271,23 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
     """
     from agentrust_trace import SCHEMA
 
-    registered = ("authorized-intent", "approval-outcome", "behavior-trace")
+    registered = ("authorized-intent", "approval-outcome", "behavior-trace", "condition-appraisal")
     rel = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]
     assert "enum" not in rel, (
         "rel is a registry; closing it makes every new relation a schema change too"
     )
     assert rel["minLength"] == 1, "open is not the same as absent; an empty rel names nothing"
 
-    doc = (Path(__file__).resolve().parents[1] / "docs" / "schema.md").read_text(encoding="utf-8")
+    docs = Path(__file__).resolve().parents[1] / "docs"
+    doc = (docs / "schema.md").read_text(encoding="utf-8")
     section = doc.split("## `references`", 1)[1].split("\n## ", 1)[0]
+    # The registry document is the place a value's referenced object is defined, so a
+    # value it does not name is registered nowhere a second implementation can read.
+    registry = (docs / "references-registry.md").read_text(encoding="utf-8")
     for value in registered:
         assert value in rel["description"], f"{value} is not named in the schema description"
         assert value in section, f"{value} is not named in docs/schema.md"
+        assert f"`{value}`" in registry, f"{value} is not named in docs/references-registry.md"
 
 
 def test_the_block_does_not_require_a_non_empty_array() -> None:
