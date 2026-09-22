@@ -104,20 +104,25 @@ entry declares how many cases land on it, and an entry, a pair or a count the ru
 bear out fails it, so a divergence that stops happening on either side has to leave the
 ledger rather than stay as a claim nothing checks.
 
-Latest run, against agentrust-trace 0.10.0:
+Latest run, against this repository's implementation at the commit under test (its version string reads 0.10.0; #383, #386, #387 and #388 landed after that release):
 
 | Group | Cases | Identical |
 |---|---:|---:|
-| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1053 |
+| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1185 |
 | RFC 8785 canonicalization corpus | 34 | 33 |
 | RFC 7638 thumbprints | 14 | 14 |
 | Chain digests over the delegation corpus | 134 | 134 |
 | This repository's conformance vectors | 34 | 34 |
 | Published conformance vectors | 12 | 12 |
-| **Total** | **1644** | **1280** |
+| **Total** | **1644** | **1412** |
 
-Every published vector agrees. The 364 remaining cases are 13 documented divergence classes
-in the adversarial matrix, each one appearing once per verifier configuration.
+Every published vector agrees. The 232 remaining cases are 8 documented divergence classes
+in the adversarial matrix, each one appearing once per verifier configuration. Five classes
+left the ledger when the reference stopped diverging: the lone-surrogate revocation bundle
+(#382, fixed by #386), `subject` and `appraisal.verifier` under ECMA-262 pattern semantics
+(#379, fixed by #388), the IPv4-in-IPv6 literal with a leading zero (#380, fixed by #387),
+and the non-ASCII nonce (#381, fixed by #383). The harness reported each of them as an
+entry no case reached, which is how a fixed divergence is meant to leave.
 
 The differential compares verdicts, so it is silent on anything that does not change a
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,

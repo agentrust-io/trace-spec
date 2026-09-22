@@ -1,45 +1,7 @@
 {
  "note": "Every entry is a case where the two implementations disagree, with the reason argued and the pair of reported outcomes pinned. An entry matches only when both the case and the pair match, so a new disagreement in the same family is reported rather than absorbed. Entries are tried in order and a case lands on the first that matches; count is how many cases land on the entry in the committed corpus, and compare.py fails when an entry, a pair or a count is not borne out by the run, so a divergence that stops happening has to leave the ledger. classification is one of: reference-defect (this implementation follows the specification and the reference does not), stricter-here (both reject and the stated reason differs because this implementation refuses a non-canonical encoding earlier), language-level (the two languages' number models differ and the specification does not settle it).",
- "reference": "agentrust-trace 0.10.0",
+ "reference": "agentrust-trace, this repository's implementation at the commit under test. The package version string reads 0.10.0, which is also the last release, but the behaviour recorded here is the tree's: #383, #386, #387 and #388 landed after 0.10.0 and closed five entries that were in this ledger.",
  "divergences": [
-  {
-   "ids": [
-    "c23-bundle-lone-surrogate/*"
-   ],
-   "count": 20,
-   "classification": "reference-defect",
-   "reason": "The revocation bundle carries a lone surrogate in log_id. Section 3.2.3 says a bundle a verifier cannot ground an answer on is reported as unverified for revocation, and the record's own verification continues. This implementation reports outcome unverified_for_revocation with cause bundle_malformed. The reference canonicalises the bundle to compute its digest before that point, and the canonicalisation error leaves verify_record as an exception, so the record is rejected for a defect in a third party's bundle. Every pair in this entry is that one difference showing through whichever record mutation the case also carries. A mutation that fails before the bundle is read, a malformed or missing signature, is that mutation's entry, not this one.",
-   "pairs": [
-    [
-     "canonicalization_failed",
-     "cnf_key_malformed"
-    ],
-    [
-     "canonicalization_failed",
-     "cnf_key_mismatch"
-    ],
-    [
-     "canonicalization_failed",
-     "cnf_key_unsupported"
-    ],
-    [
-     "canonicalization_failed",
-     "schema_invalid"
-    ],
-    [
-     "canonicalization_failed",
-     "signature_invalid"
-    ],
-    [
-     "canonicalization_failed",
-     "signature_malformed"
-    ],
-    [
-     "canonicalization_failed",
-     "verified"
-    ]
-   ]
-  },
   {
    "ids": [
     "c18-key-x-non-canonical/*"
@@ -70,7 +32,7 @@
    "ids": [
     "*/m03-signature-non-canonical-pad-bits"
    ],
-   "count": 23,
+   "count": 24,
    "classification": "reference-defect",
    "reason": "The signature is re-spelled with non-zero unused trailing bits: a different string that decodes to the same 64 bytes. The reference pads and decodes leniently, so it verifies the record. This implementation refuses the spelling as signature_malformed. The difference matters beyond tidiness: section 3.1.3 digests the parent record with its signature member present, so two records that differ only in this spelling verify identically and have different chain digests.",
    "pairs": [
@@ -120,7 +82,7 @@
    "ids": [
     "*/m04-signature-truncated"
    ],
-   "count": 23,
+   "count": 24,
    "classification": "stricter-here",
    "reason": "The signature is truncated to a length that is still a valid base64url length but whose trailing bits are not zero. Both implementations reject. The reference decodes it and reports signature_invalid; this one reports signature_malformed before verifying.",
    "pairs": [
@@ -202,7 +164,7 @@
     "*/m20-iat-float-form",
     "*/m21-iat-exponent-form"
    ],
-   "count": 30,
+   "count": 32,
    "classification": "language-level",
    "reason": "iat is written 1785000000.0 or 1.785e9. JSON has one number type and JavaScript has one number type, so after JSON.parse the value is indistinguishable from the integer, its RFC 8785 form is the same bytes, and the record verifies here. Python's json module preserves the distinction as float, and the reference requires an int. A verifier that holds the record text can reject the spelling before parsing; one that is handed a parsed value cannot. Worth stating in the specification rather than leaving to each language.",
    "pairs": [
@@ -226,176 +188,10 @@
   },
   {
    "ids": [
-    "*/m27-subject-trailing-newline",
-    "*/m28-subject-carriage-return",
-    "*/m29-subject-line-separator"
-   ],
-   "count": 69,
-   "classification": "reference-defect",
-   "reason": "subject carries a trailing U+000A, U+000D or U+2028 inside a value that must match ^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$. Under ECMA-262, the dialect JSON Schema 2020-12 specifies for pattern, . excludes all three and $ does not match before a final newline, so this implementation reports schema_invalid. Python's re matches . against U+000D and U+2028 and $ before a trailing newline, so the reference accepts the record and verifies it.",
-   "pairs": [
-    [
-     "cnf_key_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "key_revoked",
-     "schema_invalid"
-    ],
-    [
-     "nonce_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "record_in_future",
-     "schema_invalid"
-    ],
-    [
-     "record_stale",
-     "schema_invalid"
-    ],
-    [
-     "revocation_unavailable",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_malformed",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_missing",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_unsupported",
-     "schema_invalid"
-    ],
-    [
-     "verified",
-     "schema_invalid"
-    ]
-   ]
-  },
-  {
-   "ids": [
-    "*/m31-verifier-uri-trailing-newline"
-   ],
-   "count": 23,
-   "classification": "reference-defect",
-   "reason": "appraisal.verifier is a format: uri value with a trailing newline. Same cause as the subject entry: the reference's format checker anchors with a regex whose $ matches before a final newline, so it accepts and verifies; this implementation applies RFC 3986 with an ECMA-262 anchor and reports schema_invalid.",
-   "pairs": [
-    [
-     "cnf_key_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "key_revoked",
-     "schema_invalid"
-    ],
-    [
-     "nonce_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "record_in_future",
-     "schema_invalid"
-    ],
-    [
-     "record_stale",
-     "schema_invalid"
-    ],
-    [
-     "revocation_unavailable",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_malformed",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_missing",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_unsupported",
-     "schema_invalid"
-    ],
-    [
-     "verified",
-     "schema_invalid"
-    ]
-   ]
-  },
-  {
-   "ids": [
-    "*/m32-verifier-uri-ipv6-leading-zero"
-   ],
-   "count": 23,
-   "classification": "reference-defect",
-   "reason": "appraisal.verifier is https://[::1.2.3.04]/. RFC 3986's dec-octet excludes a leading zero, so the IPv4-mapped literal is not a URI and this implementation reports schema_invalid. The reference's format checker accepts it and verifies the record.",
-   "pairs": [
-    [
-     "cnf_key_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "key_revoked",
-     "schema_invalid"
-    ],
-    [
-     "nonce_mismatch",
-     "schema_invalid"
-    ],
-    [
-     "record_in_future",
-     "schema_invalid"
-    ],
-    [
-     "record_stale",
-     "schema_invalid"
-    ],
-    [
-     "revocation_unavailable",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_malformed",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_missing",
-     "schema_invalid"
-    ],
-    [
-     "trusted_key_unsupported",
-     "schema_invalid"
-    ],
-    [
-     "verified",
-     "schema_invalid"
-    ]
-   ]
-  },
-  {
-   "ids": [
-    "*/m41-nonce-non-ascii"
-   ],
-   "count": 2,
-   "classification": "reference-defect",
-   "reason": "runtime.nonce is a string outside ASCII. Both implementations reject, but the reference leaves verify_record as a TypeError from hmac.compare_digest, which refuses a str outside ASCII, rather than as one of its documented outcomes. This implementation compares in constant time over UTF-16 code units and reports nonce_mismatch.",
-   "pairs": [
-    [
-     "nonce_compare_unsupported",
-     "nonce_mismatch"
-    ]
-   ]
-  },
-  {
-   "ids": [
     "*/m46-cnf-jwk-x-non-canonical",
     "*/m47-cnf-jwk-x-truncated"
    ],
-   "count": 16,
+   "count": 17,
    "classification": "stricter-here",
    "reason": "The record's cnf.jwk has an x that is not canonical base64url. Both implementations reject. This one refuses the encoding (cnf_key_malformed, or trusted_key_malformed when allowEmbeddedKey made that same key the trusted one); the reference decodes it leniently and reports the mismatch or the failed signature that follows.",
    "pairs": [
