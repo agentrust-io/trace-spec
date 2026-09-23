@@ -1,0 +1,68 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "ysSfGiHZFwj77FqkuI2D7bc9K0sNHVbPcoDjroN3aeA"
+  },
+  "resolver": "https://observer.example.org/intervals",
+  "predicate_type": "https://probityai.github.io/agent-evidence-vectors/predicate/v1/observed-effect",
+  "observer_keys": {
+    "f3cb9b6750737ef6789a72b71d8305f2": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "TypZ7cg2fetABHzoPuf1znEaV9k6u9qdHOhYjFajzog"
+    }
+  },
+  "cases": {
+    "01-effect-confirmed.json": {
+      "store": "effect-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "observer_key_configured": true,
+      "envelope_verifies": true,
+      "dual_values": "agree",
+      "verdict": "effect-confirmed"
+    },
+    "02-effect-altered-after-issue.json": {
+      "store": "effect-store-altered.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "observer_key_configured": true,
+      "envelope_verifies": false,
+      "dual_values": "agree",
+      "verdict": "effect-contradicted"
+    },
+    "03-observer-and-observed-disagree.json": {
+      "store": "effect-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "observer_key_configured": true,
+      "envelope_verifies": true,
+      "dual_values": "disagree",
+      "verdict": "effect-confirmed"
+    },
+    "04-reference-unresolvable.json": {
+      "store": "effect-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "observer_key_configured": null,
+      "envelope_verifies": null,
+      "dual_values": null,
+      "verdict": "effect-unconfirmed"
+    },
+    "05-observer-key-not-configured.json": {
+      "store": "effect-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "observer_key_configured": false,
+      "envelope_verifies": null,
+      "dual_values": "agree",
+      "verdict": "effect-unverified"
+    }
+  }
+}

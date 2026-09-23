@@ -1,0 +1,43 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1789776010,
+  "subject": "spiffe://trust.example.org/agent/build-bot",
+  "model": {
+    "provider": "example",
+    "model_id": "example-model"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "internal",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "ysSfGiHZFwj77FqkuI2D7bc9K0sNHVbPcoDjroN3aeA"
+    }
+  },
+  "references": [
+    {
+      "rel": "observed-effect",
+      "id": "interval/2",
+      "resolver": "https://observer.example.org/intervals",
+      "digest": "sha256:69aab598cc1ea76cce6325742406dc7db49640527d686348a9e73353894dd3f8",
+      "retention": "P1Y"
+    }
+  ],
+  "signature": "hgIkXMRuWkIzc3DS-da6CfurMNDQtoxLaTSYoeZii3gOTdPUaWG0b3Cr2U-9UckF7ChOxwXWwMXzCyMKAqHABA"
+}

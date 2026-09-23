@@ -129,13 +129,13 @@ A record whose `kind` is not `self` **must** carry `runtime.platform: "software-
 
 ## `references` {#trace-field-references}
 
-An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding. What the signature attests is that this record points there, not the truth of what it points at.
+An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding, an observed change of state. What the signature attests is that this record points there, not the truth of what it points at.
 
 `origin` records where evidence *came from* and can lower assurance. `references` records what a record *points at* and cannot. Before the block existed, a record that needed to name something external had to use `origin` and take `runtime.platform: "software-only"` with it, which said something untrue about how the evidence was obtained.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`, `observed-effect`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
