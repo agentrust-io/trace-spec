@@ -11,6 +11,48 @@
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
+## Authority and conformance claims
+
+<!-- CHANGED: #247 - define specification precedence and identify conformance artifacts -->
+
+This specification defines the meaning of TRACE claims and the requirements for
+conformance. Normative companion specifications apply within the scope this
+specification assigns them. The following rules govern the relationship between
+the specification and its supporting artifacts:
+
+- `schema/trace-claim.json` defines the machine-readable validation constraints.
+  Passing schema validation alone MUST NOT be represented as establishing TRACE
+  conformance: semantic requirements and verification checks also apply. Schema
+  descriptions do not add or override normative requirements.
+- The reference model in `src/agentrust_trace/models.py` is an implementation of
+  those requirements, not an independent source of requirements.
+- `docs/*.md`, including proposals under `docs/rfcs/`, explains the specification
+  and MUST NOT override its normative requirements.
+
+Where the schema, reference model or explanatory documentation disagrees with
+the normative specification, the disagreement MUST be treated as a defect in
+the supporting artifact. Neither accepting the union nor requiring the
+intersection of conflicting implementations resolves the normative rule. A
+schema that rejects a record permitted by the specification is too narrow; one
+that admits a record prohibited by it is too broad. Where normative text is
+silent, a rule found only in an implementation, schema description or proposal
+MUST NOT be promoted to a normative requirement without the specification
+change process. Such a coverage gap requires a specification decision.
+
+A conformance claim MUST identify the specification version and exact revision
+being claimed, together with the schema artifact used for validation. For a
+published release, record the release tag or package version and a digest of
+the schema bytes; for an unreleased checkout, record the full commit identifier
+and schema digest. Identify the verifier or conformance-suite version and the
+level assessed when either is used. These are accompanying reporting details,
+not new Trust Record fields. A schema-only result MUST be described as schema
+validation, not as complete conformance.
+
+TRACE v0.2 is a draft: `main` can differ from a published package. A finding
+against one revision MUST NOT be presented as a finding against another without
+checking the applicable requirements and artifacts. Reporting a schema version
+does not make that schema authoritative over the normative specification.
+
 ## Changes from v0.1
 
 One normative change, and it is breaking.
