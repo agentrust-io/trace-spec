@@ -355,8 +355,15 @@ def verify_record(
     revocation: RevocationStore | None = None,
     max_age_seconds: int | None = None,
     max_future_skew_seconds: int = 300,
+    now: int | None = None,
 ) -> None:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
+
+    ``now`` is an optional non-negative integer Unix timestamp for replaying a
+    freshness decision. Booleans and other types are refused as configuration
+    errors. Omitting it retains the host clock's fractional-second precision.
+    This only pins freshness; callers must also retain the record, trusted key,
+    policy and revocation evidence to reproduce the complete decision.
 
     *trusted_jwk* is required and is never taken from the record. Verifying a
     document against a key it supplies proves only that it is internally
@@ -425,7 +432,9 @@ def verify_record(
     _check_seconds(
         "max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError
     )
-    age = time.time() - int(record["issued_at"])
+    _check_seconds("now", now, optional=True, exc=ProvenanceError)
+    verification_time = time.time() if now is None else now
+    age = verification_time - int(record["issued_at"])
     if age < -max_future_skew_seconds:
         raise ProvenanceError(
             f"record is dated {int(-age)}s in the future, exceeds "
