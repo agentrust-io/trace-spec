@@ -71,8 +71,9 @@ this adapter deliberately needs no schema change.
 
 from __future__ import annotations
 
+from agentrust_trace._patterns import _PYTHON_PATTERNS
+
 import hashlib
-import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Literal, get_args
@@ -125,9 +126,9 @@ _PLATFORMS: frozenset[str] = frozenset(
 
 # Mirrors TrustRecord.subject. Checked here so a bad identity fails at the adapter with
 # a message naming the field, rather than at model_validate() several steps later.
-_SUBJECT_RE = re.compile(r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")
+_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
 
-_DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
 
 
 @dataclass(frozen=True)
