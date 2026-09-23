@@ -489,11 +489,18 @@ class TrustRecord(_TraceModel):
     absent one.
     """
     cnf: ConfirmationKey
-    signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
+    signature: Annotated[
+        str,
+        Field(pattern=r"^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"),
+    ] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
-    outside the record instead of in this field."""
+    outside the record instead of in this field.
+
+    An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or
+    ES256) and must be canonically encoded per RFC 4648 section 3.5: the final
+    character's unused bits must be zero, so it must end in A, Q, g, or w."""
 
     @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:

@@ -32,7 +32,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
 | `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
-| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
+| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included. An 86-character value (a 64-byte Ed25519 or ES256 signature) MUST be canonically encoded per RFC 4648 section 3.5: it MUST end in `A`, `Q`, `g`, or `w` |
 
 <a id="model"></a>
 

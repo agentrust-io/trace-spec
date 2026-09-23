@@ -138,6 +138,15 @@ def reproducibility_claim() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
 
 
+def signature_encoding() -> list[Vector]:
+    """The signature-encoding set (spec section 3.2.2, proposal #247). One rule, one
+    code, and two rejecting vectors that trip it with different unused-bit patterns
+    (0001 and 1111), so the boundary is not covered by one specific bad string a
+    shortcut implementation could special-case."""
+    return _load("signature-encoding",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "reproducibility-claim": (reproducibility_claim, None),
@@ -145,6 +154,7 @@ SETS = {
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
     "verifier-compatibility": (verifier_compatibility, None),
+    "signature-encoding": (signature_encoding, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
