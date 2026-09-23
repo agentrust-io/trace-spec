@@ -83,6 +83,34 @@ that refusal, through the schema-validation path both implementations already
 run every record through first, rather than through a new check specific to
 this one field.
 
+## Classification
+
+An incompatible tightening of the draft's acceptance rules: a record the
+previous rules accepted can be rejected under this one. The maintainer set the
+class on [#401](https://github.com/agentrust-io/trace-spec/pull/401).
+
+## Which spellings are newly rejected
+
+Only an 86-character `signature`, the length of a 64-byte Ed25519 or ES256
+signature. Its final character carries 2 signed bits and 4 unused ones, so each
+signature has 16 spellings: one canonical, ending in `A`, `Q`, `g` or `w`, and 15
+that end in one of the other 60 base64url characters. The previous pattern,
+`^[A-Za-z0-9_-]+$`, accepted all 16, and the reference library verified them,
+because its decoder discards the unused bits. The new pattern accepts the
+canonical one only. A value of any other length is matched exactly as before;
+a 96-byte ES384 signature spends 128 characters on 768 bits and has no unused
+bits to set.
+
+## Handling existing records
+
+A record whose `signature` is non-canonical is rejected, with no grace period
+in this proposal. Its signature bytes are not in question, so the holder can
+zero the final character's unused bits and the record verifies again without
+re-signing. The respelled record is still a different record under section
+3.1.3: `delegation.parent_record_hash` is computed over the complete parent
+record including its `signature` member, so a child that names the old
+spelling no longer matches, and has to be re-issued against the new one.
+
 ## Which existing records would stop passing
 
 `scan_published_signatures.py` walks every `*.json` file under a given root,
@@ -110,7 +138,9 @@ python examples/signature-encoding/scan_published_signatures.py /path/to/trace-r
 
 The numbers from one such run, and the exact command that produced them, belong
 in the PR that carries this proposal, not in this file: they are a fact about
-the corpus on the day the scan ran, not about the vectors themselves. Only
+the revisions scanned on the day the scan ran, not about the vectors themselves,
+and a count of canonical signatures in those revisions says nothing about
+records minted elsewhere. Only
 `signature` is scanned, at the top level of a Trust Record. `sig.value` in a
 revocation statement or bundle carries the same base64url pattern and the same
 open question, but that pattern is untouched by this proposal, so it is outside
