@@ -11,6 +11,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406).
+  Preserve v1 hashes and producer defaults; add explicit v2 production and
+  consumer format requirements. Reported by @altrudev.
+
 - Compare challenge nonces as UTF-8 bytes so non-ASCII mismatches raise the documented ValueError instead of TypeError (#381). Matching strings remain accepted without Unicode normalization. Invalid non-string expected_nonce settings raise a clear ValueError. Reported by @chernistry; follow-up review by @lywinged.
 
 - Report revocation bundles without an RFC 8785 form as `unverified_for_revocation`
