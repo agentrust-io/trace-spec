@@ -46,7 +46,7 @@ affirming appraisal.
 | Freshness: `iat` is an integer, the record is not past `maxAgeSeconds` and not further ahead than `maxFutureSkewSeconds` | spec section 3.2.2 |
 | Revocation is keyed on the trusted key and never on the record's own `cnf.jwk` | spec section 3.2.3 |
 | A revocation bundle a verifier cannot ground an answer on is reported as `unverified_for_revocation`, which MUST NOT be read as an affirming appraisal | spec section 3.2.3 |
-| A statement naming the key rejects the record whatever the bundle's age | spec section 3.2.3 |
+| A statement naming the key rejects the record whatever the bundle's age; no inclusion entry ID is taken, so this is the section's fallback for a record without a usable receipt | spec section 3.2.3 |
 | `delegation.parent_record_hash` is taken over the complete parent record, signature included | spec section 3.1.3 |
 | A chain digest whose prefix names an unsupported algorithm MUST be rejected rather than computed with another | spec section 3.1.3 |
 
@@ -62,6 +62,18 @@ same first failure for the same record. It is documented beside the function.
 - No key or bundle fetching. Both are passed in, which is what keeps the package offline.
 - No ES256 or ES384 bundle signatures. The bundle schema admits them; a signature nobody
   checked grounds nothing, so they are reported as `bundle_signature_unsupported`.
+- No statement-level signatures. Section 3.2.3 authenticates a revocation statement with
+  the signature of the bundle that carries it, and that is the signature this package
+  checks. A statement's own signature against the section 3.2.1 key hierarchy is not
+  verified, because a verifier does not hold that hierarchy. This is the subset the Python
+  implementation documents in `src/agentrust_trace/revocation.py`.
+- No inclusion-entry ordering. `verifyRecord` takes no SCITT inclusion entry ID, so the
+  `last_valid_entry_id` rule of section 3.2.3 is not applied: a statement naming the trusted
+  key rejects every record that key signed, which is the section's fallback for a record
+  without a usable receipt. The Python implementation applies the same fallback. A verifier
+  that holds a record's entry ID needs the receipt path in both implementations, and it is
+  not in this package.
+
 ## Building
 
 ```

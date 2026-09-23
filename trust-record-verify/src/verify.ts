@@ -80,7 +80,13 @@ export interface VerifyOptions {
   /** A challenge nonce the record's `runtime.nonce` must echo. */
   readonly expectedNonce?: string;
   readonly revocation?: RevocationStore;
-  /** A `TraceRevocationBundle/1.0`, validated here against its schema. */
+  /**
+   * A `TraceRevocationBundle/1.0`, validated here against its schema. Its bundle
+   * signature authenticates the statements; a statement's own signature is not
+   * checked, and no inclusion entry ID is taken, so a statement naming the trusted
+   * key rejects every record that key signed (section 3.2.3's fallback for a record
+   * without a usable receipt).
+   */
   readonly revocationBundle?: unknown;
   /** JWKs whose signature the caller accepts on a bundle. */
   readonly trustedBundleKeys?: readonly unknown[];
