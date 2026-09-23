@@ -469,6 +469,15 @@ def build(external: pathlib.Path | None) -> dict[str, Any]:
     cases += jcs_cases()
     cases += thumbprint_cases()
     cases += chain_digest_cases()
+    seen: dict[str, int] = {}
+    for case in cases:
+        seen[case["id"]] = seen.get(case["id"], 0) + 1
+    duplicates = sorted(case_id for case_id, count in seen.items() if count > 1)
+    if duplicates:
+        # Both runners key their verdicts by id, so two cases under one id would
+        # leave one of them out of the comparison without a trace. The external
+        # ids fold "/" into "-", which is one way two files can collide.
+        raise SystemExit(f"duplicate case ids: {duplicates}")
     return {
         "signer_jwk": SIGNER_JWK,
         "other_jwk": OTHER_JWK,

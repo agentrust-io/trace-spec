@@ -209,6 +209,12 @@ def run_verify(case: dict[str, Any]) -> dict[str, Any]:
     return {
         "verdict": "verified",
         "thumbprint": result.trusted_key_thumbprint,
+        # Which key verified the record. The result carries no such member, so
+        # this states it the way verify_record resolves it: the caller's key when
+        # one is passed, the record's own cnf.jwk otherwise. The TypeScript side
+        # reports what it used, and the two must agree even where the thumbprints
+        # would, as they do whenever the caller passes the key the record embeds.
+        "key_source": "caller" if options.get("trusted_key") is not None else "record",
         "revocation": {
             "outcome": result.revocation.outcome,
             "cause": result.revocation.cause,

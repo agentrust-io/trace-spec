@@ -1,8 +1,11 @@
 """Compare the two verdict files and report every case where they differ.
 
 A case agrees when both sides reach the same verdict for the same stated reason:
-the same failure code for a rejection, the same canonical bytes or digest for the
-other kinds, and for a record that verifies, the same key thumbprint and the same
+the same failure code for a rejection, and for a schema failure the same location,
+since both implementations run the same checks in the same order and the first
+member they fault must be the same one; the same canonical bytes or digest for the
+other kinds; and for a record that verifies, the same key thumbprint, the same
+source of that key (the caller's, or the record's own `cnf.jwk`) and the same
 revocation outcome, cause and evidence. Evidence is compared with the two members
 that carry a human-readable message removed, since those are prose.
 
@@ -37,6 +40,10 @@ def load(path: pathlib.Path) -> dict[str, dict[str, Any]]:
     for line in path.read_text(encoding="utf-8").split("\n"):
         if line.strip():
             verdict = json.loads(line)
+            if verdict["id"] in out:
+                # A second verdict under one id would replace the first and take
+                # its case out of the comparison without a trace.
+                raise SystemExit(f"{path}: case id {verdict['id']!r} appears twice")
             out[verdict["id"]] = verdict
     return out
 
@@ -45,12 +52,15 @@ def summarise(verdict: dict[str, Any]) -> tuple:
     """What has to match. Anything outside this tuple is commentary."""
     kind = verdict["verdict"]
     if kind == "rejected":
+        if verdict.get("code") == "schema_invalid":
+            return ("rejected", "schema_invalid", verdict.get("path"))
         return ("rejected", verdict.get("code"))
     if kind == "verified":
         revocation = verdict.get("revocation") or {}
         return (
             "verified",
             verdict.get("thumbprint"),
+            verdict.get("key_source"),
             revocation.get("outcome"),
             revocation.get("cause"),
             json.dumps(revocation.get("evidence"), sort_keys=True),
@@ -133,7 +143,6 @@ def main() -> int:
     known: list[dict[str, Any]] = []
     unexpected: list[dict[str, Any]] = []
     unclassified: list[str] = []
-    path_only: list[dict[str, Any]] = []
     hits: dict[tuple[int, str], int] = {}
 
     for case_id in ids:
@@ -146,12 +155,6 @@ def main() -> int:
             unclassified.append(f"{case_id}: {left.get('detail')}")
         if summarise(left) == summarise(right):
             agreed.append(case_id)
-            if left.get("code") == "schema_invalid" and left.get("path") != right.get("path"):
-                path_only.append({
-                    "id": case_id,
-                    "python": left.get("path"),
-                    "typescript": right.get("path"),
-                })
             continue
         record = {
             "id": case_id,
@@ -208,8 +211,6 @@ def main() -> int:
         print(f"unclassified Python exceptions: {len(unclassified)}")
         for line in unclassified[:20]:
             print(f"  {line}")
-    if path_only:
-        print(f"schema locations that differ while the code agrees: {len(path_only)}")
     for record in unexpected:
         print(json.dumps(record, sort_keys=True))
 
@@ -232,7 +233,6 @@ def main() -> int:
             "ledger_unreached": stale,
             "known": known,
             "unexpected": unexpected,
-            "schema_location_differences": path_only,
         }, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
     return 1 if unexpected or unclassified or stale or external_short else 0

@@ -121,3 +121,28 @@ test("delegation-link vectors agree on the chain digest of section 3.1.3", async
   }
   assert.ok(checked > 0, "no delegation link resolved, so nothing was checked");
 });
+
+test("trustedKeySource names the key that verified, even when the record embeds the same key", async () => {
+  let picked;
+  for (const { vector } of vectors("canonicalization-boundary")) {
+    const got = await outcome(
+      verifyRecord(vector.record, { trustedKey: vector.trusted_key, now: vector.record.iat, maxAgeSeconds: null }),
+    );
+    if (!got.rejected) {
+      picked = { vector, result: got.result };
+      break;
+    }
+  }
+  assert.ok(picked, "no canonicalization-boundary vector verifies");
+  const { vector, result } = picked;
+  assert.equal(result.trustedKeySource, "caller");
+  const embedded = await verifyRecord(vector.record, {
+    allowEmbeddedKey: true,
+    now: vector.record.iat,
+    maxAgeSeconds: null,
+  });
+  assert.equal(embedded.trustedKeySource, "record");
+  // The same key both ways, so the thumbprint cannot tell the two results apart
+  // and only trustedKeySource can; the differential compares it for that reason.
+  assert.equal(embedded.trustedKeyThumbprint, result.trustedKeyThumbprint);
+});

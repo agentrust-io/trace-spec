@@ -92,6 +92,7 @@ async function runVerify(item) {
     return {
       verdict: "verified",
       thumbprint: result.trustedKeyThumbprint,
+      key_source: result.trustedKeySource,
       revocation: {
         outcome: result.revocation.outcome,
         cause: result.revocation.cause,
