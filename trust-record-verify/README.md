@@ -62,7 +62,6 @@ same first failure for the same record. It is documented beside the function.
 - No key or bundle fetching. Both are passed in, which is what keeps the package offline.
 - No ES256 or ES384 bundle signatures. The bundle schema admits them; a signature nobody
   checked grounds nothing, so they are reported as `bundle_signature_unsupported`.
-
 ## Building
 
 ```
@@ -96,7 +95,11 @@ the manifest digest.
 The corpus is one JSON file holding each record as *text*, because several cases exist to
 probe a difference that only survives in text. Both runners parse the same bytes with their
 own JSON parser. A case agrees when both sides reach the same verdict for the same stated
-reason, and every disagreement is argued in
+reason: the same failure code, and for a schema failure the same member, since the check
+order is shared and the first member faulted must be the same one; for a record that
+verifies, the same key thumbprint, the same source of that key (the caller's or the
+record's own `cnf.jwk`, which the thumbprint alone cannot tell apart when they are the same
+key) and the same revocation outcome, cause and evidence. Every disagreement is argued in
 [`differential/known-divergences.json`](differential/known-divergences.json), matched on
 both the case and the pair of reported reasons, so a new disagreement in a family already
 listed is reported rather than absorbed. The ledger holds in the other direction too: each
@@ -116,15 +119,33 @@ Latest run, against this repository's implementation at the commit under test (i
 | Published conformance vectors | 12 | 12 |
 | **Total** | **1644** | **1508** |
 
-Every published vector agrees. The 136 remaining cases are 7 documented divergence classes
-in the adversarial matrix, each one appearing once per verifier configuration. Six classes
-left the ledger when the reference stopped diverging: the lone-surrogate revocation bundle
-(#382, fixed by #386), `subject` and `appraisal.verifier` under ECMA-262 pattern semantics
-(#379, fixed by #388), the IPv4-in-IPv6 literal with a leading zero (#380, fixed by #387),
-the non-ASCII nonce (#381, fixed by #383), and present falsy signatures
-(#390). The TypeScript signature guard now also distinguishes absent members, null
-values and empty strings in the same order as the Python reference. The harness reported each of them as an
-entry no case reached, which is how a fixed divergence is meant to leave.
+Every published vector agrees. The 136 remaining cases are the ledger's 7 entries, each
+pinned to the number of cases that land on it. Three appear once per verifier
+configuration; the other three matrix entries land only in the configurations where their
+check is reached before another failure; one is in the RFC 8785 corpus.
+
+| Ledger entry | Cases | Where |
+|---|---:|---|
+| Signature re-spelled with non-zero unused trailing bits (`m03`) | 24 | mutation matrix, once per verifier configuration |
+| Signature truncated to a still-valid base64url length (`m04`) | 24 | mutation matrix, once per configuration |
+| Signature with a trailing newline (`m05`) | 24 | mutation matrix, once per configuration |
+| `iat` written `1785000000.0` or `1.785e9` (`m20`, `m21`) | 32 | mutation matrix, both spellings in the 16 configurations that reach the `iat` check |
+| The record's `cnf.jwk.x` not canonical base64url (`m46`, `m47`) | 17 | mutation matrix, one case in each of the 17 configurations that read that key |
+| The caller's trusted key with a non-canonical `x` (`c18`) | 14 | one configuration, the 14 mutations that reach the trusted key |
+| `1.0e+21`: a float in Python, an integer past 2^53 here (`jcs-10`) | 1 | RFC 8785 corpus |
+
+Six entries left the ledger when the reference stopped diverging, each reported by the
+harness as an entry no case reached, which is how a fixed divergence is meant to leave:
+
+- the lone-surrogate revocation bundle (`c23`; #382, fixed by #386);
+- `subject` with a trailing U+000A, U+000D or U+2028 under ECMA-262 `pattern` semantics
+  (`m27`; #379, fixed by #388);
+- `appraisal.verifier` with a trailing newline under `format: uri` (`m31`; #379, fixed by #388);
+- the IPv4-in-IPv6 literal with a leading zero (`m32`; #380, fixed by #387);
+- the non-ASCII nonce (`m41`; #381, fixed by #383);
+- a `signature` member that is present but `0`, `false`, `[]` or `{}` (`m08`; #390). The
+  TypeScript signature guard now also distinguishes absent members, null values and empty
+  strings in the same order as the Python reference.
 
 The differential compares verdicts, so it is silent on anything that does not change a
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
