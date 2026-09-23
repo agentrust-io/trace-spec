@@ -6,6 +6,7 @@ on:
     paths:
       - "trust-record-verify/**"
       - "schema/**"
+      - "spec/**"
       - "examples/**"
       - "src/agentrust_trace/**"
       - ".github/workflows/trust-record-verify.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "trust-record-verify/**"
       - "schema/**"
+      - "spec/**"
       - "examples/**"
       - "src/agentrust_trace/**"
       - ".github/workflows/trust-record-verify.yml"
