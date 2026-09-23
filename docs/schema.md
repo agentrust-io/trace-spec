@@ -10,6 +10,11 @@ unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and 
 can share one. A value that needs to be larger is carried as a string. The same bound applies to members a
 `cnf.jwk` carries that this schema does not name.
 
+Whether a number is an integer is decided by its value, not by how it is written (spec section 3.2.2, "What
+counts as an integer"). `1785000000.0` and `1.785e9` are the integer 1785000000; `1785000000.5` is not an
+integer. JSON Schema defines `integer` the same way, so validating against this schema already gives that
+answer.
+
 <a id="top-level-fields"></a>
 
 ## Top-level fields {#trace-fields}

@@ -267,7 +267,7 @@ def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None
             )
 
 
-def _canonical_bytes(d: dict[str, Any]) -> bytes:
+def _canonical_bytes(d: Any) -> bytes:
     """Return the RFC 8785 (JCS) canonical UTF-8 byte sequence for *d*.
 
     This is the signature pre-image mandated by spec/trace-v0.2.md §3.2.2. JCS
@@ -278,13 +278,78 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
     ``json.dumps(sort_keys=True)`` diverges from JCS for non-ASCII strings and
     for IEEE 754 number formatting, which would break cross-implementation
     verification, so a conformant library is used instead.
+
+    The safe-integer range of section 3.2.2 is checked on the value, which is how
+    that section decides what an integer is. `rfc8785` refuses an `int` outside
+    the range and writes a `float` as it stands, and `json.loads` returns a float
+    for `9.007199254740993e15` and `1e21`, both whole numbers past the bound. Such
+    a float is refused here, with the error `rfc8785` raises for the same value
+    parsed as an `int`.
     """
+    _refuse_whole_floats_out_of_range(d)
     return rfc8785.dumps(d)
 
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
 # raises to a MUST for anything canonicalized under it.
 JCS_SAFE_INTEGER = 9007199254740991
+
+
+def _refuse_whole_floats_out_of_range(value: Any) -> None:
+    """Raise ``rfc8785.IntegerDomainError`` for a whole-valued float outside the range.
+
+    Walks the containers `rfc8785` serializes. Every finite double of magnitude
+    2^53 or more is a whole number, so this is every such float in *value*; a
+    non-finite one is left to `rfc8785`, which refuses it as a float.
+    """
+    if isinstance(value, float):
+        if value.is_integer() and not -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER:
+            raise rfc8785.IntegerDomainError(int(value))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _refuse_whole_floats_out_of_range(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _refuse_whole_floats_out_of_range(item)
+
+
+def _integer_value(value: Any, name: str) -> int:
+    """The integer a parsed JSON number stands for, decided by value (spec section 3.2.2).
+
+    JSON has one number type, and a fraction or an exponent is a way of writing a
+    value, not a second type: `1785000000`, `1785000000.0` and `1.785e9` are one
+    number. RFC 8785 writes a number back out by value, so the three have one
+    canonical form and one signature, and a JavaScript parser, having only the
+    double, never sees which spelling it was given. Python's `json` module does:
+    it returns an `int` for the first and a `float` for the other two. A type test
+    here therefore rejected two spellings of a value the signature cannot tell
+    apart, and only in Python.
+
+    Returns the value as an `int`. Raises ``ValueError`` naming which of the two
+    rules failed: the value is not an integer (a boolean, a string, anything else
+    that is not a JSON number, or a number that is not a whole number), or it is a
+    whole number outside the safe-integer range. ``bool`` is refused explicitly: it
+    is an ``int`` subclass in Python and not a number in JSON. The range is checked
+    here as well as in `_canonical_bytes`, so that a member read before anything
+    is canonicalized, such as `iat` for the freshness check, reports it itself.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(
+            f"{name} is not an integer value: it is a {type(value).__name__}, not a "
+            "JSON number"
+        )
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(
+                f"{name} is not an integer value: {value!r} is not a whole number"
+            )
+        value = int(value)
+    if not -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER:
+        raise ValueError(
+            f"{name} is {value}, outside the safe-integer range -{JCS_SAFE_INTEGER} "
+            f"to {JCS_SAFE_INTEGER}"
+        )
+    return int(value)
 
 
 class UnanchorableValue(ValueError):
@@ -776,9 +841,12 @@ def verify_record(
     # Both bounds are verifier configuration, not record data, and a malformed
     # one is checked before it is used -- see `_check_seconds`.
     _check_seconds("max_age_seconds", max_age_seconds, optional=True)
-    iat = record.get("iat")
-    if not isinstance(iat, int) or isinstance(iat, bool):
-        raise ValueError("record has no valid integer 'iat' for freshness check")
+    # Decided by value, not by spelling (section 3.2.2): `json.loads` returns a float
+    # for `1785000000.0` and `1.785e9`, and both are the integer the signature covers.
+    try:
+        iat = _integer_value(record.get("iat"), "'iat'")
+    except ValueError as exc:
+        raise ValueError(f"record has no valid integer 'iat' for freshness check: {exc}") from exc
     age = verification_time - iat
     if age < -max_future_skew_seconds:
         raise ValueError(

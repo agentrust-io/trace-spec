@@ -43,6 +43,12 @@ checking any archived record, including these.
   §3.2.2 requires and names as insufficient. Each file is a test-vector envelope;
   the Trust Record is under the `record` key and validates against the schema.
   See that directory's README.
+- `number-spelling/`: seven signed Trust Records for a rule proposed on #247 and not yet
+  accepted: an integer-typed member is decided by its value, not by how it is written.
+  `iat` written `1785000000`, `1785000000.0` and `1.785e9` carries one signature and
+  verifies; a fractional value and a value past the safe-integer range are each rejected
+  in two spellings. Each file is a test-vector envelope with the record under `record`.
+  See that directory's README, which also counts the published records the rule changes.
 - `condition-appraisal/`: five signed Trust Records, each citing an independent check's
   finding through a `references` entry with `rel: "condition-appraisal"`, against an
   appraisal store committed beside them: confirmed, altered after issue, a fail that
