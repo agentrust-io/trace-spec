@@ -158,8 +158,8 @@ def build_assertion(
     profile = record.get("eat_profile")
     if not _SUBJECT_RE.match(str(subject or "")):
         raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
-    if not profile:
-        raise ContentMarkingError("the record declares no eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ContentMarkingError("the record declares no non-empty string eat_profile")
 
     data: dict[str, Any] = {
         "version": ASSERTION_VERSION,
