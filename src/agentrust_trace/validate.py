@@ -22,7 +22,7 @@ _ECMA_PATTERNS = (
     (r"^P(\d+W|(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
      r"(T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))?"
      r"|T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))$"),
-    '^[A-Za-z0-9_-]+$',
+    '^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$',
 )
 _PYTHON_PATTERNS = {
     pattern: re.compile(

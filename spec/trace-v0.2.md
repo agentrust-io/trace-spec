@@ -391,7 +391,7 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 
 **Signature binding.** Every TRACE Trust Record MUST be cryptographically bound by a signature over its canonical JSON form, made by the key in `cnf`. Canonicalization is RFC 8785 (JCS) unless the profile declares a different canonicalization. The signature MAY be either:
 
-- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
+- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent. The value MUST be the canonical base64url encoding (RFC 4648 section 3.5: unused trailing bits in the final character MUST be zero), and a verifier MUST reject a record whose `signature` is not canonically encoded. <!-- CHANGED: #247 - embedded signature MUST be canonical base64url -->
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
