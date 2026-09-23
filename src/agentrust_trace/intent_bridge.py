@@ -12,9 +12,9 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace.sign import (
-    JCS_SAFE_INTEGER,
     _b64url_decode,
     _canonical_bytes,
+    _integer_value,
     _pubkey_from_jwk,
 )
 
@@ -135,16 +135,19 @@ def _bind_successor_observation(
     if not isinstance(after["observation"], dict):
         raise AuthorizationMismatch("transcript.after.observation must be an object")
     _nonempty_string(after["observer"], "transcript.after.observer")
-    observed_at = after["observed_at"]
-    if (
-        not isinstance(observed_at, int)
-        or isinstance(observed_at, bool)
-        or observed_at < 0
-        or observed_at > JCS_SAFE_INTEGER
-    ):
+    # By value, not by spelling (spec section 3.2.2): the digest below is taken over
+    # the RFC 8785 form, which writes `150.0` as `150`, so both are the one value it binds.
+    try:
+        observed_at = _integer_value(after["observed_at"], "transcript.after.observed_at")
+    except ValueError as exc:
         raise IntentBridgeError(
             "transcript.after.observed_at must be a non-negative integer within "
-            "the JCS safe-integer range"
+            f"the JCS safe-integer range: {exc}"
+        ) from exc
+    if observed_at < 0:
+        raise IntentBridgeError(
+            "transcript.after.observed_at must be a non-negative integer within "
+            f"the JCS safe-integer range: it is {observed_at}"
         )
     expected = _digest(expected_successor_digest, "expected_successor_digest")
     try:
@@ -238,13 +241,20 @@ def verify_bridge(
         raise IntentBridgeError("authorizer_key_id does not identify the trusted key")
     if authorization["decision"] != "allow":
         raise AuthorizationDenied("the signed decision is not allow")
+    # By value, not by spelling (spec section 3.2.2): `100.0` is the timestamp 100, which
+    # is what the signature above covers. A value outside the safe-integer range does
+    # not get this far, because `_jcs` refused it before the signature was checked.
     for field in ("authorized_at", "expires_at"):
-        if (
-            not isinstance(authorization[field], int)
-            or isinstance(authorization[field], bool)
-            or authorization[field] < 0
-        ):
-            raise IntentBridgeError(f"{field} must be a non-negative integer Unix timestamp")
+        try:
+            timestamp = _integer_value(authorization[field], f"authorization.{field}")
+        except ValueError as exc:
+            raise IntentBridgeError(
+                f"{field} must be a non-negative integer Unix timestamp: {exc}"
+            ) from exc
+        if timestamp < 0:
+            raise IntentBridgeError(
+                f"{field} must be a non-negative integer Unix timestamp: it is {timestamp}"
+            )
     invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
     if invalid_now_type or (now is not None and now < 0):
         raise IntentBridgeError("now must be a non-negative integer Unix timestamp")

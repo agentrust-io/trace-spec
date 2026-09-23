@@ -41,8 +41,8 @@ _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME}
 JCS_SAFE_INTEGER = 9007199254740991
 
 
-def _not_a_boolean(value: Any) -> Any:
-    """Reject ``True`` and ``False`` where JSON says integer.
+def _json_integer(value: Any) -> Any:
+    """Decide an integer as JSON does: by its value, not by Python's type or its spelling.
 
     ``isinstance(True, int)`` is a Python fact and not a JSON one. JSON Schema's
     ``"type": "integer"`` does not match a boolean, so ``schema/trace-claim.json``
@@ -54,6 +54,18 @@ def _not_a_boolean(value: Any) -> Any:
     were safe by accident rather than by design: their lower bound is above 1, so
     the coerced value failed the range check afterwards. ``appraisal.timestamp``
     allows 1 and turned ``true`` into 1 January 1970.
+
+    A string had the same hole: pydantic's lax mode read ``"1785000000"`` as the
+    integer 1785000000, which the schema rejects as a string. It is refused here.
+
+    A number is the other direction (spec section 3.2.2). ``1785000000.0`` and
+    ``1.785e9`` parse to a Python ``float`` and are the integer 1785000000: JSON
+    has one number type, JSON Schema 2020-12 matches ``integer`` to any number with
+    a zero fractional part, and RFC 8785 writes the value back out as
+    ``1785000000``, so the signature cannot tell the spellings apart. Such a float
+    is converted to the ``int`` it stands for, so each member's bounds judge the
+    value, and a record dumped from the model carries the plain integer. A float
+    that is not a whole number is not an integer.
     """
     if isinstance(value, bool):
         raise ValueError(
@@ -61,11 +73,23 @@ def _not_a_boolean(value: Any) -> Any:
             "not match true or false, so a record carrying one is rejected by "
             "schema/trace-claim.json and by any implementation validating against it."
         )
+    if isinstance(value, (str, bytes, bytearray)):
+        raise ValueError(
+            f"expected an integer, got a {type(value).__name__}. JSON Schema type "
+            "'integer' does not match a string, even one that spells a number, so a "
+            "record carrying one is rejected by schema/trace-claim.json."
+        )
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(
+                f"expected an integer value, got {value!r}, which is not a whole number"
+            )
+        return int(value)
     return value
 
 
 #: An integer as JSON means it, rather than as Python's type hierarchy means it.
-JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
+JsonInt = Annotated[int, BeforeValidator(_json_integer)]
 
 DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
 
