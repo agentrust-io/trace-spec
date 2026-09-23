@@ -9,8 +9,10 @@ import {
   decodeBase64url,
   encodeBase64url,
   jwkThumbprint,
+  parentRecordHash,
   TRACE_PROFILE_V0_2,
   TraceVerificationError,
+  verifyDelegationLink,
   verifyRecord,
 } from "../dist/index.js";
 
@@ -56,6 +58,38 @@ test("canonicalJson refuses what has no canonical form", () => {
   const cycle = {};
   cycle.self = cycle;
   assert.throws(() => canonicalJson(cycle), TraceVerificationError);
+});
+
+test("canonicalJson refuses a symbol-keyed member rather than dropping it", async () => {
+  const sym = Symbol("s");
+  const refused = (error) =>
+    error instanceof TraceVerificationError && error.code === "canonicalization_failed";
+  for (const value of [{ a: 1, [sym]: 2 }, { a: { b: 1, [sym]: 2 } }, [{ [sym]: 1 }]]) {
+    assert.throws(() => canonicalJson(value), refused);
+  }
+  await rejects(parentRecordHash({ a: 1, [sym]: 2 }), "canonicalization_failed");
+  // The same object without the symbol has a canonical form, so the refusal is
+  // the symbol's and not the shape's.
+  assert.equal(canonicalJson({ a: { b: 1 } }), '{"a":{"b":1}}');
+});
+
+test("encodeBase64url takes a Uint8Array and nothing else that views a buffer", () => {
+  const refused = (error) => error instanceof TraceVerificationError && error.code === "invalid_argument";
+  assert.equal(encodeBase64url(new Uint8Array([1, 2, 3])), "AQID");
+  assert.equal(encodeBase64url(Buffer.from([1, 2, 3])), "AQID");
+  // A Uint16Array holds 16-bit values: iterated as bytes it would encode
+  // [1, 2] as "AQI" and lose two of its four bytes. A DataView is a view but
+  // not iterable, so the loop would reach a native TypeError.
+  for (const bad of [new Uint16Array([1, 2]), new DataView(new ArrayBuffer(4)), new ArrayBuffer(3), [1, 2, 3], "AQID"]) {
+    assert.throws(() => encodeBase64url(bad), refused);
+  }
+});
+
+test("verifyDelegationLink takes a plain options object, as verifyRecord does", async () => {
+  class Options {}
+  for (const options of [[], new Date(0), new Options(), Object.create({ supportedDigestAlgorithms: [] }), null, "sha256", 1]) {
+    await rejects(verifyDelegationLink({}, {}, options), "invalid_argument");
+  }
 });
 
 test("base64url decodes canonical input and refuses everything else", () => {

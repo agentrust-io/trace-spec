@@ -71,7 +71,10 @@ export function decodeBase64url(value: unknown): Uint8Array | null {
 
 /** Encode *bytes* as unpadded base64url. */
 export function encodeBase64url(bytes: Uint8Array): string {
-  if (!ArrayBuffer.isView(bytes)) {
+  // A Uint8Array and nothing else that views a buffer: a Uint16Array iterates
+  // 16-bit values, which the byte loop below would encode as the wrong bytes,
+  // and a DataView does not iterate at all. Node's Buffer is a Uint8Array.
+  if (!(bytes instanceof Uint8Array)) {
     fail("invalid_argument", "encodeBase64url takes a Uint8Array");
   }
   let out = "";

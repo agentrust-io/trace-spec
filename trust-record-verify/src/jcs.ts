@@ -21,7 +21,8 @@
  * - a string or member name holding an unpaired surrogate, which has no UTF-8
  *   form (RFC 8785 section 3.1 requires I-JSON input, RFC 7493 section 2.1);
  * - anything that is not JSON data: `undefined`, functions, symbols, bigints,
- *   class instances, array holes, and cyclic structures.
+ *   class instances, array holes, cyclic structures, and an object with a
+ *   symbol-keyed member, which `Object.keys` would silently leave out.
  */
 
 import { fail } from "./errors.js";
@@ -125,6 +126,9 @@ function serialize(
     }
     parts.push("]");
   } else if (isPlainObject(node)) {
+    if (Object.getOwnPropertySymbols(node).length > 0) {
+      fail("canonicalization_failed", `${describe(path)} has a symbol-keyed member, which has no JSON form`);
+    }
     const names = Object.keys(node).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     parts.push("{");
     names.forEach((name, index) => {

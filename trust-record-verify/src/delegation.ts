@@ -91,8 +91,8 @@ export async function verifyDelegationLink(
   parent: unknown,
   options: DelegationLinkOptions = {},
 ): Promise<DelegationLink> {
-  if (options === null || typeof options !== "object") {
-    fail("invalid_argument", "verifyDelegationLink takes an options object");
+  if (!isPlainObject(options)) {
+    fail("invalid_argument", "verifyDelegationLink takes a plain options object");
   }
   const configured = (options as DelegationLinkOptions).supportedDigestAlgorithms;
   if (configured !== undefined && (!Array.isArray(configured) || configured.some((a) => typeof a !== "string"))) {
