@@ -505,6 +505,10 @@ Any party, browser, CLI, in-cluster verifier, third-party auditor, verifies:
 7. SLSA provenance resolves to a trusted builder.
 8. The record-signing key is not revoked as of the entry the record was logged at, per section 3.2.3. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
 
+**Verifier profile compatibility.** A verifier MUST declare a nonempty `accepted_profiles` set of profile identifiers whose schemas and verification semantics it implements. A declaration containing an unimplemented profile MUST be refused, even when the incoming record names another implemented profile. A verifier MUST refuse a record whose `eat_profile` is outside its declared set. These requirements do not override the v0.1 cutover in "Changes from v0.1".
+
+For each successful verification, the verifier MUST include the verified `profile` and the complete `accepted_profiles` set in its verification statement, recording the set configured at verification time. `profile` MUST identify the record's signed `eat_profile`. These are verifier-result fields, not new claims added to the signed input record.
+
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
 #### 3.3.1 Build provenance verification depth
@@ -760,7 +764,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
 
-- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
+- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, a policy deny MUST NOT block the action. The audit chain MUST still record every would-have-denied decision; only operational log lines are suppressed.
 
   **`enforcement_mode: "declared"`.** The three modes above all assert that *something evaluated the policy*. `declared` asserts less: the policy is named and bound into the signed record, and nothing evaluated it. That is not a corner case, it is the common one for a producer with no policy engine: an agent framework observed by an adapter has a policy the operator declares and no evaluation of it anywhere, and with only three values such a record had to claim an evaluation that never happened.
 

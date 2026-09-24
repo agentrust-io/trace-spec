@@ -160,9 +160,11 @@ class PolicyInfo(_TraceModel):
     """How the policy named by ``bundle_hash`` related to this execution.
 
     The first three all assert that **something evaluated the policy**:
-    ``enforce`` acted on the result, ``advisory`` did not, ``silent`` acted and
-    suppressed the log lines. ``declared`` asserts less than any of them: the
-    policy is named and bound into the signed record, and nothing evaluated it.
+    ``enforce`` blocked on deny, ``advisory`` logged and allowed, and ``silent``
+    allowed even on deny while suppressing operational log lines. The audit
+    chain still records every would-have-denied decision in ``silent`` mode.
+    ``declared`` asserts less than any of them: the policy is named and bound
+    into the signed record, and nothing evaluated it.
 
     That case is not hypothetical, it is the common one. An agent framework has
     no policy engine, so a record produced by observing a LangChain or LlamaIndex
