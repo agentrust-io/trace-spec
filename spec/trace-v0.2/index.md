@@ -486,11 +486,13 @@ A verifier configured with the issuer key that fails any of these three checks M
 
 #### 3.3.3 Action receipts for embodied workflows (informative)
 
+Here, a TRACE session means a receipt stream or producer-defined execution scope, not an MCP protocol session.
+
 Embodied-agent profiles need to keep three evidence layers separate:
 
 | Layer                    | TRACE role                                                                                                                  | Boundary                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Session evidence         | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the governed session.                   | Does not expose every call unless the verifier has the transcript bytes.  |
+| Execution-scope evidence | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the producer-defined execution scope.   | Does not expose every call unless the verifier has the transcript bytes.  |
 | Action issuance evidence | Per-call receipts can prove that a specific action request was issued, signed, ordered, and bound to the session or call.   | Does not prove that the requested physical or business outcome completed. |
 | Outcome evidence         | Controller, monitor, human-review, or safety-system observations can describe acceptance, rejection, aborts, or completion. | The claim belongs to the external issuer, not to core TRACE validity.     |
 

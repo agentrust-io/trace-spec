@@ -19,7 +19,7 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](ht
 
 ## Next: v0.3
 
-- **MCP profile (normative)**: claim shape and binding rules for MCP tool-call transcripts. The `tool_transcript` claim exists and is bound; what is missing is the normative rule set, for upstream contribution to MCP spec governance.
+- **MCP profile (normative)**: the [requirements proposal](https://trace.agentrust-io.com/spec/mcp-profile-v0.3-draft/index.md) separates TRACE attempt identity, correlation metadata and signed declaration snapshots. Wire format, implementation and adoption remain pending before upstream contribution to MCP spec governance.
 - **A2A profile (normative)**: binding rules over the `delegation` block now that A2A is stable at v1.x, including the mutual case. cA2A is the reference implementation.
 - **Attested memory and persistent state**: a claim for agent memory integrity at runtime, digesting the whole store rather than a manifest of it. Nothing in the ecosystem measures agent memory today; every runtime treats the agent as stateless between actions.
 - **Encrypted claims envelope**: normative profile for JWE / COSE-Encrypt where `data_class` requires confidential transport to verifiers (open question §7 Q5).
