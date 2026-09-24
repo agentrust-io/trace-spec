@@ -17,6 +17,8 @@ rather than an optional extra.
 
 from __future__ import annotations
 
+from agentrust_trace._patterns import _PYTHON_PATTERNS
+
 import hashlib
 import re
 from typing import Any
@@ -37,8 +39,8 @@ ASSERTION_LABEL = "com.agentrust-io.trace"
 ASSERTION_VERSION = 1
 
 _ALGS = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
-_SUBJECT_RE = re.compile(r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")
-_DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
+_DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
 _HTTP_URL_RE = re.compile(r"^https?://(?P<authority>[^/?#]+)(?:[/?#].*)?$", re.IGNORECASE)
 
 
@@ -158,8 +160,8 @@ def build_assertion(
     profile = record.get("eat_profile")
     if not _SUBJECT_RE.match(str(subject or "")):
         raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
-    if not profile:
-        raise ContentMarkingError("the record declares no eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ContentMarkingError("the record declares no non-empty string eat_profile")
 
     data: dict[str, Any] = {
         "version": ASSERTION_VERSION,
