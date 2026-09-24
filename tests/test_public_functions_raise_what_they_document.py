@@ -236,16 +236,18 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
         lambda: {"kind": "publisher-asserted", "publisher": "did:web:acme.example",
                      "tools": _TOOLS, "artifact": _ARTIFACT, "endpoint": None, "attestation": None,
                      "issued_at": 1760000000},
-        ("kind", "publisher", "tools", "artifact", "endpoint", "attestation", "issued_at"),
+        ("kind", "publisher", "tools", "artifact", "endpoint", "attestation",
+         "issued_at", "format"),
     ),
     "provenance.check_tool_catalog": (
-        lambda: {"record": _PROVENANCE, "tools": _TOOLS}, ("tools",),
+        lambda: {"record": _PROVENANCE, "tools": _TOOLS}, ("tools", "required_format"),
     ),
     "provenance.sign_record": (lambda: {"record": _PROVENANCE, "key": _KEY}, ("key",)),
     "provenance.verify_record": (
         lambda: {"record": _PROVENANCE_SIGNED, "trusted_jwk": _JWK, "revocation": None,
                      "max_age_seconds": None, "max_future_skew_seconds": 300},
-        ("trusted_jwk", "revocation", "max_age_seconds", "max_future_skew_seconds", "now"),
+        ("trusted_jwk", "revocation", "max_age_seconds", "max_future_skew_seconds",
+         "now", "required_format"),
     ),
     "revocation.check_bundle": (
         lambda: {"bundle": _CTX["bundle"],
@@ -279,7 +281,10 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
 
 #: Parameters swept by neither table, each with the reason. Empty is the goal; a
 #: reason that stops being true is what the coverage test is for.
-UNSWEPT_PARAMETERS: dict[str, str] = {}
+UNSWEPT_PARAMETERS: dict[str, str] = {
+    "provenance.tool_catalog_hash.format":
+        "Version inputs exercised by test_provenance_v2.test_no_unknown_version_fallback",
+}
 
 #: (function, parameter) pairs whose leaks are known, filed, and owned by someone
 #: else's fix. Strict: the day the fix lands, the entry has to go, or this fails.

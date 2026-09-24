@@ -6,13 +6,13 @@ from agentrust_trace import provenance as p
 from agentrust_trace.sign import generate_key, key_to_jwk
 
 
-@pytest.fixture
-def signed():
+@pytest.fixture(params=[p.FORMAT, p.FORMAT_V2])
+def signed(request):
     key = generate_key()
     record = p.build_record(
         kind="publisher-asserted", publisher="did:web:example.com", tools=[],
         artifact={"package": "pkg:npm/example@1", "digest": "sha256:" + "a" * 64},
-        issued_at=1000,
+        issued_at=1000, format=request.param,
     )
     return p.sign_record(record, key), key_to_jwk(key)
 
