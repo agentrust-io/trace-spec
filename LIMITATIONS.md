@@ -64,11 +64,9 @@ appraise it even where the producer checked it. The spec does not assert it for 
 
 ## What Level 0 does not provide
 
-Level 0 (software-only signing) is suitable for development, internal audit trails, and staging environments. It does not satisfy:
+Level 0 provides software signatures without hardware-rooted assurance. A privileged operator may extract the signing key; a valid signature does not establish that execution was protected by a TEE.
 
-- EU AI Act Art. 12 (tamper-evident logging): requires Level 1+
-- DORA Art. 9 (ICT risk management): requires Level 1+ with transparency log anchoring
-- Any claim of hardware-rooted trust: the signing key is held in software and can be extracted by a privileged operator
+TRACE verification levels describe technical evidence, not legal compliance. Article 12 of the EU AI Act requires a logging capability; it does not prescribe a TRACE level or tamper-evident format. See the [regulatory context in the specification](spec/trace-v0.2.md#1-problem). Neither a TRACE level nor transparency-log anchoring alone establishes compliance with the EU AI Act or DORA. Deployment-specific obligations require a separate assessment.
 
 ## What the SDK does not do
 
