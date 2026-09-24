@@ -98,6 +98,7 @@ plugins:
           - spec/trace-v0.2.md
           - spec/registry-anchor-v1.md
           - spec/server-provenance-v1.md
+          - spec/mcp-profile-v0.3-draft.md
           - spec/server-provenance-v2.md
           - spec/content-marking-v1.md
           - docs/schema.md
@@ -218,6 +219,7 @@ nav:
           - TRACE v0.2: spec/trace-v0.2.md
           - Registry anchor format v1: spec/registry-anchor-v1.md
           - MCP server provenance v1: spec/server-provenance-v1.md
+          - MCP profile v0.3 proposal: spec/mcp-profile-v0.3-draft.md
           - MCP server provenance v2: spec/server-provenance-v2.md
           - Content marking v1: spec/content-marking-v1.md
           - TRACE v0.1 (superseded): spec/trace-v0.1.md
