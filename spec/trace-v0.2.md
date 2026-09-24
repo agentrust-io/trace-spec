@@ -33,9 +33,10 @@ Where the schema, reference model or explanatory documentation disagrees with
 the normative specification, the disagreement MUST be treated as a defect in
 the supporting artifact. Neither accepting the union nor requiring the
 intersection of conflicting implementations resolves the normative rule. A
-schema that rejects a record permitted by the specification is too narrow; one
-that admits a record prohibited by it is too broad. Where normative text is
-silent, a rule found only in an implementation, schema description or proposal
+schema is too narrow or too broad when it rejects or admits records contrary to
+the specification's structural validation constraints. Requirements enforced by
+verification, including signature and freshness checks, remain separate. Where
+normative text is silent, a rule found only in an implementation, schema description or proposal
 MUST NOT be promoted to a normative requirement without the specification
 change process. Such a coverage gap requires a specification decision.
 
