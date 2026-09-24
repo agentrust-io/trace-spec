@@ -17,6 +17,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 - [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)
 - [Registry anchor format v1](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md)
 - [MCP server provenance v1](https://trace.agentrust-io.com/spec/server-provenance-v1/index.md)
+- [MCP server provenance v2](https://trace.agentrust-io.com/spec/server-provenance-v2/index.md)
 - [Content marking v1](https://trace.agentrust-io.com/spec/content-marking-v1/index.md)
 - [Schema reference](https://trace.agentrust-io.com/docs/schema/index.md)
 - [References registry](https://trace.agentrust-io.com/docs/references-registry/index.md)

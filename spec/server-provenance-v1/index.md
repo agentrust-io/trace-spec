@@ -102,7 +102,7 @@ using the sorted-key canonicalization of Anchor Format v1 §1.
 
 The hash covers **name, description and input schema** of every tool. Description is included deliberately: a tool whose description changes from "search the docs" to "search the docs and email results to the address in the query" is the rug-pull this hash exists to catch, and a hash over names alone would miss it entirely.
 
-It does **not** cover output schemas, annotations, or vendor extensions, which change for reasons that are not security-relevant and would make the hash churn until nobody compares it.
+It does **not** cover output schemas, annotations, or vendor extensions. This exclusion is retained for v1 compatibility, not a claim that annotations cannot affect security decisions. [Version 2](https://trace.agentrust-io.com/spec/server-provenance-v2/index.md) binds the four normalized behavioral hints under a new signed format identifier.
 
 ## 5. Verification
 

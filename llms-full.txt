@@ -1574,7 +1574,7 @@ using the sorted-key canonicalization of Anchor Format v1 §1.
 
 The hash covers **name, description and input schema** of every tool. Description is included deliberately: a tool whose description changes from "search the docs" to "search the docs and email results to the address in the query" is the rug-pull this hash exists to catch, and a hash over names alone would miss it entirely.
 
-It does **not** cover output schemas, annotations, or vendor extensions, which change for reasons that are not security-relevant and would make the hash churn until nobody compares it.
+It does **not** cover output schemas, annotations, or vendor extensions. This exclusion is retained for v1 compatibility, not a claim that annotations cannot affect security decisions. [Version 2](https://trace.agentrust-io.com/spec/server-provenance-v2/index.md) binds the four normalized behavioral hints under a new signed format identifier.
 
 ## 5. Verification
 
@@ -1602,6 +1602,53 @@ A producer conforms if it emits records per §3, signed per TRACE v0.2 §3.2, wh
 A consumer conforms if it performs §5 steps 1, 2, 5 and 6, records absence per §6, and never reports an unverified or absent record as an assurance level.
 
 Step 3, key distribution, is deliberately out of scope. A consumer that skips step 5 while claiming conformance is doing the thing this format exists to prevent: reading a claim about a server instead of checking the server.
+
+# MCP Server Provenance Record v2
+
+| Field   | Value                                   |
+| ------- | --------------------------------------- |
+| Version | 2                                       |
+| Status  | Draft proposal, companion to TRACE v0.2 |
+| License | CC BY 4.0                               |
+
+## 1. Scope and inherited requirements
+
+This version binds four behavioral declarations in an MCP tool catalog. All requirements of [Server Provenance v1](https://trace.agentrust-io.com/spec/server-provenance-v1/index.md) apply except the format identifier and catalog projection specified below. In particular, identity, assurance kinds, trusted-key selection, signatures, anchoring and absence retain their v1 meanings. This is a separate provenance format version, not a new TRACE Trust Record version.
+
+The record's `format` MUST be `agentrust-io/mcp-server-provenance/2`. It is covered by the signature. A verifier MUST reject unknown versions and MUST select the catalog projection from the signed format. It MUST NOT retry a mismatching v2 catalog using the v1 projection.
+
+## 2. Catalog projection
+
+For each tool, v2 adds an `annotations` object to the v1 projection of `name`, `description` and `input_schema`. The object MUST contain exactly these four boolean members, using the following defaults for absent members:
+
+| Member            | Default |
+| ----------------- | ------- |
+| `readOnlyHint`    | `false` |
+| `destructiveHint` | `true`  |
+| `idempotentHint`  | `false` |
+| `openWorldHint`   | `true`  |
+
+These defaults follow MCP's [ToolAnnotations definition](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-06-18/schema.ts). An absent `annotations` member is equivalent to an empty object. A present `annotations` value MUST be an object; explicit null is invalid. Each present behavioral member MUST be a JSON boolean. Null, numbers and strings MUST NOT be coerced to booleans or treated as absent.
+
+```
+{"name":"write","description":"Write a file","input_schema":{"type":"object"},"annotations":{"readOnlyHint":false,"destructiveHint":true,"idempotentHint":false,"openWorldHint":true}}
+```
+
+The list is sorted and hashed with the same sorted-key canonicalization and SHA-256 rules as v1 section 4. `inputSchema` is accepted as the wire spelling of `input_schema`; if both appear, their canonical values MUST agree. Missing `name`, `description` or input schema retain v1's null projection. This projection does not replace MCP tool validation.
+
+All four declarations are retained even when `readOnlyHint` is true. MCP gives destructive and idempotent hints behavioral meaning only for non-read-only tools; v2 nevertheless binds the declarations themselves, including otherwise inactive ones. Omitted and explicitly defaulted values have identical hashes. Any boolean change has a different projection. Output schemas, annotation titles, other annotations, `_meta` and vendor extensions remain excluded.
+
+## 3. Verification and migration
+
+A verifier supporting both versions MUST preserve v1's original projection. Existing v1 signatures and catalog hashes do not acquire annotation coverage. Consumers requiring behavioral annotation binding MUST require v2 explicitly; accepting any supported version is insufficient. Signature verification and live catalog comparison remain separate required checks.
+
+The reference library retains `FORMAT`, `build_record()` and `tool_catalog_hash()` defaults as v1. New producers select `format=FORMAT_V2` in both APIs. Consumers can enforce v2 with `required_format=FORMAT_V2` in both `verify_record()` and `check_tool_catalog()`. Old v1-only verifiers reject v2; upgrade consumers before switching producers. Do not relabel an existing record: recompute its catalog hash and sign a new record. An empty catalog has the same digest in both versions; the signed format still distinguishes their contracts.
+
+## 4. Limits and conformance
+
+A bound hint is an authenticated declaration, not evidence of actual behavior. Consumers MUST NOT infer behavioral guarantees or permission to execute from a successful catalog comparison. Trusted-key selection and local authorization remain necessary. MCP cautions against trusting hints from untrusted servers.
+
+In addition to v1's inherited checks, v2 conformance requires accepting omitted and explicitly defaulted hints equivalently, detecting each behavioral hint change, rejecting malformed hint values, preserving v1 verification, rejecting unknown formats, and rejecting v1 when v2 is required. The reference tests in `tests/test_provenance_v2.py` exercise these boundaries, including all 16 boolean combinations and changes to each member.
 
 # Binding Synthetic-Content Marking to an Attested Execution, v1
 
@@ -3209,6 +3256,7 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+- Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406). Preserve v1 hashes and producer defaults; add explicit v2 production and consumer format requirements. Reported by @altrudev.
 - Compare challenge nonces as UTF-8 bytes so non-ASCII mismatches raise the documented ValueError instead of TypeError (#381). Matching strings remain accepted without Unicode normalization. Invalid non-string expected_nonce settings raise a clear ValueError. Reported by @chernistry; follow-up review by @lywinged.
 - Report revocation bundles without an RFC 8785 form as `unverified_for_revocation` with cause `bundle_malformed`, while continuing record verification (#382). The direct bundle-digest API still refuses such input. Reported by @chernistry.
 - Regenerate the v0.3 draft after canonical reproducibility additions and make the schema inventory test use portable repository paths on Windows.
