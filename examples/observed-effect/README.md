@@ -56,28 +56,34 @@ predicate's conformance corpus, which is where both source statements come from.
 ## Fixture cases
 
 Expected results are machine-readable in [`expected.json`](expected.json). Every record
-verifies as a TRACE record; what differs is what the reference resolves to.
+verifies as a TRACE record; what differs is what the reference resolves to. Resolution,
+digest match and signature verification are three separate findings, each reported in
+its own column and its own field. The verdict names the state of the referenced
+observation, not the effect it reports: a verified observation does not establish that
+the reported change occurred, and a digest mismatch does not establish that it did not.
 
 | Record | Store | Reference | Digest | Observer key held | Envelope signature | Dual values | Verdict |
 |---|---|---|---|---|---|---|---|
-| `01-effect-confirmed.json` | `effect-store.json` | resolves | matches | yes | verifies | agree | effect confirmed |
-| `02-effect-altered-after-issue.json` | `effect-store-altered.json` | resolves | **differs** | yes | **fails** | agree | effect contradicted |
-| `03-observer-and-observed-disagree.json` | `effect-store.json` | resolves | matches | yes | verifies | **disagree** | effect confirmed |
-| `04-reference-unresolvable.json` | `effect-store.json` | **no such entry** | n/a | n/a | n/a | n/a | effect unconfirmed |
-| `05-observer-key-not-configured.json` | `effect-store.json` | resolves | matches | **no** | not checked | agree | effect unverified |
+| `01-observation-verified.json` | `effect-store.json` | resolves | matches | yes | verifies | agree | observation verified |
+| `02-observation-altered-after-issue.json` | `effect-store-altered.json` | resolves | **differs** | yes | **fails** | agree | observation digest mismatch |
+| `03-observer-and-observed-disagree.json` | `effect-store.json` | resolves | matches | yes | verifies | **disagree** | observation verified |
+| `04-reference-unresolvable.json` | `effect-store.json` | **no such entry** | n/a | n/a | n/a | n/a | observation unresolved |
+| `05-observer-key-not-configured.json` | `effect-store.json` | resolves | matches | **no** | not checked | agree | observation unverified |
 
 `02` is `interval/2`, issued with two disagreeing rows, rewritten in the stored copy so
 that both rows agree with the observed party's report, with the signature left as
 issued. Both checks catch it independently: the record's digest no longer matches, and
-the observer's signature no longer verifies over the rewritten payload.
+the observer's signature no longer verifies over the rewritten payload. Both findings
+are about the stored copy; neither says anything about whether the interval's change
+happened.
 
 `03` cites the same `interval/2` from the unaltered store. The observer and the observed
 party disagree, the record verifies exactly as `01` does, and the relying party reports
 the disagreement without promoting it in either direction.
 
 `04` is what §3.1.2 rule 3 requires: a verifier must not reject a record because a
-reference cannot be resolved. The record verifies, and the interval it points at is
-reported as unconfirmed, which is a different answer from "nothing changed".
+reference cannot be resolved. The record verifies, and the observation it points at is
+reported as unresolved, which is a different answer from "nothing changed".
 
 `05` cites the agreeing statement re-signed by an observer whose key this relying party
 does not hold. The rule §3.3.2 gives receipts applies: unverified, not invalid.

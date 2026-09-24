@@ -14,7 +14,7 @@
     }
   },
   "cases": {
-    "01-effect-confirmed.json": {
+    "01-observation-verified.json": {
       "store": "effect-store.json",
       "trace_record_verifies": true,
       "reference_resolves": true,
@@ -22,9 +22,9 @@
       "observer_key_configured": true,
       "envelope_verifies": true,
       "dual_values": "agree",
-      "verdict": "effect-confirmed"
+      "verdict": "observation-verified"
     },
-    "02-effect-altered-after-issue.json": {
+    "02-observation-altered-after-issue.json": {
       "store": "effect-store-altered.json",
       "trace_record_verifies": true,
       "reference_resolves": true,
@@ -32,7 +32,7 @@
       "observer_key_configured": true,
       "envelope_verifies": false,
       "dual_values": "agree",
-      "verdict": "effect-contradicted"
+      "verdict": "observation-digest-mismatch"
     },
     "03-observer-and-observed-disagree.json": {
       "store": "effect-store.json",
@@ -42,7 +42,7 @@
       "observer_key_configured": true,
       "envelope_verifies": true,
       "dual_values": "disagree",
-      "verdict": "effect-confirmed"
+      "verdict": "observation-verified"
     },
     "04-reference-unresolvable.json": {
       "store": "effect-store.json",
@@ -52,7 +52,7 @@
       "observer_key_configured": null,
       "envelope_verifies": null,
       "dual_values": null,
-      "verdict": "effect-unconfirmed"
+      "verdict": "observation-unresolved"
     },
     "05-observer-key-not-configured.json": {
       "store": "effect-store.json",
@@ -62,7 +62,7 @@
       "observer_key_configured": false,
       "envelope_verifies": null,
       "dual_values": "agree",
-      "verdict": "effect-unverified"
+      "verdict": "observation-unverified"
     }
   }
 }

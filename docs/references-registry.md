@@ -183,7 +183,7 @@ definition.
 The same three findings as for `condition-appraisal`, each separable, all three
 reported:
 
-1. **Whether the reference resolves.** If not, the interval is unconfirmed, which is a
+1. **Whether the reference resolves.** If not, the observation is unresolved, which is a
    different answer from "nothing changed", and under rule 3 of §3.1.2 it is never a
    reason to reject the record.
 2. **Whether the resolved bytes are the cited bytes.** A digest match establishes

@@ -73,12 +73,16 @@ def _dual_values(envelope: dict) -> str:
 
 
 def _assess(record: dict, store: dict, observer_keys: dict) -> dict:
-    """What a relying party concludes about the interval a record points at.
+    """What a relying party concludes about the object a record points at.
 
     Three separable findings: whether the reference resolves, whether the resolved bytes
     are the cited bytes, and whether the envelope verifies under its observer's key when
-    the relying party holds that key. What the statement reports is carried as it states
-    it and decides nothing here: section 3.1.2 rule 3 makes identity the ceiling.
+    the relying party holds that key. Each is reported in its own field. The verdict
+    names the state of the referenced observation, never the effect it reports: a
+    verified observation does not establish that the change occurred, and a digest
+    mismatch does not establish that it did not. What the statement reports is carried
+    as it states it and decides nothing here: section 3.1.2 rule 3 makes identity the
+    ceiling.
     """
     (reference,) = record["references"]
     assert reference["rel"] == "observed-effect"
@@ -87,20 +91,20 @@ def _assess(record: dict, store: dict, observer_keys: dict) -> dict:
     if envelope is None:
         return {"reference_resolves": False, "digest_matches": None,
                 "observer_key_configured": None, "envelope_verifies": None,
-                "dual_values": None, "verdict": "effect-unconfirmed"}
+                "dual_values": None, "verdict": "observation-unresolved"}
     digest_matches = _jcs_sha256(envelope) == reference["digest"]
     (signature,) = envelope["signatures"]
     jwk = observer_keys.get(signature["keyid"])
     configured = jwk is not None
     verifies = _envelope_verifies(envelope, jwk) if configured else None
     if not digest_matches:
-        verdict = "effect-contradicted"
+        verdict = "observation-digest-mismatch"
     elif not configured:
-        verdict = "effect-unverified"
+        verdict = "observation-unverified"
     elif not verifies:
-        verdict = "effect-contradicted"
+        verdict = "observation-signature-invalid"
     else:
-        verdict = "effect-confirmed"
+        verdict = "observation-verified"
     return {"reference_resolves": True, "digest_matches": digest_matches,
             "observer_key_configured": configured, "envelope_verifies": verifies,
             "dual_values": _dual_values(envelope), "verdict": verdict}
@@ -116,7 +120,7 @@ def test_the_committed_records_are_exactly_the_declared_cases() -> None:
 @pytest.mark.parametrize("name", CASES)
 def test_every_case_verifies_as_a_trust_record(name: str) -> None:
     # Section 3.1.2 rule 3: what a reference resolves to never decides whether the
-    # record verifies, so the contradicted, unverified and unresolvable cases verify too.
+    # record verifies, so the mismatched, unverified and unresolved cases verify too.
     verify_record(_load(name), EXPECTED["trace_signer_jwk"], max_age_seconds=None)
     assert EXPECTED["cases"][name]["trace_record_verifies"] is True
 
@@ -150,7 +154,7 @@ def test_an_agreement_and_a_disagreement_verify_identically() -> None:
     records differ only in the reference they carry, both verify, and the relying
     party's assessment differs only in what it reports."""
     store = _load("effect-store.json")
-    agree = _assess(_load("01-effect-confirmed.json"), store, EXPECTED["observer_keys"])
+    agree = _assess(_load("01-observation-verified.json"), store, EXPECTED["observer_keys"])
     disagree = _assess(
         _load("03-observer-and-observed-disagree.json"), store, EXPECTED["observer_keys"]
     )
@@ -160,12 +164,12 @@ def test_an_agreement_and_a_disagreement_verify_identically() -> None:
     strip = lambda r: {  # noqa: E731
         k: v for k, v in r.items() if k not in ("references", "signature")
     }
-    assert strip(_load("01-effect-confirmed.json")) == \
+    assert strip(_load("01-observation-verified.json")) == \
         strip(_load("03-observer-and-observed-disagree.json"))
 
 
 def test_the_record_signature_covers_the_reference() -> None:
-    record = copy.deepcopy(_load("01-effect-confirmed.json"))
+    record = copy.deepcopy(_load("01-observation-verified.json"))
     digest = record["references"][0]["digest"]
     record["references"][0]["digest"] = digest[:-1] + ("0" if digest[-1] != "0" else "1")
     with pytest.raises(InvalidSignature):

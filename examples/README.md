@@ -51,7 +51,7 @@ checking any archived record, including these.
   `docs/references-registry.md`.
 - `observed-effect/`: five signed Trust Records, each citing an observed mutation
   interval through a `references` entry with `rel: "observed-effect"`, against an effect
-  store committed beside them: confirmed, altered after issue, an interval where the
+  store committed beside them: verified, altered after issue, an interval where the
   observer and the observed party disagree that verifies exactly as the agreeing one
   does, unresolvable, and an observer whose key the relying party does not hold. Every
   digest recomputes; see that directory's README and `docs/references-registry.md`.

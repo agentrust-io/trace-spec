@@ -162,8 +162,8 @@ def build() -> dict[str, Any]:
     cite = lambda id_: reference(id_, jcs_sha256(store["effects"][id_]))  # noqa: E731
     unresolvable = "sha256:" + hashlib.sha256(SEED + b"|digest|interval/9").hexdigest()
     records = {
-        "01-effect-confirmed.json": record(producer, cite("interval/1")),
-        "02-effect-altered-after-issue.json": record(producer, cite("interval/2")),
+        "01-observation-verified.json": record(producer, cite("interval/1")),
+        "02-observation-altered-after-issue.json": record(producer, cite("interval/2")),
         "03-observer-and-observed-disagree.json": record(producer, cite("interval/2")),
         "04-reference-unresolvable.json": record(producer, reference("interval/9", unresolvable)),
         "05-observer-key-not-configured.json": record(producer, cite("interval/3")),
@@ -178,17 +178,17 @@ def build() -> dict[str, Any]:
         # unknown to the verifier is unverified, not invalid.
         "observer_keys": {keyid(CORPUS_OBSERVER_PUBLIC): okp_jwk(CORPUS_OBSERVER_PUBLIC)},
         "cases": {
-            "01-effect-confirmed.json": case(
-                "effect-store.json", True, True, True, True, "agree", "effect-confirmed"),
-            "02-effect-altered-after-issue.json": case(
+            "01-observation-verified.json": case(
+                "effect-store.json", True, True, True, True, "agree", "observation-verified"),
+            "02-observation-altered-after-issue.json": case(
                 "effect-store-altered.json", True, False, True, False, "agree",
-                "effect-contradicted"),
+                "observation-digest-mismatch"),
             "03-observer-and-observed-disagree.json": case(
-                "effect-store.json", True, True, True, True, "disagree", "effect-confirmed"),
+                "effect-store.json", True, True, True, True, "disagree", "observation-verified"),
             "04-reference-unresolvable.json": case(
-                "effect-store.json", False, None, None, None, None, "effect-unconfirmed"),
+                "effect-store.json", False, None, None, None, None, "observation-unresolved"),
             "05-observer-key-not-configured.json": case(
-                "effect-store.json", True, True, False, None, "agree", "effect-unverified"),
+                "effect-store.json", True, True, False, None, "agree", "observation-unverified"),
         },
     }
 
