@@ -12,6 +12,7 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+- Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406). Preserve v1 hashes and producer defaults; add explicit v2 production and consumer format requirements. Reported by @altrudev.
 - Compare challenge nonces as UTF-8 bytes so non-ASCII mismatches raise the documented ValueError instead of TypeError (#381). Matching strings remain accepted without Unicode normalization. Invalid non-string expected_nonce settings raise a clear ValueError. Reported by @chernistry; follow-up review by @lywinged.

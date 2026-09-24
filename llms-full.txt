@@ -603,18 +603,18 @@ The vocabulary lags the system. Auditors still say *the model* because that is t
 
 The wall is not technical capability: it is evidence. AI builders today produce policy documents, SOC reports, vendor self-attestation, and mutable application logs. None prove what actually happened during execution, so review cycles stretch from days into months.
 
-| Layer                          | What exists                                                                                   | What is missing                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Static documentation           | Model Cards, Data Cards, AIBOMs (SPDX 3.0 / CycloneDX 1.7)                                    | No runtime binding: diverges from deployed reality                              |
-| Operational tracking           | MLflow, W&B, vendor logs                                                                      | Self-reported, mutable, no tamper evidence                                      |
-| Hardware attestation           | NVIDIA NRAS, Intel Trust Authority, AMD SEV-SNP, AWS Nitro, Azure MAA, GCP Confidential Space | Proves the environment is genuine: no governance, policy, or data-class binding |
-| Content provenance             | C2PA Content Credentials                                                                      | Proves content origin: silent on inference execution                            |
-| Compliance frameworks          | NIST AI RMF, ISO 42001, EU AI Act Annex IV / Article 12                                       | Mandate documentation; no prescribed cryptographic format                       |
-| **Execution governance proof** | **Vendor-proprietary artifacts**                                                              | **No open, portable, vendor-neutral standard exists**                           |
+| Layer                          | What exists                                                                                   | What is missing                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Static documentation           | Model Cards, Data Cards, AIBOMs (SPDX 3.0 / CycloneDX 1.7)                                    | No runtime binding: diverges from deployed reality                               |
+| Operational tracking           | MLflow, W&B, vendor logs                                                                      | Self-reported, mutable, no tamper evidence                                       |
+| Hardware attestation           | NVIDIA NRAS, Intel Trust Authority, AMD SEV-SNP, AWS Nitro, Azure MAA, GCP Confidential Space | Proves the environment is genuine: no governance, policy, or data-class binding  |
+| Content provenance             | C2PA Content Credentials                                                                      | Proves content origin: silent on inference execution                             |
+| Compliance frameworks          | NIST AI RMF, ISO 42001, EU AI Act Article 11 / Annex IV                                       | Documentation and governance frameworks; no TRACE cryptographic format specified |
+| **Execution governance proof** | **Vendor-proprietary artifacts**                                                              | **No open, portable, vendor-neutral standard exists**                            |
 
 The result: every regulated AI deployment re-litigates trust at every host boundary. Each cloud, each model provider, each agent framework ships its own evidence shape. Auditors cannot compare. Verifiers cannot federate. Workloads cannot move.
 
-The EU AI Act mandates tamper-evident logging for high-risk AI (Article 12); under the current provisional timeline those obligations apply from around December 2027. Frameworks already in force, DORA for financial entities, HIPAA for healthcare, carry equivalent audit-trail requirements today. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
+The EU AI Act requires high-risk AI systems to support automatic event logging throughout their lifetime (Article 12). It does not prescribe tamper-evident logging; TRACE supplies cryptographic evidence as a separate technical property. Article 113(c) sets application dates of 2 December 2027 for Article 6(2)/Annex III systems and 2 August 2028 for Article 6(1)/Annex I systems, subject to the transitional provisions in Article 111. See the [consolidated Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727). A TRACE record or verification level does not establish regulatory compliance.
 
 ______________________________________________________________________
 
@@ -3075,11 +3075,9 @@ Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues
 
 ## What Level 0 does not provide
 
-Level 0 (software-only signing) is suitable for development, internal audit trails, and staging environments. It does not satisfy:
+Level 0 provides software signatures without hardware-rooted assurance. A privileged operator may extract the signing key; a valid signature does not establish that execution was protected by a TEE.
 
-- EU AI Act Art. 12 (tamper-evident logging): requires Level 1+
-- DORA Art. 9 (ICT risk management): requires Level 1+ with transparency log anchoring
-- Any claim of hardware-rooted trust: the signing key is held in software and can be extracted by a privileged operator
+TRACE verification levels describe technical evidence, not legal compliance. Article 12 of the EU AI Act requires a logging capability; it does not prescribe a TRACE level or tamper-evident format. See the [regulatory context in the specification](https://trace.agentrust-io.com/spec/trace-v0.2/#1-problem). Neither a TRACE level nor transparency-log anchoring alone establishes compliance with the EU AI Act or DORA. Deployment-specific obligations require a separate assessment.
 
 ## What the SDK does not do
 
@@ -3326,6 +3324,7 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+- Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406). Preserve v1 hashes and producer defaults; add explicit v2 production and consumer format requirements. Reported by @altrudev.
 - Compare challenge nonces as UTF-8 bytes so non-ASCII mismatches raise the documented ValueError instead of TypeError (#381). Matching strings remain accepted without Unicode normalization. Invalid non-string expected_nonce settings raise a clear ValueError. Reported by @chernistry; follow-up review by @lywinged.
