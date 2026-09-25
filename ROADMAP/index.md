@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)); the `agentrust-trace` reference SDK is at **0.10.0** and the conformance suite (`agentrust-io/trace-tests`) at **0.5.1**.
+Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)); the `agentrust-trace` reference SDK is at **0.11.0** and the conformance suite (`agentrust-io/trace-tests`) at **0.5.1**.
 
 ## Shipped: v0.2 (July to August 2026)
 

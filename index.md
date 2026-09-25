@@ -8,7 +8,7 @@ TRACE specifies the record, anchoring protocol and verification rules that tie a
 
 TL;DR
 
-Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.10.0 reference library sign and verify records in software with no cloud account, and a v0.2 signature proves who produced a record and that it has not changed while every hardware field in it is still the producer's claim. The proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) grades inlined quotes as platform-attested or attested, and the attested grade is specified but not yet demonstrated.
+Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 reference library sign and verify records in software with no cloud account, and a v0.2 signature proves who produced a record and that it has not changed while every hardware field in it is still the producer's claim. The proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) grades inlined quotes as platform-attested or attested, and the attested grade is specified but not yet demonstrated.
 
 - **Run it**
 
@@ -71,4 +71,4 @@ The specification is a **Developer Preview**. v0.2 is current and published with
 
 TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](https://trace.agentrust-io.com/GOVERNANCE/index.md) for how decisions are made and [Contributing](https://trace.agentrust-io.com/CONTRIBUTING/index.md) for how to propose a change.
 
-**Status:** spec v0.2 · agentrust-trace 0.10.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** spec v0.2 · agentrust-trace 0.11.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
