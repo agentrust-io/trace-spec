@@ -45,10 +45,18 @@ session = SandboxSessionResult(
 
 record = sign_record(adapter.build_trust_record(session), load_signing_key())
 TrustRecord.model_validate(record)
+assert record["policy"]["enforcement_mode"] == "declared"
 ```
 
 That record is Level 0: signed, offline-verifiable, and honest that no hardware backed
 it. `runtime.platform` reads `software-only`.
+
+Omitting `enforcement_mode` now emits `"declared"` instead of `"enforce"`: the policy
+is bound into the record without asserting that it was evaluated. Callers with an
+independently established enforcement context should pass the actual mode explicitly,
+for example `enforcement_mode="enforce"`. Explicit `enforce`, `advisory`, `silent` and
+`declared` values are preserved. This evidence-constructor change does not change the
+runtime's enforcement default or behavior; `declared` does not disable enforcement.
 
 ## Adding a root of trust
 

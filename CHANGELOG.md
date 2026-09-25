@@ -11,6 +11,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Default omitted `enforcement_mode` to `"declared"` instead of `"enforce"` in
+  `TraceSandboxAdapter` and `TraceAGTAdapter` (#416). Callers with an independently
+  established enforcement context should pass the actual mode explicitly; supported
+  explicit modes remain unchanged. This changes evidence-constructor output, not
+  actual runtime enforcement defaults or behavior.
+
 - Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406).
