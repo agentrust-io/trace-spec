@@ -278,8 +278,23 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
     ``json.dumps(sort_keys=True)`` diverges from JCS for non-ASCII strings and
     for IEEE 754 number formatting, which would break cross-implementation
     verification, so a conformant library is used instead.
+
+    Raises ``rfc8785.CanonicalizationError`` for a value JCS has no form for. That
+    includes nesting deeper than the interpreter stack: ``rfc8785`` walks the value
+    recursively, and a document a few kilobytes long reaches past the default limit.
+    The ``RecursionError`` is reported as the library's own refusal so that every
+    caller already written against ``CanonicalizationError`` refuses it too.
     """
-    return rfc8785.dumps(d)
+    try:
+        return rfc8785.dumps(d)
+    except RecursionError:
+        raise _NestingTooDeep(
+            "value nests too deeply to canonicalize; no RFC 8785 form can be computed"
+        ) from None
+
+
+class _NestingTooDeep(rfc8785.CanonicalizationError):
+    """A value nests past what the canonicalizer can walk on the interpreter stack."""
 
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
@@ -333,11 +348,22 @@ def anchor_bytes(value: Any) -> bytes:
     and the only symptom is that a proof does not verify. Refusing the value here,
     by name, is that diagnostic.
     """
-    _reject_unanchorable(value)
+    try:
+        _reject_unanchorable(value)
+    except RecursionError:
+        # Both walks, this one and `json.dumps`, are recursive. A value nested past
+        # the interpreter stack has no anchor form this function can produce.
+        raise UnanchorableValue(
+            "$ nests too deeply to walk, so it has no anchor form"
+        ) from None
     try:
         return json.dumps(
             value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
         ).encode("ascii")
+    except RecursionError:
+        raise UnanchorableValue(
+            "$ nests too deeply to walk, so it has no anchor form"
+        ) from None
     except TypeError as exc:
         # `_reject_unanchorable` names the two cases section 1 puts outside the
         # profile. A type JSON cannot serialize at all is a third, and it reached
@@ -350,19 +376,43 @@ def anchor_bytes(value: Any) -> bytes:
         ) from exc
 
 
-def _b64url_decode(value: str, *, field: str) -> bytes:
-    """Decode an unpadded base64url string, raising ValueError on malformed input.
+_B64URL_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+)
 
-    Restores the padding the encoder stripped and surfaces ``binascii`` decode
-    failures as ``ValueError`` so callers see one consistent failure type.
+
+def _b64url_decode(value: str, *, field: str) -> bytes:
+    """Decode canonical unpadded base64url, raising ValueError on anything else.
+
+    Canonical means the RFC 4648 section 5 alphabet only, no ``=`` padding, and the
+    unused low bits of a final partial character zero (section 3.5), so each byte
+    string has exactly one accepted spelling. ``base64.urlsafe_b64decode`` alone is
+    lenient on all three: it takes ``+`` and ``/``, padding, and characters outside
+    any alphabet, which it discards, and it ignores the unused bits. One signature
+    then had many spellings that all verified, and where the spelling is itself
+    hashed, as ``sig.value`` is in a revocation bundle's digest, one piece of
+    evidence had several identities.
     """
     if not isinstance(value, str):
         raise ValueError(f"{field} must be a base64url string")
+    if not _B64URL_CHARS.issuperset(value):
+        raise ValueError(
+            f"{field} is not valid base64url: only A-Z, a-z, 0-9, '-' and '_' are "
+            "allowed, with no padding"
+        )
+    if len(value) % 4 == 1:
+        raise ValueError(f"{field} is not valid base64url: no byte string has this length")
     padded = value + "=" * (-len(value) % 4)
     try:
-        return base64.urlsafe_b64decode(padded)
+        decoded = base64.urlsafe_b64decode(padded)
     except (binascii.Error, ValueError) as exc:
         raise ValueError(f"{field} is not valid base64url: {exc}") from exc
+    if base64.urlsafe_b64encode(decoded).rstrip(b"=").decode("ascii") != value:
+        raise ValueError(
+            f"{field} is not canonical base64url: the unused bits of its last character "
+            "are not zero, so it is a second spelling of other bytes"
+        )
+    return decoded
 
 
 def _check_seconds(
