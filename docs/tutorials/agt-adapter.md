@@ -25,6 +25,7 @@ adapter = TraceAGTAdapter(
     transparency="https://example.test/unused",
 )
 record = adapter.build_trust_record(session)
+assert record["policy"]["enforcement_mode"] == "declared"
 # The adapter currently requires a URI argument but performs no registration.
 record.pop("transparency")
 # `appraisal.status` defaults to "none", which is correct here: synthetic input has not
@@ -46,7 +47,9 @@ The nonzero build digest is illustrative metadata, not verified build provenance
 
 Supply the exact policy bytes used for the session, audit entries as plain dictionaries, the session's chain tip, and its authenticated identity. The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
 
-The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
+The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. Omitting `enforcement_mode` now emits `"declared"` rather than `"enforce"`: the policy is bound, but no evaluation is asserted. If the caller has independently established the enforcement context, pass its actual mode explicitly, for example `enforcement_mode="enforce"`. Explicit supported modes are unchanged. This does not change runtime enforcement defaults or behavior.
+
+`appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
 
 ## Verify and extend
 

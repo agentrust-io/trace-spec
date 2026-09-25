@@ -128,7 +128,7 @@ class TraceAGTAdapter:
         appraisal_status: Literal["affirming", "warning", "contraindicated", "none"] = "none",
         appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
-        enforcement_mode: str = "enforce",
+        enforcement_mode: str = "declared",
     ) -> None:
         """
         Args:

@@ -194,10 +194,18 @@ def test_sign_and_verify_round_trip() -> None:
 # 9. enforcement_mode propagates from adapter config
 # ---------------------------------------------------------------------------
 
-def test_enforcement_mode_propagates() -> None:
-    adapter = _make_adapter(enforcement_mode="advisory")
+def test_enforcement_mode_defaults_to_declared() -> None:
+    record = _make_adapter().build_trust_record(_make_session())
+    assert record["policy"]["enforcement_mode"] == "declared"
+    TrustRecord.model_validate(record)
+
+
+@pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])
+def test_enforcement_mode_propagates(mode: str) -> None:
+    adapter = _make_adapter(enforcement_mode=mode)
     record = adapter.build_trust_record(_make_session())
-    assert record["policy"]["enforcement_mode"] == "advisory"
+    assert record["policy"]["enforcement_mode"] == mode
+    TrustRecord.model_validate(record)
 
 
 # ---------------------------------------------------------------------------

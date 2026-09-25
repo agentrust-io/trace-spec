@@ -507,11 +507,19 @@ def test_the_same_session_builds_the_same_record() -> None:
     assert adapter.build_trust_record(session) == adapter.build_trust_record(session)
 
 
-def test_enforcement_mode_reaches_the_record() -> None:
-    record = _make_adapter(enforcement_mode="advisory").build_trust_record(
+def test_enforcement_mode_defaults_to_declared() -> None:
+    record = _make_adapter().build_trust_record(_make_session())
+    assert record["policy"]["enforcement_mode"] == "declared"
+    TrustRecord.model_validate(record)
+
+
+@pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])
+def test_enforcement_mode_reaches_the_record(mode: str) -> None:
+    record = _make_adapter(enforcement_mode=mode).build_trust_record(
         _make_session()
     )
-    assert record["policy"]["enforcement_mode"] == "advisory"
+    assert record["policy"]["enforcement_mode"] == mode
+    TrustRecord.model_validate(record)
 
 
 def test_an_invalid_enforcement_mode_is_rejected() -> None:

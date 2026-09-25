@@ -284,7 +284,7 @@ class TraceSandboxAdapter:
         model_id: str,
         model_version: str | None = None,
         data_class: str = "confidential",
-        enforcement_mode: Literal["enforce", "advisory", "silent"] = "enforce",
+        enforcement_mode: Literal["enforce", "advisory", "silent", "declared"] = "declared",
         policy_version: str | None = None,
         policy_uri: str | None = None,
         build_provenance_slsa_level: int = 0,
