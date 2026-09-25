@@ -101,6 +101,7 @@ class TraceAGTAdapter:
             model_version="20251001",
             build_provenance_digest="sha256:e5f6a7b8...",
             transparency="https://registry.agentrust-io.com/claim/...",
+            enforcement_mode="enforce",
         )
 
         record = adapter.build_trust_record(session)
@@ -128,10 +129,16 @@ class TraceAGTAdapter:
         appraisal_status: Literal["affirming", "warning", "contraindicated", "none"] = "none",
         appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
-        enforcement_mode: str = "declared",
+        enforcement_mode: str,
     ) -> None:
         """
         Args:
+            enforcement_mode: Required, with no default. The adapter observes an AGT
+                session; it does not evaluate the policy, so it cannot know which mode
+                applied. ``"enforce"`` would claim an evaluation nobody saw, and spec
+                section 4.3 says ``"declared"`` MUST NOT be a default. Pass the mode the
+                deployment actually ran under, or ``"declared"`` when no engine evaluated
+                the policy.
             appraisal_status: Defaults to ``"none"``. ``appraisal.status`` is a
                 verifier-owned field (spec section 3.3.1): a record is not appraised by
                 being built, and stamping ``affirming`` on an unappraised record puts a

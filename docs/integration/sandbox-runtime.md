@@ -33,6 +33,7 @@ adapter = TraceSandboxAdapter(
     model_provider="example-provider",
     model_id="example-model-1",
     data_class="confidential",
+    enforcement_mode="enforce",  # the mode the sandbox actually enforced
 )
 
 # Per session, from what the runtime already knows at close.
@@ -45,18 +46,17 @@ session = SandboxSessionResult(
 
 record = sign_record(adapter.build_trust_record(session), load_signing_key())
 TrustRecord.model_validate(record)
-assert record["policy"]["enforcement_mode"] == "declared"
 ```
 
 That record is Level 0: signed, offline-verifiable, and honest that no hardware backed
 it. `runtime.platform` reads `software-only`.
 
-Omitting `enforcement_mode` now emits `"declared"` instead of `"enforce"`: the policy
-is bound into the record without asserting that it was evaluated. Callers with an
-independently established enforcement context should pass the actual mode explicitly,
-for example `enforcement_mode="enforce"`. Explicit `enforce`, `advisory`, `silent` and
-`declared` values are preserved. This evidence-constructor change does not change the
-runtime's enforcement default or behavior; `declared` does not disable enforcement.
+`enforcement_mode` is required and has no default. The adapter records what the runtime
+reports and evaluates nothing itself, so a default of `"enforce"` would claim an
+evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass
+the mode the sandbox actually enforced, or `"declared"` when no policy engine evaluated
+the policy. This changes the evidence constructor, not the runtime's enforcement default
+or behavior.
 
 ## Adding a root of trust
 

@@ -268,6 +268,7 @@ class TraceSandboxAdapter:
             model_provider="anthropic",
             model_id="claude-sonnet-4-6",
             data_class="confidential",
+            enforcement_mode="enforce",
         )
         record = adapter.build_trust_record(session)
         signed = sign_record(record, key)
@@ -284,7 +285,7 @@ class TraceSandboxAdapter:
         model_id: str,
         model_version: str | None = None,
         data_class: str = "confidential",
-        enforcement_mode: Literal["enforce", "advisory", "silent", "declared"] = "declared",
+        enforcement_mode: Literal["enforce", "advisory", "silent", "declared"],
         policy_version: str | None = None,
         policy_uri: str | None = None,
         build_provenance_slsa_level: int = 0,
@@ -297,6 +298,11 @@ class TraceSandboxAdapter:
     ) -> None:
         """
         Args:
+            enforcement_mode: Required, with no default. The adapter records what the
+                runtime reports; it does not evaluate the policy, so ``"enforce"`` as a
+                default would claim an evaluation nobody saw, and spec section 4.3 says
+                ``"declared"`` MUST NOT be a default. Pass the mode the sandbox actually
+                enforced, or ``"declared"`` when no engine evaluated the policy.
             appraisal_status: Defaults to ``"none"``. A record is not appraised by being
                 built, and stamping ``affirming`` on an unappraised record puts a verdict
                 in the field a consumer reads to find out whether anybody checked. Set
