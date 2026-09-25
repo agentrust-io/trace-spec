@@ -1,8 +1,8 @@
 """MCP Server Provenance Records: build, sign, verify.
 
-Implements ``spec/server-provenance-v1.md``. A provenance record is a signed
-statement *about* an MCP server, not about an execution, so it is deliberately
-not a Trust Record and does not pretend to be one.
+Implements ``spec/server-provenance-v1.md`` and ``spec/server-provenance-v2.md``.
+A provenance record is a signed statement *about* an MCP server, not about an
+execution, so it is deliberately not a Trust Record and does not pretend to be one.
 
 The function that matters here is :func:`check_tool_catalog`. Everything else
 verifies that a document is internally consistent and signed by a key you already
@@ -39,6 +39,7 @@ from agentrust_trace.sign import (
 
 __all__ = [
     "FORMAT",
+    "FORMAT_V2",
     "KINDS",
     "ProvenanceError",
     "ToolCatalogMismatch",
@@ -50,6 +51,7 @@ __all__ = [
 ]
 
 FORMAT = "agentrust-io/mcp-server-provenance/1"
+FORMAT_V2 = "agentrust-io/mcp-server-provenance/2"
 
 #: Closed on purpose: the value of the field is that a verifier can key on it.
 KINDS = ("publisher-asserted", "observer-attested", "tee-attested")
@@ -98,7 +100,38 @@ class ToolCatalogMismatch(ProvenanceError):
     """
 
 
-def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
+def _check_format(value: Any, required_format: str | None = None) -> None:
+    if value not in (FORMAT, FORMAT_V2):
+        raise ProvenanceError(f"unknown format {value!r}")
+    if required_format is not None:
+        if required_format not in (FORMAT, FORMAT_V2):
+            raise ProvenanceError(f"unknown required format {required_format!r}")
+        if value != required_format:
+            raise ProvenanceError(
+                f"format {value!r} does not match required format {required_format!r}"
+            )
+
+
+def _behavioral_hints(tool: dict[str, Any]) -> dict[str, bool]:
+    annotations = tool.get("annotations", {})
+    if not isinstance(annotations, dict):
+        raise ProvenanceError("annotations must be an object when present")
+    defaults = {
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    }
+    result = {}
+    for name, default in defaults.items():
+        value = annotations.get(name, default)
+        if not isinstance(value, bool):
+            raise ProvenanceError(f"annotations.{name} must be a boolean when present")
+        result[name] = value
+    return result
+
+
+def tool_catalog_hash(tools: list[dict[str, Any]], *, format: str = FORMAT) -> str:
     """Digest over a tool list, per specification §4.
 
     Covers ``name``, ``description`` and ``input_schema`` of each tool, sorted by
@@ -107,9 +140,9 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     in the query" is the rug-pull this hash exists to catch, and a hash over
     names alone would not notice.
 
-    Output schemas, annotations and vendor extensions are excluded. They change
-    for reasons that are not security-relevant, and a hash that churns is a hash
-    nobody compares.
+    V1 excludes annotations for compatibility. Select ``format=FORMAT_V2`` to
+    bind the four normalized behavioral hints. Output schemas, display metadata
+    and vendor extensions remain excluded. A bound hint is still only a claim.
 
     Raises :class:`ProvenanceError` if *tools* is not a list, or contains
     anything other than an object. This is the input :func:`check_tool_catalog`
@@ -118,6 +151,7 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     is not a hypothetical, it is the shape a live attack, or simply a broken
     server, takes.
     """
+    _check_format(format)
     if not isinstance(tools, list):
         raise ProvenanceError(f"tools must be a list, got {type(tools).__name__}")
     for index, t in enumerate(tools):
@@ -137,6 +171,7 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
                 "name": t.get("name"),
                 "description": t.get("description"),
                 "input_schema": t.get("input_schema", t.get("inputSchema")),
+                **({"annotations": _behavioral_hints(t)} if format == FORMAT_V2 else {}),
             }
             for t in tools
         ),
@@ -262,8 +297,9 @@ def build_record(
     endpoint: dict[str, str] | None = None,
     attestation: dict[str, Any] | None = None,
     issued_at: int | None = None,
+    format: str = FORMAT,
 ) -> dict[str, Any]:
-    """Assemble an unsigned provenance record.
+    """Assemble an unsigned record; opt into hint binding with ``format=FORMAT_V2``.
 
     Raises rather than emitting a record that cannot mean anything: an identity
     with neither an artifact nor an endpoint identifies nothing, and a
@@ -303,12 +339,12 @@ def build_record(
         identity["endpoint"] = dict(endpoint)
 
     return {
-        "format": FORMAT,
+        "format": format,
         "kind": kind,
         "issued_at": stamped_at,
         "identity": identity,
         "publisher": publisher,
-        "tool_catalog": {"hash": tool_catalog_hash(tools), "tool_count": len(tools)},
+        "tool_catalog": {"hash": tool_catalog_hash(tools, format=format), "tool_count": len(tools)},
         "attestation": attestation,
     }
 
@@ -355,8 +391,11 @@ def verify_record(
     revocation: RevocationStore | None = None,
     max_age_seconds: int | None = None,
     max_future_skew_seconds: int = 300,
+    required_format: str | None = None,
 ) -> None:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
+
+    ``required_format=FORMAT_V2`` rejects legacy records when binding is required.
 
     *trusted_jwk* is required and is never taken from the record. Verifying a
     document against a key it supplies proves only that it is internally
@@ -393,11 +432,7 @@ def verify_record(
             "function documents and is not caught by a caller written against it."
         )
 
-    if record.get("format") != FORMAT:
-        raise ProvenanceError(
-            f"unknown format {record.get('format')!r}; expected {FORMAT}. An unknown "
-            "version is rejected rather than parsed best-effort."
-        )
+    _check_format(record.get("format"), required_format)
     if record.get("kind") not in KINDS:
         raise ProvenanceError(f"unknown kind {record.get('kind')!r}")
     if not _PUBLISHER_RE.match(str(record.get("publisher", ""))):
@@ -505,8 +540,14 @@ def verify_record(
         raise ProvenanceError(f"signature does not verify: {exc}") from exc
 
 
-def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> None:
+def check_tool_catalog(
+    record: dict[str, Any], tools: list[dict[str, Any]], *, required_format: str | None = None
+) -> None:
     """Compare the record against the tools the server actually offered.
+
+    Dispatches by record format; ``required_format=FORMAT_V2`` rejects v1.
+    This comparison does not authenticate the format or record. Also call
+    :func:`verify_record` with a trusted key before relying on the result.
 
     Specification §5 step 5, and the only step that catches a live attack. A
     mismatch means the server you are talking to is not the server the record
@@ -529,7 +570,8 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
             "cannot assume that function established the shape."
         )
 
-    actual = tool_catalog_hash(tools)
+    _check_format(record.get("format"), required_format)
+    actual = tool_catalog_hash(tools, format=record["format"])
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")
     if actual != expected:
