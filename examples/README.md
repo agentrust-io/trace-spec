@@ -45,10 +45,16 @@ checking any archived record, including these.
   See that directory's README.
 - `condition-appraisal/`: five signed Trust Records, each citing an independent check's
   finding through a `references` entry with `rel: "condition-appraisal"`, against an
-  appraisal store committed beside them: confirmed, altered after issue, a fail that
+  appraisal store committed beside them: verified, altered after issue, a fail that
   verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
   party does not hold. Every digest recomputes; see that directory's README and
   `docs/references-registry.md`.
+- `observed-effect/`: five signed Trust Records, each citing an observed mutation
+  interval through a `references` entry with `rel: "observed-effect"`, against an effect
+  store committed beside them: verified, altered after issue, an interval where the
+  observer and the observed party disagree that verifies exactly as the agreeing one
+  does, unresolvable, and an observer whose key the relying party does not hold. Every
+  digest recomputes; see that directory's README and `docs/references-registry.md`.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.

@@ -183,6 +183,7 @@ Registered `rel` values:
 - **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
+- **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.

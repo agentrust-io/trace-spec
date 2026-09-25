@@ -286,7 +286,7 @@
           "rel": {
             "type": "string",
             "minLength": 1,
-            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest."
+            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest. observed-effect: a signed record of the state change an observer outside the agent saw over one interval, with the state before and after, the paths observed and the authority change ran under."
           },
           "id": {
             "type": "string",
