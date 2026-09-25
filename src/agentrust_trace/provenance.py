@@ -27,6 +27,7 @@ from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.sign import (
     JCS_SAFE_INTEGER,
     RevocationStore,
+    UnanchorableValue,
     _b64url_decode,
     _canonical_bytes,
     _check_not_revoked,
@@ -150,7 +151,35 @@ def tool_catalog_hash(tools: list[dict[str, Any]], *, format: str = FORMAT) -> s
     untrusted party that function exists to check -- so a malformed entry here
     is not a hypothetical, it is the shape a live attack, or simply a broken
     server, takes.
+
+    Also raises :class:`ProvenanceError` for a catalog with no anchor form: a
+    non-integer number or an integer outside the safe range anywhere in an
+    input schema, or nesting too deep to walk. The catalog cannot be hashed, so
+    it cannot be matched.
     """
+    try:
+        return _tool_catalog_hash(tools, format)
+    except UnanchorableValue as exc:
+        # `anchor_bytes` refuses by name, but with its own type, and this function
+        # documents ProvenanceError. The tools are whatever the server returned, so
+        # a `maximum: 1.5` in one input schema escaped every caller written against
+        # that contract, `check_tool_catalog` included. The raised type is both, so
+        # a caller already catching UnanchorableValue here still does.
+        raise _UnanchorableCatalog(
+            f"the offered tool catalog has no anchor form, so it cannot be hashed: {exc}"
+        ) from exc
+    except RecursionError:
+        # The sort key's str() and the anchor walk are both recursive.
+        raise _UnanchorableCatalog(
+            "the offered tool catalog nests too deeply to hash"
+        ) from None
+
+
+class _UnanchorableCatalog(ProvenanceError, UnanchorableValue):
+    """A tool catalog with no anchor form: this module's refusal, and the anchor one."""
+
+
+def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
     _check_format(format)
     if not isinstance(tools, list):
         raise ProvenanceError(f"tools must be a list, got {type(tools).__name__}")

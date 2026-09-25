@@ -101,15 +101,37 @@ def profiles_with_schema() -> frozenset[str]:
 SCHEMA: dict[str, Any] = copy.deepcopy(_schema())
 
 
+def _too_deep() -> jsonschema.ValidationError:
+    # `cnf.jwk` admits extra members of any canonicalizable shape, recursively, and
+    # jsonschema walks them recursively. A few hundred nested arrays, well under a
+    # kilobyte, exhaust the interpreter stack, and the RecursionError escaped every
+    # caller written against ValidationError, `sign.verify_record` included. A
+    # record the validator cannot walk has not been shown to conform, so it is a
+    # violation, reported as one.
+    return jsonschema.ValidationError(
+        "record nests too deeply to validate against the schema"
+    )
+
+
 def validate_json(record: dict[str, Any]) -> None:
     """Validate *record* against the canonical TRACE v0.2 JSON Schema.
 
-    Raises :class:`jsonschema.ValidationError` on the first violation found.
+    Raises :class:`jsonschema.ValidationError` on the first violation found,
+    including nesting too deep for the validator to walk.
     Use :func:`iter_errors` for all violations.
     """
-    _validator().validate(record)
+    try:
+        _validator().validate(record)
+    except RecursionError:
+        raise _too_deep() from None
 
 
 def iter_errors(record: dict[str, Any]) -> list[jsonschema.exceptions.ValidationError]:
-    """Return all JSON Schema violations for *record* (empty list if valid)."""
-    return list(_validator().iter_errors(record))
+    """Return all JSON Schema violations for *record* (empty list if valid).
+
+    Nesting too deep for the validator to walk is returned as the single violation.
+    """
+    try:
+        return list(_validator().iter_errors(record))
+    except RecursionError:
+        return [_too_deep()]

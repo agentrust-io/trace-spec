@@ -20,6 +20,7 @@ from __future__ import annotations
 from agentrust_trace._patterns import _PYTHON_PATTERNS
 
 import hashlib
+import json
 import re
 from typing import Any
 
@@ -55,6 +56,34 @@ class RecordMismatch(ContentMarkingError):
     assertion: the document is well-formed and the thing it points at changed
     after the asset was signed.
     """
+
+
+def _no_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """``object_pairs_hook`` that refuses a JSON object naming one member twice.
+
+    ``json.loads`` keeps the last of two same-named members without a word, and a
+    parser that keeps the first reads different values out of the same bytes. The
+    hash binds bytes, so the record this module compares ``subject`` and
+    ``eat_profile`` against has to be the only reading those bytes have.
+    """
+    obj: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in obj:
+            raise ContentMarkingError(f"duplicate member {name!r} in a JSON object")
+        obj[name] = value
+    return obj
+
+
+def _loads(data: bytes | bytearray, what: str) -> Any:
+    try:
+        return json.loads(data, object_pairs_hook=_no_duplicate_members)
+    except ContentMarkingError as exc:
+        raise ContentMarkingError(f"{what} is not usable JSON: {exc}") from exc
+    except (ValueError, RecursionError) as exc:
+        # RecursionError: nesting deeper than the interpreter stack. The bytes can
+        # come from whoever serves the URL, so a caller written against
+        # ContentMarkingError has to be able to refuse them.
+        raise ContentMarkingError(f"{what} is not JSON: {exc}") from exc
 
 
 def _digest(data: bytes, alg: str) -> str:
@@ -100,8 +129,14 @@ def _record_url(value: Any) -> str:
         elif not hostport:
             raise ContentMarkingError(message)
 
-    if port is not None and int(port) > 65535:
-        raise ContentMarkingError(message)
+    # Length before int(): RFC 3986 puts no bound on a port's digits, and int() of
+    # more than 4,300 of them raises Python's own ValueError about its integer-string
+    # limit rather than this module's refusal. Leading zeros are legal, so they are
+    # not counted.
+    if port is not None:
+        significant = port.lstrip("0")
+        if len(significant) > 5 or (significant and int(significant) > 65535):
+            raise ContentMarkingError(message)
     return value
 
 
@@ -144,12 +179,7 @@ def build_assertion(
             f"{anchor!r}"
         )
 
-    import json
-
-    try:
-        record = json.loads(record_bytes)
-    except ValueError as exc:
-        raise ContentMarkingError(f"record_bytes is not JSON: {exc}") from exc
+    record = _loads(record_bytes, "record_bytes")
     if not isinstance(record, dict):
         raise ContentMarkingError(
             f"record_bytes must decode to a JSON object, got {type(record).__name__}. A "
@@ -189,8 +219,6 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     assertion points at the record it claims, and nothing about whether either
     was signed by anyone it trusts.
     """
-    import json
-
     if not isinstance(assertion, dict):
         raise ContentMarkingError("assertion must be an object")
     if assertion.get("label") != ASSERTION_LABEL:
@@ -251,11 +279,7 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
             "the URL is serving a different one."
         )
 
-    record: dict[str, Any]
-    try:
-        record = json.loads(record_bytes)
-    except ValueError as exc:
-        raise ContentMarkingError(f"record at {url} is not JSON: {exc}") from exc
+    record = _loads(record_bytes, f"record at {url}")
     if not isinstance(record, dict):
         raise ContentMarkingError(
             f"the record at {url} must decode to a JSON object, got "

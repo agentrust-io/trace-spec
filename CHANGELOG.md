@@ -26,6 +26,25 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - Regenerate the v0.3 draft after canonical reproducibility additions and make
   the schema inventory test use portable repository paths on Windows.
 
+- Keep untrusted input on each verifier's documented error type. Nesting a few
+  hundred levels deep in `cnf.jwk`, a tool call, a provenance record or served
+  content-marking bytes raised `RecursionError`; a 4,400 digit URL port raised
+  Python's integer-string `ValueError`; a float or unsafe integer in an offered
+  tool's `input_schema` raised `UnanchorableValue` from `check_tool_catalog`.
+  All were refusals already, none was an acceptance. Found by the new
+  ClusterFuzzLite targets in `.clusterfuzzlite/`; regression tests in
+  `tests/test_untrusted_input_stays_on_the_documented_error.py`.
+
+- Decode signatures and JWK `x` as canonical unpadded base64url only. The
+  decoder took the standard alphabet, `=` padding and stray characters, and
+  ignored the unused bits of the last character, so one signature had several
+  spellings that all verified, and a revocation bundle's `bundle_digest` (which
+  covers `sig.value`) gave one bundle several identities. The record-level rule
+  for `signature` is the normative proposal in #401 and is not changed here.
+  `verify_assertion` and `build_assertion` also refuse served record bytes that
+  name one member twice, since `json.loads` keeps the last and another parser
+  keeps the first. Tests in `tests/test_signature_spelling_is_canonical.py`.
+
 ### Added
 
 - **`condition-appraisal` is a registered `references` relation, and the registry says what it is.** #191, #209, #220 and later #321 each asked for a way to bind a governance fact held outside the record, and #226 read them as one question about the `rel` registry of section 3.1.2. This settles the part ruled on there: the registry is informative and open, the verifier rules of section 3.1.2 stay normative and section 3.1.2 now says so below them, and `docs/references-registry.md` holds each registered value's referenced object, what a relying party may establish from a resolved one, and the steps by which a name is added. The fourth value, `condition-appraisal`, is an independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. Its referenced object binds the condition and the subject by digest, names its issuer and key, carries the outcome in the issuer's own closed vocabulary, and signs the canonical bytes of the rest; the reference's `digest` is over the object as retained. What a relying party may establish is bounded to the object: that the cited bytes are the cited bytes and, where it holds the issuer's key, that the issuer signed them; neither reaches the record, a `pass` is not attested evidence that the condition held, and a `fail` is not a finding against the record. `examples/condition-appraisal/` carries five signed records from a seeded generator against an appraisal store: confirmed, altered after issue, a fail that verifies exactly as the pass does, unresolvable, and an issuer whose key the relying party does not hold; `tests/test_condition_appraisal_fixtures.py` recomputes every verdict from the committed bytes and re-runs the generator against them. Re-running a cited check is a separate proposal and no part of this change. Proposed by @nutstrut on #226; ruled on by @imran-siddique. Informative: no requirement, schema shape or wire format changes; the schema's `rel` description gains the name.
