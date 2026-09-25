@@ -14,6 +14,38 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - Propose explicit verifier profile declarations and verifier-result field requirements for obligations 2 and 3 of #116, carried by Imran Siddique following the discussion with @lywinged. Obligations 1 and 4 remain deferred; the v0.1 cutover is unchanged.
 - **Breaking, proposed: `silent` mode allows a policy-denied action (#143, following #28).** Section 4.3 now says a deny MUST NOT block in `silent` mode and the audit chain MUST record every would-have-denied decision. v0.9.0 and v0.10.0 described `silent` as evaluated and enforced under the same `eat_profile`, so a producer that followed that text and blocks on deny no longer conforms, and a `silent` record does not say which meaning it was written under. Classified breaking under GOVERNANCE.md, so adoption needs the 30-day comment period and Project Lead sign-off. Section 4.3 also orders the modes: `advisory` is not weaker than `silent`. Enforce remains the default; schema constraints and runtime behavior are unchanged. Classification raised by @lywinged.
 
+- **Specification precedence and reproducible conformance claims (#247).** The
+  v0.2 draft now states that normative text governs meaning and conformance;
+  disagreements in the schema, reference model or explanatory documentation are
+  defects in those supporting artifacts. Schema validation alone is not complete
+  conformance, and a normative gap needs a specification decision. Conformance
+  reports identify the specification revision and schema artifact, including its
+  digest, plus the verifier or suite version and assessed level where used. This
+  adds reporting requirements without changing Trust Record fields or verifier
+  acceptance behavior. Based on the maintainer ruling and producer feedback from
+  @chernistry and @lywinged in #247.
+
+## [0.11.0] - 2026-09-25
+
+- **Breaking:** `TraceSandboxAdapter` and `TraceAGTAdapter` require `enforcement_mode`;
+  it no longer defaults to `"enforce"`. An evidence constructor that fills in `"enforce"`
+  signs a claim that a policy was evaluated when nothing observed an evaluation (#416),
+  and the first fix, a `"declared"` default (#417), is ruled out by spec section 4.3:
+  `declared` MUST NOT be a default. Callers that omitted the argument now get a
+  `TypeError` and must pass the mode their runtime actually ran under, or `"declared"`
+  when no policy engine evaluated the policy. Runtime enforcement defaults are unchanged.
+  Diagnosis and first fix by @solloek369-arch.
+
+- **Signatures accept one spelling.** `sign._b64url_decode` accepts only canonical
+  unpadded base64url, so a Trust Record, JWK `x`, provenance, intent-bridge or
+  revocation-bundle signature carrying padding or non-canonical trailing bits is
+  refused instead of decoding to the same bytes. `content_marking` refuses served
+  record bytes with duplicate members. Deeply nested `cnf.jwk`, tool calls and
+  provenance records raise each module's documented error type instead of
+  `RecursionError`, and `tool_catalog_hash` raises `ProvenanceError` for a catalog
+  with no anchor form. ClusterFuzzLite now covers the record, bundle, provenance,
+  bridge, content-marking and canonicalization paths (#418).
+
 - Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406).
@@ -29,18 +61,30 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - Regenerate the v0.3 draft after canonical reproducibility additions and make
   the schema inventory test use portable repository paths on Windows.
 
+- Keep untrusted input on each verifier's documented error type. Nesting a few
+  hundred levels deep in `cnf.jwk`, a tool call, a provenance record or served
+  content-marking bytes raised `RecursionError`; a 4,400 digit URL port raised
+  Python's integer-string `ValueError`; a float or unsafe integer in an offered
+  tool's `input_schema` raised `UnanchorableValue` from `check_tool_catalog`.
+  All were refusals already, none was an acceptance. Found by the new
+  ClusterFuzzLite targets in `.clusterfuzzlite/`; regression tests in
+  `tests/test_untrusted_input_stays_on_the_documented_error.py`.
+
+- Decode signatures and JWK `x` as canonical unpadded base64url only. The
+  decoder took the standard alphabet, `=` padding and stray characters, and
+  ignored the unused bits of the last character, so one signature had several
+  spellings that all verified, and a revocation bundle's `bundle_digest` (which
+  covers `sig.value`) gave one bundle several identities. The record-level rule
+  for `signature` is the normative proposal in #401 and is not changed here.
+  `verify_assertion` and `build_assertion` also refuse served record bytes that
+  name one member twice, since `json.loads` keeps the last and another parser
+  keeps the first. Tests in `tests/test_signature_spelling_is_canonical.py`.
+
 ### Added
 
-- **Specification precedence and reproducible conformance claims (#247).** The
-  v0.2 draft now states that normative text governs meaning and conformance;
-  disagreements in the schema, reference model or explanatory documentation are
-  defects in those supporting artifacts. Schema validation alone is not complete
-  conformance, and a normative gap needs a specification decision. Conformance
-  reports identify the specification revision and schema artifact, including its
-  digest, plus the verifier or suite version and assessed level where used. This
-  adds reporting requirements without changing Trust Record fields or verifier
-  acceptance behavior. Based on the maintainer ruling and producer feedback from
-  @chernistry and @lywinged in #247.
+- **`intent_bridge.verify_bridge()` binds a successor observation (#340, for #338).** A bridge may carry `transcript.after` as a successor-observation envelope whose RFC 8785 / SHA-256 digest equals the signed `authorization.successor_observation_digest`. The new `successor_observation` module evaluates the envelope, and `schema/pic-trace-bridge-v1.json` and `docs/integration/pic-trace-bridge-v1.md` describe it.
+
+- **`provenance.verify_record()` takes an explicit `now` (#411).** A non-negative integer Unix timestamp pins the freshness decision so it can be replayed. Booleans and other types are refused as configuration errors. Omitting it keeps the host clock.
 
 - **`condition-appraisal` is a registered `references` relation, and the registry says what it is.** #191, #209, #220 and later #321 each asked for a way to bind a governance fact held outside the record, and #226 read them as one question about the `rel` registry of section 3.1.2. This settles the part ruled on there: the registry is informative and open, the verifier rules of section 3.1.2 stay normative and section 3.1.2 now says so below them, and `docs/references-registry.md` holds each registered value's referenced object, what a relying party may establish from a resolved one, and the steps by which a name is added. The fourth value, `condition-appraisal`, is an independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. Its referenced object binds the condition and the subject by digest, names its issuer and key, carries the outcome in the issuer's own closed vocabulary, and signs the canonical bytes of the rest; the reference's `digest` is over the object as retained. What a relying party may establish is bounded to the object: that the cited bytes are the cited bytes and, where it holds the issuer's key, that the issuer signed them; neither reaches the record, a `pass` is not attested evidence that the condition held, and a `fail` is not a finding against the record. `examples/condition-appraisal/` carries five signed records from a seeded generator against an appraisal store: confirmed, altered after issue, a fail that verifies exactly as the pass does, unresolvable, and an issuer whose key the relying party does not hold; `tests/test_condition_appraisal_fixtures.py` recomputes every verdict from the committed bytes and re-runs the generator against them. Re-running a cited check is a separate proposal and no part of this change. Proposed by @nutstrut on #226; ruled on by @imran-siddique. Informative: no requirement, schema shape or wire format changes; the schema's `rel` description gains the name.
 
@@ -60,6 +104,32 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - **`verify_record()` reports whether the objects a record cites can be resolved (#190).** A record cites `appraisal.policy_ref`, `runtime.rim_uri` and `model.aibom_uri` as URIs the schema checks only for shape, and, until this change, nothing under `src/` read them. `verify_record()` now takes `citation_resolver`, a caller-supplied function from URI to bytes, and returns a `VerificationResult` whose new `citations` field carries one row per surface: `resolved` with the SHA-256 over exactly the returned bytes and their count, `unresolvable` with the cause and the exception's class name when the resolver raised or the returned value's type name when it returned non-bytes, or `not_attempted` when no resolver was supplied, the field is absent, or the surface is deferred. `transparency` is deferred to the coordination in agentrust-io/trace-tests#92 and section 7 open question 3, and every vector shows it so. The check records resolvability and asserts nothing about binding, which #280 holds; it never reads `references[]`, which keeps it inside section 3.1.2 rule 3 by construction; and it takes its resolver from the caller only, never from the record, per section 3.1.2. No outcome changes the revocation check, the thumbprint, or whether verification raises; a resolver that is neither callable nor `None` is refused at entry. `examples/citation-resolution/` carries sixteen generated vectors with the cited bytes in hand, and `tests/test_citation_resolution.py` holds eleven invariants over them, including that every revocation vector `verify_record()` accepted before still verifies with the same revocation result. The outcome names are not accepted normative text (#279). Informative only: no schema, wire-format or normative change.
 
 ### Fixed
+
+- **Schema regex semantics now match between `validate` and the Pydantic models (#412).** Patterns are shared from `_patterns.py`, so `models`, `content_marking` and the sandbox adapter accept and refuse the same strings the JSON Schema does. `tests/test_regex_surface_parity.py` holds them together.
+
+- **Schema `pattern` checks use ECMA-262 boundaries (#388).** Python `re` lets `$` match before a trailing newline and ECMA-262 does not, so a `subject` or URI ending in `
+`, `
+`, U+2028 or U+2029 validated before this change and is now refused.
+
+- **Malformed IPv4 literals inside URIs are refused (#387).** The `uri` format check now rejects an IPv4 address with a leading-zero octet embedded in a bracketed IPv6 literal, such as `https://[::1.2.3.04]/`.
+
+- **A present but malformed `signature` is reported as malformed, not missing (#390).** `sign.verify_record()` treated an empty or falsy value as absent.
+
+- **The AGT and sandbox adapters validate `iat` before it reaches the record (#343).** A boolean, negative or non-integer `iat` was written into the claims and only caught at signing or verification.
+
+- **`content_marking` refuses a non-string or empty `eat_profile` (#410), a boolean assertion `version` (#282) and a malformed `record.url` (#284).**
+
+- **`provenance` refuses non-string identity locators (#287) and a tool whose two schema aliases disagree (#300, closes #297).** Aliases are compared by canonical bytes.
+
+- **Revocation bundle freshness inputs are validated (#288).** Boolean and non-integer policy values raise a configuration error instead of being read as numbers.
+
+- **`TraceSandboxAdapter` validates its required textual fields (#290).**
+
+- **`intent_bridge` keeps a canonicalization failure's error class (#318)** instead of reporting it as an authorization mismatch.
+
+- **The README named an API the package never had (#309).** It told readers to call `TrustRecord.sign()`, `record.anchor()` and `record.verify()`. It now shows `sign_record` and `verify_record`, and `tests/test_readme_api_claims.py` fails if it drifts. The README is the PyPI long description, so this release is the first to show the correct calls on the project page.
+
+- **`sign.verify_record()` now validates `max_age_seconds` and `max_future_skew_seconds` the same way `provenance.verify_record()` does.** `provenance.verify_record()` rejects a malformed freshness bound via `_check_seconds()`, added per the review on #164. `sign.verify_record()`, the original Trust Record verifier, never received the same hardening: it checked only `max_future_skew_seconds < 0`, and `max_age_seconds` was compared against unvalidated. Passing `max_age_seconds=-1` (a value a caller might use meaning "no bound," since `None` is the documented way to disable the check) rejected every record, including one issued the same second, as `record is stale`, naming the record rather than the misconfigured argument. `_check_seconds()` is now defined once in `sign.py` and shared: `sign.verify_record()` calls it directly, and `provenance.verify_record()` imports it, passing its own `ProvenanceError` via a new `exc` parameter so each keeps its existing public error type.
 
 - **The v0.3 draft schema accepted the private half of a confirmation key.**
   `schema/trace-claim-v0.3-draft.json` states that outside the profile
@@ -163,7 +233,6 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - **`provenance.verify_record()`, `provenance.check_tool_catalog()` and `content_marking.verify_assertion()` now hold their externally supplied argument to the type they document.** Each read that argument before establishing its shape. Measured across a twelve-value junk matrix, the two provenance functions leaked eleven `AttributeError`s apiece; the twelfth value is `{}`, which is an object and so reached the refusal each function documents, which is not the `ProvenanceError` `verify_record` documents. `content_marking.verify_assertion()` was worse than a crash rather than merely undocumented: it did not check that `record_bytes` were bytes, and `bytes(5)` is five zero bytes, so an int was hashed, failed to match, and the caller was told the record at the URL had changed, which is a specific and false accusation about somebody else's server. All three now raise the error their module documents, naming the type received.
 
 - **`jwk_thumbprint()` and `verify_record()` now refuse a non-object argument with the error they document.** Both read a member off the argument before establishing its shape, so a string, a number, `None`, a list or a bool raised `AttributeError`, which is not the `ValueError` `verify_record`'s docstring names for every rejection other than a bad signature, and is not caught by a caller written against that contract. Neither argument is one the caller has already established: a JWK reaches `jwk_thumbprint` from a peer, a key document or a record's own `cnf`, and the record handed to `verify_record` is by definition not yet known to be an object. Both now raise `ValueError` naming the type received. 21 tests: removing the two guards fails 20 of them, and the twenty-first is the control that has to keep passing.
-- **`sign.verify_record()` now validates `max_age_seconds` and `max_future_skew_seconds` the same way `provenance.verify_record()` does.** `provenance.verify_record()` rejects a malformed freshness bound via `_check_seconds()`, added per the review on #164. `sign.verify_record()`, the original Trust Record verifier, never received the same hardening: it checked only `max_future_skew_seconds < 0`, and `max_age_seconds` was compared against unvalidated. Passing `max_age_seconds=-1` (a value a caller might use meaning "no bound," since `None` is the documented way to disable the check) rejected every record, including one issued the same second, as `record is stale`, naming the record rather than the misconfigured argument. `_check_seconds()` is now defined once in `sign.py` and shared: `sign.verify_record()` calls it directly, and `provenance.verify_record()` imports it, passing its own `ProvenanceError` via a new `exc` parameter so each keeps its existing public error type.
 
 - **`provenance.tool_catalog_hash()` now refuses a malformed `tools` list instead of crashing.** Reached primarily through `check_tool_catalog(record, tools)`, the function the module's own docstring calls "the step that catches a live attack," because `tools` there is what the MCP server actually returned, i.e. the untrusted party this check exists to catch. The function iterated `tools` and called `.get(...)` on each entry with no check that `tools` was a list or that its entries were objects, so a malformed response (an entry that is a string, `None`, a number, or `tools` itself not being a list) raised an unhandled `AttributeError` or `TypeError` instead of the documented `ProvenanceError`. A server that is misbehaving maliciously or just buggily and is exactly the source `tools` has no reason to trust its shape. Fixed with an explicit `isinstance` check on `tools` and on each of its entries, naming the offending index.
 

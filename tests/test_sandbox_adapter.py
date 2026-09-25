@@ -54,6 +54,7 @@ def _make_adapter(**overrides: Any) -> TraceSandboxAdapter:
         "model_id": "claude-sonnet-4-6",
         "model_version": "20251001",
         "data_class": "confidential",
+        "enforcement_mode": "enforce",
     }
     defaults.update(overrides)
     return TraceSandboxAdapter(**defaults)
@@ -507,11 +508,20 @@ def test_the_same_session_builds_the_same_record() -> None:
     assert adapter.build_trust_record(session) == adapter.build_trust_record(session)
 
 
-def test_enforcement_mode_reaches_the_record() -> None:
-    record = _make_adapter(enforcement_mode="advisory").build_trust_record(
+def test_enforcement_mode_has_no_default() -> None:
+    # Spec section 4.3: `declared` MUST NOT be a default, and an `enforce` default
+    # would claim an evaluation the adapter never observed (#416, #417).
+    with pytest.raises(TypeError, match="enforcement_mode"):
+        TraceSandboxAdapter(model_provider="anthropic", model_id="claude-sonnet-4-6")
+
+
+@pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])
+def test_enforcement_mode_reaches_the_record(mode: str) -> None:
+    record = _make_adapter(enforcement_mode=mode).build_trust_record(
         _make_session()
     )
-    assert record["policy"]["enforcement_mode"] == "advisory"
+    assert record["policy"]["enforcement_mode"] == mode
+    TrustRecord.model_validate(record)
 
 
 def test_an_invalid_enforcement_mode_is_rejected() -> None:

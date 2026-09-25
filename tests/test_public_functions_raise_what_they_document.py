@@ -247,7 +247,7 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
         lambda: {"record": _PROVENANCE_SIGNED, "trusted_jwk": _JWK, "revocation": None,
                      "max_age_seconds": None, "max_future_skew_seconds": 300},
         ("trusted_jwk", "revocation", "max_age_seconds", "max_future_skew_seconds",
-         "required_format"),
+         "now", "required_format"),
     ),
     "revocation.check_bundle": (
         lambda: {"bundle": _CTX["bundle"],
