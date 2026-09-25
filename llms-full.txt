@@ -2789,6 +2789,8 @@ A record under the superseded v0.1 EAT profile is not accepted by the current v0
 
 The adapter uses RFC 8785 for transcript canonicalization. It currently accepts a transparency string but does not submit to a registry. `appraisal.status` defaults to `none`, because the adapter does not evaluate the session and `appraisal.status` is the verifier's field (spec section 3.3.1); pass `appraisal_status` only when an appraisal actually happened. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an anchor for synthetic input.
 
+`enforcement_mode` is required and has no default. The adapter observes a session; it does not evaluate the policy, so it cannot know which mode applied. A default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass the mode the deployment actually ran under, or `"declared"` when no policy engine evaluated the policy. This changes the evidence constructor, not the runtime's enforcement default or behavior.
+
 ## Assurance
 
 Software signing authenticates the producer's statement when the recipient trusts its key. Hardware evidence requires a separately verified runtime and key binding. Level 2 additionally requires transparency anchoring. Placing an AGT application near a cMCP gateway does not automatically create matching or superseding records; use the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md) for that runtime's boundary.
@@ -2921,6 +2923,7 @@ adapter = TraceSandboxAdapter(
     model_provider="example-provider",
     model_id="example-model-1",
     data_class="confidential",
+    enforcement_mode="enforce",  # the mode the sandbox actually enforced
 )
 
 # Per session, from what the runtime already knows at close.
@@ -2936,6 +2939,8 @@ TrustRecord.model_validate(record)
 ```
 
 That record is Level 0: signed, offline-verifiable, and honest that no hardware backed it. `runtime.platform` reads `software-only`.
+
+`enforcement_mode` is required and has no default. The adapter records what the runtime reports and evaluates nothing itself, so a default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass the mode the sandbox actually enforced, or `"declared"` when no policy engine evaluated the policy. This changes the evidence constructor, not the runtime's enforcement default or behavior.
 
 ## Adding a root of trust
 
@@ -3324,6 +3329,7 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+- **Breaking:** `TraceSandboxAdapter` and `TraceAGTAdapter` require `enforcement_mode`; it no longer defaults to `"enforce"`. An evidence constructor that fills in `"enforce"` signs a claim that a policy was evaluated when nothing observed an evaluation (#416), and the first fix, a `"declared"` default (#417), is ruled out by spec section 4.3: `declared` MUST NOT be a default. Callers that omitted the argument now get a `TypeError` and must pass the mode their runtime actually ran under, or `"declared"` when no policy engine evaluated the policy. Runtime enforcement defaults are unchanged. Diagnosis and first fix by @solloek369-arch.
 - Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406). Preserve v1 hashes and producer defaults; add explicit v2 production and consumer format requirements. Reported by @altrudev.

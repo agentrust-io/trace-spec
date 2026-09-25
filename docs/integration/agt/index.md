@@ -21,6 +21,8 @@ A record under the superseded v0.1 EAT profile is not accepted by the current v0
 
 The adapter uses RFC 8785 for transcript canonicalization. It currently accepts a transparency string but does not submit to a registry. `appraisal.status` defaults to `none`, because the adapter does not evaluate the session and `appraisal.status` is the verifier's field (spec section 3.3.1); pass `appraisal_status` only when an appraisal actually happened. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an anchor for synthetic input.
 
+`enforcement_mode` is required and has no default. The adapter observes a session; it does not evaluate the policy, so it cannot know which mode applied. A default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass the mode the deployment actually ran under, or `"declared"` when no policy engine evaluated the policy. This changes the evidence constructor, not the runtime's enforcement default or behavior.
+
 ## Assurance
 
 Software signing authenticates the producer's statement when the recipient trusts its key. Hardware evidence requires a separately verified runtime and key binding. Level 2 additionally requires transparency anchoring. Placing an AGT application near a cMCP gateway does not automatically create matching or superseding records; use the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md) for that runtime's boundary.
