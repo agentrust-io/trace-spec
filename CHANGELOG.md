@@ -11,6 +11,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Propose explicit verifier profile declarations and verification-statement requirements for obligations 2 and 3 of #116, carried by Imran Siddique following the discussion with @lywinged. Obligations 1 and 4 remain deferred; the v0.1 cutover is unchanged.
+- Correct silent-mode descriptions to allow policy-denied actions while preserving audit evidence, following the #28 behavior and the maintainer ruling on #143. Enforce remains the default. Schema constraints and runtime behavior are unchanged.
+
 - Correct regulatory context in the published v0.1/v0.2 introductions and LIMITATIONS.md (#328, following #314). Separate Article 12 logging capability from TRACE tamper-evidence, identify Article 11 / Annex IV as documentation context, correct the applicability dates and remove unsupported TRACE-level compliance claims. Editorial only; reported by @ioanavalea with review context from @lywinged.
 - Propose v0.3 MCP profile requirements for producer-defined attempts, signed full declaration snapshots and explicit retry outcomes (#324). Clarify existing session wording without changing v0.2 validation. Proposed by @madeinplutofabio with declaration-binding refinements from @Mayur021; maintainer-carried proposal, not adopted or implemented.
 - Propose MCP Server Provenance v2 with normalized behavioral-hint binding (#406).
