@@ -168,6 +168,23 @@ def test_an_agreement_and_a_disagreement_verify_identically() -> None:
         strip(_load("03-observer-and-observed-disagree.json"))
 
 
+def test_a_bad_signature_over_matching_bytes_is_its_own_verdict() -> None:
+    """A corrupted observer signature, with the reference digest recomputed over the
+    corrupted envelope, matches on digest and fails on signature. The verdict says so and
+    does not fold it into a digest mismatch."""
+    store = copy.deepcopy(_load("effect-store.json"))
+    envelope = store["effects"]["interval/1"]
+    (signature,) = envelope["signatures"]
+    raw = base64.b64decode(signature["sig"])
+    signature["sig"] = base64.b64encode(bytes([raw[0] ^ 1]) + raw[1:]).decode()
+    record = copy.deepcopy(_load("01-observation-verified.json"))
+    record["references"][0]["digest"] = _jcs_sha256(envelope)
+    observed = _assess(record, store, EXPECTED["observer_keys"])
+    assert observed["digest_matches"] is True
+    assert observed["envelope_verifies"] is False
+    assert observed["verdict"] == "observation-signature-invalid"
+
+
 def test_the_record_signature_covers_the_reference() -> None:
     record = copy.deepcopy(_load("01-observation-verified.json"))
     digest = record["references"][0]["digest"]

@@ -69,8 +69,11 @@ def _assess(record: dict, store: dict, issuer_keys: dict) -> dict:
 
     Three separable findings: whether the reference resolves, whether the resolved bytes
     are the cited bytes, and whether the object verifies under its named issuer's key
-    when the relying party holds that key. The outcome is reported as the object states
-    it and decides nothing here: section 3.1.2 rule 3 makes identity the ceiling.
+    when the relying party holds that key. Each is reported in its own field. The verdict
+    names the state of the referenced appraisal, never the condition it reports on: a
+    verified appraisal does not establish that the condition held, and a digest mismatch
+    does not establish that it did not. The outcome is reported as the object states it
+    and decides nothing here: section 3.1.2 rule 3 makes identity the ceiling.
     """
     (reference,) = record["references"]
     assert reference["rel"] == "condition-appraisal"
@@ -78,19 +81,19 @@ def _assess(record: dict, store: dict, issuer_keys: dict) -> dict:
     obj = store["appraisals"].get(reference["id"])
     if obj is None:
         return {"reference_resolves": False, "digest_matches": None, "issuer_key_configured": None,
-                "appraisal_verifies": None, "outcome": None, "verdict": "appraisal-unconfirmed"}
+                "appraisal_verifies": None, "outcome": None, "verdict": "appraisal-unresolved"}
     digest_matches = _jcs_sha256(obj) == reference["digest"]
     jwk = issuer_keys.get(obj["issuer_key_id"])
     configured = jwk is not None
     verifies = _appraisal_verifies(obj, jwk) if configured else None
     if not digest_matches:
-        verdict = "appraisal-contradicted"
+        verdict = "appraisal-digest-mismatch"
     elif not configured:
         verdict = "appraisal-unverified"
     elif not verifies:
-        verdict = "appraisal-contradicted"
+        verdict = "appraisal-signature-invalid"
     else:
-        verdict = "appraisal-confirmed"
+        verdict = "appraisal-verified"
     return {"reference_resolves": True, "digest_matches": digest_matches,
             "issuer_key_configured": configured, "appraisal_verifies": verifies,
             "outcome": obj["outcome"]["status"], "verdict": verdict}
@@ -106,7 +109,7 @@ def test_the_committed_records_are_exactly_the_declared_cases() -> None:
 @pytest.mark.parametrize("name", CASES)
 def test_every_case_verifies_as_a_trust_record(name: str) -> None:
     # Section 3.1.2 rule 3: what a reference resolves to never decides whether the
-    # record verifies, so the contradicted, unverified and unresolvable cases verify too.
+    # record verifies, so the mismatched, unverified and unresolved cases verify too.
     verify_record(_load(name), EXPECTED["trace_signer_jwk"], max_age_seconds=None)
     assert EXPECTED["cases"][name]["trace_record_verifies"] is True
 
@@ -123,14 +126,14 @@ def test_a_pass_and_a_fail_verify_identically() -> None:
     records differ only in the reference they carry, both verify, and the relying
     party's assessment differs only in the reported outcome."""
     store = _load("appraisal-store.json")
-    passing = _assess(_load("01-appraisal-confirmed.json"), store, EXPECTED["issuer_keys"])
+    passing = _assess(_load("01-appraisal-verified.json"), store, EXPECTED["issuer_keys"])
     failing = _assess(_load("03-outcome-is-a-fail.json"), store, EXPECTED["issuer_keys"])
     assert (passing["outcome"], failing["outcome"]) == ("pass", "fail")
     assert {k: v for k, v in passing.items() if k != "outcome"} == \
         {k: v for k, v in failing.items() if k != "outcome"}
-    for name in ("01-appraisal-confirmed.json", "03-outcome-is-a-fail.json"):
+    for name in ("01-appraisal-verified.json", "03-outcome-is-a-fail.json"):
         verify_record(_load(name), EXPECTED["trace_signer_jwk"], max_age_seconds=None)
-    passing_record = _load("01-appraisal-confirmed.json")
+    passing_record = _load("01-appraisal-verified.json")
     failing_record = _load("03-outcome-is-a-fail.json")
     strip = lambda r: {  # noqa: E731
         k: v for k, v in r.items() if k not in ("references", "signature")
@@ -138,8 +141,26 @@ def test_a_pass_and_a_fail_verify_identically() -> None:
     assert strip(passing_record) == strip(failing_record)
 
 
+def test_a_bad_signature_over_matching_bytes_is_its_own_verdict() -> None:
+    """A corrupted issuer signature, with the reference digest recomputed over the
+    corrupted object, matches on digest and fails on signature. The verdict says so and
+    does not fold it into a digest mismatch."""
+    store = copy.deepcopy(_load("appraisal-store.json"))
+    obj = store["appraisals"]["appraisal/1"]
+    signature = _b64u_decode(obj["signature"])
+    obj["signature"] = base64.urlsafe_b64encode(
+        bytes([signature[0] ^ 1]) + signature[1:]
+    ).rstrip(b"=").decode()
+    record = copy.deepcopy(_load("01-appraisal-verified.json"))
+    record["references"][0]["digest"] = _jcs_sha256(obj)
+    observed = _assess(record, store, EXPECTED["issuer_keys"])
+    assert observed["digest_matches"] is True
+    assert observed["appraisal_verifies"] is False
+    assert observed["verdict"] == "appraisal-signature-invalid"
+
+
 def test_the_record_signature_covers_the_reference() -> None:
-    record = copy.deepcopy(_load("01-appraisal-confirmed.json"))
+    record = copy.deepcopy(_load("01-appraisal-verified.json"))
     digest = record["references"][0]["digest"]
     record["references"][0]["digest"] = digest[:-1] + ("0" if digest[-1] != "0" else "1")
     with pytest.raises(InvalidSignature):

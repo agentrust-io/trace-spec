@@ -13,7 +13,7 @@
     }
   },
   "cases": {
-    "01-appraisal-confirmed.json": {
+    "01-appraisal-verified.json": {
       "store": "appraisal-store.json",
       "trace_record_verifies": true,
       "reference_resolves": true,
@@ -21,7 +21,7 @@
       "issuer_key_configured": true,
       "appraisal_verifies": true,
       "outcome": "pass",
-      "verdict": "appraisal-confirmed"
+      "verdict": "appraisal-verified"
     },
     "02-appraisal-altered-after-issue.json": {
       "store": "appraisal-store-altered.json",
@@ -31,7 +31,7 @@
       "issuer_key_configured": true,
       "appraisal_verifies": false,
       "outcome": "pass",
-      "verdict": "appraisal-contradicted"
+      "verdict": "appraisal-digest-mismatch"
     },
     "03-outcome-is-a-fail.json": {
       "store": "appraisal-store.json",
@@ -41,7 +41,7 @@
       "issuer_key_configured": true,
       "appraisal_verifies": true,
       "outcome": "fail",
-      "verdict": "appraisal-confirmed"
+      "verdict": "appraisal-verified"
     },
     "04-reference-unresolvable.json": {
       "store": "appraisal-store.json",
@@ -51,7 +51,7 @@
       "issuer_key_configured": null,
       "appraisal_verifies": null,
       "outcome": null,
-      "verdict": "appraisal-unconfirmed"
+      "verdict": "appraisal-unresolved"
     },
     "05-issuer-key-not-configured.json": {
       "store": "appraisal-store.json",

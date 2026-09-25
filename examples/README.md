@@ -45,7 +45,7 @@ checking any archived record, including these.
   See that directory's README.
 - `condition-appraisal/`: five signed Trust Records, each citing an independent check's
   finding through a `references` entry with `rel: "condition-appraisal"`, against an
-  appraisal store committed beside them: confirmed, altered after issue, a fail that
+  appraisal store committed beside them: verified, altered after issue, a fail that
   verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
   party does not hold. Every digest recomputes; see that directory's README and
   `docs/references-registry.md`.
