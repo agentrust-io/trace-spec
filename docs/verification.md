@@ -24,7 +24,7 @@ A signature proves a statement came from the trusted key. It does not establish 
 
 [Section 3.3](../spec/trace-v0.2.md#33-verification) requires a nonempty `accepted_profiles` set containing only profiles whose schemas and verification semantics the verifier implements. Reject an unsupported member anywhere in that declaration, even if the record names a supported profile. Also reject a record whose `eat_profile` is outside the declared set.
 
-A successful verification statement records both the verified `profile` and the complete `accepted_profiles` set configured at verification time. Retaining only the record's profile loses which other profiles the verifier claimed to support. These fields belong to the verifier's result; they do not alter the signed record.
+A successful verification result records both the verified `profile` and the complete `accepted_profiles` set configured at verification time. Retaining only the record's profile loses which other profiles the verifier claimed to support. These fields belong to the verifier's result; they do not alter the signed record.
 
 The current SDK accepts only `tag:agentrust-io.com,2026:trace-v0.2` and rejects the superseded v0.1 identifier. `verify_record` enforces these checks and returns `result.profile` and `result.accepted_profiles`. Obligations 1 and 4 of [#116](https://github.com/agentrust-io/trace-spec/issues/116), emitter version declarations and downgrade disclosure, remain deferred.
 
