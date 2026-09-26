@@ -1,11 +1,12 @@
-"""Generate an informative, synthetic MCP retry packet, not a v0.3 profile.
+"""Write an informative, synthetic MCP retry packet, not a v0.3 profile.
 
-The public seed is fixture material, never a production signing identity.
-Run from the repository root after installing its development dependencies.
+Run with --out DIR after installing the repository's development dependencies.
+The public seed is test material, never a production signing identity.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -133,7 +134,7 @@ def packet() -> dict[str, Any]:
     after["pages"][1]["result"]["tools"][0]["_meta"]["example.org/declaration-revision"] = "two"
     snapshots = {digest(s): s for s in (before, after)}
     attempts = []
-    for index, declaration in enumerate((before, after), start=1):
+    for index, declaration_digest in enumerate(snapshots, start=1):
         request = {
             "jsonrpc": "2.0",
             "id": index,
@@ -175,7 +176,7 @@ def packet() -> dict[str, Any]:
                 "protocol_revision": PROTOCOL,
                 "request": request,
                 "declarations": {
-                    "digest": digest(declaration),
+                    "digest": declaration_digest,
                     "canonicalization": CANONICALIZATION,
                 },
                 "observation": observation,
@@ -209,7 +210,10 @@ def packet() -> dict[str, Any]:
 
 
 def main() -> None:
-    directory = Path(__file__).parent
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", required=True, type=Path, help="directory for generated JSON")
+    directory = parser.parse_args().out
+    directory.mkdir(parents=True, exist_ok=True)
     artifacts = {
         "packet.json": packet(),
         "verification-inputs.json": {"trusted_key": key_to_jwk(fixture_key()), "now": NOW},

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import runpy
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,18 +17,55 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace import key_to_jwk, verify_record
 
-DIRECTORY = Path(__file__).resolve().parents[1] / "examples" / "mcp-retry"
-GENERATOR = runpy.run_path(str(DIRECTORY / "gen_mcp_retry.py"))
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "examples" / "mcp-retry" / "mcp_retry.py"
+GENERATOR = runpy.run_path(str(SCRIPT))
+
+
+def _generate(directory):
+    script = directory / SCRIPT.name
+    shutil.copyfile(SCRIPT, script)
+    output = directory / "out"
+    subprocess.run(
+        [sys.executable, str(script), "--out", str(output)],
+        cwd=directory,
+        env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return output
+
+
+@pytest.fixture(scope="module")
+def generated(tmp_path_factory):
+    return _generate(tmp_path_factory.mktemp("mcp-retry"))
 
 
 @pytest.fixture
-def packet():
-    return GENERATOR["load_json"]((DIRECTORY / "packet.json").read_text("utf-8"))
+def packet(generated):
+    return GENERATOR["load_json"]((generated / "packet.json").read_text("utf-8"))
 
 
 @pytest.fixture
-def inputs():
-    return GENERATOR["load_json"]((DIRECTORY / "verification-inputs.json").read_text("utf-8"))
+def inputs(generated):
+    return GENERATOR["load_json"]((generated / "verification-inputs.json").read_text("utf-8"))
+
+
+def test_script_reproduces_fixed_evidence_bytes(generated, tmp_path):
+    regenerated = _generate(tmp_path)
+    expected = {
+        "packet.json": "631937f5743da55eeba706a6f9dd812b92d5ff4adb0b8589e03d6548e76fda65",
+        "verification-inputs.json": (
+            "56a8a25ea79823110ff61b6f09ca418a3fa6ab6fc57bcb4232e7b3d97ac1fe06"
+        ),
+    }
+    assert {path.name for path in generated.iterdir()} == set(expected)
+    assert {path.name for path in regenerated.iterdir()} == set(expected)
+    for name, digest in expected.items():
+        content = (generated / name).read_bytes()
+        assert content == (regenerated / name).read_bytes()
+        assert hashlib.sha256(content).hexdigest() == digest
 
 
 def _verify_record(packet, inputs):

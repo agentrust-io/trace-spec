@@ -1,67 +1,52 @@
 # Lost response, retry, changed declarations
 
-An informative, synthetic example for [issue #324][issue] and the [proposed MCP
-profile][draft], using an ordinary signed **TRACE v0.2** record. Its local format
-claims no TRACE v0.3 conformance and changes no SDK acceptance rule.
+An executable, synthetic example for [#324](https://github.com/agentrust-io/trace-spec/issues/324)
+and the [proposed MCP profile](../../spec/mcp-profile-v0.3-draft.md), not a v0.3 implementation.
+Install the repository's development dependencies, then run from its root:
 
-| Step | Retained producer observation | What it supports |
-|---|---|---|
-| Discover | Two ordered `tools/list` result pages, through the terminal page | A reported complete traversal, not an atomic server catalog |
-| Attempt 1 | Request ID `1`; response stream lost | Execution outcome unknown, not proof of non-execution |
-| Discover again | Two new pages; an **uncalled** tool's metadata changed | A different snapshot, not a replacement for the first capture |
-| Attempt 2 | New request ID `2`, linked to attempt 1; a successful response recorded | Producer-reported response only; attempt 1 stays unknown |
-
-The `inventory.lookup` declaration and fictional arguments are unchanged. A shared
-OTel `traceparent` correlates distinct attempts without establishing authorization
-or causality. `call_count: 2` counts attempts, not completed operations. The new ID
-illustrates the [MCP retry rule][mcp]; no MCP client, server or network failure runs.
-
-## Files and exact commitments
-
-`packet.json` holds the signed record, transcript and snapshots keyed by digest.
-`verification-inputs.json` supplies a separate trust key and evaluation time; never trust
-a key from the incoming packet. The deterministic `gen_mcp_retry.py` uses a public test
-seed with no real-world signer identity. [Tests][tests] check the fixture and tampering.
-
-The existing `sign_record()` / `verify_record()` APIs authenticate the record. Its signed
-`tool_transcript.hash` is SHA-256 of the canonical **entire transcript object**, binding
-each attempt's declaration digest and canonicalization identifier. Snapshot digests are
-SHA-256 of the canonical **entire snapshot object**, including ordered pages, cursors,
-cache metadata, observation flags, capture identity and every declaration member.
-Committed `format` members distinguish transcript and snapshot hash domains.
-
-`example-only/jcs-safe-integers-v1` means UTF-8 RFC 8785 via `rfc8785`: duplicate members
-are rejected before conversion, floats refused and integers limited to the inclusive
-range `[-9007199254740991, 9007199254740991]`. Booleans, null and array order are retained.
-Unsupported MCP schema numbers are refused without rounding, coercion or dropping members.
-The identifiers are unregistered local constants; fixture whitespace is not committed.
-
-Every synthetic JSON result page is retained in full. The capture excludes HTTP bytes,
-headers, connection identity, server authentication and timing; traversal does not prove atomicity.
-
-## Reproduce (repository root, development dependencies installed)
-
-```bash
-python examples/mcp-retry/gen_mcp_retry.py
-pytest tests/test_mcp_retry_example.py tests/test_generators_reproduce_fixtures.py
-git diff --exit-code -- examples/mcp-retry/packet.json examples/mcp-retry/verification-inputs.json
+```sh
+example_out=$(mktemp -d)
+python examples/mcp-retry/mcp_retry.py --out "$example_out"
+python -m json.tool "$example_out/packet.json"
+pytest tests/test_mcp_retry_example.py
 ```
 
-The generator test regenerates JSON in a temporary checkout and compares bytes. Tests
-distinguish missing (unavailable) evidence from present evidence with a mismatched digest;
-an otherwise intact record signature can still verify in either case.
+The script writes `packet.json` and separate `verification-inputs.json` (trusted key
+and fixed evaluation time). These generated files are not committed; the script is
+the single source. Tests reproduce them twice and pin their exact bytes, then check
+the signature with the separate trusted key and independently recompute commitments.
+The deterministic public signing seed is test material with no real-world identity.
 
-## Limits
+| Observation | Meaning |
+|---|---|
+| Two ordered `tools/list` pages through termination | Reported complete traversal, not an atomic catalog |
+| Request `1` loses its response stream | Execution outcome remains unknown |
+| Fresh discovery; an uncalled tool's metadata changes | Both full snapshots retained; selected tool unchanged |
+| Retry `2` links to `1` and records success | New attempt, not proof the first did not execute |
 
-Producer commitments do not prove truthful collection, agent visibility, execution history,
-server identity, execution, authorization, safety, runtime integrity, hardware provenance
-or exactly-once behavior. Producer observations are not server-signed responses. Enforcement
-is `declared`, appraisal is `none`, and runtime/model/build fields are synthetic, not
-attestations or SLSA evidence. No revocation check is performed. Freshness, collection
-notifications, resource limits, continuations and confidentiality/retention are outside
-scope. Interoperable formats and verifier rules still require the draft's adoption process.
+The requests retain the same arguments and OTel `traceparent`; correlation grants
+no authority or causality. `call_count: 2` counts attempts, not completed operations.
+This illustrates the [MCP retry rule](https://modelcontextprotocol.io/specification/2026-07-28/changelog);
+no client, server or network failure runs.
 
-[issue]: https://github.com/agentrust-io/trace-spec/issues/324
-[draft]: ../../spec/mcp-profile-v0.3-draft.md
-[mcp]: https://modelcontextprotocol.io/specification/2026-07-28/changelog
-[tests]: ../../tests/test_mcp_retry_example.py
+## Exact commitments and limits
+
+The v0.2 record's signed `tool_transcript.hash` is SHA-256 of the canonical **entire
+transcript**, including each attempt's snapshot digest. Snapshot digests are SHA-256
+of the canonical **entire snapshot**: all declarations (called or not), ordered result
+pages, cursors, cache metadata and capture context. Committed `format` members
+distinguish the two hash domains.
+
+`example-only/jcs-safe-integers-v1` is UTF-8 RFC 8785 via `rfc8785`: reject duplicate
+members, all floats and integers outside `[-9007199254740991, 9007199254740991]`;
+preserve booleans, null and array order. No coercion or dropped members. Identifiers
+are local, not registered formats; JSON whitespace is not committed. Missing evidence
+is unavailable, not a match; changed retained evidence mismatches even if the record
+signature still verifies. Tests cover both boundaries, wrong keys and signed-field edits.
+
+All observations are producer assertions, not authenticated server responses.
+Enforcement is `declared`, appraisal `none`, and runtime/model/build fields synthetic.
+No revocation check, HTTP capture, freshness-policy or resource-limit appraisal.
+It does not establish truthful collection, agent visibility, complete history, execution,
+authorization, safety, runtime integrity, hardware provenance or exactly-once behavior.
+SDK acceptance is unchanged; interoperable formats still require the draft's adoption.

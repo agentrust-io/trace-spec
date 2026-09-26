@@ -11,8 +11,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
-- Add an informative MCP lost-response/retry example with full paginated declaration
-  snapshots, signed transcript commitments and causal evidence checks for #324.
+- Add an executable MCP lost-response/retry example with full paginated declaration
+  snapshots, signed transcript commitments and focused integrity checks for #324.
   Keep the first execution outcome unknown after a reported successful retry.
   Uses an example-local format with a v0.2 record, not a v0.3 implementation.
 
