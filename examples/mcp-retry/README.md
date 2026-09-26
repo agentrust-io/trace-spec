@@ -14,7 +14,9 @@ pytest tests/test_mcp_retry_example.py
 The script writes `packet.json` and separate `verification-inputs.json` (trusted key
 and fixed evaluation time). These generated files are not committed; the script is
 the single source. Tests reproduce them twice and pin their exact bytes, then check
-the signature with the separate trusted key and independently recompute commitments.
+the signature with the separate trusted key and recompute commitments without the
+generator's helper. Both paths use `rfc8785`; this is not independent validation of
+that library's canonicalization. Outputs use explicit UTF-8/LF bytes on every platform.
 The deterministic public signing seed is test material with no real-world identity.
 
 | Observation | Meaning |

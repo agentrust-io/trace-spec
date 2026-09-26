@@ -132,9 +132,11 @@ def packet() -> dict[str, Any]:
     after = snapshot("capture-before-retry-dispatch")
     # Same selected tool. The changed declaration is deliberately an uncalled tool.
     after["pages"][1]["result"]["tools"][0]["_meta"]["example.org/declaration-revision"] = "two"
-    snapshots = {digest(s): s for s in (before, after)}
+    captures = [(digest(s), s) for s in (before, after)]
+    snapshots = dict(captures)
+    assert len(snapshots) == 2, "example requires two distinct snapshot digests"
     attempts = []
-    for index, declaration_digest in enumerate(snapshots, start=1):
+    for index, (declaration_digest, _) in enumerate(captures, start=1):
         request = {
             "jsonrpc": "2.0",
             "id": index,
@@ -219,8 +221,8 @@ def main() -> None:
         "verification-inputs.json": {"trusted_key": key_to_jwk(fixture_key()), "now": NOW},
     }
     for name, value in artifacts.items():
-        (directory / name).write_text(
-            json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        (directory / name).write_bytes(
+            (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
         )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import runpy
 import shutil
@@ -81,7 +82,8 @@ def _verify_record(packet, inputs):
 
 
 def _commitment(value, expected):
-    # Independent of the generator's digest helper. This is not a semantic appraisal.
+    # Separate from the generator's helper, but shares its rfc8785 dependency.
+    # Neither independent canonicalizer validation nor a semantic appraisal.
     if value is None:
         return "unavailable"
     actual = "sha256:" + hashlib.sha256(rfc8785.dumps(value)).hexdigest()
@@ -131,11 +133,13 @@ def test_retry_retains_the_lost_response_without_inventing_an_execution_outcome(
 
 
 def test_both_full_paginated_captures_survive_with_the_uncalled_tool_change(packet):
+    assert len(packet["snapshots"]) == 2
     before, after = [
         packet["snapshots"][attempt["declarations"]["digest"]]
         for attempt in packet["transcript"]["attempts"]
     ]
-    assert before["capture_id"] != after["capture_id"]
+    assert before["capture_id"] == "capture-before-first-dispatch"
+    assert after["capture_id"] == "capture-before-retry-dispatch"
     for snapshot in (before, after):
         first, last = snapshot["pages"]
         assert snapshot["source"] == "fresh-discovery"
@@ -238,6 +242,7 @@ def test_duplicate_json_members_are_refused_before_commitment(text):
         GENERATOR["load_json"](text)
 
 
+@pytest.mark.parametrize("entrypoint", ["load_json", "digest"])
 @pytest.mark.parametrize(
     "number",
     [
@@ -251,9 +256,11 @@ def test_duplicate_json_members_are_refused_before_commitment(text):
         "-9007199254740992",
     ],
 )
-def test_example_numeric_subset_is_explicitly_refused(number):
+def test_example_numeric_subset_is_explicitly_refused(number, entrypoint):
+    text = '{"nested":[' + number + "]}"
+    value = text if entrypoint == "load_json" else json.loads(text)
     with pytest.raises(ValueError, match="unsupported numeric value"):
-        GENERATOR["load_json"]('{"nested":[' + number + "]}")
+        GENERATOR[entrypoint](value)
 
 
 def test_local_canonicalization_preserves_supported_boolean_null_and_safe_integer():
