@@ -1,0 +1,206 @@
+{
+ "note": "Every entry is a case where the two implementations disagree, with the reason argued and the pair of reported outcomes pinned. An entry matches only when both the case and the pair match, so a new disagreement in the same family is reported rather than absorbed. Entries are tried in order and a case lands on the first that matches; count is how many cases land on the entry in the committed corpus, and compare.py fails when an entry, a pair or a count is not borne out by the run, so a divergence that stops happening has to leave the ledger. classification is one of: reference-defect (this implementation follows the specification and the reference does not), stricter-here (both reject and the stated reason differs because this implementation refuses a non-canonical encoding earlier), language-level (the two languages' number models differ and the specification does not settle it).",
+ "reference": "agentrust-trace, this repository's implementation at the commit under test. The package version string reads 0.10.0, which is also the last release, but the behaviour recorded here is the tree's: #383, #386, #387, #388 and #390 landed after 0.10.0 and closed six entries that were in this ledger.",
+ "divergences": [
+  {
+   "ids": [
+    "c18-key-x-non-canonical/*"
+   ],
+   "count": 14,
+   "classification": "stricter-here",
+   "reason": "The caller's trusted key has an x whose unused trailing bits are not zero, so it is not canonical base64url (RFC 4648 section 3.5). This implementation refuses the key as trusted_key_malformed. The reference decodes it leniently, obtaining a different key, and rejects later for a different stated reason. Both reject; the reason differs, and the pairs record which reason the reference reached under each record mutation. A mutation that this implementation refuses before it reads the trusted key, a schema or signature defect, is that mutation's entry, not this one.",
+   "pairs": [
+    [
+     "cnf_key_malformed",
+     "trusted_key_malformed"
+    ],
+    [
+     "cnf_key_mismatch",
+     "trusted_key_malformed"
+    ],
+    [
+     "cnf_key_unsupported",
+     "trusted_key_malformed"
+    ],
+    [
+     "signature_invalid",
+     "trusted_key_malformed"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "*/m03-signature-non-canonical-pad-bits"
+   ],
+   "count": 24,
+   "classification": "reference-defect",
+   "reason": "The signature is re-spelled with non-zero unused trailing bits: a different string that decodes to the same 64 bytes. The reference pads and decodes leniently, so it verifies the record. This implementation refuses the spelling as signature_malformed. The difference matters beyond tidiness: section 3.1.3 digests the parent record with its signature member present, so two records that differ only in this spelling verify identically and have different chain digests.",
+   "pairs": [
+    [
+     "cnf_key_mismatch",
+     "signature_malformed"
+    ],
+    [
+     "key_revoked",
+     "signature_malformed"
+    ],
+    [
+     "nonce_mismatch",
+     "signature_malformed"
+    ],
+    [
+     "record_in_future",
+     "signature_malformed"
+    ],
+    [
+     "record_stale",
+     "signature_malformed"
+    ],
+    [
+     "revocation_unavailable",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_malformed",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_missing",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_unsupported",
+     "signature_malformed"
+    ],
+    [
+     "verified",
+     "signature_malformed"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "*/m04-signature-truncated"
+   ],
+   "count": 24,
+   "classification": "stricter-here",
+   "reason": "The signature is truncated to a length that is still a valid base64url length but whose trailing bits are not zero. Both implementations reject. The reference decodes it and reports signature_invalid; this one reports signature_malformed before verifying.",
+   "pairs": [
+    [
+     "cnf_key_mismatch",
+     "signature_malformed"
+    ],
+    [
+     "key_revoked",
+     "signature_malformed"
+    ],
+    [
+     "nonce_mismatch",
+     "signature_malformed"
+    ],
+    [
+     "record_in_future",
+     "signature_malformed"
+    ],
+    [
+     "record_stale",
+     "signature_malformed"
+    ],
+    [
+     "revocation_unavailable",
+     "signature_malformed"
+    ],
+    [
+     "signature_invalid",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_malformed",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_missing",
+     "signature_malformed"
+    ],
+    [
+     "trusted_key_unsupported",
+     "signature_malformed"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "*/m05-signature-trailing-newline"
+   ],
+   "count": 24,
+   "classification": "reference-defect",
+   "reason": "The signature carries a trailing newline. Both implementations reject. The schema pattern is ^[A-Za-z0-9_-]+$, and in JSON Schema 2020-12 a pattern is an ECMA-262 regular expression, where $ does not match before a final newline. This implementation therefore reports schema_invalid. Python's re module matches $ before a trailing newline, so the reference's schema check passes and its base64 decoder reports the failure instead.",
+   "pairs": [
+    [
+     "signature_malformed",
+     "schema_invalid"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "*/m20-iat-float-form",
+    "*/m21-iat-exponent-form"
+   ],
+   "count": 32,
+   "classification": "language-level",
+   "reason": "iat is written 1785000000.0 or 1.785e9. JSON has one number type and JavaScript has one number type, so after JSON.parse the value is indistinguishable from the integer, its RFC 8785 form is the same bytes, and the record verifies here. Python's json module preserves the distinction as float, and the reference requires an int. A verifier that holds the record text can reject the spelling before parsing; one that is handed a parsed value cannot. Worth stating in the specification rather than leaving to each language.",
+   "pairs": [
+    [
+     "iat_invalid",
+     "nonce_mismatch"
+    ],
+    [
+     "iat_invalid",
+     "record_in_future"
+    ],
+    [
+     "iat_invalid",
+     "record_stale"
+    ],
+    [
+     "iat_invalid",
+     "verified"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "*/m46-cnf-jwk-x-non-canonical",
+    "*/m47-cnf-jwk-x-truncated"
+   ],
+   "count": 17,
+   "classification": "stricter-here",
+   "reason": "The record's cnf.jwk has an x that is not canonical base64url. Both implementations reject. This one refuses the encoding (cnf_key_malformed, or trusted_key_malformed when allowEmbeddedKey made that same key the trusted one); the reference decodes it leniently and reports the mismatch or the failed signature that follows.",
+   "pairs": [
+    [
+     "cnf_key_mismatch",
+     "cnf_key_malformed"
+    ],
+    [
+     "signature_invalid",
+     "trusted_key_malformed"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "jcs-10"
+   ],
+   "count": 1,
+   "classification": "language-level",
+   "reason": "The value is 1.0e+21. In Python that is a float, and RFC 8785 gives it the form 1e+21. In JavaScript it is an integer beyond 2^53-1, where section 3.2.2 requires rejection because two distinct integers share one canonical form. A number written with an exponent cannot be told from a float in a language with one number type, so the two rules meet here. The same value inside a record would be rejected by this implementation and canonicalised by the reference.",
+   "pairs": [
+    [
+     "canonical",
+     "canonicalization_failed"
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,115 @@
+name: trust-record-verify
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**"]
+    paths:
+      - "trust-record-verify/**"
+      - "schema/**"
+      - "spec/**"
+      - "examples/**"
+      - "src/agentrust_trace/**"
+      - ".github/workflows/trust-record-verify.yml"
+  pull_request:
+    paths:
+      - "trust-record-verify/**"
+      - "schema/**"
+      - "spec/**"
+      - "examples/**"
+      - "src/agentrust_trace/**"
+      - ".github/workflows/trust-record-verify.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The floor is what the package declares (WebCrypto with Ed25519), and
+        # the ceiling is current. A runtime that drops out of this matrix is a
+        # supported-versions change, not a CI adjustment.
+        node-version: ["20", "22", "24"]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install
+        run: npm ci
+        working-directory: trust-record-verify
+
+      - name: Build and test
+        run: npm test
+        working-directory: trust-record-verify
+
+  differential:
+    name: differential against the Python implementation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check out the published conformance vectors
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: agentrust-io/trace-tests
+          # Pinned: the corpus is scored input, so it changes when this workflow
+          # says it changes. The case count below is pinned with it: compare.py
+          # fails unless exactly that many cases came from this checkout, and
+          # generate_cases.py fails if the checkout is missing, so a corpus that
+          # did not run cannot print as a smaller corpus with `unexpected: 0`.
+          # generate_cases.py writes the SHA-256 of every file it read into
+          # build/manifest.json; compare.py prints the count and the manifest
+          # digest, and both are uploaded with the report.
+          ref: 3af2b53eb2e041918b8a6706a3e5a83f143a7568
+          path: .vectors
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --no-deps -e .
+          npm ci --prefix trust-record-verify
+
+      - name: Lint the harness
+        run: ruff check trust-record-verify/differential
+
+      - name: Build the verifier
+        run: npm run build --prefix trust-record-verify
+
+      - name: Generate the corpus
+        run: python differential/generate_cases.py --external "$GITHUB_WORKSPACE/.vectors/tests/vectors"
+        working-directory: trust-record-verify
+
+      - name: Run both implementations and compare
+        run: |
+          python differential/oracle.py
+          node differential/run.mjs
+          python differential/compare.py --expect-external 12 --report differential/build/report.json
+        working-directory: trust-record-verify
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: differential-report
+          path: |
+            trust-record-verify/differential/build/report.json
+            trust-record-verify/differential/build/manifest.json
+          if-no-files-found: ignore
