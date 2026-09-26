@@ -11,6 +11,20 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- Propose explicit verifier profile declarations and verifier-result field requirements for obligations 2 and 3 of #116, carried by Imran Siddique following the discussion with @lywinged. Obligations 1 and 4 remain deferred; the v0.1 cutover is unchanged.
+- **Breaking, proposed: `silent` mode allows a policy-denied action (#143, following #28).** Section 4.3 now says a deny MUST NOT block in `silent` mode and the audit chain MUST record every would-have-denied decision. v0.9.0 and v0.10.0 described `silent` as evaluated and enforced under the same `eat_profile`, so a producer that followed that text and blocks on deny no longer conforms, and a `silent` record does not say which meaning it was written under. Classified breaking under GOVERNANCE.md, so adoption needs the 30-day comment period and Project Lead sign-off. Section 4.3 also orders the modes: `advisory` is not weaker than `silent`. Enforce remains the default; schema constraints and runtime behavior are unchanged. Classification raised by @lywinged.
+
+- **Specification precedence and reproducible conformance claims (#247).** The
+  v0.2 draft now states that normative text governs meaning and conformance;
+  disagreements in the schema, reference model or explanatory documentation are
+  defects in those supporting artifacts. Schema validation alone is not complete
+  conformance, and a normative gap needs a specification decision. Conformance
+  reports identify the specification revision and schema artifact, including its
+  digest, plus the verifier or suite version and assessed level where used. This
+  adds reporting requirements without changing Trust Record fields or verifier
+  acceptance behavior. Based on the maintainer ruling and producer feedback from
+  @chernistry and @lywinged in #247.
+
 ## [0.11.0] - 2026-09-25
 
 - **Breaking:** `TraceSandboxAdapter` and `TraceAGTAdapter` require `enforcement_mode`;

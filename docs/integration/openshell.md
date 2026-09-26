@@ -63,8 +63,10 @@ bundle:
 single `policy.enforcement_mode` is the weakest mode among the layers:
 
 - `enforce` only when both layers enforce;
-- `advisory` when either layer evaluates without blocking;
-- `silent` when a layer enforces while suppressing operational logs.
+- `advisory` when either layer evaluates without blocking, or enforces while
+  suppressing operational logs, since no mode states that combination and
+  `advisory` understates it rather than overstating it;
+- `silent` when either layer runs in `silent` mode.
 
 ## Transcript binding
 
