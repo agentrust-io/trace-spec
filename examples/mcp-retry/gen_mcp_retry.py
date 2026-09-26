@@ -26,14 +26,16 @@ PROTOCOL = "2026-07-28"
 
 def canonical_bytes(value: Any) -> bytes:
     """Example-local subset: JCS, with all floats and unsafe integers refused."""
-    if isinstance(value, float) or (type(value) is int and abs(value) > 9007199254740991):
-        raise ValueError("unsupported numeric value in example canonicalization")
-    if isinstance(value, dict):
-        for item in value.values():
-            canonical_bytes(item)
-    elif isinstance(value, list):
-        for item in value:
-            canonical_bytes(item)
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, float) or (type(item) is int and abs(item) > 9007199254740991):
+            raise ValueError("unsupported numeric value in example canonicalization")
+        if isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+    # Validate once, serialize once; do not re-encode every nested subtree.
     return rfc8785.dumps(value)
 
 
