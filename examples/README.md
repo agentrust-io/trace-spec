@@ -49,6 +49,10 @@ checking any archived record, including these.
   verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
   party does not hold. Every digest recomputes; see that directory's README and
   `docs/references-registry.md`.
+- [`mcp-retry/`](mcp-retry/README.md): executable example writing a signed v0.2 record
+  binding two synthetic MCP attempts and full paginated declaration snapshots. A lost response stays
+  unknown after retry success; an uncalled tool changes between captures.
+  Informative local format, not an implementation of the proposed v0.3 profile.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.
