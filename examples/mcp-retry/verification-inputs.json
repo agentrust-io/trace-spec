@@ -1,0 +1,8 @@
+{
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "To0gBmGBWZZHhWaNFEaBEAyR0pBToKLXiKCb2edaCqc"
+  },
+  "now": 1790294400
+}

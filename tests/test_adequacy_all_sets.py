@@ -236,6 +236,10 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # An informative packet, not a normative accept/reject conformance corpus.
+    "mcp-retry": "tests/test_mcp_retry_example.py, which separately checks the "
+                 "record signature, full transcript/snapshot commitments, observed "
+                 "pagination and retry outcomes with isolated causal changes",
     # Not loadable here: every vector verifies, and the outcomes are per-surface
     # resolvability rather than accept/reject, so `trivially_satisfied_by` would
     # grade the set as passable by an implementation that accepts everything.

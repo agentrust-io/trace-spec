@@ -1,0 +1,290 @@
+{
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1790294400,
+    "subject": "spiffe://example.org/agent/synthetic-mcp-producer",
+    "model": {
+      "provider": "synthetic",
+      "model_id": "no-model-executed"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:ef49ce9e877bdf9b6bcc1cb0b56437b564f2f91d6baf9a54024f04eda3447b35"
+    },
+    "policy": {
+      "bundle_hash": "sha256:e4a9b5845f1d08eaf5c277fc324a7268c80b87570c0e7dfa7b588d43af6f1f2b",
+      "enforcement_mode": "declared"
+    },
+    "data_class": "public",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:b4b57759a9248accddb8c61cde857f5d43286984a4456e38145619e69069e6a1"
+    },
+    "appraisal": {
+      "status": "none",
+      "verifier": "https://verifier.example.org"
+    },
+    "tool_transcript": {
+      "hash": "sha256:9e448a4a37c2f6c80cfe5eaaeaa374f1420fdbc34ade7f737d75704b08737226",
+      "call_count": 2
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "To0gBmGBWZZHhWaNFEaBEAyR0pBToKLXiKCb2edaCqc"
+      }
+    },
+    "signature": "n5R1SK2pY98WZcE-nSTovJiwVHD6O6nMWQ_GK_L0VdaIHxhHTwXYQr8-QnEJA2K1a9prtkznQ-V5MKxBvHDuCQ"
+  },
+  "transcript": {
+    "format": "example-only/mcp-retry-transcript-v1",
+    "canonicalization": "example-only/jcs-safe-integers-v1",
+    "execution_scope": "synthetic-scope-1",
+    "attempts": [
+      {
+        "attempt_id": "attempt-1",
+        "retry_of": null,
+        "request_context": "http-post-1",
+        "server_observed": "https://inventory.example.org/mcp",
+        "protocol_revision": "2026-07-28",
+        "request": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/call",
+          "params": {
+            "name": "inventory.lookup",
+            "arguments": {
+              "record_id": "fictional-7"
+            },
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "example",
+                "version": "1"
+              },
+              "traceparent": "00-11111111111111111111111111111111-2222222222222222-01"
+            }
+          }
+        },
+        "declarations": {
+          "digest": "sha256:93bdb7facd1ee883e13a95a2215b2e676639ae6232d9ae1702d0b17b57302ee3",
+          "canonicalization": "example-only/jcs-safe-integers-v1"
+        },
+        "observation": {
+          "kind": "response_stream_lost"
+        }
+      },
+      {
+        "attempt_id": "attempt-2",
+        "retry_of": "attempt-1",
+        "request_context": "http-post-2",
+        "server_observed": "https://inventory.example.org/mcp",
+        "protocol_revision": "2026-07-28",
+        "request": {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/call",
+          "params": {
+            "name": "inventory.lookup",
+            "arguments": {
+              "record_id": "fictional-7"
+            },
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "example",
+                "version": "1"
+              },
+              "traceparent": "00-11111111111111111111111111111111-2222222222222222-01"
+            }
+          }
+        },
+        "declarations": {
+          "digest": "sha256:a156121db05f2980eb5394aeeca364492cb43f678b4c0d487fe8954b00a7dac1",
+          "canonicalization": "example-only/jcs-safe-integers-v1"
+        },
+        "observation": {
+          "kind": "response_observed",
+          "response": {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+              "resultType": "complete",
+              "isError": false,
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Fictional stock: 3"
+                }
+              ],
+              "structuredContent": {
+                "stock": 3
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "snapshots": {
+    "sha256:93bdb7facd1ee883e13a95a2215b2e676639ae6232d9ae1702d0b17b57302ee3": {
+      "format": "example-only/mcp-declarations-v1",
+      "canonicalization": "example-only/jcs-safe-integers-v1",
+      "server_observed": "https://inventory.example.org/mcp",
+      "protocol_revision": "2026-07-28",
+      "capture_id": "capture-before-first-dispatch",
+      "source": "fresh-discovery",
+      "collection_complete_observed": true,
+      "catalog_change_observed_during_collection": false,
+      "catalog_change_observed_before_dispatch": false,
+      "pages": [
+        {
+          "request_cursor": null,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "inventory.lookup",
+                "description": "Look up a fictional stock record.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "record_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "record_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "outputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "stock": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stock"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "readOnlyHint": true
+                }
+              }
+            ],
+            "nextCursor": "page-2",
+            "ttlMs": 0,
+            "cacheScope": "private"
+          }
+        },
+        {
+          "request_cursor": "page-2",
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "inventory.reserve",
+                "description": "Uncalled tool, retained in full.",
+                "inputSchema": {
+                  "type": "object"
+                },
+                "outputSchema": {
+                  "type": "object"
+                },
+                "_meta": {
+                  "example.org/declaration-revision": "one"
+                }
+              }
+            ],
+            "ttlMs": 0,
+            "cacheScope": "private"
+          }
+        }
+      ]
+    },
+    "sha256:a156121db05f2980eb5394aeeca364492cb43f678b4c0d487fe8954b00a7dac1": {
+      "format": "example-only/mcp-declarations-v1",
+      "canonicalization": "example-only/jcs-safe-integers-v1",
+      "server_observed": "https://inventory.example.org/mcp",
+      "protocol_revision": "2026-07-28",
+      "capture_id": "capture-before-retry-dispatch",
+      "source": "fresh-discovery",
+      "collection_complete_observed": true,
+      "catalog_change_observed_during_collection": false,
+      "catalog_change_observed_before_dispatch": false,
+      "pages": [
+        {
+          "request_cursor": null,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "inventory.lookup",
+                "description": "Look up a fictional stock record.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "record_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "record_id"
+                  ],
+                  "additionalProperties": false
+                },
+                "outputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "stock": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stock"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "readOnlyHint": true
+                }
+              }
+            ],
+            "nextCursor": "page-2",
+            "ttlMs": 0,
+            "cacheScope": "private"
+          }
+        },
+        {
+          "request_cursor": "page-2",
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "inventory.reserve",
+                "description": "Uncalled tool, retained in full.",
+                "inputSchema": {
+                  "type": "object"
+                },
+                "outputSchema": {
+                  "type": "object"
+                },
+                "_meta": {
+                  "example.org/declaration-revision": "two"
+                }
+              }
+            ],
+            "ttlMs": 0,
+            "cacheScope": "private"
+          }
+        }
+      ]
+    }
+  }
+}
