@@ -86,6 +86,15 @@ def _commitment(value, expected):
     # Neither independent canonicalizer validation nor a semantic appraisal.
     if value is None:
         return "unavailable"
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, float) or (type(item) is int and abs(item) > 9007199254740991):
+            return "unsupported"
+        if isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
     actual = "sha256:" + hashlib.sha256(rfc8785.dumps(value)).hexdigest()
     return "matched" if actual == expected else "mismatch"
 
@@ -242,7 +251,7 @@ def test_duplicate_json_members_are_refused_before_commitment(text):
         GENERATOR["load_json"](text)
 
 
-@pytest.mark.parametrize("entrypoint", ["load_json", "digest"])
+@pytest.mark.parametrize("entrypoint", ["load_json", "digest", "_commitment"])
 @pytest.mark.parametrize(
     "number",
     [
@@ -258,12 +267,24 @@ def test_duplicate_json_members_are_refused_before_commitment(text):
 )
 def test_example_numeric_subset_is_explicitly_refused(number, entrypoint):
     text = '{"nested":[' + number + "]}"
+    if entrypoint == "_commitment":
+        assert _commitment(json.loads(text), "sha256:" + "0" * 64) == "unsupported"
+        return
     value = text if entrypoint == "load_json" else json.loads(text)
     with pytest.raises(ValueError, match="unsupported numeric value"):
         GENERATOR[entrypoint](value)
+
+
+@pytest.mark.parametrize("number", [1.0, 1.5, -0.0])
+def test_unsupported_number_never_matches_even_its_raw_jcs_digest(number):
+    retained = {"nested": [{"x": number}]}
+    expected = "sha256:" + hashlib.sha256(rfc8785.dumps(retained)).hexdigest()
+    assert _commitment(retained, expected) == "unsupported"
 
 
 def test_local_canonicalization_preserves_supported_boolean_null_and_safe_integer():
     text = '{"values":[true,false,null,9007199254740991,-9007199254740991]}'
     value = GENERATOR["load_json"](text)
     assert GENERATOR["canonical_bytes"](value) == text.encode()
+    expected = "sha256:" + hashlib.sha256(text.encode()).hexdigest()
+    assert _commitment(value, expected) == "matched"

@@ -43,8 +43,10 @@ distinguish the two hash domains.
 members, all floats and integers outside `[-9007199254740991, 9007199254740991]`;
 preserve booleans, null and array order. No coercion or dropped members. Identifiers
 are local, not registered formats; JSON whitespace is not committed. Missing evidence
-is unavailable, not a match; changed retained evidence mismatches even if the record
-signature still verifies. Tests cover both boundaries, wrong keys and signed-field edits.
+is unavailable, not a match; unsupported numeric values report `unsupported` before
+hash comparison, even with an otherwise matching raw-JCS digest. Changed retained
+evidence mismatches even if the record signature still verifies. Tests cover these
+boundaries, wrong keys and signed-field edits.
 
 All observations are producer assertions, not authenticated server responses.
 Enforcement is `declared`, appraisal `none`, and runtime/model/build fields synthetic.
