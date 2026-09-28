@@ -11,7 +11,10 @@ from agentrust_trace.provenance import ProvenanceError, check_tool_catalog, tool
 ])
 def test_python_equal_but_distinct_json_aliases_are_refused(left, right):
     signed = {"name": "read", "description": "Read", "input_schema": left}
-    record = {"tool_catalog": {"hash": tool_catalog_hash([signed]), "tool_count": 1}}
+    record = {
+        "format": "agentrust-io/mcp-server-provenance/1",
+        "tool_catalog": {"hash": tool_catalog_hash([signed]), "tool_count": 1},
+    }
     with pytest.raises(ProvenanceError, match="conflicting input_schema and inputSchema"):
         check_tool_catalog(record, [{**signed, "inputSchema": right}])
 

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
+from functools import partial
+
+from agentrust_trace._patterns import _require_pattern
 
 from pydantic import (
     BaseModel,
+    AfterValidator,
     BeforeValidator,
     ConfigDict,
     Field,
@@ -67,7 +71,10 @@ def _not_a_boolean(value: Any) -> Any:
 #: An integer as JSON means it, rather than as Python's type hierarchy means it.
 JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
 
-DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
+DigestStr = Annotated[
+    str, Field(pattern=_DIGEST_RE),
+    AfterValidator(partial(_require_pattern, pattern=_DIGEST_RE)),
+]
 
 
 class _TraceModel(BaseModel):
@@ -153,9 +160,11 @@ class PolicyInfo(_TraceModel):
     """How the policy named by ``bundle_hash`` related to this execution.
 
     The first three all assert that **something evaluated the policy**:
-    ``enforce`` acted on the result, ``advisory`` did not, ``silent`` acted and
-    suppressed the log lines. ``declared`` asserts less than any of them: the
-    policy is named and bound into the signed record, and nothing evaluated it.
+    ``enforce`` blocked on deny, ``advisory`` logged and allowed, and ``silent``
+    allowed even on deny while suppressing operational log lines. The audit
+    chain still records every would-have-denied decision in ``silent`` mode.
+    ``declared`` asserts less than any of them: the policy is named and bound
+    into the signed record, and nothing evaluated it.
 
     That case is not hypothetical, it is the common one. An agent framework has
     no policy engine, so a record produced by observing a LangChain or LlamaIndex
@@ -275,7 +284,10 @@ class Reference(_TraceModel):
     rel: Annotated[str, Field(min_length=1)]
     id: Annotated[str, Field(min_length=1)]
     resolver: Annotated[str, Field(min_length=1)]
-    retention: Annotated[str, Field(pattern=_DURATION_RE)] | None = None
+    retention: Annotated[
+        str, Field(pattern=_DURATION_RE),
+        AfterValidator(partial(_require_pattern, pattern=_DURATION_RE)),
+    ] | None = None
     digest: DigestStr | None = None
 
 
@@ -462,7 +474,10 @@ class TrustRecord(_TraceModel):
 
     eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
     iat: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
-    subject: Annotated[str, Field(pattern=_SUBJECT_RE)]
+    subject: Annotated[
+        str, Field(pattern=_SUBJECT_RE),
+        AfterValidator(partial(_require_pattern, pattern=_SUBJECT_RE)),
+    ]
     model: ModelInfo
     runtime: RuntimeInfo
     policy: PolicyInfo
@@ -489,7 +504,10 @@ class TrustRecord(_TraceModel):
     absent one.
     """
     cnf: ConfirmationKey
-    signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
+    signature: Annotated[
+        str, Field(pattern=r"^[A-Za-z0-9_-]+$"),
+        AfterValidator(partial(_require_pattern, pattern=r"^[A-Za-z0-9_-]+$")),
+    ] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature

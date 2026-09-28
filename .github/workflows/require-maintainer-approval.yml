@@ -13,19 +13,22 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  statuses: write
 
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # Reads the PR and its reviews, then fails the job if no maintainer
+    # approved the head commit. It writes nothing, so no write scope.
+    permissions:
+      contents: read
+      pull-requests: read
     if: github.event.pull_request.base.ref == 'main'
     steps:
       - name: Check for maintainer approval
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const MAINTAINERS = ['imran-siddique', 'lywinged'];
+            const MAINTAINERS = ['imran-siddique', 'lywinged', 'pforest', 'Qiang-Xu', 'rajnisht7'];
 
             const author = context.payload.pull_request.user.login;
             if (MAINTAINERS.includes(author)) {

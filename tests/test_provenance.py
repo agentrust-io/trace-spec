@@ -268,7 +268,7 @@ def test_a_malformed_signature_does_not_reorder_the_cnf_check_ahead_of_it() -> N
 
 def test_unknown_format_version_is_rejected_not_parsed() -> None:
     key = generate_key()
-    signed = sign_record({**_record(), "format": "agentrust-io/mcp-server-provenance/2"}, key)
+    signed = sign_record({**_record(), "format": "agentrust-io/mcp-server-provenance/3"}, key)
     with pytest.raises(ProvenanceError, match="unknown format"):
         verify_record(signed, key_to_jwk(key))
 

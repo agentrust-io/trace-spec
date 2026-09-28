@@ -11,6 +11,49 @@
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
+## Authority and conformance claims
+
+<!-- CHANGED: #247 - define specification precedence and identify conformance artifacts -->
+
+This specification defines the meaning of TRACE claims and the requirements for
+conformance. Normative companion specifications apply within the scope this
+specification assigns them. The following rules govern the relationship between
+the specification and its supporting artifacts:
+
+- `schema/trace-claim.json` defines the machine-readable validation constraints.
+  Passing schema validation alone MUST NOT be represented as establishing TRACE
+  conformance: semantic requirements and verification checks also apply. Schema
+  descriptions do not add or override normative requirements.
+- The reference model in `src/agentrust_trace/models.py` is an implementation of
+  those requirements, not an independent source of requirements.
+- `docs/*.md`, including proposals under `docs/rfcs/`, explains the specification
+  and MUST NOT override its normative requirements.
+
+Where the schema, reference model or explanatory documentation disagrees with
+the normative specification, the disagreement MUST be treated as a defect in
+the supporting artifact. Neither accepting the union nor requiring the
+intersection of conflicting implementations resolves the normative rule. A
+schema is too narrow or too broad when it rejects or admits records contrary to
+the specification's structural validation constraints. Requirements enforced by
+verification, including signature and freshness checks, remain separate. Where
+normative text is silent, a rule found only in an implementation, schema description or proposal
+MUST NOT be promoted to a normative requirement without the specification
+change process. Such a coverage gap requires a specification decision.
+
+A conformance claim MUST identify the specification version and exact revision
+being claimed, together with the schema artifact used for validation. For a
+published release, record the release tag or package version and a digest of
+the schema bytes; for an unreleased checkout, record the full commit identifier
+and schema digest. Identify the verifier or conformance-suite version and the
+level assessed when either is used. These are accompanying reporting details,
+not new Trust Record fields. A schema-only result MUST be described as schema
+validation, not as complete conformance.
+
+TRACE v0.2 is a draft: `main` can differ from a published package. A finding
+against one revision MUST NOT be presented as a finding against another without
+checking the applicable requirements and artifacts. Reporting a schema version
+does not make that schema authoritative over the normative specification.
+
 ## Changes from v0.1
 
 One normative change, and it is breaking.
@@ -53,12 +96,12 @@ The wall is not technical capability: it is evidence. AI builders today produce 
 | Operational tracking | MLflow, W&B, vendor logs | Self-reported, mutable, no tamper evidence |
 | Hardware attestation | NVIDIA NRAS, Intel Trust Authority, AMD SEV-SNP, AWS Nitro, Azure MAA, GCP Confidential Space | Proves the environment is genuine: no governance, policy, or data-class binding |
 | Content provenance | C2PA Content Credentials | Proves content origin: silent on inference execution |
-| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Annex IV / Article 12 | Mandate documentation; no prescribed cryptographic format |
+| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Article 11 / Annex IV | Documentation and governance frameworks; no TRACE cryptographic format specified |
 | **Execution governance proof** | **Vendor-proprietary artifacts** | **No open, portable, vendor-neutral standard exists** |
 
 The result: every regulated AI deployment re-litigates trust at every host boundary. Each cloud, each model provider, each agent framework ships its own evidence shape. Auditors cannot compare. Verifiers cannot federate. Workloads cannot move.
 
-The EU AI Act mandates tamper-evident logging for high-risk AI (Article 12); under the current provisional timeline those obligations apply from around December 2027. Frameworks already in force, DORA for financial entities, HIPAA for healthcare, carry equivalent audit-trail requirements today. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
+The EU AI Act requires high-risk AI systems to support automatic event logging throughout their lifetime (Article 12). It does not prescribe tamper-evident logging; TRACE supplies cryptographic evidence as a separate technical property. Articles 11 and 12 sit in Chapter III Section 2, whose application Article 113, third paragraph, point (c), as replaced by Regulation (EU) 2026/1744, moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I, subject to the transitional provisions in Article 111. See the [consolidated Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727). A TRACE record or verification level does not establish regulatory compliance.
 
 ---
 
@@ -463,6 +506,12 @@ Any party, browser, CLI, in-cluster verifier, third-party auditor, verifies:
 7. SLSA provenance resolves to a trusted builder.
 8. The record-signing key is not revoked as of the entry the record was logged at, per section 3.2.3. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
 
+<!-- CHANGED: #116 - verifier profile declarations and verifier-result fields -->
+
+**Verifier profile compatibility.** A verifier MUST declare a nonempty `accepted_profiles` set of profile identifiers whose schemas and verification semantics it implements. A declaration containing an unimplemented profile MUST be refused, even when the incoming record names another implemented profile. A verifier MUST refuse a record whose `eat_profile` is outside its declared set. These requirements do not override the v0.1 cutover in "Changes from v0.1".
+
+For each successful verification, the verifier MUST report the verified `profile` and the complete `accepted_profiles` set as verifier-result fields, recording the set configured at verification time. `profile` MUST identify the record's signed `eat_profile`. These fields belong to the verifier's result; they are not new claims added to the signed input record.
+
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
 #### 3.3.1 Build provenance verification depth
@@ -517,11 +566,14 @@ A verifier configured with the issuer key that fails any of these three checks M
 
 #### 3.3.3 Action receipts for embodied workflows (informative)
 
+Here, a TRACE session means a receipt stream or producer-defined execution scope,
+not an MCP protocol session.
+
 Embodied-agent profiles need to keep three evidence layers separate:
 
 | Layer | TRACE role | Boundary |
 |---|---|---|
-| Session evidence | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the governed session. | Does not expose every call unless the verifier has the transcript bytes. |
+| Execution-scope evidence | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the producer-defined execution scope. | Does not expose every call unless the verifier has the transcript bytes. |
 | Action issuance evidence | Per-call receipts can prove that a specific action request was issued, signed, ordered, and bound to the session or call. | Does not prove that the requested physical or business outcome completed. |
 | Outcome evidence | Controller, monitor, human-review, or safety-system observations can describe acceptance, rejection, aborts, or completion. | The claim belongs to the external issuer, not to core TRACE validity. |
 
@@ -715,7 +767,9 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
 
-- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
+<!-- CHANGED: #143 - silent allows deny decisions while retaining audit evidence -->
+
+- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, a policy deny MUST NOT block the action. The audit chain MUST still record every would-have-denied decision; only operational log lines are suppressed. Where modes are compared, `enforce` is the strongest and `silent` the weakest: `advisory` is not weaker than `silent`, because both allow a denied action and `silent` also suppresses operational logs.
 
   **`enforcement_mode: "declared"`.** The three modes above all assert that *something evaluated the policy*. `declared` asserts less: the policy is named and bound into the signed record, and nothing evaluated it. That is not a corner case, it is the common one for a producer with no policy engine: an agent framework observed by an adapter has a policy the operator declares and no evaluation of it anywhere, and with only three values such a record had to claim an evaluation that never happened.
 

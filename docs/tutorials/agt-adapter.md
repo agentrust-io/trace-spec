@@ -23,8 +23,10 @@ adapter = TraceAGTAdapter(
     model_provider="example", model_id="synthetic-demo",
     build_provenance_digest="sha256:" + "e" * 64,
     transparency="https://example.test/unused",
+    enforcement_mode="declared",  # synthetic input: no policy engine ran
 )
 record = adapter.build_trust_record(session)
+assert record["policy"]["enforcement_mode"] == "declared"
 # The adapter currently requires a URI argument but performs no registration.
 record.pop("transparency")
 # `appraisal.status` defaults to "none", which is correct here: synthetic input has not
@@ -46,7 +48,9 @@ The nonzero build digest is illustrative metadata, not verified build provenance
 
 Supply the exact policy bytes used for the session, audit entries as plain dictionaries, the session's chain tip, and its authenticated identity. The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
 
-The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
+The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `enforcement_mode` is required and has no default: a default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. This tutorial passes `"declared"` because synthetic input ran through no policy engine; pass the mode your deployment actually ran under. This does not change runtime enforcement defaults or behavior.
+
+`appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
 
 ## Verify and extend
 
