@@ -82,7 +82,7 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ### Added
 
-- **`intent_bridge.verify_bridge()` binds a successor observation (#340, for #338).** A bridge may carry `transcript.after` as a successor-observation envelope whose RFC 8785 / SHA-256 digest equals the signed `authorization.successor_observation_digest`. The new `successor_observation` module evaluates the envelope, and `schema/pic-trace-bridge-v1.json` and `docs/integration/pic-trace-bridge-v1.md` describe it.
+- **PIC/TRACE successor evidence is temporally separated from pre-execution authorization (#424, superseding the one-stage binding added in #340 for #338).** The signed pre-execution authorization no longer carries a digest of evidence that can exist only after execution. `intent_bridge.sign_successor_artifact()` creates a separate observer-authenticated post-execution artifact binding `authorization_id` to the exact successor-envelope digest, and `verify_successor_artifact()` checks the observer key, authorization link and envelope binding. `schema/pic-trace-successor-v1.json` defines the detached successor artifact while `schema/pic-trace-bridge-v1.json` remains the pre-execution authorization schema. This preserves the invariant that post-execution evidence cannot be a signed input to the artifact relied on as pre-execution authorization. Reported and implemented by @altrudev; #363 requires corresponding corpus regeneration before merge.
 
 - **`provenance.verify_record()` takes an explicit `now` (#411).** A non-negative integer Unix timestamp pins the freshness decision so it can be replayed. Booleans and other types are refused as configuration errors. Omitting it keeps the host clock.
 

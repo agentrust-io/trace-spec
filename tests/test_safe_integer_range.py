@@ -56,6 +56,7 @@ SAFE_INTEGER = 2**53 - 1
 # safe-integer domain; the rest carry the reason they do not.
 BOUNDED_SCHEMAS = (
     "schema/pic-trace-bridge-v1.json",
+    "schema/pic-trace-successor-v1.json",
     "schema/trace-claim.json",
     # Draft, and bounded for the same reason the file it was generated from is: it is
     # `schema/trace-claim.json` plus one member, and `runtime.evidence` adds no integer
@@ -488,9 +489,17 @@ OTHER_ARTIFACTS: dict[str, dict[str, Any]] = {
             },
             "declaration_digest": "sha256:" + "c" * 64,
             "tool_call_digest": "sha256:" + "d" * 64,
-            "successor_observation_digest": "sha256:" + "e" * 64,
             "transcript_required": True,
         },
+        "signature": "x" * 86,
+    },
+    "schema/pic-trace-successor-v1.json": {
+        "profile": "tag:agentrust-io.com,2026:pic-trace-successor-v1",
+        "authorization_id": "auth-1",
+        "observer": "observer-1",
+        "observer_key_id": "observer-key-1",
+        "observed_at": 1785000000,
+        "successor_observation_digest": "sha256:" + "e" * 64,
         "signature": "x" * 86,
     },
 }
