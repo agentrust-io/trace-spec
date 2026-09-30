@@ -1,0 +1,47 @@
+{
+ "note": "Every entry is a case where the two implementations disagree, with the reason argued and the pair of reported outcomes pinned. An entry matches only when both the case and the pair match, so a new disagreement in the same family is reported rather than absorbed. Entries are tried in order and a case lands on the first that matches; count is how many cases land on the entry in the committed corpus, and compare.py fails when an entry, a pair or a count is not borne out by the run, so a divergence that stops happening has to leave the ledger. classification is one of: reference-defect (this implementation follows the specification and the reference does not), stricter-here (both reject and the stated reason differs because this implementation refuses a non-canonical encoding earlier), language-level (the two languages' number models differ and the specification does not settle it).",
+ "reference": "agentrust-trace, this repository's implementation at the commit under test; its version string reads 0.11.0. Eleven entries have left this ledger, each as an entry no case reached. Six went when #383, #386, #387, #388 and #390 landed after 0.10.0. Four went with 0.11.0, whose decoder refuses base64url that is not canonical (#418): a signature with non-zero unused bits, a signature truncated to a still-valid length, and a non-canonical x in the caller's key or in cnf.jwk. The eleventh, a signature with a trailing newline, went when this implementation's signature decoding moved ahead of its schema check, which is where the reference decodes.",
+ "divergences": [
+  {
+   "ids": [
+    "*/m20-iat-float-form",
+    "*/m21-iat-exponent-form"
+   ],
+   "count": 32,
+   "classification": "language-level",
+   "reason": "iat is written 1785000000.0 or 1.785e9. JSON has one number type and JavaScript has one number type, so after JSON.parse the value is indistinguishable from the integer, its RFC 8785 form is the same bytes, and the record verifies here. Python's json module preserves the distinction as float, and the reference requires an int. A verifier that holds the record text can reject the spelling before parsing; one that is handed a parsed value cannot. Worth stating in the specification rather than leaving to each language.",
+   "pairs": [
+    [
+     "iat_invalid",
+     "nonce_mismatch"
+    ],
+    [
+     "iat_invalid",
+     "record_in_future"
+    ],
+    [
+     "iat_invalid",
+     "record_stale"
+    ],
+    [
+     "iat_invalid",
+     "verified"
+    ]
+   ]
+  },
+  {
+   "ids": [
+    "jcs-10"
+   ],
+   "count": 1,
+   "classification": "language-level",
+   "reason": "The value is 1.0e+21. In Python that is a float, and RFC 8785 gives it the form 1e+21. In JavaScript it is an integer beyond 2^53-1, where section 3.2.2 requires rejection because two distinct integers share one canonical form. A number written with an exponent cannot be told from a float in a language with one number type, so the two rules meet here. The same value inside a record would be rejected by this implementation and canonicalised by the reference.",
+   "pairs": [
+    [
+     "canonical",
+     "canonicalization_failed"
+    ]
+   ]
+  }
+ ]
+}
