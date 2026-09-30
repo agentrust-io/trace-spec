@@ -73,7 +73,7 @@ class LaunchPolicy:
         ):
             raise ExecutionDenied("policy_command")
         if not isinstance(self.subject, str) or not re.fullmatch(
-            r"https://www.googleapis.com/compute/v1/projects/[a-z][a-z0-9-]+/zones/[a-z0-9-]+/instances/[a-z][a-z0-9-]+",
+            r"https://www\.googleapis\.com/compute/v1/projects/[a-z][a-z0-9-]+/zones/[a-z0-9-]+/instances/[a-z][a-z0-9-]+",
             self.subject,
         ):
             raise ExecutionDenied("policy_subject")

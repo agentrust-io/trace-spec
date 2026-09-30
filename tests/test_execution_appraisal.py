@@ -328,3 +328,11 @@ def test_removing_image_gate_admits_signed_substitution(case):
         assert result["observed_digest"] == "sha256:" + "22" * 32
     finally:
         del sys.modules[mutant.__name__]
+
+
+def test_policy_subject_host_is_exact():
+    lookalike = SUBJECT.replace("www.googleapis.com", "wwwXgoogleapisYcom", 1)
+    assert lookalike != SUBJECT
+    with pytest.raises(a.ExecutionDenied, match="policy_subject"):
+        a.LaunchPolicy("urn:test:launch", DIGEST, ("python", "/approved.py"), lookalike, "1234")
+    assert a.LaunchPolicy("urn:test:launch", DIGEST, ("python", "/approved.py"), SUBJECT, "1234")
