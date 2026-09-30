@@ -25,6 +25,23 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   acceptance behavior. Based on the maintainer ruling and producer feedback from
   @chernistry and @lywinged in #247.
 
+- **`docs/schema.md` names both digest algorithms wherever the schema admits
+  both.** All twelve digest fields in `schema/trace-claim.json` carry the same
+  pattern shape and take `sha256:` or `sha384:`. Six of the twelve rows on the
+  schema reference page described their field more narrowly than that:
+  `model.weights_digest`, `policy.bundle_hash`, `tool_transcript.hash` and
+  `build_provenance.digest` named `sha256:` alone, and the two
+  `appraisal.re_execution` digests named no algorithm at all, while the other
+  six named both: four as `sha256:` or `sha384:`, one as `sha256:`/`sha384:`,
+  and `runtime.measurement` by naming the platform each belongs to. A producer
+  reading one of the narrower rows writes the narrower record, and a verifier
+  author reading one may refuse a record the schema accepts.
+  `tests/test_schema_doc_coverage.py` now fails when a row does not name every
+  algorithm its field's pattern admits. It asks the pattern with a probe value
+  rather than searching its text, because the schema factors the prefix out as
+  `^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$` and so contains neither name.
+  Editorial: no schema, wire-format or normative change.
+
 ## [0.11.0] - 2026-09-25
 
 - **Breaking:** `TraceSandboxAdapter` and `TraceAGTAdapter` require `enforcement_mode`;

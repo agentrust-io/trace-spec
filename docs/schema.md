@@ -45,7 +45,7 @@ Binds the model artifact used in this session.
 | `provider` | string | **yes** | Model provider (e.g., `example-provider`) |
 | `model_id` | string | **yes** | Model identifier (e.g., `example-model-1`) |
 | `version` | string | **yes** | Model version or date stamp |
-| `weights_digest` | string | no | SHA-256 digest of model weights artifact |
+| `weights_digest` | string | no | `sha256:` or `sha384:` digest of model weights artifact |
 | `aibom_uri` | string | no | URI to the AI Bill of Materials (SPDX/CycloneDX) |
 
 <a id="runtime"></a>
@@ -70,7 +70,7 @@ Binds the governance policy in force during this session.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `bundle_hash` | string | **yes** | `sha256:` digest of the Cedar policy bundle bytes |
+| `bundle_hash` | string | **yes** | `sha256:` or `sha384:` digest of the Cedar policy bundle bytes |
 | `enforcement_mode` | string | **yes** | One of: `enforce` (evaluated, blocked on deny), `advisory` (evaluated, logged, allowed), `silent` (evaluated and allowed, including on deny, with operational logs suppressed; the audit chain still records every would-have-denied decision), `declared` (the policy is named and bound into the signed record and nothing evaluated it: the honest value for a producer with no policy engine, never a default, and not evidence that any rule was checked). Defaults to `enforce`. Section 4.3 of the spec defines `enforce`, `silent` and `declared`; `advisory` is in the schema's closed set and its one-line meaning is the schema's own description, not spec text |
 | `version` | string | no | Policy bundle version string |
 | `policy_uri` | string | no | URI to the policy bundle for inspection |
@@ -93,7 +93,7 @@ Audit summary of tool invocations during the session.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `hash` | string | **yes** | `sha256:` of the canonical JSON of the full `AuditEntry` list |
+| `hash` | string | **yes** | `sha256:` or `sha384:` digest of the canonical JSON of the full `AuditEntry` list |
 | `call_count` | integer | **yes** | Number of tool invocations recorded |
 | `transcript_uri` | string | no | URI to the full per-call transcript (may be encrypted) |
 
@@ -183,7 +183,7 @@ Build-time provenance binding the deployed artifact.
 |---|---|---|---|
 | `slsa_level` | integer | **yes** | SLSA provenance level (0 to 3) |
 | `builder` | string | no | Builder identity URI (e.g., GitHub Actions SLSA generator) |
-| `digest` | string | **yes** | `sha256:` digest of the built artifact |
+| `digest` | string | **yes** | `sha256:` or `sha384:` digest of the built artifact |
 | `provenance_uri` | string | no | URI to the SLSA provenance document (e.g., Rekor entry) |
 | `provenance_depth` | string | no | Depth the issuer claims: `surface`, `builder` or `transitive`. Absent is read as `surface` |
 
@@ -210,9 +210,9 @@ The result of re-running a `reproducibility` claim, made by the party named as `
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `outcome` | string | **yes** | `reproduced`: the re-run completed on the closure alone and its transcript digest equals `transcript_digest`. `diverged`: it completed on the closure alone and the digests differ. `not-attempted`: a closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, the re-run did not complete, or the verifier could not establish that it used the closure alone |
-| `observed_digest` | string | when `outcome` is `diverged` | The verifier's digest of the transcript its re-run produced. Divergence localises nothing by itself, so the two transcripts have to be comparable by a third party |
+| `observed_digest` | string | when `outcome` is `diverged` | The verifier's `sha256:` or `sha384:` digest of the transcript its re-run produced. Divergence localises nothing by itself, so the two transcripts have to be comparable by a third party |
 | `reason` | string | when `outcome` is `not-attempted` | Why no outcome could be reported. A named absence and a generic one are different findings |
-| `verifier_code_identity` | string | no | Digest of the verifier's own implementation. Self-asserted and of no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over one closure is verifier drift |
+| `verifier_code_identity` | string | no | `sha256:` or `sha384:` digest of the verifier's own implementation. Self-asserted and of no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over one closure is verifier drift |
 
 <a id="transparency"></a>
 
