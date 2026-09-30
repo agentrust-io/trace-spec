@@ -1,0 +1,62 @@
+{
+  "name": "above-range-exponent-spelling-rejected",
+  "description": "appraisal.timestamp written 1.0e+21, the example on #247: a float in Python, which RFC 8785 writes as 1e+21, and a whole number past the safe-integer range in JavaScript. Whole and out of range, so rejected by the range whatever its spelling. Separate from 06 because the rfc8785 Python package refuses an out-of-range int and writes this float without complaint: an implementation that leaves the range to its canonicalizer rejects 06 and verifies this one. The signature is valid over this record's RFC 8785 form.",
+  "spec": "trace-v0.2 section 3.2.2, What counts as an integer",
+  "profile": "trace.number_spelling.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#247",
+    "status": "under review, not accepted normative text"
+  },
+  "member": "appraisal.timestamp",
+  "spelling": "1.0e+21",
+  "verifier": {
+    "verification_time": 1785000100,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1",
+      "timestamp": 1.0e+21
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "FhYn2kIg9kPIjRZzX1lMiW8GD6Y7_usxa6-gBJ9PtayDZw_pIS3D4DAKRj7FdoUte_YP2E8im92N6nKYC6mCAg"
+  },
+  "expected": {
+    "outcome": "rejected",
+    "failure": "outside_safe_integer_range"
+  }
+}
