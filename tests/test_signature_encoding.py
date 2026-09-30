@@ -154,8 +154,10 @@ def test_non_canonical_respelling_is_rejected_by_the_tightened_pattern(path: Pat
     # Not `_verify()`: that helper calls `validate_json` directly, ahead of
     # `verify_record`'s own try/except, so the raw `SchemaValidationError` above
     # would reach here unwrapped instead of the `ValueError` `verify_record`
-    # documents for every rejection.
-    with pytest.raises(ValueError, match="does not conform.*signature"):
+    # documents for every rejection. Which step raises it is not pinned: since
+    # 0.11.0 the decoder refuses the spelling before the schema step runs, and
+    # before that the schema step was the first to see it. Both name the field.
+    with pytest.raises(ValueError, match="signature"):
         verify_record(
             fixture["record"],
             fixture["trusted_key"],

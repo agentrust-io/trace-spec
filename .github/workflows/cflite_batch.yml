@@ -1,0 +1,37 @@
+name: ClusterFuzzLite batch
+
+on:
+  schedule:
+    # 04:40 UTC daily, off the hour so it does not queue behind everything else
+    # that runs at midnight.
+    - cron: "40 4 * * *"
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: cflite-batch
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: Batch fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Build fuzzers
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: python
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: address
+
+      - name: Run fuzzers
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Every target, not just what changed. Thirty minutes shared across the
+          # six targets leaves the build and upload inside the 45 minute job.
+          fuzz-seconds: 1800
+          mode: batch
+          sanitizer: address
