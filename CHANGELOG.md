@@ -25,6 +25,17 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   acceptance behavior. Based on the maintainer ruling and producer feedback from
   @chernistry and @lywinged in #247.
 
+- **`CitationCheck` and `check_citations` are exported from the package root
+  (#190).** `verify_record()` returns one `VerificationResult` carrying both a
+  `RevocationCheck` and a mapping of `CitationCheck`, and until now the revocation
+  half was reachable as `agentrust_trace.RevocationCheck` while the citation half
+  raised `AttributeError` and had to be reached by module path. The two names now
+  sit beside their revocation counterparts in `__all__`, which the description of
+  the change that added `citations` said would follow it. Nothing else changes:
+  the same objects stay reachable at `agentrust_trace.citation` as before, and no
+  behaviour, signature or outcome is affected. Informative only: no schema,
+  wire-format or normative change.
+
 ## [0.11.0] - 2026-09-25
 
 - **Breaking:** `TraceSandboxAdapter` and `TraceAGTAdapter` require `enforcement_mode`;
