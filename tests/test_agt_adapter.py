@@ -43,6 +43,7 @@ def _make_adapter(**overrides) -> TraceAGTAdapter:
         "build_provenance_slsa_level": 2,
         "build_provenance_digest": "sha256:" + "a" * 64,
         "transparency": TRANSPARENCY,
+        "enforcement_mode": "enforce",
     }
     defaults.update(overrides)
     return TraceAGTAdapter(**defaults)
@@ -194,10 +195,25 @@ def test_sign_and_verify_round_trip() -> None:
 # 9. enforcement_mode propagates from adapter config
 # ---------------------------------------------------------------------------
 
-def test_enforcement_mode_propagates() -> None:
-    adapter = _make_adapter(enforcement_mode="advisory")
+def test_enforcement_mode_has_no_default() -> None:
+    # Spec section 4.3: `declared` MUST NOT be a default, and an `enforce` default
+    # would claim an evaluation the adapter never observed (#416, #417).
+    kwargs = {
+        "model_provider": "anthropic",
+        "model_id": "claude-sonnet-4-6",
+        "build_provenance_digest": "sha256:" + "a" * 64,
+        "transparency": TRANSPARENCY,
+    }
+    with pytest.raises(TypeError, match="enforcement_mode"):
+        TraceAGTAdapter(**kwargs)
+
+
+@pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])
+def test_enforcement_mode_propagates(mode: str) -> None:
+    adapter = _make_adapter(enforcement_mode=mode)
     record = adapter.build_trust_record(_make_session())
-    assert record["policy"]["enforcement_mode"] == "advisory"
+    assert record["policy"]["enforcement_mode"] == mode
+    TrustRecord.model_validate(record)
 
 
 # ---------------------------------------------------------------------------

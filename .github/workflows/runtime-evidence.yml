@@ -20,6 +20,7 @@ on:
       - "schema/trace-claim-v0.3-draft.json"
       - "docs/rfcs/runtime-evidence-profile.md"
       - ".github/workflows/runtime-evidence.yml"
+      - "requirements/runtime-evidence.txt"
 
 permissions:
   contents: read
@@ -60,14 +61,17 @@ jobs:
       # goes through the package `__init__`, which needs it; TDX verification
       # itself needs only `cryptography`.
       #
-      # `cryptography` is installed unbounded, as everywhere else in this repository,
-      # while the verifier declares `>=42,<51`. A release past that bound will fail
-      # this job rather than quietly change what the grades mean, which is the
-      # direction to fail in; bump the pinned commit when it happens.
+      # Everything comes from hash-pinned locks, as in ci.yml, and the local
+      # package goes in with --no-deps. `cryptography` is pinned by
+      # requirements/dev.txt, while the verifier declares `>=42,<51`. A lock bump
+      # past that bound will fail this job rather than quietly change what the
+      # grades mean, which is the direction to fail in; bump the pinned commit
+      # when it happens.
       - name: Install package, dev deps, and the verifier's import requirements
         run: |
-          pip install -e ".[dev]"
-          pip install cbor2
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --require-hashes -r requirements/runtime-evidence.txt
+          pip install --no-deps -e .
 
       - name: Appraise the corpus with the real verifier
         env:

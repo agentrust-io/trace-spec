@@ -1,0 +1,7 @@
+# Import requirements of agent-manifest's TDX verifier that TRACE itself does
+# not depend on, for .github/workflows/runtime-evidence.yml. Installed with
+# --require-hashes after requirements/dev.txt. Compile with:
+#   uv pip compile requirements/runtime-evidence.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/runtime-evidence.txt
+# The verifier at the pinned commit declares cbor2>=5.6,<7.
+cbor2>=5.6,<7

@@ -54,7 +54,7 @@ The generator below closes both. It reads the ten patterns out of the schema rat
 listing them, so a new one cannot be added without appearing here; it probes each at its own
 boundary with values derived from the pattern and from a valid instance of it; and for each
 constraint it demands one of three outcomes - the two artifacts hold the same pattern string,
-in which case no string can split them and that is a proof rather than an observation; or a
+which establishes textual agreement only; or a
 splitting value exists and is declared; or the constraint is neither, which fails.
 """
 from __future__ import annotations
@@ -585,8 +585,8 @@ def test_every_pattern_is_mirrored_or_split_or_declared() -> None:
     """Each of the ten constraints must land in one of three states, none of them silent.
 
     *Mirrored*: the model constrains the field with the same pattern string the schema
-    publishes. Then no string can split the two, and saying so is a proof rather than an
-    observation about the values that happened to be tried.
+    publishes. This checks drift in the declared rule, not engine behavior.
+    ``test_regex_surface_parity.py`` exercises execution boundaries separately.
 
     *Split*: a probe the two disagree about, which belongs in ``DECLARED_DIVERGENCES``
     with the reason it is not simply fixed.

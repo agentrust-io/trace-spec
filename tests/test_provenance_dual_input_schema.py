@@ -42,6 +42,7 @@ def test_conflicting_schema_aliases_are_refused_before_hashing() -> None:
 def test_check_tool_catalog_cannot_accept_a_decoy_snake_case_schema() -> None:
     signed_shape = _tool(_schema(additional_properties=False))
     record = {
+        "format": "agentrust-io/mcp-server-provenance/1",
         "tool_catalog": {
             "hash": tool_catalog_hash([signed_shape]),
             "tool_count": 1,
