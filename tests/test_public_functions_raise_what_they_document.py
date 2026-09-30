@@ -172,11 +172,15 @@ _BRIDGE_AUTH = {
             "args_digest": "sha256:" + "2" * 64},
     "declaration_digest": intent_bridge.digest_jcs(_DECLARATION),
     "tool_call_digest": intent_bridge.digest_jcs(_TOOL_CALL),
-    "successor_observation_digest": _SUCCESSOR_DIGEST,
     "transcript_required": True,
 }
 _BRIDGE = intent_bridge.sign_bridge(_BRIDGE_AUTH, _KEY)
-_TRANSCRIPT = {"before": {"tool_call": dict(_TOOL_CALL)}, "after": _SUCCESSOR_AFTER}
+_TRANSCRIPT = {"before": {"tool_call": dict(_TOOL_CALL)}}
+_OBSERVER_KEY = generate_key()
+_OBSERVER_JWK = key_to_jwk(_OBSERVER_KEY)
+_SUCCESSOR = intent_bridge.sign_successor_artifact(
+    "auth-1", _SUCCESSOR_AFTER, "observer-key-1", _OBSERVER_KEY
+)
 _TOOLS = [{"name": "search", "description": "search", "input_schema": {"type": "object"}}]
 _ARTIFACT = {"package": "pkg:npm/%40acme/mcp-search@2.1.0", "digest": "sha256:" + "0" * 64}
 _PROVENANCE = provenance.build_record(
@@ -208,6 +212,21 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
     ),
     "intent_bridge.sign_bridge": (
         lambda: {"authorization": _BRIDGE_AUTH, "key": _KEY}, ("key",),
+    ),
+    "intent_bridge.sign_successor_artifact": (
+        lambda: {
+            "authorization_id": "auth-1", "after": _SUCCESSOR_AFTER,
+            "observer_key_id": "observer-key-1", "key": _OBSERVER_KEY,
+        },
+        ("authorization_id", "after", "observer_key_id", "key"),
+    ),
+    "intent_bridge.verify_successor_artifact": (
+        lambda: {
+            "artifact": _SUCCESSOR,
+            "trusted_observer_jwk": {**_OBSERVER_JWK, "kid": "observer-key-1"},
+            "authorization_id": "auth-1", "after": _SUCCESSOR_AFTER,
+        },
+        ("artifact", "trusted_observer_jwk", "authorization_id", "after"),
     ),
     "intent_bridge.verify_bridge": (
         lambda: {"bridge": _BRIDGE, "trusted_authorizer_jwk": {**_JWK, "kid": "key-1"},
@@ -411,6 +430,9 @@ KEYWORD_REACHES: dict[str, tuple[str, Any, str]] = {
     "content_marking.build_assertion": ("alg", 123, "ContentMarkingError"),
     "content_marking.verify_assertion": ("record_bytes", None, "ContentMarkingError"),
     "intent_bridge.sign_bridge": ("key", None, "IntentBridgeError"),
+    "intent_bridge.sign_successor_artifact": ("key", None, "IntentBridgeError"),
+    "intent_bridge.verify_successor_artifact":
+        ("authorization_id", None, "IntentBridgeError"),
     "intent_bridge.verify_bridge": ("now", "a-string", "IntentBridgeError"),
     "successor_observation.evaluate_successor_observation":
         ("expected_successor_digest", None, "SuccessorObservationError"),

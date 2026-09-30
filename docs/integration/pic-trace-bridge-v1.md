@@ -33,14 +33,31 @@ objects.
 
 The verifier checks that the executed tool is in `scope.tools`, the declaration
 impact is in `scope.impacts`, and both bridge-specific digests match. If
-`transcript_required` is true, a complete `before` and `after` transcript is
-required. `before.tool_call` must equal the executed call, and `after` must be
-the successor-observation envelope whose RFC 8785 / SHA-256 digest equals the
-signed `authorization.successor_observation_digest`. Because that digest is
-inside the signed authorization, a caller cannot substitute both a new
-observation and a matching expected digest. This binds the authorization to the
-exact call and exact successor envelope without claiming that TRACE proves the
-real-world outcome of the call.
+`transcript_required` is true, the bridge requires the pre-execution/dispatch
+`before` transcript and `before.tool_call` must equal the executed call.
+
+Successor evidence is deliberately not carried in the pre-execution authorization.
+Evidence that can only exist after execution must not be required as an authenticated
+input to the artifact relied on as pre-execution authorization. Instead, the observer
+creates a separate post-execution successor artifact. That artifact binds the
+`authorization_id` to the RFC 8785 / SHA-256 digest of the exact successor envelope
+and authenticates the binding with the observer key.
+
+This gives the lifecycle:
+
+~~~text
+sign pre-execution authorization
+        ↓
+execute
+        ↓
+observe successor
+        ↓
+sign successor artifact(authorization_id + exact-envelope digest)
+~~~
+
+The two signatures establish different facts and are verified separately. A caller
+cannot move post-execution knowledge backward into the authorization artifact, and a
+successor artifact naming another authorization is rejected.
 
 ### PIC digest values at the bridge boundary
 
@@ -64,8 +81,8 @@ that PIC defines.
 
 ### Successor-observation binding
 
-When `transcript_required` is true, `transcript.after` is the successor envelope and
-has exactly three fields:
+After execution, the observer may produce a successor envelope with exactly three
+fields:
 
 ~~~json
 {
@@ -76,11 +93,16 @@ has exactly three fields:
 ~~~
 
 The bridge identity relation is the SHA-256 digest of the RFC 8785 canonical bytes of
-that complete envelope. The expected digest is carried in the signed
-`authorization.successor_observation_digest`; it is not supplied independently by the
-caller. The binding therefore covers the observation content, observer identity, and
-observation timestamp together. Relabelling a genuine observation to a
-different observer, retiming it, or altering its content changes the binding.
+that complete envelope. The expected digest is carried in the separately signed
+post-execution successor artifact, together with `authorization_id`, `observer`,
+`observer_key_id`, and `observed_at`. The verifier checks the successor signature,
+the exact authorization identifier, and the digest against the separately supplied
+envelope. The signed observer and observation time must also match the envelope.
+
+The binding therefore covers the observation content, observer identity, and
+observation timestamp together without requiring any of them to exist before
+execution. Relabelling a genuine observation to a different observer, retiming it,
+altering its content, or attaching it to another authorization breaks verification.
 
 A matching binding establishes **integrity**, not **sufficiency**. It does not by itself
 establish that the requested transition occurred. A verifier evaluating a successor
@@ -94,12 +116,11 @@ The successor-evaluation surface has three evidence outcomes:
 - `not-established`: the available evidence is absent or insufficient to justify
   either conclusion.
 
-Malformed successor artifacts and binding failures are refusals, not a fourth evidence
-outcome. At the bridge layer, an absent `after` is a refusal when
-`transcript_required` is true because the signed authorization explicitly requires the
-successor binding. At the separate successor-evaluation surface, where an observation may
-be absent before bridge verification is attempted, absence remains
-`not-established` and never becomes a positive conclusion.
+Malformed successor artifacts, invalid observer signatures, authorization-id mismatches,
+and exact-envelope binding failures are refusals, not a fourth evidence outcome. The
+pre-execution bridge does not require an `after` object and therefore can be verified
+before successor evidence exists. At the separate successor-evaluation surface, absence
+remains `not-established` and never becomes a positive conclusion.
 
 Observation independence is policy, not a universal rule. Where verifier policy
 requires an observer independent of the executing principal, executor-supplied
@@ -117,8 +138,9 @@ does not prove a real-world outcome.
 The surface-local three-state result is an instance of the evidence discipline tracked
 in #279; it does not introduce a repository-wide status enum.
 
-The reference implementation is `agentrust_trace.intent_bridge`; the versioned
-schema is `schema/pic-trace-bridge-v1.json`.
+The reference implementation is `agentrust_trace.intent_bridge`. The versioned
+pre-execution authorization schema is `schema/pic-trace-bridge-v1.json`; the
+post-execution observer binding is `schema/pic-trace-successor-v1.json`.
 
 ## Failure semantics
 

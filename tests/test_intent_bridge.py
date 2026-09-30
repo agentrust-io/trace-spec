@@ -11,9 +11,24 @@ from agentrust_trace.intent_bridge import (
     IntentBridgeError,
     digest_jcs,
     sign_bridge,
+    sign_successor_artifact,
     verify_bridge,
+    verify_successor_artifact,
 )
 from agentrust_trace.sign import key_to_jwk
+
+
+def _after(
+    observation: dict | None = None,
+    *,
+    observer: str = "observer-1",
+    observed_at: int = 150,
+) -> dict:
+    return {
+        "observation": observation if observation is not None else {"status": "accepted"},
+        "observer": observer,
+        "observed_at": observed_at,
+    }
 
 
 def _fixture(
@@ -24,11 +39,6 @@ def _fixture(
     key = Ed25519PrivateKey.generate()
     declaration = declaration or {"impact": "external-side-effect", "purpose": "send invoice"}
     tool_call = tool_call or {"name": "send_invoice", "arguments": {"invoice_id": "INV-7"}}
-    after = {
-        "observation": {"status": "accepted"},
-        "observer": "observer-1",
-        "observed_at": 150,
-    }
     authorization = {
         "authorization_id": "auth-7",
         "decision": "allow",
@@ -44,11 +54,11 @@ def _fixture(
         },
         "declaration_digest": digest_jcs(declaration),
         "tool_call_digest": digest_jcs(tool_call),
-        "successor_observation_digest": digest_jcs(after),
         "transcript_required": True,
     }
+    # The pre-execution authorization is signed before any successor observation exists.
     bridge = sign_bridge(authorization, key)
-    transcript = {"before": {"tool_call": tool_call}, "after": after}
+    transcript = {"before": {"tool_call": tool_call}}
     return (
         bridge, key, declaration, authorization["pic"]["intent_digest"],
         authorization["pic"]["args_digest"], tool_call, transcript,
@@ -65,47 +75,71 @@ def test_verify_bridge_accepts_authorized_bound_execution() -> None:
     assert result["authorization_id"] == "auth-7"
 
 
-def test_successor_observation_is_bound_to_signed_authorization() -> None:
-    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
-    substituted = copy.deepcopy(transcript)
-    substituted["after"]["observation"]["status"] = "different"
+def test_successor_is_a_separate_post_execution_artifact() -> None:
+    bridge, _, _, _, _, _, _ = _fixture()
+    assert "successor_observation_digest" not in bridge["authorization"]
+
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact(
+        bridge["authorization"]["authorization_id"],
+        after,
+        "observer-key-1",
+        observer_key,
+    )
+    verified = verify_successor_artifact(
+        successor,
+        {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+        authorization_id=bridge["authorization"]["authorization_id"],
+        after=after,
+    )
+    assert verified == after
+
+
+def test_successor_artifact_with_wrong_authorization_id_is_rejected() -> None:
+    bridge, _, _, _, _, _, _ = _fixture()
+    observer_key = Ed25519PrivateKey.generate()
+    successor = sign_successor_artifact(
+        "auth-other",
+        _after(),
+        "observer-key-1",
+        observer_key,
+    )
+    with pytest.raises(AuthorizationMismatch, match="does not name the authorization"):
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            authorization_id=bridge["authorization"]["authorization_id"],
+            after=_after(),
+        )
+
+
+def test_successor_substitution_after_observer_signature_is_rejected() -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact(
+        "auth-7",
+        after,
+        "observer-key-1",
+        observer_key,
+    )
+    substituted = copy.deepcopy(after)
+    substituted["observation"]["status"] = "different"
     with pytest.raises(AuthorizationMismatch, match="expected digest binding"):
-        verify_bridge(
-            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
-            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript=substituted, now=150,
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            authorization_id="auth-7",
+            after=substituted,
         )
 
 
-def test_successor_envelope_rejects_unknown_fields_even_when_signed() -> None:
-    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
-    extended = copy.deepcopy(transcript)
-    extended["after"]["extra"] = "signed-but-not-part-of-profile"
-
-    authorization = copy.deepcopy(bridge["authorization"])
-    authorization["successor_observation_digest"] = digest_jcs(extended["after"])
-    resigned = sign_bridge(authorization, key)
-
+def test_successor_envelope_rejects_unknown_fields_before_signing() -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    after["extra"] = "not-part-of-profile"
     with pytest.raises(AuthorizationMismatch, match="unknown successor fields"):
-        verify_bridge(
-            resigned, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
-            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript=extended, now=150,
-        )
-
-
-def test_caller_cannot_substitute_successor_and_matching_digest_without_resigning() -> None:
-    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
-    tampered = copy.deepcopy(bridge)
-    substituted = copy.deepcopy(transcript)
-    substituted["after"]["observation"]["status"] = "different"
-    tampered["authorization"]["successor_observation_digest"] = digest_jcs(substituted["after"])
-    with pytest.raises(IntentBridgeError, match="authorization signature is invalid"):
-        verify_bridge(
-            tampered, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
-            pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript=substituted, now=150,
-        )
+        sign_successor_artifact("auth-7", after, "observer-key-1", observer_key)
 
 
 @pytest.mark.parametrize("field", ["authorization", "signature"])
@@ -251,22 +285,39 @@ def test_a_declaration_with_no_impact_at_all_is_refused() -> None:
         _verify(*_fixture(declaration={"purpose": "send invoice"}))
 
 
-def test_successor_digest_is_required_iff_transcript_is_required() -> None:
+def test_pre_execution_authorization_rejects_future_successor_binding() -> None:
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
-
-    missing = copy.deepcopy(bridge["authorization"])
-    del missing["successor_observation_digest"]
-    missing_bridge = sign_bridge(missing, key)
-    with pytest.raises(IntentBridgeError, match="successor_observation_digest is required"):
+    contradictory = copy.deepcopy(bridge["authorization"])
+    contradictory["successor_observation_digest"] = digest_jcs(_after())
+    contradictory_bridge = sign_bridge(contradictory, key)
+    with pytest.raises(IntentBridgeError, match="unknown fields"):
         verify_bridge(
-            missing_bridge, {**key_to_jwk(key), "kid": "key-7"},
+            contradictory_bridge, {**key_to_jwk(key), "kid": "key-7"},
             declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
             tool_call=tool_call, transcript=transcript, now=150,
         )
 
+
+def test_transcript_requirement_is_pre_execution_only() -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+
+    result = verify_bridge(
+        bridge, {**key_to_jwk(key), "kid": "key-7"},
+        declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
+        tool_call=tool_call, transcript=transcript, now=150,
+    )
+    assert result["transcript_required"] is True
+
+    with_after = {**transcript, "after": _after()}
+    with pytest.raises(AuthorizationMismatch, match="successor evidence is a separate"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"},
+            declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
+            tool_call=tool_call, transcript=with_after, now=150,
+        )
+
     no_transcript = copy.deepcopy(bridge["authorization"])
     no_transcript["transcript_required"] = False
-    del no_transcript["successor_observation_digest"]
     no_transcript_bridge = sign_bridge(no_transcript, key)
     result = verify_bridge(
         no_transcript_bridge, {**key_to_jwk(key), "kid": "key-7"},
@@ -274,16 +325,6 @@ def test_successor_digest_is_required_iff_transcript_is_required() -> None:
         tool_call=tool_call, transcript=None, now=150,
     )
     assert result["transcript_required"] is False
-
-    contradictory = copy.deepcopy(no_transcript)
-    contradictory["successor_observation_digest"] = digest_jcs(transcript["after"])
-    contradictory_bridge = sign_bridge(contradictory, key)
-    with pytest.raises(IntentBridgeError, match="must be absent"):
-        verify_bridge(
-            contradictory_bridge, {**key_to_jwk(key), "kid": "key-7"},
-            declaration=declaration, pic_intent_digest=intent, pic_args_digest=args,
-            tool_call=tool_call, transcript=None, now=150,
-        )
 
 
 def test_expiry_and_required_transcript_are_enforced() -> None:
@@ -294,7 +335,7 @@ def test_expiry_and_required_transcript_are_enforced() -> None:
             pic_intent_digest=intent, pic_args_digest=args,
             tool_call=tool_call, transcript=transcript, now=200,
         )
-    with pytest.raises(AuthorizationMismatch, match="before/after"):
+    with pytest.raises(AuthorizationMismatch, match="pre-execution/dispatch transcript"):
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args,
@@ -409,7 +450,7 @@ def test_transcript_call_is_compared_over_canonical_bytes_not_python_equality(
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": substituted}, "after": transcript["after"]},
+            transcript={"before": {"tool_call": substituted}},
             now=150,
         )
 
@@ -432,12 +473,11 @@ def test_transcript_call_that_is_not_an_object_stays_an_authorization_mismatch(
 ) -> None:
     """Comparing digests must not turn a malformed transcript into a different class."""
     bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
-    transcript_after = transcript["after"]
     with pytest.raises(AuthorizationMismatch, match="transcript.before.tool_call"):
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": bad}, "after": transcript_after},
+            transcript={"before": {"tool_call": bad}},
             now=150,
         )
 
@@ -452,7 +492,7 @@ def test_uncanonicalizable_transcript_call_is_intentbridgeerror_not_mismatch(
         verify_bridge(
             bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
             pic_intent_digest=intent, pic_args_digest=args, tool_call=tool_call,
-            transcript={"before": {"tool_call": transcript_call}, "after": {"status": "accepted"}},
+            transcript={"before": {"tool_call": transcript_call}},
             now=150,
         )
     assert not isinstance(excinfo.value, AuthorizationMismatch)
