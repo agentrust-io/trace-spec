@@ -122,6 +122,9 @@ def test_shipped_pattern_results_match_javascript():
         "", "spiffe://example.org/agent", "did:web:example.org", "did:web:\U0001f600",
         "spiffe://exam\nple.org/agent", "sha256:" + "a" * 64, "sha384:" + "f" * 96,
         "abc_DEF-123", "P1D", "PT2H", "P\u0661D", "P\uff11D", "P1W",
+        # The signature pattern constrains the final character at 86 characters only:
+        # 85, a canonical 86, a non-canonical 86, and with the "x" suffix below, 86 and 87.
+        "A" * 85, "A" * 85 + "Q", "A" * 85 + "B",
     ]
     cases = [[pattern, value + tail + suffix]
              for pattern in sorted(set(_patterns(SCHEMA)))

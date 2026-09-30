@@ -72,16 +72,17 @@ same signature; the record each accompanies is otherwise byte-identical.
 `expected.failure` is informative, the same convention
 [`examples/verifier-compatibility/README.md`](../verifier-compatibility/README.md#what-failure-is-and-is-not)
 states: it names which rule the vector expects to bite, not a wire format or an
-exception message, and nothing in a portable adapter reads it. The two
-implementations measured so far disagree even on which failure class this is:
-today, before this proposal, the reference library in this repository decodes
-a non-canonical respelling leniently (the unused bits are discarded, not
-checked) and verifies it; the TypeScript verifier under review in #376 already
-refuses the same spelling, reporting `signature_malformed`. Tightening the
-schema pattern, as this proposal does, makes the reference library agree with
-that refusal, through the schema-validation path both implementations already
-run every record through first, rather than through a new check specific to
-this one field.
+exception message, and nothing in a portable adapter reads it. The
+implementations measured so far do not share a failure class for it. Through
+0.10.0 the reference library in this repository decoded a non-canonical
+respelling leniently (the unused bits were discarded, not checked) and verified
+it. Since 0.11.0 its decoder refuses the spelling (#418), and `verify_record`
+reports that refusal before it reaches the schema step. The TypeScript verifier
+under review in #376 refuses the same spelling and reports
+`signature_malformed`. Tightening the schema pattern, as this proposal does,
+adds the refusal to the two surfaces that never decode the value: schema
+validation and the models. A consumer that only validates a record then gets
+the same answer as one that verifies it.
 
 ## Classification
 
@@ -95,9 +96,11 @@ Only an 86-character `signature`, the length of a 64-byte Ed25519 or ES256
 signature. Its final character carries 2 signed bits and 4 unused ones, so each
 signature has 16 spellings: one canonical, ending in `A`, `Q`, `g` or `w`, and 15
 that end in one of the other 60 base64url characters. The previous pattern,
-`^[A-Za-z0-9_-]+$`, accepted all 16, and the reference library verified them,
-because its decoder discards the unused bits. The new pattern accepts the
-canonical one only. A value of any other length is matched exactly as before;
+`^[A-Za-z0-9_-]+$`, accepted all 16. The reference library verified all 16
+through 0.10.0, because its decoder discarded the unused bits, and has refused
+the 15 at decode time since 0.11.0 (#418). The new pattern accepts the
+canonical one only, so the schema and the models refuse the 15 as well. A
+value of any other length is matched exactly as before;
 a 96-byte ES384 signature spends 128 characters on 768 bits and has no unused
 bits to set.
 
@@ -142,9 +145,10 @@ the revisions scanned on the day the scan ran, not about the vectors themselves,
 and a count of canonical signatures in those revisions says nothing about
 records minted elsewhere. Only
 `signature` is scanned, at the top level of a Trust Record. `sig.value` in a
-revocation statement or bundle carries the same base64url pattern and the same
-open question, but that pattern is untouched by this proposal, so it is outside
-this scan's scope; see the PR for that as a candidate follow-up.
+revocation statement or bundle carries the same base64url pattern. The
+library's decoder has refused a non-canonical spelling of a bundle's
+`sig.value` since #418; the schema pattern is untouched by this proposal, so
+it is outside this scan's scope; see the PR for that as a candidate follow-up.
 
 ## Boundary
 

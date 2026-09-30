@@ -33,6 +33,7 @@ from jsonschema import ValidationError as SchemaValidationError
 from pydantic import ValidationError as ModelValidationError
 
 from agentrust_trace import TrustRecord, validate_json, verify_record
+from agentrust_trace.validate import iter_errors
 
 REPO_ROOT = Path(__file__).parent.parent
 FIXTURE_DIR = REPO_ROOT / "examples" / "signature-encoding"
@@ -148,8 +149,14 @@ def test_non_canonical_respelling_is_rejected_by_the_tightened_pattern(path: Pat
         "failure": "signature_not_canonical",
     }
 
+    # The schema refuses it on its own, at `signature`, by `pattern`: the surface a
+    # consumer that validates without verifying relies on.
     with pytest.raises(SchemaValidationError):
         validate_json(fixture["record"])
+    assert any(
+        list(error.path) == ["signature"] and error.validator == "pattern"
+        for error in iter_errors(fixture["record"])
+    )
 
     # Not `_verify()`: that helper calls `validate_json` directly, ahead of
     # `verify_record`'s own try/except, so the raw `SchemaValidationError` above
@@ -179,8 +186,8 @@ def test_the_underlying_ed25519_signature_still_verifies_either_spelling(path: P
     `_b64url_decode`: decoded with the standard library alone and checked with
     `cryptography` alone, a non-canonical respelling verifies exactly like the
     canonical spelling, because both decode to the same 64 bytes over the same
-    RFC 8785 preimage. This isolates the tightened pattern, not a broken
-    signature, as the reason `verify_record` now refuses it.
+    RFC 8785 preimage. This isolates the spelling, not a broken signature, as the
+    reason the record is refused.
     """
     canonical = _load(CANONICAL_PATH)
     non_canonical = _load(path)
@@ -195,3 +202,51 @@ def test_the_underlying_ed25519_signature_still_verifies_either_spelling(path: P
 
     public_key.verify(_b64u(canonical["record"]["signature"]), preimage)
     public_key.verify(_b64u(non_canonical["record"]["signature"]), preimage)
+
+
+_CANONICAL = _load(CANONICAL_PATH)["record"]["signature"]
+_NON_CANONICAL = _load(NON_CANONICAL_PATHS[0])["record"]["signature"]
+
+
+@pytest.mark.parametrize(
+    ("signature", "accepted"),
+    [
+        (_CANONICAL, True),
+        (_NON_CANONICAL, False),
+        # One character either side of 86 is outside the rule: the pattern constrains
+        # the final character only at the length of a 64-byte signature.
+        (_NON_CANONICAL[:-1], True),
+        (_NON_CANONICAL + "A", True),
+        ("A" * 128, True),  # the length of a 96-byte ES384 signature: no unused bits
+        ("", False),
+        # An end anchor that tolerates a final line terminator would let these through.
+        *[(_CANONICAL + tail, False) for tail in ("\n", "\r", "\u2028", "\u2029")],
+        (_CANONICAL[:-1] + "=", False),  # padding is outside the alphabet
+    ],
+    ids=[
+        "canonical-86", "non-canonical-86", "85", "87", "128", "empty",
+        "canonical+LF", "canonical+CR", "canonical+LS", "canonical+PS", "padding",
+    ],
+)
+def test_the_schema_and_the_model_agree_on_the_signature_boundary(
+    signature: str, accepted: bool
+) -> None:
+    """One pattern string, two engines, one answer.
+
+    The schema runs the pattern through the ECMA-262 adapter and the model runs it
+    through pydantic's engine plus the shared helper; this holds the two to the same
+    verdict on the values that sit on the pattern's edges.
+    """
+    record = {**_load(CANONICAL_PATH)["record"], "signature": signature}
+
+    schema_accepts = not any(
+        list(error.path) == ["signature"] for error in iter_errors(record)
+    )
+    try:
+        TrustRecord.model_validate(record)
+        model_accepts = True
+    except ModelValidationError:
+        model_accepts = False
+
+    assert schema_accepts is accepted
+    assert model_accepts is accepted
