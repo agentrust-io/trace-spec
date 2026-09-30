@@ -13,7 +13,8 @@ signature cannot see. This module holds every layer to the value instead:
 - the freshness check in `verify_record`, which rejected a correctly signed record
   whose `iat` was written `1785000000.0`;
 - the canonicalizer, which refuses a whole number past the safe-integer range however
-  it is written, and every digest that goes through it;
+  it is written, and every digest and signing function that goes through it, the MCP
+  Server Provenance Record's included;
 - the bridge and the revocation bundle, whose integer members are decided the same way;
 - the vectors in `examples/number-spelling/`, recomputed from their committed bytes,
   graded against plausible shortcuts, and run from JavaScript when Node is present;
@@ -43,6 +44,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from agentrust_trace import TraceAGTAdapter, TraceSandboxAdapter
 from agentrust_trace.intent_bridge import IntentBridgeError, digest_jcs, sign_bridge, verify_bridge
 from agentrust_trace.models import TrustRecord
+from agentrust_trace.provenance import FORMAT, FORMAT_V2, ProvenanceError, build_record
+from agentrust_trace.provenance import sign_record as sign_provenance_record
+from agentrust_trace.provenance import verify_record as verify_provenance_record
 from agentrust_trace.revocation import bundle_digest
 from agentrust_trace.sign import (
     JCS_SAFE_INTEGER,
@@ -95,6 +99,11 @@ OUTSIDE_THE_RANGE = [
     ("9.007199254740993e15", 2**53),
     ("1e21", 10**21),
     ("1.0e+21", 10**21),
+    # Below the range, written as floats. `rfc8785` refuses `-9007199254740992` by
+    # itself, so that spelling says nothing about the lower bound of the check
+    # `_canonical_bytes` makes; these two are refused by that check alone.
+    ("-9007199254740992.0", -(2**53)),
+    ("-1e21", -(10**21)),
 ]
 
 
@@ -336,6 +345,14 @@ def test_a_float_that_is_not_whole_is_left_to_rfc8785_as_before() -> None:
             _canonical_bytes({"n": value})
 
 
+def test_each_end_of_the_range_is_inside_it_written_as_a_float() -> None:
+    """For a float, the check in `_canonical_bytes` is the only one there is: `rfc8785`
+    writes any finite float. OUTSIDE_THE_RANGE holds each bound from outside, on both
+    sides of zero; these two hold it from inside."""
+    assert _canonical_bytes({"n": 9007199254740991.0}) == b'{"n":9007199254740991}'
+    assert _canonical_bytes({"n": -9007199254740991.0}) == b'{"n":-9007199254740991}'
+
+
 def test_every_digest_refuses_a_whole_number_past_the_range_written_as_a_float() -> None:
     """A nanosecond timestamp that went through a double is a float past the range. The
     same value written as an integer was already refused by all three digests."""
@@ -351,6 +368,101 @@ def test_every_digest_refuses_a_whole_number_past_the_range_written_as_a_float()
             transcript_hash([{"ts_ns": nanoseconds}])
         assert transcript_hash([{"ts": 1785000000.0}]) == transcript_hash([{"ts": 1785000000}])
         assert transcript_hash([{"risk": 0.5}]).startswith("sha256:")
+
+
+PAST_THE_RANGE_AS_FLOATS = [1e21, 9007199254740992.0, -1e21, -9007199254740992.0]
+
+
+@pytest.mark.parametrize("value", PAST_THE_RANGE_AS_FLOATS)
+def test_each_signing_function_refuses_a_whole_float_past_the_range_in_its_own_error_type(
+    value: float,
+) -> None:
+    """One refusal in `_canonical_bytes`, reported by each caller in the class that
+    caller documents."""
+    key = Ed25519PrivateKey.generate()
+    with pytest.raises(rfc8785.IntegerDomainError):
+        sign_record({**_base(), "extension": value}, key)
+    with pytest.raises(rfc8785.IntegerDomainError):
+        bundle_digest({"extension": value})
+    with pytest.raises(IntentBridgeError, match="no RFC 8785 canonical form"):
+        sign_bridge({"extension": value}, key)
+    with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form"):
+        sign_provenance_record({**_provenance_record(FORMAT), "extension": value}, key)
+
+
+# ---- the provenance record ------------------------------------------------------
+#
+# spec/server-provenance-v1.md signs "following TRACE v0.2 section 3.2 exactly,
+# including the canonicalization", and -v2.md keeps v1's signatures. The range of
+# section 3.2.2 therefore reaches the record; which of its members are integers is
+# its own specification's to say.
+
+
+def _provenance_record(fmt: str, **over: Any) -> dict[str, Any]:
+    return build_record(
+        kind="publisher-asserted",
+        publisher="did:web:acme.example",
+        tools=[{"name": "search", "description": "search the docs",
+                "input_schema": {"type": "object"}}],
+        artifact={"package": "pkg:npm/%40acme/mcp-search@2.1.0",
+                  "digest": "sha256:" + "a" * 64},
+        format=fmt,
+        **over,
+    )
+
+
+def _signed_as_rfc8785_writes_it(record: dict[str, Any], key: Ed25519PrivateKey) -> dict:
+    """*record* signed over the bytes `rfc8785` writes, with no range check on floats:
+    what `provenance.sign_record` produced through 0.11.0."""
+    payload = {**record, "cnf": {"jwk": key_to_jwk(key)}}
+    signature = base64.urlsafe_b64encode(key.sign(rfc8785.dumps(payload)))
+    return {**payload, "signature": signature.rstrip(b"=").decode()}
+
+
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+@pytest.mark.parametrize("value", PAST_THE_RANGE_AS_FLOATS)
+def test_a_provenance_record_refuses_a_whole_float_past_the_range_when_signing_and_verifying(
+    fmt: str, value: float
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    record = {**_provenance_record(fmt), "extension": value}
+    with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form, so it cannot"):
+        sign_provenance_record(record, key)
+    # The signature below is valid over the bytes it was made over, so the range is
+    # the only reason to refuse the record.
+    signed = _signed_as_rfc8785_writes_it(record, key)
+    with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form, so its sig"):
+        verify_provenance_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+@pytest.mark.parametrize("value", [9007199254740991.0, -9007199254740991.0, 1760000000.0])
+def test_a_provenance_record_with_a_whole_float_inside_the_range_signs_and_verifies(
+    fmt: str, value: float
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    record = {**_provenance_record(fmt), "extension": value}
+    signed = sign_provenance_record(record, key)
+    assert signed["signature"] == _signed_as_rfc8785_writes_it(record, key)["signature"]
+    verify_provenance_record(signed, key_to_jwk(key))
+
+
+def test_the_provenance_record_keeps_its_own_typing_of_its_integer_members() -> None:
+    """Section 3.2.2 carries the range to this record and retypes none of its members.
+    Whether `issued_at` and `tool_catalog.tool_count` written as whole floats are the
+    integers they denote is for the provenance specification to say; until it does,
+    the reference refuses the float as it always did."""
+    with pytest.raises(ProvenanceError, match="issued_at must be a non-negative integer"):
+        _provenance_record(FORMAT, issued_at=1760000000.0)
+    assert _provenance_record(FORMAT, issued_at=1760000000)["issued_at"] == 1760000000
+    key = Ed25519PrivateKey.generate()
+    record = _provenance_record(FORMAT)
+    count = record["tool_catalog"]["tool_count"]
+    assert type(count) is int
+    respelled = {**record, "tool_catalog": {**record["tool_catalog"], "tool_count": float(count)}}
+    with pytest.raises(ProvenanceError, match="tool_count"):
+        verify_provenance_record(sign_provenance_record(respelled, key), key_to_jwk(key))
+    verify_provenance_record(sign_provenance_record(record, key), key_to_jwk(key))
 
 
 # ---- the bridge -----------------------------------------------------------------

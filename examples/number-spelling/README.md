@@ -113,18 +113,27 @@ with `node:crypto` over a minimal RFC 8785 serialization of each record.
 
 ## Which published records this changes
 
-The rule changes a verdict only for an integer-typed member written with a fraction or
-an exponent. `scan_published_numbers.py` counts those in any directory it is given,
-reading each number's spelling through `json`'s `parse_int` and `parse_float` hooks.
-It skips this directory, whose vectors are re-spelled on purpose, unless it is named
-itself, which makes the scan find the five re-spelled members here.
+The rule changes a verdict in two cases, and both need a number written with a
+fraction or an exponent. An integer-typed member written that way is now read as the
+integer it is. A whole number past the range written that way, anywhere in an object
+that is signed or digested under section 3.2, is now refused, where the reference
+wrote it out as it stood: that reaches objects no schema constrains, such as an MCP
+Server Provenance Record carrying `1e21` in a member its verifier does not type.
+`scan_published_numbers.py` counts both in any directory it is given, the first as
+integer-typed members and the second among the other numbers it lists, reading each
+number's spelling through `json`'s `parse_int` and `parse_float` hooks. It skips this
+directory, whose vectors are re-spelled on purpose, unless it is named itself, which
+makes the scan find the five re-spelled members here.
 
 | Scanned | JSON documents | Numbers | Integer-typed | Written with a fraction or an exponent |
 |---|---:|---:|---:|---:|
 | this repository, `examples/` | 202 | 1064 | 453 | 0 |
-| this repository, `spec/`, `docs/`, `schema/` | 19 | 86 | 11 | 0 |
-| `agentrust-io/trace-tests` at `3af2b53` | 16 | 47 | 32 | 0 |
-| `agentrust-io/trace-registry` at `d8fa885` | 26 | 64 | 9 | 0 |
+| this repository, `spec/`, `docs/`, `schema/` | 20 | 86 | 11 | 0 |
+| `agentrust-io/trace-tests` at `da4369b` | 37 | 126 | 76 | 0 |
+| `agentrust-io/trace-registry` at `e26b85a` | 27 | 65 | 9 | 0 |
 
-No published record, fixture or example carries such a member, so no published
-verdict changes.
+No published record, fixture or example carries such a member. Outside the
+integer-typed members, the scan finds one number written with a fraction or an
+exponent: `1e400` in `trace-tests`' `tests/vectors/invalid_canonical_non_finite_float.json`,
+a vector built to be refused. It has no finite value, so RFC 8785 has no form for it
+before this change or after. No published verdict changes.

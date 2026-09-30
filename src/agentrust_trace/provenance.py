@@ -299,12 +299,15 @@ def _check_structure(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
         )
-    # Type-based on purpose. Section 3.2.2's "What counts as an integer" decides
-    # Trust Record members by value, so ``1760000000.0`` is the integer there; it is
-    # scoped to the objects that section covers, and this record is a separate format
-    # under spec/server-provenance-v1.md. Whether ``issued_at`` and ``tool_count`` should
-    # follow the same rule is tracked separately from #247; until then a float is
-    # refused here as it always was.
+    # Type-based on purpose. Section 3.2.2's "What counts as an integer" does two
+    # things. It decides by value which numbers are integers for the range, and that
+    # half reaches this record through `_canonical_bytes`: a whole number past the
+    # safe-integer range is refused at signing and at verification wherever it sits
+    # and however it is written. It does not say which members of this record are
+    # typed `integer`; that is for spec/server-provenance-v1.md and -v2.md. Whether
+    # ``issued_at`` and ``tool_count`` take a whole number written as a float is a
+    # separate question from #247, and until it is settled a float is refused here
+    # as it always was.
     # bool is an int subclass, and True would otherwise pass as a timestamp. The upper
     # bound is the same JCS safe-integer limit #219 applies to every other signed integer
     # in this package: above it there is no portable canonical form, so the producer would
