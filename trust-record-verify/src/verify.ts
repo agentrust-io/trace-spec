@@ -12,11 +12,12 @@
  *       `tag:agentrust-io.com,2026:trace-v0.2` and MUST reject the v0.1 identifier
  *       (spec/trace-v0.2.md, "Changes from v0.1"): `profile_missing`,
  *       `profile_superseded`, `profile_unsupported`.
- *    4. The embedded signature is present and is a string: `signature_missing`,
- *       `signature_malformed`.
+ *    4. The embedded signature is present and decodes as canonical unpadded
+ *       base64url (section 3.2.2): `signature_missing`, `signature_malformed`.
+ *       Ahead of the schema, as in the reference, so a padded signature or one
+ *       in the standard alphabet is reported as the encoding fault it is. The
+ *       empty string decodes, to no bytes, and is left to the schema's pattern.
  *    5. The record conforms to the schema: `schema_invalid`, with the location.
- *       Then the signature is decoded as canonical unpadded base64url
- *       (section 3.2.2), after the schema's own pattern for the member has run.
  *    6. A trusted key: the caller's, or `cnf.jwk` only when `allowEmbeddedKey` is
  *       set, and it is an Ed25519 key: `trusted_key_missing`,
  *       `trusted_key_unsupported`, `trusted_key_malformed`.
@@ -258,6 +259,16 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
   if (typeof encodedSignature !== "string") {
     fail("signature_malformed", "the signature must be a base64url string");
   }
+  // Decoded here, ahead of the schema, which is where the reference decodes it:
+  // the alphabet, no padding, a possible length, and unused trailing bits zero
+  // (RFC 4648 section 3.5). The last rule is one the schema's pattern cannot
+  // state. Without it one signature has several spellings, and section 3.1.3
+  // digests the record with the signature member present, so the spellings are
+  // different records that both verify.
+  const signature = decodeBase64url(encodedSignature);
+  if (signature === null) {
+    fail("signature_malformed", "the signature is not canonical unpadded base64url");
+  }
 
   const violations = recordSchemaViolations(record);
   if (violations.length > 0) {
@@ -266,15 +277,6 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("schema_invalid", `the record does not conform to the TRACE v0.2 schema at ${path}: ${first.message}`, {
       path,
     });
-  }
-  // The schema's own pattern for `signature` has run by now, so what this adds is
-  // the canonical-encoding rule the pattern cannot state: no padding, and unused
-  // trailing bits zero (RFC 4648 section 3.5). Without it one signature has
-  // several spellings, and section 3.1.3 digests the record with the signature
-  // member present, so the spellings are different records that both verify.
-  const signature = decodeBase64url(encodedSignature);
-  if (signature === null) {
-    fail("signature_malformed", "the signature is not canonical unpadded base64url");
   }
 
   // From here the schema holds: cnf.jwk is an object and iat an integer in range.

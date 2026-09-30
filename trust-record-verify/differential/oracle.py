@@ -65,6 +65,7 @@ MESSAGE_CODES: list[tuple[str, str]] = [
     ("record has no 'signature' field", "signature_missing"),
     ("signature must be a base64url string", "signature_malformed"),
     ("signature is not valid base64url", "signature_malformed"),
+    ("signature is not canonical base64url", "signature_malformed"),
     ("record does not conform to the TRACE v0.2 schema", "schema_invalid"),
     ("verify_record requires a trusted key", "trusted_key_missing"),
     ("record has no cnf.jwk and no public key was supplied", "trusted_key_missing"),
@@ -84,6 +85,7 @@ KEY_MESSAGES: list[tuple[str, str]] = [
     ("JWK missing 'x' field", "malformed"),
     ("JWK 'x' must be a base64url string", "malformed"),
     ("JWK 'x' is not valid base64url", "malformed"),
+    ("JWK 'x' is not canonical base64url", "malformed"),
     ("An Ed25519 public key is 32 bytes", "malformed"),
     ("public key is 32 bytes", "malformed"),
 ]

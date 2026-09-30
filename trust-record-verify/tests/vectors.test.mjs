@@ -146,3 +146,38 @@ test("trustedKeySource names the key that verified, even when the record embeds 
   // and only trustedKeySource can; the differential compares it for that reason.
   assert.equal(embedded.trustedKeyThumbprint, result.trustedKeyThumbprint);
 });
+
+async function aVerifyingVector() {
+  for (const { vector } of vectors("canonicalization-boundary")) {
+    const options = { trustedKey: vector.trusted_key, now: vector.record.iat, maxAgeSeconds: null };
+    const got = await outcome(verifyRecord(vector.record, options));
+    if (!got.rejected) {
+      return { vector, options, result: got.result };
+    }
+  }
+  assert.fail("no canonicalization-boundary vector verifies");
+}
+
+test("the signature's encoding is judged before the schema, as the reference judges it", async () => {
+  const { vector, options } = await aVerifyingVector();
+  const signature = vector.record.signature;
+  const respelled = {
+    padded: `${signature}==`,
+    "standard alphabet": `${signature.slice(0, -2)}+${signature.slice(-1)}`,
+    "trailing newline": `${signature}\n`,
+    "impossible length": signature.slice(0, -1),
+  };
+  // Each of these also fails the schema's pattern or would fail verification.
+  // The encoding is the first thing wrong with them, and both implementations say so.
+  for (const [name, value] of Object.entries(respelled)) {
+    const got = await outcome(verifyRecord({ ...vector.record, signature: value }, options));
+    assert.deepEqual(got, { rejected: true, code: "signature_malformed" }, name);
+  }
+  // The empty string decodes, to no bytes, so the schema's pattern is what refuses it.
+  await assert.rejects(verifyRecord({ ...vector.record, signature: "" }, options), (error) => {
+    assert.ok(error instanceof TraceVerificationError);
+    assert.equal(error.code, "schema_invalid");
+    assert.equal(error.path, "signature");
+    return true;
+  });
+});

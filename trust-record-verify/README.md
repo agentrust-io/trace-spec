@@ -119,35 +119,31 @@ entry declares how many cases land on it, and an entry, a pair or a count the ru
 bear out fails it, so a divergence that stops happening on either side has to leave the
 ledger rather than stay as a claim nothing checks.
 
-Latest run, against this repository's implementation at the commit under test (its version string reads 0.10.0; #383, #386, #387, #388 and #390 landed after that release):
+Latest run, against this repository's implementation at the commit under test (its version string reads 0.11.0):
 
 | Group | Cases | Identical |
 |---|---:|---:|
-| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1281 |
+| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1384 |
 | RFC 8785 canonicalization corpus | 34 | 33 |
 | RFC 7638 thumbprints | 14 | 14 |
 | Chain digests over the delegation corpus | 134 | 134 |
 | This repository's conformance vectors | 34 | 34 |
 | Published conformance vectors | 12 | 12 |
-| **Total** | **1644** | **1508** |
+| **Total** | **1644** | **1611** |
 
-Every published vector agrees. The 136 remaining cases are the ledger's 7 entries, each
-pinned to the number of cases that land on it. Three appear once per verifier
-configuration; the other three matrix entries land only in the configurations where their
-check is reached before another failure; one is in the RFC 8785 corpus.
+Every published vector agrees. The 33 remaining cases are the ledger's 2 entries, each
+pinned to the number of cases that land on it. Both are the JSON number model, which the
+two languages hold differently: one lands in the configurations that reach the `iat`
+check, and one is a single case in the RFC 8785 corpus.
 
 | Ledger entry | Cases | Where |
 |---|---:|---|
-| Signature re-spelled with non-zero unused trailing bits (`m03`) | 24 | mutation matrix, once per verifier configuration |
-| Signature truncated to a still-valid base64url length (`m04`) | 24 | mutation matrix, once per configuration |
-| Signature with a trailing newline (`m05`) | 24 | mutation matrix, once per configuration |
 | `iat` written `1785000000.0` or `1.785e9` (`m20`, `m21`) | 32 | mutation matrix, both spellings in the 16 configurations that reach the `iat` check |
-| The record's `cnf.jwk.x` not canonical base64url (`m46`, `m47`) | 17 | mutation matrix, one case in each of the 17 configurations that read that key |
-| The caller's trusted key with a non-canonical `x` (`c18`) | 14 | one configuration, the 14 mutations that reach the trusted key |
 | `1.0e+21`: a float in Python, an integer past 2^53 here (`jcs-10`) | 1 | RFC 8785 corpus |
 
-Six entries left the ledger when the reference stopped diverging, each reported by the
-harness as an entry no case reached, which is how a fixed divergence is meant to leave:
+Eleven entries have left the ledger, each reported by the harness as an entry no case
+reached, which is how a divergence that stopped is meant to leave. Six went when the
+reference stopped diverging after 0.10.0:
 
 - the lone-surrogate revocation bundle (`c23`; #382, fixed by #386);
 - `subject` with a trailing U+000A, U+000D or U+2028 under ECMA-262 `pattern` semantics
@@ -158,6 +154,25 @@ harness as an entry no case reached, which is how a fixed divergence is meant to
 - a `signature` member that is present but `0`, `false`, `[]` or `{}` (`m08`; #390). The
   TypeScript signature guard now also distinguishes absent members, null values and empty
   strings in the same order as the Python reference.
+
+Four went with 0.11.0, whose decoder refuses base64url that is not canonical (#418), which
+this implementation had refused from the start:
+
+- a signature re-spelled with non-zero unused trailing bits (`m03`), which the reference
+  used to verify;
+- a signature truncated to a still-valid base64url length (`m04`);
+- the record's `cnf.jwk.x` not canonical base64url (`m46`, `m47`);
+- the caller's trusted key with a non-canonical `x` (`c18`).
+
+The eleventh went when this implementation moved, not the reference: a signature with a
+trailing newline (`m05`). The reference decodes the signature before it consults the
+schema, and this implementation consulted the schema first, so the two rejected that
+signature for different stated reasons. While the reference's decoder was lenient, the
+difference in order showed in that one case. Once it was strict, a padded signature and
+one in the standard alphabet showed it too, and the decoding here moved ahead of the
+schema, to where the reference has it. Both now report `signature_malformed` for all
+three, and the empty string, which decodes to no bytes, is still refused by the schema's
+pattern on both sides.
 
 The differential compares verdicts, so it is silent on anything that does not change a
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
