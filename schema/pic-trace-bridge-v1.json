@@ -116,39 +116,10 @@
         "tool_call_digest": {
           "$ref": "#/$defs/digest"
         },
-        "successor_observation_digest": {
-          "$ref": "#/$defs/digest"
-        },
         "transcript_required": {
           "type": "boolean"
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "transcript_required": {
-                "const": true
-              }
-            },
-            "required": [
-              "transcript_required"
-            ]
-          },
-          "then": {
-            "required": [
-              "successor_observation_digest"
-            ]
-          },
-          "else": {
-            "not": {
-              "required": [
-                "successor_observation_digest"
-              ]
-            }
-          }
-        }
-      ]
+      }
     }
   },
   "$defs": {
