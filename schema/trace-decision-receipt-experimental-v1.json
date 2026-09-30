@@ -1,0 +1,92 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "const": "urn:agentrust:trace:decision-receipt:experimental-v1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "issuer": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Issuer",
+      "type": "string"
+    },
+    "issued_at": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Issued At",
+      "type": "integer"
+    },
+    "session_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "call_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Call Id",
+      "type": "string"
+    },
+    "trace_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Trace Digest",
+      "type": "string"
+    },
+    "trace_jti": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Trace Jti",
+      "type": "string"
+    },
+    "action_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Action Digest",
+      "type": "string"
+    },
+    "policy_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Policy Digest",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "allow",
+        "deny"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "reason": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Reason",
+      "type": "string"
+    },
+    "previous_receipt_hash": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Receipt Hash"
+    }
+  },
+  "required": [
+    "profile",
+    "issuer",
+    "issued_at",
+    "session_id",
+    "call_id",
+    "trace_digest",
+    "trace_jti",
+    "action_digest",
+    "policy_digest",
+    "decision",
+    "reason"
+  ],
+  "title": "Receipt",
+  "type": "object"
+}
