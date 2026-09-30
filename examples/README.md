@@ -49,6 +49,11 @@ checking any archived record, including these.
   verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
   party does not hold. Every digest recomputes; see that directory's README and
   `docs/references-registry.md`.
+- `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
+  embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
+  not accepted normative text (#247); carries a `scan_published_signatures.py` tool
+  that reports how many published signatures are already canonical. See that
+  directory's README.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.

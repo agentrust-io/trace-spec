@@ -715,8 +715,8 @@
     },
     "signature": {
       "type": "string",
-      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema.",
-      "pattern": "^[A-Za-z0-9_-]+$"
+      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema. An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or ES256) and MUST be canonically encoded per RFC 4648 section 3.5: its final character's unused bits MUST be zero, so it MUST end in A, Q, g, or w.",
+      "pattern": "^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
     }
   },
   "additionalProperties": false,
