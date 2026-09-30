@@ -1,0 +1,57 @@
+{
+  "name": "non-canonical-signature-respelling-low-bit",
+  "description": "The same 64 signature bytes as 01-canonical-signature.json, respelled with the final character's unused bits set to binary 0001 instead of 0000: the smallest change that makes the spelling non-canonical. RFC 4648 section 3.5 calls this spelling non-canonical. Accepted today; this proposal requires a verifier to reject it.",
+  "spec": "trace-v0.2 section 3.2.2, embedded signature bullet",
+  "profile": "trace.signature_encoding.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#247",
+    "status": "under review, not accepted normative text"
+  },
+  "encoding": "non_canonical",
+  "canonical_counterpart": "01-canonical-signature.json",
+  "decoded_signature_hex": "c86f6b95f7f6fca94cc278604b3e6efb20224e5ed75593aee635d70f7a653e6e5859a502716ab756603fc6dc1c460dc90832914582d91c7f93a528c3318aca08",
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "yG9rlff2_KlMwnhgSz5u-yAiTl7XVZOu5jXXD3plPm5YWaUCcWq3VmA_xtwcRg3JCDKRRYLZHH-TpSjDMYrKCB"
+  },
+  "expected": {
+    "outcome": "rejected",
+    "failure": "signature_not_canonical"
+  }
+}

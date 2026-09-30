@@ -138,6 +138,15 @@ def reproducibility_claim() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
 
 
+def signature_encoding() -> list[Vector]:
+    """The signature-encoding set (spec section 3.2.2, proposal #247). One rule, one
+    code, and two rejecting vectors that trip it with different unused-bit patterns
+    (0001 and 1111), so the boundary is not covered by one specific bad string a
+    shortcut implementation could special-case."""
+    return _load("signature-encoding",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "reproducibility-claim": (reproducibility_claim, None),
@@ -145,6 +154,7 @@ SETS = {
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
     "verifier-compatibility": (verifier_compatibility, None),
+    "signature-encoding": (signature_encoding, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
@@ -236,6 +246,19 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # Experimental profile, not a stable TRACE conformance corpus. The 14 original
+    # vectors, also carried byte for byte as LEGACY-01 to LEGACY-14 in the set below.
+    "verifier-token-profile": "tests/test_verifier_token_profile.py, which executes "
+                              "all positive and negative vectors; "
+                              "tests/test_independent_verifier.py runs them through "
+                              "the second verifier",
+    # Expected outcomes are verifier result codes and composite statuses, not
+    # accept/reject, and every requirement's causal test lives beside the loader.
+    "verifier-token-conformance": "tests/test_conformance_corpus.py, which executes "
+                                  "every vector and gates per-requirement coverage; "
+                                  "tests/test_conformance_causal.py disables each gate; "
+                                  "tests/test_independent_verifier.py runs the second "
+                                  "verifier",
     # Not loadable here: every vector verifies, and the outcomes are per-surface
     # resolvability rather than accept/reject, so `trivially_satisfied_by` would
     # grade the set as passable by an implementation that accepts everything.

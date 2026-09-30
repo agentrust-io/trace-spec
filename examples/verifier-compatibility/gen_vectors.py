@@ -289,7 +289,7 @@ def main() -> None:
     ]
 
     for filename, doc in fixtures:
-        (OUT / filename).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        (OUT / filename).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
         print("wrote", OUT / filename)
 
     # 07 has no profile at all, so it cannot be produced by signed_record's profile arg.
@@ -310,7 +310,7 @@ def main() -> None:
     body = rfc8785.dumps(record)
     missing["record"] = {**record, "signature": b64u(KEY.sign(body))}
     (OUT / "07-profile-absent-refused.json").write_text(
-        json.dumps(missing, indent=2) + "\n", encoding="utf-8"
+        json.dumps(missing, indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     print("wrote", OUT / "07-profile-absent-refused.json")
 
