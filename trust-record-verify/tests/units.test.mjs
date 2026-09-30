@@ -3,6 +3,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
 
 import {
   canonicalJson,
@@ -85,11 +86,44 @@ test("encodeBase64url takes a Uint8Array and nothing else that views a buffer", 
   }
 });
 
+test("encodeBase64url takes a Uint8Array made in another realm, and still nothing else", () => {
+  const refused = (error) => error instanceof TraceVerificationError && error.code === "invalid_argument";
+  // Another realm has its own Uint8Array, as a frame or a worker does in a
+  // browser, so `instanceof` against this realm's constructor is false for it.
+  const foreign = vm.runInNewContext("new Uint8Array([1, 2, 3])");
+  assert.equal(foreign instanceof Uint8Array, false);
+  assert.equal(encodeBase64url(foreign), "AQID");
+  for (const source of ["new Uint16Array([1, 2])", "new DataView(new ArrayBuffer(4))", "new ArrayBuffer(3)", "[1, 2, 3]"]) {
+    assert.throws(() => encodeBase64url(vm.runInNewContext(source)), refused, source);
+  }
+  // An object that only says it is one: the tag is its own property, and it
+  // iterates, so a test on `Object.prototype.toString` would encode it.
+  const impostor = { [Symbol.toStringTag]: "Uint8Array", length: 3, *[Symbol.iterator]() { yield* [1, 2, 3]; } };
+  assert.equal(Object.prototype.toString.call(impostor), "[object Uint8Array]");
+  assert.throws(() => encodeBase64url(impostor), refused);
+});
+
 test("verifyDelegationLink takes a plain options object, as verifyRecord does", async () => {
   class Options {}
   for (const options of [[], new Date(0), new Options(), Object.create({ supportedDigestAlgorithms: [] }), null, "sha256", 1]) {
     await rejects(verifyDelegationLink({}, {}, options), "invalid_argument");
   }
+});
+
+test("a plain object made in another realm is a plain object", async () => {
+  // `{}` from another realm inherits from that realm's Object.prototype. The
+  // options are accepted, so the call goes on to the child record and reports
+  // what is wrong with that: it has no delegation block.
+  const foreign = vm.runInNewContext("({})");
+  assert.notEqual(Object.getPrototypeOf(foreign), Object.prototype);
+  await rejects(verifyDelegationLink({}, {}, foreign), "delegation_absent");
+  await rejects(verifyDelegationLink(vm.runInNewContext("({})"), {}, {}), "delegation_absent");
+  assert.equal(canonicalJson(vm.runInNewContext('({ b: 1, a: { c: [true, null] } })')), '{"a":{"c":[true,null]},"b":1}');
+  // What was refused in this realm is refused from the other one too.
+  for (const source of ["[]", "new Date(0)", "new (class Options {})()", "Object.create({ supportedDigestAlgorithms: [] })"]) {
+    await rejects(verifyDelegationLink({}, {}, vm.runInNewContext(source)), "invalid_argument");
+  }
+  assert.throws(() => canonicalJson(vm.runInNewContext("new Date(0)")), TraceVerificationError);
 });
 
 test("base64url decodes canonical input and refuses everything else", () => {

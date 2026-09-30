@@ -85,12 +85,59 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/*
+ * What kind of value this is, asked in a way that does not depend on the realm
+ * the value was made in. A record parsed by another frame's `JSON.parse`, an
+ * options object built there, a `Uint8Array` or a `Set` handed across: each has
+ * that frame's prototype, which is a different object from this module's with the
+ * same role, so `instanceof` and a comparison with `Object.prototype` call them
+ * all foreign. The three tests below read the shape or an internal slot instead.
+ */
+
+/**
+ * True for an object written as `{...}` or made by `Object.create(null)`, in any
+ * realm: it has no prototype, or a prototype that has none of its own, which is
+ * what `Object.prototype` is everywhere. An array, a `Date`, a class instance
+ * and `Object.create({})` each have a longer chain.
+ */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  const proto = Object.getPrototypeOf(value) as unknown;
-  return proto === Object.prototype || proto === null;
+  const proto = Object.getPrototypeOf(value) as object | null;
+  return proto === null || Object.getPrototypeOf(proto) === null;
+}
+
+// The %TypedArray%.prototype[@@toStringTag] getter reads the [[TypedArrayName]]
+// slot: the constructor's name for a typed array of any realm, and undefined for
+// everything else, an object carrying its own Symbol.toStringTag included.
+const typedArrayName = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype) as object,
+  Symbol.toStringTag,
+)?.get as ((this: unknown) => string | undefined) | undefined;
+
+/** True for a `Uint8Array` of any realm, Node's `Buffer` included, and nothing else. */
+export function isUint8Array(value: unknown): value is Uint8Array {
+  return typedArrayName !== undefined && typedArrayName.call(value) === "Uint8Array";
+}
+
+// The `size` getter throws unless its receiver has [[SetData]], which a Set of
+// any realm has and nothing else does.
+const setSize = Object.getOwnPropertyDescriptor(Set.prototype, "size")?.get as
+  | ((this: unknown) => number)
+  | undefined;
+
+/** True for a `Set` of any realm and nothing else. */
+export function isSet(value: unknown): value is ReadonlySet<unknown> {
+  if (setSize === undefined) {
+    return false;
+  }
+  try {
+    setSize.call(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Own-property read, so an inherited member never stands in for an absent one. */

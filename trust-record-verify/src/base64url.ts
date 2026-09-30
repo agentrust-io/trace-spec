@@ -10,6 +10,7 @@
  */
 
 import { fail } from "./errors.js";
+import { isUint8Array } from "./text.js";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
@@ -73,8 +74,9 @@ export function decodeBase64url(value: unknown): Uint8Array | null {
 export function encodeBase64url(bytes: Uint8Array): string {
   // A Uint8Array and nothing else that views a buffer: a Uint16Array iterates
   // 16-bit values, which the byte loop below would encode as the wrong bytes,
-  // and a DataView does not iterate at all. Node's Buffer is a Uint8Array.
-  if (!(bytes instanceof Uint8Array)) {
+  // and a DataView does not iterate at all. Node's Buffer is a Uint8Array, and
+  // so is one made in another frame or worker, which `instanceof` would refuse.
+  if (!isUint8Array(bytes)) {
     fail("invalid_argument", "encodeBase64url takes a Uint8Array");
   }
   let out = "";

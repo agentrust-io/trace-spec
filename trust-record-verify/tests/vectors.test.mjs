@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 import { parentRecordHash, TraceVerificationError, verifyRecord } from "../dist/index.js";
 
@@ -179,5 +180,35 @@ test("the signature's encoding is judged before the schema, as the reference jud
     assert.equal(error.code, "schema_invalid");
     assert.equal(error.path, "signature");
     return true;
+  });
+});
+
+test("a record, its options and a revocation set made in another realm verify as they do here", async () => {
+  const { vector, options, result } = await aVerifyingVector();
+  // Another realm's JSON.parse returns objects and arrays of that realm, which is
+  // what a record read in a frame or a worker is to the code that verifies it.
+  const parse = vm.runInNewContext("JSON.parse");
+  const record = parse(JSON.stringify(vector.record));
+  const foreignOptions = parse(JSON.stringify(options));
+  assert.notEqual(Object.getPrototypeOf(record), Object.prototype);
+  const foreign = await verifyRecord(record, foreignOptions);
+  assert.deepEqual(foreign, result);
+
+  const makeSet = vm.runInNewContext("(items) => new Set(items)");
+  const unrelated = makeSet(["not-this-key"]);
+  assert.equal(unrelated instanceof Set, false);
+  const here = await verifyRecord(vector.record, { ...options, revocation: new Set(["not-this-key"]) });
+  assert.equal(here.revocation.outcome, "verified");
+  assert.deepEqual(await verifyRecord(vector.record, { ...options, revocation: unrelated }), here);
+  const revoking = makeSet([result.trustedKeyThumbprint]);
+  assert.deepEqual(await outcome(verifyRecord(vector.record, { ...options, revocation: revoking })), {
+    rejected: true,
+    code: "key_revoked",
+  });
+  // An object that answers `has` is not a Set, here or there.
+  const impostor = { [Symbol.toStringTag]: "Set", has: () => false, size: 0 };
+  assert.deepEqual(await outcome(verifyRecord(vector.record, { ...options, revocation: impostor })), {
+    rejected: true,
+    code: "invalid_argument",
   });
 });

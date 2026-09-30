@@ -9,6 +9,10 @@ on:
       - "spec/**"
       - "examples/**"
       - "src/agentrust_trace/**"
+      # The differential job installs the reference from these two, so a change
+      # to either can change its verdicts without touching anything above.
+      - "requirements/**"
+      - "pyproject.toml"
       - ".github/workflows/trust-record-verify.yml"
   pull_request:
     paths:
@@ -17,6 +21,10 @@ on:
       - "spec/**"
       - "examples/**"
       - "src/agentrust_trace/**"
+      # The differential job installs the reference from these two, so a change
+      # to either can change its verdicts without touching anything above.
+      - "requirements/**"
+      - "pyproject.toml"
       - ".github/workflows/trust-record-verify.yml"
 
 env:

@@ -44,7 +44,7 @@ import { canonicalize } from "./jcs.js";
 import { keyIdentifiers } from "./jwk.js";
 import { checkRevocationBundle, NO_CHECK, type RevocationCheck } from "./revocation.js";
 import { recordSchemaViolations } from "./schema.js";
-import { isPlainObject, own, timingSafeEqual } from "./text.js";
+import { isPlainObject, isSet, own, timingSafeEqual } from "./text.js";
 
 /** The profile URI this build implements, and the only one `verifyRecord` accepts. */
 export const TRACE_PROFILE_V0_2 = "tag:agentrust-io.com,2026:trace-v0.2";
@@ -156,7 +156,7 @@ function settings(options: unknown): Settings {
   if (
     revocation !== undefined &&
     typeof revocation !== "function" &&
-    !(revocation instanceof Set) &&
+    !isSet(revocation) &&
     !(Array.isArray(revocation) && revocation.every((item) => typeof item === "string"))
   ) {
     fail("invalid_argument", "revocation must be a Set or array of key identifiers, or a lookup function");
@@ -209,7 +209,7 @@ async function checkStore(identifiers: readonly string[], store: RevocationStore
             "not a boolean, so it has not answered",
         );
       }
-    } else if (store instanceof Set) {
+    } else if (isSet(store)) {
       revoked = store.has(identifier);
     } else {
       revoked = (store as readonly string[]).includes(identifier);
