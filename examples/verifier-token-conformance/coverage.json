@@ -1,0 +1,671 @@
+{
+ "requirements": {
+  "TR-VT-PROFILE-001": {
+   "positive": [
+    "VT-PROFILE-001"
+   ],
+   "counterexamples": [
+    "VT-PROFILE-002",
+    "VT-PROFILE-003",
+    "VT-PROFILE-004",
+    "VT-PROFILE-005"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-PROFILE-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-PROFILE-002": {
+   "positive": [
+    "VT-PROFILE-006"
+   ],
+   "counterexamples": [
+    "VT-PROFILE-007",
+    "VT-PROFILE-008"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-PROFILE-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-ENV-001": {
+   "positive": [
+    "VT-ENV-001"
+   ],
+   "counterexamples": [
+    "VT-ENV-002",
+    "VT-ENV-003",
+    "VT-ENV-004",
+    "VT-ENV-005",
+    "VT-ENV-006"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-ENV-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-ISS-001": {
+   "positive": [
+    "VT-ISS-001"
+   ],
+   "counterexamples": [
+    "VT-ISS-002",
+    "VT-ISS-003",
+    "VT-ISS-004",
+    "VT-ISS-009"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-ISS-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-ISS-002": {
+   "positive": [
+    "VT-ISS-005"
+   ],
+   "counterexamples": [
+    "VT-ISS-006",
+    "VT-ISS-007",
+    "VT-ISS-008"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-ISS-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-CNF-001": {
+   "positive": [
+    "VT-CNF-001"
+   ],
+   "counterexamples": [
+    "VT-CNF-002",
+    "VT-CNF-003",
+    "VT-CNF-009"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-CNF-001]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_workers_atomically_consume_one_proof"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-CNF-002": {
+   "positive": [
+    "VT-CNF-004"
+   ],
+   "counterexamples": [
+    "VT-CNF-006",
+    "VT-CNF-007",
+    "VT-CNF-008",
+    "VT-CNF-010",
+    "VT-CNF-011",
+    "VT-CNF-012"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-CNF-002]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_proxy_refuses_without_transport",
+    "tests/test_verifier_token_profile.py::test_concurrent_proof_has_one_winner",
+    "tests/test_conformance_gateway.py::test_missing_or_cross_session_proof_is_refused"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-TIME-001": {
+   "positive": [
+    "VT-TIME-001",
+    "VT-TIME-002"
+   ],
+   "counterexamples": [
+    "VT-TIME-003",
+    "VT-TIME-004",
+    "VT-TIME-005",
+    "VT-TIME-011"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-TIME-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-TIME-002": {
+   "positive": [
+    "VT-TIME-006"
+   ],
+   "counterexamples": [
+    "VT-TIME-007",
+    "VT-TIME-012",
+    "VT-TIME-015"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-TIME-002]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_expiry_during_receipt_commit_stops_transport",
+    "tests/test_cmcp_trace_gate.py::test_expiry_during_provenance_await_stops_actual_send",
+    "tests/test_cmcp_trace_gate.py::test_disabling_transport_recheck_admits_expired_call"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-TIME-003": {
+   "positive": [
+    "VT-TIME-008"
+   ],
+   "counterexamples": [
+    "VT-TIME-009",
+    "VT-TIME-010",
+    "VT-TIME-013",
+    "VT-TIME-014"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-TIME-003]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-AUD-001": {
+   "positive": [
+    "VT-AUD-001"
+   ],
+   "counterexamples": [
+    "VT-AUD-002",
+    "VT-AUD-003",
+    "VT-AUD-004",
+    "VT-AUD-005"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-AUD-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-ID-001": {
+   "positive": [
+    "VT-ID-001"
+   ],
+   "counterexamples": [
+    "VT-ID-002",
+    "VT-ID-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-ID-001]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_token_id_collision_survives_worker_restart"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-SUB-001": {
+   "positive": [
+    "VT-SUB-001"
+   ],
+   "counterexamples": [
+    "VT-SUB-002",
+    "VT-SUB-003"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-SUB-001]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_http_challenge_admission_and_call_require_auth"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-SUB-002": {
+   "positive": [
+    "VT-SUB-005"
+   ],
+   "counterexamples": [
+    "VT-SUB-006",
+    "VT-SUB-007"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-SUB-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-MAN-001": {
+   "positive": [
+    "VT-MAN-001"
+   ],
+   "counterexamples": [
+    "VT-MAN-002",
+    "VT-MAN-003",
+    "VT-MAN-004",
+    "VT-MAN-011"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-MAN-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-MAN-002": {
+   "positive": [
+    "VT-MAN-005"
+   ],
+   "counterexamples": [
+    "VT-MAN-006",
+    "VT-MAN-008"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-MAN-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-MAN-003": {
+   "positive": [],
+   "counterexamples": [],
+   "causal": null,
+   "gateway_tests": [
+    "tests/test_conformance_gateway.py::test_composition_only_manifest_cannot_drive_requirements"
+   ],
+   "non_portable_reason": "Composition-only scope is decided by the Agent Manifest requirements verifier before any token exists; the token profile has no limited-scope result to vector."
+  },
+  "TR-VT-CTX-001": {
+   "positive": [
+    "VT-CTX-001"
+   ],
+   "counterexamples": [
+    "VT-CTX-002",
+    "VT-CTX-003",
+    "VT-CTX-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-CTX-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-POL-001": {
+   "positive": [
+    "VT-POL-001"
+   ],
+   "counterexamples": [
+    "VT-POL-002",
+    "VT-POL-003",
+    "VT-POL-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-POL-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-REV-001": {
+   "positive": [
+    "VT-REV-001"
+   ],
+   "counterexamples": [
+    "VT-REV-002",
+    "VT-REV-003",
+    "VT-REV-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-REV-001]",
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_proxy_refuses_without_transport"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-VT-PRIV-001": {
+   "positive": [
+    "VT-PRIV-001"
+   ],
+   "counterexamples": [
+    "VT-PRIV-002",
+    "VT-PRIV-003",
+    "VT-PRIV-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-PRIV-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-PRIV-002": {
+   "positive": [
+    "VT-PRIV-005"
+   ],
+   "counterexamples": [
+    "VT-PRIV-006",
+    "VT-PRIV-007"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-PRIV-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-VT-AUTH-001": {
+   "positive": [],
+   "counterexamples": [],
+   "causal": null,
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_real_cedar_denies_affirming_trace_without_transport",
+    "tests/test_cmcp_trace_gate.py::test_real_proxy_allows_and_receipt_precedes_transport",
+    "tests/test_verifier_token_profile.py::test_one_use_challenge_and_policy_deny"
+   ],
+   "non_portable_reason": "Authorization is the relying party's Cedar decision after token acceptance; a token vector cannot express the policy outcome."
+  },
+  "TR-VT-REC-001": {
+   "positive": [],
+   "counterexamples": [],
+   "causal": null,
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_real_proxy_allows_and_receipt_precedes_transport",
+    "tests/test_cmcp_trace_gate.py::test_signed_receipts_link_across_worker_restarts",
+    "tests/test_conformance_gateway.py::test_receipt_binds_exact_trace_action_and_gateway_key"
+   ],
+   "non_portable_reason": "Decision receipts are signed by the gateway key over session, call and action state that exists only inside the gateway."
+  },
+  "TR-VT-EXT-001": {
+   "positive": [
+    "VT-EXT-001"
+   ],
+   "counterexamples": [
+    "VT-EXT-002",
+    "VT-EXT-003",
+    "VT-EXT-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-VT-EXT-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-ID-001": {
+   "positive": [
+    "COMP-ID-001"
+   ],
+   "counterexamples": [
+    "COMP-ID-002",
+    "COMP-ID-003",
+    "COMP-ID-004",
+    "COMP-ID-005"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-ID-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-ID-002": {
+   "positive": [
+    "COMP-ID-006"
+   ],
+   "counterexamples": [
+    "COMP-ID-007",
+    "COMP-ID-008"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-ID-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-TYPE-001": {
+   "positive": [
+    "COMP-TYPE-001"
+   ],
+   "counterexamples": [
+    "COMP-TYPE-002",
+    "COMP-TYPE-003",
+    "COMP-TYPE-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-TYPE-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-REQ-001": {
+   "positive": [
+    "COMP-REQ-001"
+   ],
+   "counterexamples": [
+    "COMP-REQ-002",
+    "COMP-REQ-003",
+    "COMP-REQ-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-REQ-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-REQ-002": {
+   "positive": [
+    "COMP-REQ-005"
+   ],
+   "counterexamples": [
+    "COMP-REQ-006",
+    "COMP-REQ-007",
+    "COMP-REQ-008"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-REQ-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-STAT-001": {
+   "positive": [
+    "COMP-STAT-001-affirming",
+    "COMP-STAT-001-contraindicated",
+    "COMP-STAT-001-missing",
+    "COMP-STAT-001-not-appraised",
+    "COMP-STAT-001-unverifiable",
+    "COMP-STAT-001-warning"
+   ],
+   "counterexamples": [
+    "COMP-STAT-002",
+    "COMP-STAT-003",
+    "COMP-STAT-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-STAT-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-STAT-002": {
+   "positive": [
+    "COMP-STAT-005"
+   ],
+   "counterexamples": [
+    "COMP-STAT-006",
+    "COMP-STAT-007",
+    "COMP-STAT-008",
+    "COMP-STAT-009"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-STAT-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-WARN-001": {
+   "positive": [
+    "COMP-WARN-001"
+   ],
+   "counterexamples": [
+    "COMP-WARN-002",
+    "COMP-WARN-003",
+    "COMP-WARN-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-WARN-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-EVID-001": {
+   "positive": [
+    "COMP-EVID-001",
+    "COMP-EVID-003"
+   ],
+   "counterexamples": [
+    "COMP-EVID-002",
+    "COMP-EVID-004",
+    "COMP-EVID-009"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-EVID-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-EVID-002": {
+   "positive": [
+    "COMP-EVID-005"
+   ],
+   "counterexamples": [
+    "COMP-EVID-006",
+    "COMP-EVID-007",
+    "COMP-EVID-010"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-EVID-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-AUTH-001": {
+   "positive": [
+    "COMP-AUTH-001",
+    "COMP-AUTH-006"
+   ],
+   "counterexamples": [
+    "COMP-AUTH-002",
+    "COMP-AUTH-003",
+    "COMP-AUTH-004",
+    "COMP-AUTH-005",
+    "COMP-AUTH-007",
+    "COMP-AUTH-008",
+    "COMP-AUTH-009",
+    "COMP-AUTH-010",
+    "COMP-AUTH-011",
+    "COMP-AUTH-012",
+    "COMP-AUTH-013",
+    "COMP-AUTH-014",
+    "COMP-AUTH-015",
+    "COMP-AUTH-016",
+    "COMP-AUTH-017"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-AUTH-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-FRESH-001": {
+   "positive": [
+    "COMP-FRESH-001"
+   ],
+   "counterexamples": [
+    "COMP-FRESH-002",
+    "COMP-FRESH-003",
+    "COMP-FRESH-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-FRESH-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-FRESH-002": {
+   "positive": [
+    "COMP-FRESH-005",
+    "COMP-FRESH-008",
+    "COMP-FRESH-009"
+   ],
+   "counterexamples": [
+    "COMP-FRESH-006",
+    "COMP-FRESH-007",
+    "COMP-FRESH-010"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-FRESH-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-BIND-001": {
+   "positive": [
+    "COMP-BIND-001"
+   ],
+   "counterexamples": [
+    "COMP-BIND-002",
+    "COMP-BIND-003",
+    "COMP-BIND-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-BIND-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-BIND-002": {
+   "positive": [
+    "COMP-BIND-005",
+    "COMP-BIND-015"
+   ],
+   "counterexamples": [
+    "COMP-BIND-006",
+    "COMP-BIND-007",
+    "COMP-BIND-008",
+    "COMP-BIND-019",
+    "COMP-BIND-020"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-BIND-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-BIND-003": {
+   "positive": [
+    "COMP-BIND-009",
+    "COMP-BIND-016"
+   ],
+   "counterexamples": [
+    "COMP-BIND-010",
+    "COMP-BIND-013",
+    "COMP-BIND-017",
+    "COMP-BIND-018"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-BIND-003]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-BIND-004": {
+   "positive": [
+    "COMP-BIND-011"
+   ],
+   "counterexamples": [
+    "COMP-BIND-012",
+    "COMP-BIND-014"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-BIND-004]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-COMP-001": {
+   "positive": [
+    "COMP-COMP-001"
+   ],
+   "counterexamples": [
+    "COMP-COMP-002",
+    "COMP-COMP-003",
+    "COMP-COMP-004"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-COMP-001]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-COMP-002": {
+   "positive": [
+    "COMP-COMP-005",
+    "COMP-COMP-008"
+   ],
+   "counterexamples": [
+    "COMP-COMP-006",
+    "COMP-COMP-007",
+    "COMP-COMP-009"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-COMP-002]",
+   "gateway_tests": [],
+   "non_portable_reason": null
+  },
+  "TR-COMP-MCP-001": {
+   "positive": [
+    "COMP-MCP-001"
+   ],
+   "counterexamples": [
+    "COMP-MCP-002",
+    "COMP-MCP-003",
+    "COMP-MCP-007"
+   ],
+   "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-MCP-001]",
+   "gateway_tests": [
+    "tests/test_cmcp_catalog_binding.py::test_merkle_root_is_not_sealed_catalog_digest"
+   ],
+   "non_portable_reason": null
+  },
+  "TR-COMP-MCP-002": {
+   "positive": [],
+   "counterexamples": [],
+   "causal": null,
+   "gateway_tests": [
+    "tests/test_cmcp_trace_gate.py::test_catalog_substitution_after_proof_stops_transport",
+    "tests/test_cmcp_bootstrap.py::test_production_composition_requires_verified_manifest"
+   ],
+   "non_portable_reason": "Server-to-catalog binding needs a relationship profile the token does not define; the gateway enforces it on the holder-proved action."
+  },
+  "TR-COMP-MIN-001": {
+   "positive": [],
+   "counterexamples": [],
+   "causal": null,
+   "gateway_tests": [
+    "tests/test_verifier_token_profile.py::test_private_key_or_unknown_fields_rejected",
+    "tests/test_conformance_corpus.py::test_valid_tokens_carry_digests_not_raw_material"
+   ],
+   "non_portable_reason": "Informative SHOULD on disclosure; there is no pass/fail wire outcome to vector."
+  }
+ },
+ "legacy": [
+  "LEGACY-01",
+  "LEGACY-02",
+  "LEGACY-03",
+  "LEGACY-04",
+  "LEGACY-05",
+  "LEGACY-06",
+  "LEGACY-07",
+  "LEGACY-08",
+  "LEGACY-09",
+  "LEGACY-10",
+  "LEGACY-11",
+  "LEGACY-12",
+  "LEGACY-13",
+  "LEGACY-14"
+ ],
+ "divergences": {
+  "COMP-EVID-003": "The requirements as first written expected rejection when the evidence resolver is missing; the experimental profile makes resolver optional and the reference accepts it."
+ }
+}

@@ -55,6 +55,10 @@ SAFE_INTEGER = 2**53 - 1
 # defined over an RFC 8785 canonical form must bound its integer fields to the
 # safe-integer domain; the rest carry the reason they do not.
 BOUNDED_SCHEMAS = (
+    "schema/trace-token-experimental-v1.json",
+    "schema/trace-requirements-experimental-v1.json",
+    "schema/trace-holder-proof-experimental-v1.json",
+    "schema/trace-decision-receipt-experimental-v1.json",
     "schema/pic-trace-bridge-v1.json",
     "schema/trace-claim.json",
     # Draft, and bounded for the same reason the file it was generated from is: it is

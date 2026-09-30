@@ -1,0 +1,11 @@
+{
+  "challenge": "79a39e0adc16f9101cb479f820461e378db4f4fbb4e1e40527602bcda43b4f0f",
+  "captured": "2026-09-30T00:33Z",
+  "boot": "Canonical signed UKI, Secure Boot on, stock IMA arch policy",
+  "legacy_pcr23_measurement": "sha256:4129b61cc061db3ef0479a663aee9fb8d320b27a88f86b617e53cf5bc16313c8",
+  "authenticode": {
+    "shimx64.efi": "724de6844dd0fe618ba5776c7bca0728be38a6544e24e44ef259b987b7abce80",
+    "canonical-uki": "c09618bbfc0fac609ffdb01064891397dad7c9fb255f2fc95b15f9af38bff6b9",
+    "trace-uki": "8c3365751d0aacd3ead10aa5a19fb244d2b0f156d7035b76c7869b078c5aa38d"
+  }
+}
