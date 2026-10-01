@@ -151,7 +151,7 @@ Spec section 3.1.2 also binds verifiers: one **must not** reject a record becaus
 
 The claim that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals `transcript_digest`. Spec section 3.1.4. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and not the model calls, which are not deterministic; the boundary is drawn around every non-deterministic interaction, and each one enters the closure as a recorded, content-addressed input.
 
-The block is the claim, not its result. The result is an appraisal made by the party that re-ran the function, carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
+The block is the claim, not its result. The result is an appraisal attributed to the party that re-ran the function (in a producer-signed record, the producer's report of that party's result, not authenticated by it), carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
