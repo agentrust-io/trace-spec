@@ -24,6 +24,7 @@ The registry is enforced without being normative: `tests/test_references_block.p
 | `approval-outcome`    | An attributable human approval attached to a step-up or defer decision                          | §3.1.2; the CHAP mapping in [`crosswalks/chap-review-decisions.md`](https://trace.agentrust-io.com/docs/crosswalks/chap-review-decisions/index.md)                        | [`examples/chap-approval-outcome/`](https://trace.agentrust-io.com/docs/examples/chap-approval-outcome/index.md) |
 | `behavior-trace`      | A behavioural record of what the agent did, of which this record is the environment evidence    | §3.1.2                                                                                                                                                                    | none committed                                                                                                   |
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below                                                                                                                                                      | [`examples/condition-appraisal/`](https://trace.agentrust-io.com/docs/examples/condition-appraisal/index.md)     |
+| `observed-effect`     | A signed record of the state change an observer outside the agent saw over one interval         | This document, below                                                                                                                                                      | [`examples/observed-effect/`](https://trace.agentrust-io.com/docs/examples/observed-effect/index.md)             |
 
 The first three were registered by the change that introduced the block (#197) and their referenced objects are defined to the extent the documents cited define them. Tightening one is a change to make here, on the same terms as adding a name.
 
@@ -63,6 +64,41 @@ Three findings, each separable from the others, and a relying party reports all 
 That is the whole of it, and all three are findings about the object. None reaches the record: it verifies the same whether the reference resolves, matches, or verifies, and nothing in the object becomes attested evidence. The outcome inside the object is reported as the issuer stated it and promotes in neither direction. A `pass` is not attested evidence that the condition held: the record attests that it points at the finding, and the finding is the issuer's. A `fail` is not a finding against the record: the record verifies exactly as it would citing a `pass`, and the example set holds a pass and a fail side by side to keep that so.
 
 What this relation is not. It is not re-execution. A check that is a deterministic function over a pinned closure, a test suite over a deliverable and a suite, a schema validation over a document and a schema, could in principle have its outcome established by the verifier re-running it, under the same `reproduced`, `diverged` and `not-attempted` outcomes §3.1.4 gives for coordination logic. That is an appraisal the verifier performs, never something the reference establishes, and it is a separate proposal from this registration. Nor is it compliance evidence: §3.1.2 says of the whole block that a record pointing at a check attests that it points there, and nothing about whether an obligation was met.
+
+## `observed-effect`
+
+### Meaning
+
+The record points at what an observer the agent does not control saw change while the agent ran: the state before an interval, the state after it, the paths the observation covered, and the authority under which change was permitted. The four values registered before it cover what was asked (`authorized-intent`), who approved (`approval-outcome`), what the agent did (`behavior-trace`) and what a check found (`condition-appraisal`); this is the question a relying party asks after all four, what actually changed.
+
+Two neighbours it is not. A `behavior-trace` is a record of the agent's actions, often written by the agent or its host, and a state change can happen that no action in it accounts for, or fail to happen where one claims it did; an `observed-effect` is taken over the state itself, from outside the party it describes. And it is not a `condition-appraisal`: it states what changed and within what scope, and it holds the change against no criteria. A check over an observed interval, such as whether a write fell outside the permitted paths, is a `condition-appraisal` whose subject is the interval.
+
+### The referenced object
+
+A signed, content-addressed statement. The committed example uses an in-toto Statement in a DSSE envelope whose `predicateType` is `https://probityai.github.io/agent-evidence-vectors/predicate/v1/observed-effect`, and the wire format is the issuer's; what registration fixes is the set of facts the object carries and how the reference's `digest` is taken over it.
+
+| Fact          | Carried as                                                                                    | Why it is required                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| The interval  | The state root before, the state root after, and the times the interval opened and was sealed | Without both roots there is no change to point at, only a claim that one happened                                        |
+| The scope     | The paths the observation covered, and any part of them it could not see                      | A change observed over part of a system says nothing about the rest; an unstated scope reads as total                    |
+| The authority | A digest over the policy or grant under which change was permitted                            | Binds the change to the permission it ran under, so a later grant cannot be read back onto it                            |
+| The observer  | An identifier for the party that observed, and a reference to its verification key            | §3.3.2's `issuer` and `issuer_key_id`, with the binding to a call replaced by the bindings above                         |
+| The subject   | A digest equal to the after-state root                                                        | Makes the object identify a state, not only describe one                                                                 |
+| The signature | The observer's signature over the object                                                      | §3.3.2 step 1, applied to this object; the committed example signs the DSSE pre-authentication encoding of the statement |
+
+The reference's `digest` is over the RFC 8785 canonical form of the complete object, signature included, as the resolver retains it. `id` is the object's identifier within the resolver's system and `resolver` is the party obliged to keep it resolvable, as for every entry.
+
+The committed example, [`examples/observed-effect/`](https://trace.agentrust-io.com/docs/examples/observed-effect/index.md), resolves two statements copied byte for byte from a published conformance corpus for that predicate type, so a second implementation already verifies the objects it cites. A producer whose observer emits another shape that carries these facts is within this definition.
+
+### What a verifier may conclude
+
+The same three findings as for `condition-appraisal`, each separable, all three reported:
+
+1. **Whether the reference resolves.** If not, the observation is unresolved, which is a different answer from "nothing changed", and under rule 3 of §3.1.2 it is never a reason to reject the record.
+1. **Whether the resolved bytes are the cited bytes.** A digest match establishes identity; a mismatch is a finding about the store.
+1. **Whether the object verifies under its named observer's key**, when the relying party holds that key. An observer key the verifier does not hold makes the object unverified, not invalid.
+
+All three are findings about the object and none reaches the record. What the object reports is carried as the observer stated it and promotes in neither direction: an interval in which the observer and the observed party agree is not attested evidence that the agent's report was true, and one in which they disagree is not a finding against the record. The example set holds an agreeing and a disagreeing interval side by side, and the two records verify identically.
 
 ## Adding a name
 
