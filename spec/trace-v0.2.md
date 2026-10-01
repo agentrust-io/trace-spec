@@ -887,7 +887,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 ### Foundation Specifications
 
 - SLSA Specification v1.0 (OpenSSF): https://slsa.dev/spec/v1.0/
-- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/
+- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/overview/
 - SPDX 3.0 AI Profile: https://spdx.dev/use/specifications/
 - CycloneDX 1.7 ML-BOM: https://cyclonedx.org/specification/overview/
 - C2PA Technical Specification v2: https://c2pa.org/specifications/specifications/2.0/
@@ -895,7 +895,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Vendor Hardware Attestation
 
-- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/api-docs-nras/
+- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/index.html
 - Intel Trust Authority: https://www.intel.com/content/www/us/en/security/trust-authority.html
 - Intel TDX: https://www.intel.com/content/www/us/en/developer/tools/trust-domain-extensions/overview.html
 - AMD SEV-SNP: https://www.amd.com/en/developer/sev.html
