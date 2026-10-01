@@ -32,7 +32,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
 | `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
-| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
+| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included. An 86-character value (a 64-byte Ed25519 or ES256 signature) MUST be canonically encoded per RFC 4648 section 3.5: it MUST end in `A`, `Q`, `g`, or `w` |
 
 <a id="model"></a>
 
@@ -129,13 +129,13 @@ A record whose `kind` is not `self` **must** carry `runtime.platform: "software-
 
 ## `references` {#trace-field-references}
 
-An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding. What the signature attests is that this record points there, not the truth of what it points at.
+An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding, an observed change of state. What the signature attests is that this record points there, not the truth of what it points at.
 
 `origin` records where evidence *came from* and can lower assurance. `references` records what a record *points at* and cannot. Before the block existed, a record that needed to name something external had to use `origin` and take `runtime.platform: "software-only"` with it, which said something untrue about how the evidence was obtained.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`, `observed-effect`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
@@ -230,7 +230,7 @@ Confirmation method. Contains the signing key bound to this record.
 |---|---|---|
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
-For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+For a hardware-backed deployment, authenticated platform evidence is expected to bind this public key to the measured environment (see [trust levels](trust-levels.md)). That binding establishes key association only. It does not by itself establish where the private key was generated, whether it can be exported, or that it never left the TEE: a key generated outside and committed from inside the guest satisfies the same binding. Those properties are claimed only where a platform profile supplies evidence for them, and are reported separately from the binding (#433).
 
 ### `cnf.jwk` members {#trace-field-cnf-jwk}
 

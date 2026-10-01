@@ -509,7 +509,7 @@ def main() -> int:
             }
             (out / f"{name}.json").write_text(
                 json.dumps(wrapper, indent=2) + "\n",
-                encoding="utf-8",
+                encoding="utf-8", newline="\n",
             )
 
     width = max(len(r[0]) for r in rows)

@@ -105,6 +105,8 @@ plugins:
           - docs/references-registry.md
           - docs/verification-outcome-statements.md
           - docs/rfcs/runtime-evidence-profile.md
+          - docs/rfcs/verifier-issued-trace-profile.md
+          - docs/rfcs/composite-component-appraisal.md
         Guides:
           - docs/tutorials/signing-your-first-trust-record.md
           - docs/tutorials/verifying-a-trust-record.md
@@ -233,6 +235,8 @@ nav:
           - Composable zero-knowledge proofs: docs/rfcs/composable-zk-assurance.md
           - A2A delegation-link verification profile: docs/rfcs/a2a-delegation-profile.md
           - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
+          - Verifier-issued, holder-bound token: docs/rfcs/verifier-issued-trace-profile.md
+          - Composite component appraisal: docs/rfcs/composite-component-appraisal.md
       - Crosswalks:
           - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
           - MITRE ATLAS: docs/crosswalks/mitre-atlas.md

@@ -357,7 +357,7 @@
           "rel": {
             "type": "string",
             "minLength": 1,
-            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest."
+            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest. observed-effect: a signed record of the state change an observer outside the agent saw over one interval, with the state before and after, the paths observed and the authority change ran under."
           },
           "id": {
             "type": "string",
@@ -786,8 +786,8 @@
     },
     "signature": {
       "type": "string",
-      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema.",
-      "pattern": "^[A-Za-z0-9_-]+$"
+      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema. An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or ES256) and MUST be canonically encoded per RFC 4648 section 3.5: its final character's unused bits MUST be zero, so it MUST end in A, Q, g, or w.",
+      "pattern": "^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
     }
   },
   "additionalProperties": false,
