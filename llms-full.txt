@@ -2038,7 +2038,7 @@ Confirmation method. Contains the signing key bound to this record.
 | ----- | ------ | ------------------------------------------------ |
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
-For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+For a hardware-backed deployment, authenticated platform evidence is expected to bind this public key to the measured environment (see [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)). That binding establishes key association only. It does not by itself establish where the private key was generated, whether it can be exported, or that it never left the TEE: a key generated outside and committed from inside the guest satisfies the same binding. Those properties are claimed only where a platform profile supplies evidence for them, and are reported separately from the binding (#433).
 
 ### `cnf.jwk` members
 
@@ -2357,6 +2357,8 @@ The record is signed, and the signature is sound. It attests authorship. Every h
 This is not a new idea being introduced. `docs/trust-levels.md` line 50 already states the property:
 
 > Level 1 requires that the signing key be generated inside a verified TEE (AMD SEV-SNP, Intel TDX, NVIDIA H100, or TPM2).
+
+*Note, 2026-10-01:* `docs/trust-levels.md` has since been narrowed to authenticated evidence binding the record-signing key to the expected environment. The `attested` grade below establishes that public-key binding, not where the private key was generated or whether it stays in the TEE (#433).
 
 Nothing in the schema represents that binding and nothing in the SDK checks it. `spec/trace-v0.2.md` §5 maps `runtime` to "RATS Evidence + vendor RIM" in the claim table, and the record carries no RATS evidence. The requirement, the mapping, and the schema disagree, and the schema is what runs.
 

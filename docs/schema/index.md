@@ -196,7 +196,7 @@ Confirmation method. Contains the signing key bound to this record.
 | ----- | ------ | ------------------------------------------------ |
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
-For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+For a hardware-backed deployment, authenticated platform evidence is expected to bind this public key to the measured environment (see [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)). That binding establishes key association only. It does not by itself establish where the private key was generated, whether it can be exported, or that it never left the TEE: a key generated outside and committed from inside the guest satisfies the same binding. Those properties are claimed only where a platform profile supplies evidence for them, and are reported separately from the binding (#433).
 
 ### `cnf.jwk` members
 

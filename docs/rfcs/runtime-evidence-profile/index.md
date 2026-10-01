@@ -40,6 +40,8 @@ This is not a new idea being introduced. `docs/trust-levels.md` line 50 already 
 
 > Level 1 requires that the signing key be generated inside a verified TEE (AMD SEV-SNP, Intel TDX, NVIDIA H100, or TPM2).
 
+*Note, 2026-10-01:* `docs/trust-levels.md` has since been narrowed to authenticated evidence binding the record-signing key to the expected environment. The `attested` grade below establishes that public-key binding, not where the private key was generated or whether it stays in the TEE (#433).
+
 Nothing in the schema represents that binding and nothing in the SDK checks it. `spec/trace-v0.2.md` §5 maps `runtime` to "RATS Evidence + vendor RIM" in the claim table, and the record carries no RATS evidence. The requirement, the mapping, and the schema disagree, and the schema is what runs.
 
 ### 1.2 The asymmetry this closes
