@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentrust-trace-tests"
-version = "0.6.1"
+version = "0.6.2"
 description = "TRACE conformance test suite"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -36,7 +36,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/agentrust-io/trace-spec"
 Repository = "https://github.com/agentrust-io/trace-spec"
-Documentation = "https://github.com/agentrust-io/trace-spec/tree/main/conformance#readme"
+Documentation = "https://trace.agentrust-io.com/conformance/"
 "Bug Tracker" = "https://github.com/agentrust-io/trace-spec/issues"
 
 [project.scripts]
