@@ -63,6 +63,12 @@ Issues are not held to this. An issue about the reference library helps most
 when it names the commit or release it was found at and gives a reproduction
 that runs there.
 
+Separately, and not a condition for review: before opening a pull request,
+have the description and the diff read by someone who has seen none of your
+work, such as another contributor or a new AI agent session given the
+repository and the sources the description cites. Say in the description what
+that reader found and what you changed because of it.
+
 ## Using AI to contribute
 
 Use agents. A lot of this was built with them and saying otherwise would be dishonest.

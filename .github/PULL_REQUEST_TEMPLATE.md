@@ -2,6 +2,10 @@
 
 <!-- Describe the change. For spec changes, quote or link the normative text being modified. -->
 
+<!-- Not a condition for review: what a reader who had seen none of your work
+found in the description and diff, and what you changed because of it. See
+"Before a pull request is reviewed" in CONTRIBUTING.md. -->
+
 ## Type of change
 
 - [ ] Editorial (typo, link fix, clarification: no normative effect)
