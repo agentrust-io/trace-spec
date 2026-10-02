@@ -1,0 +1,41 @@
+name: Conformance CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: conformance
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package and test deps
+        # Third-party dependencies come from the hash-pinned lock first; the
+        # local package then goes in with --no-deps, because pip cannot
+        # hash-pin an editable install in the same invocation.
+        run: |
+          pip install --require-hashes -r requirements/test.txt
+          pip install --no-deps -e .
+      - name: Level 0 conformance (schema + structural)
+        run: python -m pytest -v -m "level0 or negative" --tb=short
+      - name: Unit tests (modules and CLI)
+        run: python -m pytest tests/unit/ -v --tb=short
+      - name: Full suite
+        run: python -m pytest -v --tb=short

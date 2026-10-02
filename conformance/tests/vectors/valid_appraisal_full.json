@@ -1,0 +1,39 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1748000000,
+  "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-5"
+  },
+  "runtime": {
+    "platform": "intel-tdx",
+    "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8"
+  },
+  "policy": {
+    "bundle_hash": "sha256:b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "confidential",
+  "build_provenance": {
+    "slsa_level": 2,
+    "digest": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://verifier.example.org",
+    "policy_ref": "https://policies.example.org/appraisal/v3",
+    "timestamp": 1748000042,
+    "provenance_depth_verified": "builder"
+  },
+  "transparency": "https://scitt.example.org/receipts/abc123def456",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "dGhpcyBpcyBhIHRlc3QgeA",
+      "y": "dGhpcyBpcyBhIHRlc3QgeQ",
+      "kid": "tee-key-001"
+    }
+  }
+}

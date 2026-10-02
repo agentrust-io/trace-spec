@@ -1,0 +1,62 @@
+{
+  "name": "referent-unreachable-no-route",
+  "description": "The cited URI is not one the verifier has any route to. Nothing was contradicted, because nothing was read. This vector asserts only that the comparison did not happen.",
+  "boundary": "unresolvable",
+  "defect": "referent unreachable: no route to the cited URI",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1748000000,
+    "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-5"
+    },
+    "runtime": {
+      "platform": "intel-tdx",
+      "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8",
+      "nonce": "Zm9yLXRoZS1yZWNvcmQtbm9uY2U"
+    },
+    "policy": {
+      "bundle_hash": "sha256:d8764863e75e702ff64e53951eb3d005a84858979598f7f0bda11fc901416adc",
+      "enforcement_mode": "enforce",
+      "policy_uri": "https://policy.example.org/bundles/policy-bundle-withdrawn.json"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 2,
+      "digest": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example.org",
+      "policy_ref": "https://verifier.example.org/appraisal-policy/v1",
+      "timestamp": 1748000042
+    },
+    "transparency": "https://scitt.example.org/receipts/abc123def456",
+    "cnf": {
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "dGhpcyBpcyBhIHRlc3QgeA",
+        "y": "dGhpcyBpcyBhIHRlc3QgeQ",
+        "kid": "tee-key-001"
+      }
+    }
+  },
+  "context": {
+    "cited_uri": "https://policy.example.org/bundles/policy-bundle-withdrawn.json",
+    "resolution": {
+      "outcome": "unreachable_no_route"
+    },
+    "anchor": {
+      "tier": 0,
+      "source": "no merged sentence governs this case",
+      "text": "",
+      "applies": "No text in the specification says what a verifier records when a policy bundle cannot be fetched: policy_uri appears nowhere in the merged specification, and the reference block that does discuss resolvability governs the references field rather than this one. The vector therefore asserts only that the check was not performed, which is a fact about the run rather than a reading of any text. The level at which that stops being tolerable is suite policy, registered in src/trace_tests/modules/unverified.py and docs/levels.md, and is not claimed here as a specification requirement."
+    }
+  },
+  "expected": {
+    "tr_pol_003": "unverified",
+    "reason": "The bundle could not be fetched, so the digest was never compared. Reporting that as a pass would claim a check that did not run."
+  }
+}
