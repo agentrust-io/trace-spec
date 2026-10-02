@@ -5,5 +5,5 @@
 .github/workflows/ @agentrust-io/maintainers @lywinged @rajnisht7
 
 # Conformance suite retains its existing maintainer review ownership.
-/conformance/ @agentrust-io/maintainers
-/.github/workflows/conformance-*.yml @agentrust-io/maintainers
+/conformance/ @agentrust-io/maintainers @lywinged @rajnisht7
+/.github/workflows/conformance-*.yml @agentrust-io/maintainers @lywinged @rajnisht7

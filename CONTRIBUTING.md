@@ -1,6 +1,6 @@
 # Contributing to TRACE
 
-TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 
 ## Running the reference-library checks
 
