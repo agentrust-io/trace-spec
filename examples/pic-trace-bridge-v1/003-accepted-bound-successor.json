@@ -1,0 +1,142 @@
+{
+  "id": "TRACE-PIC-BRIDGE-003",
+  "name": "accepted-bound-successor",
+  "description": "Trusted fresh independent evidence establishes the fixture transition.",
+  "profile": "trace.pic-trace-bridge.case003.v1",
+  "conformance": {
+    "status": "conformant"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-206",
+        "decision": "allow",
+        "authorizer": "policy-engine",
+        "authorizer_key_id": "key-206",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "send_invoice",
+            "archive_invoice"
+          ],
+          "impacts": [
+            "external-side-effect",
+            "internal-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc",
+        "tool_call_digest": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395",
+        "transcript_required": true,
+        "successor_observation_digest": "sha256:d187156756090bbacf19ce71c4ff14a469c7e870ff750b8de961e11ddf38d4ae"
+      },
+      "signature": "lKIifm9g06_PjLDycdYQ_-lCi55bMQ3bD3qYtmweYIEUu97lQssXTmWubkgxNd01j88-t6iZnkhqqkjfnApKCg"
+    },
+    "trusted_authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg",
+      "kid": "key-206"
+    },
+    "declaration": {
+      "impact": "external-side-effect",
+      "purpose": "send invoice",
+      "metadata": {
+        "channel": "email",
+        "reference": "INV-7"
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "tool_call": {
+      "name": "send_invoice",
+      "arguments": {
+        "invoice_id": "INV-7",
+        "options": {
+          "notify": true
+        }
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "send_invoice",
+          "arguments": {
+            "invoice_id": "INV-7",
+            "options": {
+              "notify": true
+            }
+          }
+        }
+      },
+      "after": {
+        "observation": {
+          "invoice_id": "INV-7",
+          "status": "sent"
+        },
+        "observer": "invoice-observer",
+        "observed_at": 149
+      }
+    },
+    "now": 150
+  },
+  "reproducibility": {
+    "authorization_signature": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhdXRob3JpemF0aW9uIjp7ImF1dGhvcml6YXRpb25faWQiOiJhdXRoLTIwNiIsImF1dGhvcml6ZWRfYXQiOjEwMCwiYXV0aG9yaXplciI6InBvbGljeS1lbmdpbmUiLCJhdXRob3JpemVyX2tleV9pZCI6ImtleS0yMDYiLCJkZWNpc2lvbiI6ImFsbG93IiwiZGVjbGFyYXRpb25fZGlnZXN0Ijoic2hhMjU2OmY0NjM5MWVhNjNlNDVlNjBjNThkMzZmZjYyMzhiOWJmMDI5OWM4MzUyNDExM2FhMWQ2NjMzZjY1Zjg1ZWQ0Y2MiLCJleHBpcmVzX2F0IjoyMDAsInBpYyI6eyJhcmdzX2RpZ2VzdCI6InNoYTI1NjoyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwiaW50ZW50X2RpZ2VzdCI6InNoYTI1NjoxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwicHJvZmlsZSI6IlBJQy1DSlNPTi8xLjAifSwic2NvcGUiOnsiaW1wYWN0cyI6WyJleHRlcm5hbC1zaWRlLWVmZmVjdCIsImludGVybmFsLXNpZGUtZWZmZWN0Il0sInRvb2xzIjpbInNlbmRfaW52b2ljZSIsImFyY2hpdmVfaW52b2ljZSJdfSwic3VjY2Vzc29yX29ic2VydmF0aW9uX2RpZ2VzdCI6InNoYTI1NjpkMTg3MTU2NzU2MDkwYmJhY2YxOWNlNzFjNGZmMTRhNDY5YzdlODcwZmY3NTBiOGRlOTYxZTExZGRmMzhkNGFlIiwidG9vbF9jYWxsX2RpZ2VzdCI6InNoYTI1NjoxMDZkYTY2MzFmNGFiZmEyNzIzYmE1YjBhNDhjNTUyNjQ1MTRhMjNmOWQ5YjQzZGMwYmI5MjAwZGY2ZTdhMzk1IiwidHJhbnNjcmlwdF9yZXF1aXJlZCI6dHJ1ZX0sInByb2ZpbGUiOiJ0YWc6YWdlbnRydXN0LWlvLmNvbSwyMDI2OnBpYy10cmFjZS1icmlkZ2UtdjEifQ",
+      "canonical_preimage_sha256": "sha256:e43b75f761e129623237663c46ca0076c5fb2849984f20c55e81238478b48582"
+    },
+    "declaration_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJpbXBhY3QiOiJleHRlcm5hbC1zaWRlLWVmZmVjdCIsIm1ldGFkYXRhIjp7ImNoYW5uZWwiOiJlbWFpbCIsInJlZmVyZW5jZSI6IklOVi03In0sInB1cnBvc2UiOiJzZW5kIGludm9pY2UifQ",
+      "canonical_preimage_sha256": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc"
+    },
+    "tool_call_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhcmd1bWVudHMiOnsiaW52b2ljZV9pZCI6IklOVi03Iiwib3B0aW9ucyI6eyJub3RpZnkiOnRydWV9fSwibmFtZSI6InNlbmRfaW52b2ljZSJ9",
+      "canonical_preimage_sha256": "sha256:106da6631f4abfa2723ba5b0a48c55264514a23f9d9b43dc0bb9200df6e7a395"
+    },
+    "successor_observation_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJvYnNlcnZhdGlvbiI6eyJpbnZvaWNlX2lkIjoiSU5WLTciLCJzdGF0dXMiOiJzZW50In0sIm9ic2VydmVkX2F0IjoxNDksIm9ic2VydmVyIjoiaW52b2ljZS1vYnNlcnZlciJ9",
+      "canonical_preimage_sha256": "sha256:d187156756090bbacf19ce71c4ff14a469c7e870ff750b8de961e11ddf38d4ae"
+    }
+  },
+  "coverage": {
+    "rule": null,
+    "variant": "established",
+    "declared_defect": null
+  },
+  "expected": {
+    "case_schema": "valid",
+    "bridge_schema": "valid",
+    "conformant_runtime": {
+      "classification": "accepted",
+      "codes": [],
+      "result": {
+        "authorization_id": "auth-206",
+        "tool": "send_invoice",
+        "impact": "external-side-effect"
+      },
+      "pic_authorization_bound": true,
+      "successor_envelope_bound": true,
+      "successor_outcome": "established",
+      "successor_reason": "successor_predicate_satisfied"
+    }
+  },
+  "successor_policy": {
+    "trusted_observers": [
+      "invoice-observer"
+    ],
+    "executor_id": "invoice-executor",
+    "independence_required": true,
+    "max_age_seconds": 10,
+    "predicate": "invoice-sent-v1"
+  }
+}

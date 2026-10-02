@@ -1,0 +1,293 @@
+{
+  "profile": "trace.pic-trace-bridge.reason-codes.v1",
+  "classifications": [
+    "accepted",
+    "invalid",
+    "denied",
+    "mismatch"
+  ],
+  "phases": [
+    "bridge",
+    "authorization",
+    "signature",
+    "decision",
+    "time",
+    "scope",
+    "execution",
+    "pic",
+    "digest",
+    "transcript"
+  ],
+  "rules": [
+    {
+      "code": "bridge_not_object",
+      "classification": "invalid",
+      "phase": "bridge",
+      "description": "Bridge root is not an object."
+    },
+    {
+      "code": "bridge_unknown_fields",
+      "classification": "invalid",
+      "phase": "bridge",
+      "description": "Bridge root contains one or more unknown fields."
+    },
+    {
+      "code": "bridge_profile_invalid",
+      "classification": "invalid",
+      "phase": "bridge",
+      "description": "Required bridge profile is missing or not the v1 profile."
+    },
+    {
+      "code": "signature_representation_invalid",
+      "classification": "invalid",
+      "phase": "signature",
+      "description": "Signature is missing, non-string, or rejected by base64url decoding. This does not claim all schema-invalid encodings are rejected."
+    },
+    {
+      "code": "authorization_not_object",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "Authorization is missing or not an object. Canonical signing material is non-applicable."
+    },
+    {
+      "code": "authorization_unknown_fields",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "Authorization contains one or more unknown fields."
+    },
+    {
+      "code": "authorization_fields_missing",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "Authorization object lacks one or more required fields."
+    },
+    {
+      "code": "authorization_id_invalid",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "`authorization_id` is empty or not a string."
+    },
+    {
+      "code": "authorizer_invalid",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "`authorizer` is empty or not a string."
+    },
+    {
+      "code": "authorizer_key_id_invalid",
+      "classification": "invalid",
+      "phase": "authorization",
+      "description": "Signed `authorizer_key_id` is empty or not a string."
+    },
+    {
+      "code": "authorization_unverifiable",
+      "classification": "invalid",
+      "phase": "signature",
+      "description": "The broad post-decode signal: tamper, wrong trusted key, malformed JWK, invalid decoded signature length, or authorization-preimage canonicalization failure. These causes cannot be separated by the reference result, and the name does not imply Ed25519 verification necessarily began."
+    },
+    {
+      "code": "authorizer_key_id_mismatch",
+      "classification": "invalid",
+      "phase": "signature",
+      "description": "A cryptographically valid authorization names a key ID absent from or unequal to the trusted JWK's `kid`."
+    },
+    {
+      "code": "authorized_at_invalid",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "`authorized_at` has an invalid runtime type or is negative; type/boolean/negative subcases stay grouped."
+    },
+    {
+      "code": "expires_at_invalid",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "`expires_at` has an invalid runtime type or is negative; type/boolean/negative subcases stay grouped."
+    },
+    {
+      "code": "verification_time_invalid",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "Supplied verification time is not a non-negative runtime integer."
+    },
+    {
+      "code": "authorization_not_yet_valid",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "Verification time is before `authorized_at`."
+    },
+    {
+      "code": "authorization_window_invalid",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "`expires_at <= authorized_at`, after the not-yet-valid check has passed."
+    },
+    {
+      "code": "authorization_expired",
+      "classification": "invalid",
+      "phase": "time",
+      "description": "Verification time is at or after `expires_at` for a correctly ordered window."
+    },
+    {
+      "code": "scope_not_object",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Signed scope is missing or not an object."
+    },
+    {
+      "code": "scope_unknown_fields",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Signed scope contains one or more unknown fields."
+    },
+    {
+      "code": "scope_tools_invalid",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Tools value is missing, wrong-type, empty, or contains a non-string/empty item. Empty-list and empty-item cases intentionally share this code."
+    },
+    {
+      "code": "scope_tools_duplicate",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Tools list contains duplicates."
+    },
+    {
+      "code": "scope_impacts_invalid",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Impacts value is missing, wrong-type, empty, or contains a non-string/empty item. Empty-list and empty-item cases intentionally share this code."
+    },
+    {
+      "code": "scope_impacts_duplicate",
+      "classification": "invalid",
+      "phase": "scope",
+      "description": "Impacts list contains duplicates."
+    },
+    {
+      "code": "tool_call_not_object",
+      "classification": "invalid",
+      "phase": "execution",
+      "description": "Runtime tool call is not an object."
+    },
+    {
+      "code": "declaration_not_object",
+      "classification": "invalid",
+      "phase": "execution",
+      "description": "Runtime declaration is not an object."
+    },
+    {
+      "code": "pic_not_object",
+      "classification": "invalid",
+      "phase": "pic",
+      "description": "Signed PIC block is missing or not an object."
+    },
+    {
+      "code": "pic_unknown_fields",
+      "classification": "invalid",
+      "phase": "pic",
+      "description": "Signed PIC block contains one or more unknown fields."
+    },
+    {
+      "code": "pic_profile_invalid",
+      "classification": "invalid",
+      "phase": "pic",
+      "description": "PIC profile is missing or not `PIC-CJSON/1.0`."
+    },
+    {
+      "code": "pic_intent_digest_invalid",
+      "classification": "invalid",
+      "phase": "pic",
+      "description": "Signed or PIC-verifier-supplied intent digest has invalid SHA-256 syntax. Provenance remains visible in the separate bridge-schema/input assertions."
+    },
+    {
+      "code": "pic_args_digest_invalid",
+      "classification": "invalid",
+      "phase": "pic",
+      "description": "Signed or PIC-verifier-supplied args digest has invalid SHA-256 syntax. Provenance remains visible in the separate bridge-schema/input assertions."
+    },
+    {
+      "code": "execution_input_not_jcs",
+      "classification": "invalid",
+      "phase": "digest",
+      "description": "Declaration or tool call cannot be canonicalized by RFC 8785. The raw reference exception does not identify which object failed, so the locations stay grouped."
+    },
+    {
+      "code": "declaration_digest_invalid",
+      "classification": "invalid",
+      "phase": "digest",
+      "description": "Signed declaration digest has invalid SHA-256 syntax."
+    },
+    {
+      "code": "tool_call_digest_invalid",
+      "classification": "invalid",
+      "phase": "digest",
+      "description": "Signed tool-call digest has invalid SHA-256 syntax."
+    },
+    {
+      "code": "transcript_requirement_invalid",
+      "classification": "invalid",
+      "phase": "transcript",
+      "description": "Signed `transcript_required` is not boolean."
+    },
+    {
+      "code": "decision_not_allow",
+      "classification": "denied",
+      "phase": "decision",
+      "description": "Signed decision is anything other than exact `allow`. Schema-valid `deny` and a schema-invalid unknown verb intentionally share the runtime code while retaining different bridge-schema assertions."
+    },
+    {
+      "code": "tool_outside_scope",
+      "classification": "mismatch",
+      "phase": "scope",
+      "description": "Runtime tool name is missing from signed `scope.tools`."
+    },
+    {
+      "code": "impact_outside_scope",
+      "classification": "mismatch",
+      "phase": "scope",
+      "description": "Declaration impact is missing from signed `scope.impacts`."
+    },
+    {
+      "code": "pic_intent_digest_mismatch",
+      "classification": "mismatch",
+      "phase": "pic",
+      "description": "Valid PIC intent digests differ."
+    },
+    {
+      "code": "pic_args_digest_mismatch",
+      "classification": "mismatch",
+      "phase": "pic",
+      "description": "Valid PIC args digests differ."
+    },
+    {
+      "code": "declaration_digest_mismatch",
+      "classification": "mismatch",
+      "phase": "digest",
+      "description": "Computed declaration digest differs from the valid signed digest."
+    },
+    {
+      "code": "tool_call_digest_mismatch",
+      "classification": "mismatch",
+      "phase": "digest",
+      "description": "Computed tool-call digest differs from the valid signed digest."
+    },
+    {
+      "code": "transcript_incomplete",
+      "classification": "mismatch",
+      "phase": "transcript",
+      "description": "Transcript is absent, not an object, or does not contain exactly `before` and `after`."
+    },
+    {
+      "code": "transcript_before_mismatch",
+      "classification": "mismatch",
+      "phase": "transcript",
+      "description": "`before` is invalid or its tool call differs from the runtime call."
+    },
+    {
+      "code": "transcript_after_invalid",
+      "classification": "mismatch",
+      "phase": "transcript",
+      "description": "`after` is not an object. No result members beyond object shape are invented."
+    }
+  ]
+}
