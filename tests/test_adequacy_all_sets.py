@@ -265,6 +265,11 @@ MEASURED_ELSEWHERE = {
     "citation-resolution": "tests/test_citation_resolution.py, which compares the "
                            "citations mapping of every vector against its expected "
                            "block and holds the invariants I1 to I11",
+    # Not loadable here, for the reason given for citation-resolution: every vector
+    # verifies, and the outcome is what the appraiser reported, not accept/reject.
+    "platform-measurement": "tests/test_platform_measurement.py, which compares the "
+                            "platform_measurement field of every vector against its "
+                            "expected block and holds the invariants P1 to P11",
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
     # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,

@@ -1,0 +1,104 @@
+{
+  "id": "TRACE-PMEAS-016",
+  "name": "dev-measured-not-appraised",
+  "description": "Real measurement: a cold-start quote over PCR 0 to 12 from a development image. Four IMA entries in PCR 11 and 12 replay to the quoted values; the IMA policy that leaves them unappraised is not measured into the log, so the appraiser reports measured_not_appraised. Only layers the appraiser reported are carried. The board resets its TPM before measuring, so it does not produce evidence_spans_multiple_boots; that cause is exercised by the synthetic 013.",
+  "spec": "https://github.com/agentrust-io/trace-spec/issues/279",
+  "source": "https://github.com/revenue7-eng/tactiq-os/blob/main/measurements/tpm-quotes-dev-20261002.md (cold.* files and check.py beside it)",
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+    },
+    "appraisals": {
+      "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746": {
+        "measurement": "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746",
+        "layers": {
+          "pcr:2": "layer_not_measured",
+          "pcr:3": "layer_not_measured",
+          "pcr:5": "layer_not_measured",
+          "pcr:7": "layer_not_measured",
+          "pcr:11": "measured_not_appraised",
+          "pcr:12": "measured_not_appraised"
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/measured",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "tpm2",
+        "measurement": "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+        }
+      },
+      "signature": "yl3qfliq6q88G-aAD8vE1MDf9CPAX1p4mImSXuC2sxvMLZc7etZ3tKm8HEDoY3i-ZAMvQdtjtO2UnVBzNWHkDw"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "platform_measurement": {
+      "outcome": "appraised",
+      "cause": null,
+      "evidence": {
+        "measurement": "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746",
+        "layers": 6
+      },
+      "layers": {
+        "pcr:2": {
+          "outcome": "not_established",
+          "cause": "layer_not_measured"
+        },
+        "pcr:3": {
+          "outcome": "not_established",
+          "cause": "layer_not_measured"
+        },
+        "pcr:5": {
+          "outcome": "not_established",
+          "cause": "layer_not_measured"
+        },
+        "pcr:7": {
+          "outcome": "not_established",
+          "cause": "layer_not_measured"
+        },
+        "pcr:11": {
+          "outcome": "not_established",
+          "cause": "measured_not_appraised"
+        },
+        "pcr:12": {
+          "outcome": "not_established",
+          "cause": "measured_not_appraised"
+        }
+      }
+    }
+  }
+}
