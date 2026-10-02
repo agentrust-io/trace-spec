@@ -1,9 +1,8 @@
 name: Review bar
 
-# Approximates the two checks "Before a pull request is reviewed" in
-# CONTRIBUTING.md asks a library fix to describe: the changed tests against the
-# merge base, and small mutants of the added src/ lines against the changed
-# tests. The result goes in the job summary. The step that runs it never fails,
+# Approximates the check "Before a pull request is reviewed" in CONTRIBUTING.md
+# asks a library fix to describe, by running the changed tests against the merge
+# base. The result goes in the job summary. The step that runs it never fails,
 # and it writes nothing to the pull request, so it needs no write token and does
 # not run the code under pull_request_target. The tests and conftest it runs
 # come from the pull request, and so can this file, so its report is evidence

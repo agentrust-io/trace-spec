@@ -1,12 +1,10 @@
 """tools/review_bar.py on a two-commit repository built here.
 
-The head commit adds a refusal (``x > 100``), a new function, a new module, a
-data file and a conftest fixture, tightens a range check whose ``and`` sits on
-an unchanged line, and brings tests of each kind: one that fails on the base for
-behaviour, ones that fail there only because something the change adds is
-missing, one that needs the new fixture, and one that fails on the head itself.
-Its tests check 1000 but not 100, so weakening ``>`` to ``>=`` is a fix they
-cannot tell apart, and the report has to say so.
+The head commit adds a refusal (``x > 100``), a new function, two new modules, a
+data file and a conftest fixture, tightens a range check, and brings tests of
+each kind: ones that fail on the base for behaviour, ones that fail there only
+because something the change adds is missing, one that needs the new fixture,
+one that needs a git checkout, and one that fails on the head itself.
 """
 from __future__ import annotations
 
@@ -102,10 +100,7 @@ NEW_MODULE_TEST = '''from pkg.extra import VALUE
 def test_value():
     assert VALUE == 1
 '''
-MODE_MODULE = '''MODE = "strict"
-if MODE not in ("strict", "lax"):
-    raise ImportError("unknown mode")
-'''
+MODE_MODULE = 'MODE = "strict"\n'
 MODE_TEST = '''from pkg.mode import MODE
 
 
@@ -203,12 +198,6 @@ def test_a_test_path_git_would_quote_is_still_found(tmp_path):
     assert review_bar.changed(tmp_path, base, head) == (["tests/test_été.py"], [])
 
 
-def test_added_lines_are_the_new_refusal_and_function(repo):
-    # Line 6, `return x`, is the base's line 4 moved down, so git does not count it.
-    root, base, head = repo
-    assert review_bar.added_lines(root, base, head, "src/pkg/core.py") == {4, 5, 7, 8, 9, 10}
-
-
 def test_added_names_are_new_definitions_and_new_files(repo):
     # `cap` is added too, and left out: a three-letter name is too common to match on.
     root, base, head = repo
@@ -263,69 +252,11 @@ def test_a_fixture_the_change_adds_in_conftest_travels_with_the_tests(report):
     assert _by_name(report)["test_uses_a_new_fixture"] == "passed"
 
 
-def test_mutants_touch_added_lines_and_untested_boundaries_survive(report):
-    found = {(m.path.rsplit("/", 1)[-1], m.line, m.edit): m.status for m in report.mutants}
-    assert found == {
-        ("core.py", 4, "> becomes >="): "survived",
-        ("core.py", 5, "delete the raise"): "caught",
-        # The `and` starts on line 2, which is unchanged; its right operand is added.
-        ("ranges.py", 2, "and becomes or"): "caught",
-        ("ranges.py", 3, "<= becomes <"): "survived",
-        # Flipping the import-time check makes the module refuse to import, so the
-        # test is no longer collected: caught. Deleting the raise changes nothing
-        # a test can see, because the raise never runs: an equivalent mutant.
-        ("mode.py", 2, "not in becomes in"): "caught",
-        ("mode.py", 3, "delete the raise"): "survived",
-    }
-
-
-def test_the_report_names_the_counts_and_the_survivors(report):
+def test_the_report_names_the_counts_and_nothing_about_other_fixes(report):
     text = report.markdown()
     assert "2 fail on behaviour, 4 fail on a missing name or file, 3 pass or skip." in text
-    assert "so this is the weaker evidence. The mutants below are the stronger." in text
-    assert "6 run: 3 caught by the changed tests, 3 not caught" in text
-    assert "A mutant can also change nothing a test could see" in text
-    assert "`src/pkg/core.py:4:8`: > becomes >=" in text
-    assert "`src/pkg/ranges.py:3:17`: <= becomes <" in text
-
-
-def test_mutants_over_the_limit_are_named_as_not_run(repo):
-    root, base, head = repo
-    report = review_bar.review(root, base, head, max_mutants=1)
-    assert [m.status for m in report.mutants].count("not run") == 5
-    assert "5 not run (over the limit or out of time)" in report.markdown()
-    assert "Not run:" in report.markdown()
-
-
-@pytest.mark.parametrize(
-    ("head_passed", "code", "outcomes", "status"),
-    [
-        ({"a"}, -1, [], "timeout"),
-        ({"a"}, 1, [("a", "behaviour")], "caught"),
-        ({"a"}, 1, [("a", "name")], "caught"),
-        # A test that already failed on the head says nothing about the mutant.
-        ({"a"}, 1, [("a", "passed"), ("b", "behaviour")], "survived"),
-        ({"a"}, 0, [("a", "passed")], "survived"),
-        ({"a"}, 4, [], "unjudged"),
-        # A mutant that breaks an import leaves the head's tests uncollected.
-        ({"tests.test_mod::a", "tests.test_mod::b"}, 2, [("tests.test_mod", "name")], "caught"),
-        # pytest writes the collection error as "collection failure", sorted as behaviour.
-        ({"tests.test_mod.TestA::a"}, 2, [("tests.test_mod", "behaviour")], "caught"),
-        ({"tests.test_mod_b::a"}, 2, [("tests.test_mod", "behaviour")], "survived"),
-        # Ids that change because a parametrize list moved are not a failure.
-        ({"tests.test_mod::a[sgx]"}, 0, [("tests.test_mod::a[software-only]", "passed")],
-         "survived"),
-        ({"tests.test_mod::a[sgx]"}, 1,
-         [("tests.test_mod::a[x]", "passed"), ("tests.test_other", "name")], "survived"),
-        ({"a"}, 0, [("a", "skipped")], "survived"),
-        ({"a"}, 0, [("a", "passed"), ("c", "skipped")], "survived"),
-    ],
-)
-def test_a_mutant_is_caught_only_when_a_test_that_passed_on_the_head_fails(
-    head_passed, code, outcomes, status
-):
-    found = [review_bar.Outcome(t, r) for t, r in outcomes]
-    assert review_bar.judge(head_passed, code, found) == status
+    assert "so read the messages before relying on the sorting." in text
+    assert "utant" not in text
 
 
 @pytest.mark.parametrize(
@@ -366,11 +297,11 @@ def test_with_no_changed_test_file_nothing_runs_and_the_report_says_so(tmp_path)
     base = _commit(tmp_path, {"src/pkg/core.py": BASE_CORE}, "base")
     head = _commit(tmp_path, {"src/pkg/core.py": HEAD_CORE}, "head")
     report = review_bar.review(tmp_path, base, head)
-    assert not report.base_ran and report.mutants == []
+    assert not report.base_ran and report.base_outcomes == []
     assert "No test file under tests/ is added or changed" in report.markdown()
 
 
-def test_a_src_file_that_does_not_parse_is_named_and_does_not_stop_the_report(tmp_path):
+def test_a_src_file_that_does_not_parse_does_not_stop_the_report(tmp_path):
     _init(tmp_path)
     base = _commit(tmp_path, {
         "pyproject.toml": '[tool.pytest.ini_options]\npythonpath = ["src"]\n',
@@ -379,8 +310,8 @@ def test_a_src_file_that_does_not_parse_is_named_and_does_not_stop_the_report(tm
     head = _commit(tmp_path, {
         "src/pkg/broken.py": "def oops(:\n", "tests/test_more.py": "def test_x():\n    pass\n",
     }, "head")
-    text = review_bar.review(tmp_path, base, head).markdown()
-    assert "`src/pkg/broken.py` does not parse on the head (SyntaxError)" in text
+    report = review_bar.review(tmp_path, base, head)
+    assert report.base_ran and [o.result for o in report.base_outcomes] == ["passed"]
 
 
 def test_the_command_line_writes_the_summary_and_never_fails_the_build(repo, tmp_path):
@@ -390,7 +321,8 @@ def test_the_command_line_writes_the_summary_and_never_fails_the_build(repo, tmp
         ["--repo", str(root), "--base", base, "--head", head, "--summary", str(summary)]
     )
     assert code == 0
-    assert "### Mutants on the lines this pull request adds" in summary.read_text()
+    heading = "### Changed tests that pass on the head, run against the merge base"
+    assert heading in summary.read_text()
 
 
 def test_an_error_inside_the_tool_still_writes_a_report_and_exits_zero(tmp_path):
@@ -426,12 +358,6 @@ def test_a_test_run_over_its_time_limit_reports_a_timeout(tmp_path):
     assert review_bar.run_tests(tree, ["tests/test_slow.py"], 2) == (-1, [])
 
 
-def test_past_the_deadline_no_mutant_is_started_and_each_is_named(repo):
-    root, base, head = repo
-    report = review_bar.review(root, base, head, deadline=0)
-    assert report.mutants and all(m.status == "not run" for m in report.mutants)
-
-
 def _small_repo(path: Path) -> tuple[str, str]:
     base = _commit(path, {
         "pyproject.toml": '[tool.pytest.ini_options]\npythonpath = ["src"]\n',
@@ -454,56 +380,82 @@ def test_only_the_worktrees_it_made_are_removed(tmp_path):
     assert str(stale) in listed and len(listed.splitlines()) == 2
 
 
-def test_coloured_git_output_does_not_hide_the_sites(tmp_path):
+def test_changed_files_are_found_with_colour_forced_on(tmp_path):
     _init(tmp_path)
     for key in ("color.ui", "color.diff"):
         subprocess.run(["git", "-C", str(tmp_path), "config", key, "always"], check=True)
     base, head = _small_repo(tmp_path)
+    assert review_bar.changed(tmp_path, base, head) == (["tests/test_core.py"], ["src/pkg/core.py"])
     report = review_bar.review(tmp_path, base, head)
-    assert {m.edit for m in report.mutants} >= {"> becomes >=", "delete the raise"}
-
-
-def test_a_module_that_already_fails_on_the_head_catches_nothing():
-    # tests/test_a.py fails to collect on the head; tests/test_a/test_b.py loses a
-    # parametrize id on the mutant. The old failure is not the mutant's doing.
-    head_passed = {"tests.test_a.test_b::test_v[1]"}
-    outcomes = [review_bar.Outcome("tests.test_a", "behaviour", "collection failure")]
-    assert review_bar.judge(head_passed, 2, outcomes, frozenset({"tests.test_a"})) == "survived"
-    assert review_bar.judge(head_passed, 2, outcomes) == "caught"
-
-
-def test_a_module_failing_on_the_head_does_not_catch_through_a_same_named_directory(tmp_path):
-    # tests/test_a.py fails to import on the head and on every mutant; the mutant only
-    # changes which ids tests/test_a/test_b.py parametrizes over.
-    _init(tmp_path)
-    base = _commit(tmp_path, {
-        "pyproject.toml": '[tool.pytest.ini_options]\npythonpath = ["src"]\n',
-        "src/pkg/__init__.py": "",
-    }, "base")
-    head = _commit(tmp_path, {
-        "src/pkg/vals.py": "VALUES = tuple(v for v in (1, 2, 3) if v != 3)\n",
-        "tests/test_a.py": "import pkg.not_there\n\n\ndef test_x():\n    pass\n",
-        "tests/test_a/test_b.py": (
-            "import pytest\n\nfrom pkg.vals import VALUES\n\n\n"
-            "@pytest.mark.parametrize(\"v\", VALUES)\ndef test_v(v):\n    assert v in (1, 2, 3)\n"
-        ),
-    }, "head")
-    report = review_bar.review(tmp_path, base, head)
-    assert [(m.edit, m.status) for m in report.mutants] == [("!= becomes ==", "survived")]
-
-
-def test_timed_out_and_unjudged_mutants_are_located_with_one_based_columns():
-    report = review_bar.Report("a" * 40, "b" * 40, ["tests/test_core.py"], ["src/pkg/core.py"])
-    report.mutants = [
-        review_bar.Mutant("src/pkg/core.py", 3, 0, "> becomes >=", "timeout"),
-        review_bar.Mutant("src/pkg/core.py", 5, 4, "delete the raise", "unjudged"),
-    ]
-    text = report.markdown()
-    assert "Timed out:" in text and "`src/pkg/core.py:3:1`: > becomes >=" in text
-    assert "Could not be judged:" in text and "`src/pkg/core.py:5:5`: delete the raise" in text
+    assert _by_name(report)["test_too_big_is_refused"] == "behaviour"
 
 
 def test_long_lists_in_the_report_are_capped_with_a_count():
     lines = [f"- {n}" for n in range(30)]
     assert review_bar._capped(lines) == [*lines[:25], "- and 5 more"]
     assert review_bar._capped(lines[:25]) == lines[:25]
+
+
+def test_a_skipped_test_is_not_a_failure():
+    assert not review_bar.Outcome("a", "skipped").failed
+    assert not review_bar.Outcome("a", "passed").failed
+    assert review_bar.Outcome("a", "behaviour").failed and review_bar.Outcome("a", "name").failed
+
+
+def test_a_timeout_on_the_head_stops_before_the_base_run(tmp_path, monkeypatch):
+    _init(tmp_path)
+    base, head = _small_repo(tmp_path)
+    calls = []
+
+    def timed_out(tree, tests, timeout, new_names=frozenset()):
+        calls.append(tree.name)
+        return -1, []
+
+    monkeypatch.setattr(review_bar, "run_tests", timed_out)
+    report = review_bar.review(tmp_path, base, head, timeout=5)
+    assert calls == ["head"] and not report.base_ran
+    assert "timed out on the head after 5 s" in report.markdown()
+
+
+def _fake_runs(monkeypatch, head, base):
+    calls = []
+
+    def run(tree, tests, timeout, new_names=frozenset()):
+        calls.append(tree.name)
+        found = head if tree.name == "head" else base
+        return found if isinstance(found, tuple) else (0, found)
+
+    monkeypatch.setattr(review_bar, "run_tests", run)
+    return calls
+
+
+def test_a_test_skipped_on_the_head_is_left_out_of_the_base_section(tmp_path, monkeypatch):
+    _init(tmp_path)
+    base, head = _small_repo(tmp_path)
+    Outcome = review_bar.Outcome
+    _fake_runs(monkeypatch, [Outcome("t::a", "passed"), Outcome("t::b", "skipped")],
+               [Outcome("t::a", "behaviour"), Outcome("t::b", "behaviour")])
+    report = review_bar.review(tmp_path, base, head)
+    assert [o.test for o in report.base_outcomes] == ["t::a"]
+
+
+def test_with_no_changed_test_passing_on_the_head_the_base_is_not_run(tmp_path, monkeypatch):
+    _init(tmp_path)
+    base, head = _small_repo(tmp_path)
+    calls = _fake_runs(monkeypatch, (2, []), [])
+    report = review_bar.review(tmp_path, base, head)
+    assert calls == ["head"] and not report.base_ran
+    assert "No changed test passes on the head (pytest exited 2)" in report.markdown()
+    # Tests that ran and all failed on the head are the same case.
+    calls = _fake_runs(monkeypatch, [review_bar.Outcome("t::a", "behaviour")], [])
+    report = review_bar.review(tmp_path, base, head)
+    assert calls == ["head"] and not report.base_ran
+
+
+def test_a_timeout_on_the_base_is_reported_and_not_read_as_a_result(tmp_path, monkeypatch):
+    _init(tmp_path)
+    base, head = _small_repo(tmp_path)
+    _fake_runs(monkeypatch, [review_bar.Outcome("t::a", "passed")], (-1, []))
+    report = review_bar.review(tmp_path, base, head, timeout=7)
+    assert not report.base_ran and report.base_outcomes == []
+    assert "The base run timed out after 7 s." in report.markdown()
