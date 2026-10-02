@@ -98,6 +98,12 @@ post-execution successor artifact, together with `authorization_id`, `observer`,
 `observer_key_id`, and `observed_at`. The verifier checks the successor signature,
 the exact authorization identifier, and the digest against the separately supplied
 envelope. The signed observer and observation time must also match the envelope.
+The verifier is given the trusted observer key together with the observer identity
+that key belongs to, and the signed observer must equal that identity. The identity
+comes from the verifier's own key configuration, never from the artifact or the
+envelope, which the signer wrote. The trust and independence policy below decides on
+the observer's name, so a key accepted for one observer must not be able to sign under
+another observer's name.
 
 The binding therefore covers the observation content, observer identity, and
 observation timestamp together without requiring any of them to exist before
@@ -116,8 +122,9 @@ The successor-evaluation surface has three evidence outcomes:
 - `not-established`: the available evidence is absent or insufficient to justify
   either conclusion.
 
-Malformed successor artifacts, invalid observer signatures, authorization-id mismatches,
-and exact-envelope binding failures are refusals, not a fourth evidence outcome. The
+Malformed successor artifacts, invalid observer signatures, observer names that are not
+the trusted key's identity, authorization-id mismatches, and exact-envelope binding
+failures are refusals, not a fourth evidence outcome. The
 pre-execution bridge does not require an `after` object and therefore can be verified
 before successor evidence exists. At the separate successor-evaluation surface, absence
 remains `not-established` and never becomes a positive conclusion.

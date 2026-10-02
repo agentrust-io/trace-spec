@@ -878,6 +878,20 @@ def test_jcs_distinguishes_unicode_key_order_from_json_dumps():
     assert jcs != jdump
 
 
+@pytest.mark.parametrize(
+    "value",
+    [{"a\udeff": 1, "b": 2}, {"outer": {"x\ud800": 1, "y": 2}}, {"\ud83d\ude00": 1, "b": 2}],
+    ids=["lone", "nested", "pair-as-two-code-points"],
+)
+def test_a_surrogate_in_an_object_key_is_refused_as_canonicalization_error(value):
+    """A surrogate code point in a value is refused by rfc8785 itself. In a key, the UTF-16
+    key sort reaches it first and raised UnicodeEncodeError, which the callers that catch
+    `rfc8785.CanonicalizationError` to raise their own error let through. The fuzz target
+    for the intent bridge found it through `sign_bridge`."""
+    with pytest.raises(rfc8785.CanonicalizationError, match="surrogate code point"):
+        _canonical_bytes(value)
+
+
 def test_round_trip_with_non_ascii_payload():
     """End-to-end: signing and verifying a record carrying non-ASCII data."""
     key = generate_key()

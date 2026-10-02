@@ -291,10 +291,20 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
         raise _NestingTooDeep(
             "value nests too deeply to canonicalize; no RFC 8785 form can be computed"
         ) from None
+    except UnicodeEncodeError:
+        # rfc8785 refuses a surrogate code point in a value itself. In an object key it
+        # is reached first by the UTF-16 key sort, which raises UnicodeEncodeError instead.
+        raise _KeyNotUnicode(
+            "an object key contains a surrogate code point; no RFC 8785 form can be computed"
+        ) from None
 
 
 class _NestingTooDeep(rfc8785.CanonicalizationError):
     """A value nests past what the canonicalizer can walk on the interpreter stack."""
+
+
+class _KeyNotUnicode(rfc8785.CanonicalizationError):
+    """An object key holding a surrogate code point, which JCS cannot sort by UTF-16 code unit."""
 
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
