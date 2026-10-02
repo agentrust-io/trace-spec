@@ -224,9 +224,10 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
         lambda: {
             "artifact": _SUCCESSOR,
             "trusted_observer_jwk": {**_OBSERVER_JWK, "kid": "observer-key-1"},
+            "trusted_observer": "observer-1",
             "authorization_id": "auth-1", "after": _SUCCESSOR_AFTER,
         },
-        ("artifact", "trusted_observer_jwk", "authorization_id", "after"),
+        ("artifact", "trusted_observer_jwk", "trusted_observer", "authorization_id", "after"),
     ),
     "intent_bridge.verify_bridge": (
         lambda: {"bridge": _BRIDGE, "trusted_authorizer_jwk": {**_JWK, "kid": "key-1"},
