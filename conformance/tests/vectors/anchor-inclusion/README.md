@@ -2,7 +2,7 @@
 
 Addresses trace-spec#448 row 22: portable TR-ANC-002 examples beyond single-leaf
 ASCII receipts. The normative source is
-[Registry Anchor Format v1 §§0–3 and 5.1](https://github.com/agentrust-io/trace-spec/blob/4d60e4a775c7e71804d827bed5e7b861e88d45bc/spec/registry-anchor-v1.md).
+[Registry Anchor Format v1 §§0 to 3 and 5.1](https://github.com/agentrust-io/trace-spec/blob/4d60e4a775c7e71804d827bed5e7b861e88d45bc/spec/registry-anchor-v1.md).
 
 Each numbered JSON file supplies `claim`, `receipt`, and `expected.tr_anc_002`.
 The receipt combines the proof's index/path with the entry's count/root, as
