@@ -263,6 +263,25 @@ def test_successor_with_another_profile_is_rejected() -> None:
         )
 
 
+def test_sign_bridge_refuses_a_surrogate_in_a_key_with_its_own_error() -> None:
+    # Found by the intent-bridge fuzz target: the key sort inside rfc8785 raised
+    # UnicodeEncodeError, which reached the caller instead of IntentBridgeError.
+    with pytest.raises(IntentBridgeError, match="no RFC 8785 canonical form"):
+        sign_bridge({"a\udeff": 1, "b": 2}, Ed25519PrivateKey.generate())
+
+
+def test_verify_bridge_refuses_a_surrogate_in_a_tool_call_key_with_its_own_error() -> None:
+    # The verifier side of the same escape: the tool call is the caller's untrusted input.
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    with pytest.raises(IntentBridgeError, match="no RFC 8785 canonical form"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args,
+            tool_call={**tool_call, "arguments": {"x\udeff": 1, "b": 2}},
+            transcript=transcript, now=150,
+        )
+
+
 def test_successor_envelope_rejects_unknown_fields_before_signing() -> None:
     observer_key = Ed25519PrivateKey.generate()
     after = _after()

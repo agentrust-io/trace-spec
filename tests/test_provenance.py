@@ -1073,3 +1073,12 @@ def test_attestation_shape_constraints(consumer, field, bad_value) -> None:
     consume(attestation)
     with pytest.raises(ProvenanceError, match=field):
         consume({**attestation, field: bad_value})
+
+
+def test_a_surrogate_in_a_record_key_is_refused_by_the_verifier_not_a_crash() -> None:
+    """The key sort inside rfc8785 raised UnicodeEncodeError for a surrogate code point in
+    an object key, and `verify_record` catches `rfc8785.CanonicalizationError` only, so an
+    adversarial record left it as that error instead of `ProvenanceError`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form"):
+        verify_record({**record, "x\udeff": 1}, jwk)

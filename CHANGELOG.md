@@ -11,6 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError`
+  (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the
+  UTF-16 key sort reaches it first and raised `UnicodeEncodeError`. The three places that catch
+  `CanonicalizationError` to raise their own error, the intent bridge's `_jcs` and
+  `provenance.sign_record` and `verify_record`, let it through: `sign_bridge` and `verify_bridge`
+  (a key in `tool_call.arguments`, say) raised it instead of `IntentBridgeError`, and the two
+  provenance functions instead of `ProvenanceError`. The canonicalizer now reports it as a
+  `CanonicalizationError` subclass, as it already does for nesting too deep to walk. No schema
+  or wire-format change.
+
 - **`verify_successor_artifact` binds the observer's name to the observer key (#451, following #432).**
   It now takes `trusted_observer`, the identity `trusted_observer_jwk` belongs to, and
   refuses a successor whose signed `observer` is anything else. Before this, any key the
