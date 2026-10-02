@@ -321,7 +321,7 @@ One optional member of the result, carried on any outcome, lets results that dis
 
 The second row is the only one that accuses, and it accuses on absence. The record cannot distinguish a tampering producer from a cause nobody has thought of yet, so the row states what was not found rather than what was done.
 
-**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal attributed to the party that re-ran the function, with that party as `appraisal.verifier`. In a record signed only by its producer, that attribution is the producer's report: the signature establishes that the producer states the named verifier reached the result, not that the verifier did. A result meant to carry independent-verifier weight needs evidence the verifier signed itself (#446). It is carried under an appraisal method discriminator, with the outcome scoped under the method:
+**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal attributed to the party that re-ran the function, with that party as `appraisal.verifier`. In a record signed only by its producer, that attribution is the producer's report: the signature establishes that the producer states the named verifier reached the result, not that the verifier did. A result meant to carry independent-verifier weight needs evidence the verifier signed itself (#446). The re-execution result is carried under an appraisal method discriminator, with the outcome scoped under the method:
 
 | Field | Required | Meaning |
 |---|---|---|

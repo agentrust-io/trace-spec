@@ -508,7 +508,7 @@
         "verifier": {
           "type": "string",
           "format": "uri",
-          "description": "URI identifying the verifier that produced this appraisal."
+          "description": "URI identifying the verifier the record names for this appraisal. In a record signed only by its producer this is the producer's claim, not authenticated by that verifier."
         },
         "policy_ref": {
           "type": "string",
@@ -539,7 +539,7 @@
         },
         "re_execution": {
           "type": "object",
-          "description": "The re-execution result, attributed to the party that re-ran the function and named as appraisal.verifier. In a producer-signed record this attribution is the producer's report, not authenticated by the verifier. Spec section 3.1.4. Present exactly when method is re-execution.",
+          "description": "The re-execution result, attributed to the party that re-ran the function and named as appraisal.verifier. In a record signed only by its producer this attribution is the producer's report, not authenticated by the verifier. Spec section 3.1.4. Present exactly when method is re-execution.",
           "required": [
             "outcome"
           ],
