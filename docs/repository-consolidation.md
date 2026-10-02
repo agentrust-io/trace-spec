@@ -33,3 +33,19 @@ python -m pytest -v --tb=short
 3. Configure a trusted PyPI publisher for the existing package from trace-spec with a separate workflow and release policy. Root library tags must not release the conformance package accidentally. Verify a release from the new publisher before retiring the original release workflow.
 4. Move the tests.agentrust-io.com deployment to a host supporting a second site from this repository, or a dedicated deployment repository. A second gh-deploy in trace-spec would overwrite the specification site, so this PR only builds the tests documentation. Keep the existing source deployment active until the replacement is verified.
 5. Add a moved notice to the original README and archive trace-tests only after the consumer, release and site cutovers. Retain its Git history, releases and issues; never delete the repository.
+
+## Prepared publisher handover
+
+`conformance-publish.yml` reuses the installed-artifact package build. Its manual default only builds. Root library release tags are ignored; conformance releases use `conformance-v<package-version>` and must match `conformance/pyproject.toml`. Publication is disabled unless its explicit repository variable is `true`.
+
+Before enabling either publisher:
+
+1. Configure the existing `agentrust-trace-tests` project with repository `agentrust-io/trace-spec`, workflow `conformance-publish.yml`, and the matching environment: `conformance-testpypi` or `conformance-pypi`.
+2. Configure independent environment approval and verify two available package owners/release operators. Louie and Rajnish are the proposed operators; their package access is not yet verified.
+3. Set `CONFORMANCE_TESTPYPI_ENABLED=true` only after its TestPyPI binding and approvals are ready. Run the manual TestPyPI target and verify the installed artifact.
+4. Enable `CONFORMANCE_PYPI_ENABLED=true` only after the production binding and approval requirements are verified. Publish an approved, previously unpublished conformance version; do not republish an existing version or bump versions solely for migration.
+5. Link the successful production run and installed-package verification before retiring the old publisher.
+
+The workflow is prepared, not evidence that a trusted publisher or environment has been configured. Keep the original release path active until verification.
+
+For documentation, use a host supporting a separate project/site from the same repository, with `conformance/` as its project root. Existing `conformance-docs.yml` builds the site artifact. Verify the separate deployment and custom domain before changing DNS or retiring the original site. Do not deploy that artifact to the specification's GitHub Pages site.

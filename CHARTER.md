@@ -18,7 +18,7 @@ The project includes:
 
 - **The TRACE Specification**: normative text defining the Trust Record schema, wire format, signing and key management protocol, verification rules, hardware root profiles, and conformance requirements.
 - **JSON Schema**: machine-readable schema for Trust Record validation.
-- **Conformance test suite**: the canonical tests validating compliance (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+- **Conformance test suite**: the canonical tests validating compliance (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 - **Vendor platform annexes**: informative, vendor-co-authored claim-mapping documents for each silicon and cloud attestation surface.
 - **Reference examples**: example Trust Records for each supported hardware platform.
 
@@ -55,7 +55,7 @@ Use of "TRACE-conformant" to describe an implementation is permitted only when t
 
 ## 6. Conformance
 
-An implementation may claim TRACE conformance only by passing the conformance test suite in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
+An implementation may claim TRACE conformance only by passing the conformance test suite in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
 
 Test suite changes that would invalidate previously conformant implementations require a spec version increment.
 
