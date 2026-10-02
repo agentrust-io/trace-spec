@@ -107,6 +107,7 @@ plugins:
           - docs/rfcs/runtime-evidence-profile.md
           - docs/rfcs/verifier-issued-trace-profile.md
           - docs/rfcs/composite-component-appraisal.md
+          - docs/rfcs/tool-catalog-observed-digest.md
         Guides:
           - docs/tutorials/signing-your-first-trust-record.md
           - docs/tutorials/verifying-a-trust-record.md
@@ -237,6 +238,7 @@ nav:
           - Runtime evidence and verifier grades: docs/rfcs/runtime-evidence-profile.md
           - Verifier-issued, holder-bound token: docs/rfcs/verifier-issued-trace-profile.md
           - Composite component appraisal: docs/rfcs/composite-component-appraisal.md
+          - Tool-catalog observed digest: docs/rfcs/tool-catalog-observed-digest.md
       - Crosswalks:
           - OWASP Agentic Top 10: docs/crosswalks/owasp-agentic-top-10.md
           - MITRE ATLAS: docs/crosswalks/mitre-atlas.md
