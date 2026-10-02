@@ -41,20 +41,15 @@ run for a first-time contributor after reading the diff, or the reviewer asks
 the author to resolve the merge conflict that is stopping it.
 
 A pull request that changes code or a schema to fix a bug, or to make it reject
-input it used to accept, also shows in its description:
-
-- a test that fails when the change is switched off, keeping any names it
-  adds, so that it fails on the bug or on the input now rejected and not on a
-  missing name. Where the change adds more than one rejection, give one test
-  for each, each failing when that rejection is switched off. If no test can
-  observe the change, say so and why.
-- one other fix a reviewer might write instead, run against the tests, and the
-  result: for example the same check written with a weaker comparison. If the
-  tests cannot tell it apart from yours, say so. If no other fix is worth
-  running, say why in a sentence.
+input it used to accept, also shows in its description a test that fails when
+the change is switched off, keeping any names it adds, so that it fails on the
+bug or on the input now rejected and not on a missing name. Where the change
+adds more than one rejection, give one test for each, each failing when that
+rejection is switched off. If no test can observe the change, say so and why.
+A reviewer who suspects a simpler fix can propose one in review.
 
 A reason that does not hold counts as missing. Where the pull request's own
-change makes the jobs fail, or an item is missing, the reviewer's first review
+change makes the jobs fail, or a test is missing, the reviewer's first review
 asks for what is missing and points here, and goes no further until it is
 there. This applies to every author. Pull requests already open when this
 section was added are reviewed as before.

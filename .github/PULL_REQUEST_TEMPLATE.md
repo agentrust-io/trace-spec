@@ -22,10 +22,9 @@ found in the description and diff, and what you changed because of it. See
 
 <!-- For a change to code or a schema that fixes a bug or makes it reject input
 it used to accept. Write below this comment: a test that fails when the change
-is switched off, keeping any names it adds (one for each rejection added), and
-one other fix run against the tests with the result, or why either cannot be
-given. See "Before a pull request is reviewed" in CONTRIBUTING.md. Otherwise
-write "Not a code or schema fix". -->
+is switched off, keeping any names it adds (one for each rejection added), or
+why it cannot be given. See "Before a pull request is reviewed" in
+CONTRIBUTING.md. Otherwise write "Not a code or schema fix". -->
 
 ## Checklist
 
