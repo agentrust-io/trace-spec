@@ -17,9 +17,15 @@ The changed test files, with any other file the change adds or edits under
 was. This switches off the whole change, names included, so it approximates the
 check rather than running it. Each failure is sorted by its message: behaviour
 (an assertion, ``pytest.raises`` not raising, a wrong exception), or a name,
-module or file the change adds (an import error, an unexpected keyword, a
-collection failure, or a message naming something the change defines or adds).
-The sorting can be wrong both ways.
+module or file the change adds (an import error, an unexpected keyword, or a
+message naming something the change defines or adds). A test whose file the base
+cannot collect is sorted by the error pytest records for that file, so a file
+that fails to import a new module counts as a name and one that fails an
+assertion while it loads counts as behaviour. A test the base does not generate
+for another reason, such as a parametrize id built from a value the change adds,
+counts as a name. If the base run writes no results at all, as when a
+``conftest.py`` fails to load, the report says so and sorts nothing. The sorting
+can be wrong both ways.
 
 The tests and ``conftest.py`` come from the pull request, and so does the
 workflow file that decides which copy of this tool runs, so a pull request can
@@ -173,12 +179,29 @@ def added_names(repo: Path, base: str, head: str, src: list[str]) -> set[str]:
 @dataclass
 class Outcome:
     test: str
-    result: str  # passed, skipped, behaviour, name
+    result: str  # passed, skipped, behaviour, name, or error for a run with no results
     detail: str = ""
 
     @property
     def failed(self) -> bool:
         return self.result in ("behaviour", "name")
+
+
+# The test id of the one outcome a run reports when pytest wrote no results at all, as
+# when a conftest.py fails to load. Its detail is the error pytest printed.
+NO_RESULTS = ""
+
+
+def _cause(text: str) -> str:
+    """The first line of the last block of ``E`` lines in a pytest error text."""
+    lines = [line[1:].strip() if line.startswith("E ") else None for line in text.splitlines()]
+    end = max((i for i, line in enumerate(lines) if line is not None), default=-1)
+    if end < 0:
+        return ""
+    start = end
+    while start > 0 and lines[start - 1] is not None:
+        start -= 1
+    return lines[start] or ""
 
 
 def run_tests(
@@ -187,11 +210,12 @@ def run_tests(
     """Run *tests* in *tree*; return pytest's exit code and each test's outcome."""
     junit = tree / ".review-bar-junit.xml"
     env = {k: v for k, v in os.environ.items() if k not in WITHHELD}
-    env.update(PYTHONPATH=str(tree / "src"), PYTHONDONTWRITEBYTECODE="1")
+    # PY_COLORS=0 keeps colour codes out of the error text, which FORCE_COLOR would add.
+    env.update(PYTHONPATH=str(tree / "src"), PYTHONDONTWRITEBYTECODE="1", PY_COLORS="0")
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
-             "-o", "addopts=", "--continue-on-collection-errors",
+             "-o", "addopts=", "--tb=short", "--continue-on-collection-errors",
              f"--junitxml={junit}", *tests],
             cwd=tree, env=env, capture_output=True, text=True, timeout=timeout,
         )
@@ -207,6 +231,9 @@ def run_tests(
                 bad = case.find("error")
             if bad is not None:
                 message = bad.get("message") or ""
+                if message == "collection failure":
+                    # pytest writes the cause of a collection error in the text, not the message.
+                    message = _cause(bad.text or "") or message
                 kind = "name" if missing_name(message, new_names) else "behaviour"
                 first = message.splitlines()[:1]
                 outcomes.append(Outcome(name, kind, first[0][:160] if first else ""))
@@ -215,6 +242,8 @@ def run_tests(
             else:
                 outcomes.append(Outcome(name, "passed"))
         junit.unlink()
+    else:
+        outcomes.append(Outcome(NO_RESULTS, "error", _cause(proc.stdout + proc.stderr)[:160]))
     return proc.returncode, outcomes
 
 
@@ -295,9 +324,11 @@ def _run(
                 + (" and more." if len(failing) > 10 else ".")
             )
         if not passed:
+            printed = [o.detail for o in head_outcomes if o.test == NO_RESULTS and o.detail]
             report.notes.append(
                 f"No changed test passes on the head (pytest exited {code}), so the base run"
                 " was not started."
+                + (f" pytest printed `{printed[0].replace('`', chr(39))}`." if printed else "")
             )
             return
         before = Path(tmp) / "base"
@@ -307,17 +338,40 @@ def _run(
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(show(repo, head, path))
         code, base_outcomes = run_tests(before, tests, timeout, names)
+        lost = [o.detail for o in base_outcomes if o.test == NO_RESULTS]
         if code == -1:
             report.notes.append(f"The base run timed out after {timeout} s.")
+        elif lost:
+            # pytest wrote no results, as when a conftest.py fails to load: no test was
+            # sorted, so nothing below would mean anything.
+            report.notes.append(
+                f"The base run wrote no test results (pytest exited {code}), so it is not read"
+                " as a result" + (f": `{lost[0].replace('`', chr(39))}`." if lost[0] else ".")
+            )
         else:
             report.base_ran = True
             # A test that passes on the head but has no outcome on the base was not
-            # collected there: its file needs something the change adds.
+            # collected there. Its file's collection error says why, when there is one.
             by_test = {o.test: o for o in base_outcomes}
+            files = {o.test: o for o in base_outcomes if o.failed and "::" not in o.test}
             report.base_outcomes = [
-                by_test.get(t, Outcome(t, "name", "not collected on the base"))
-                for t in sorted(passed)
+                by_test.get(t) or _not_collected(t, files, before) for t in sorted(passed)
             ]
+
+
+def _not_collected(
+    test: str, files: dict[str, Outcome], tree: Path | None = None
+) -> Outcome:
+    """The outcome of a test the base did not collect, from its file's collection error."""
+    # A test in a class has the class in its id: tests.test_mod.TestA::a. When the id
+    # before "::" is itself a file in the tree, only that file's error can explain it.
+    owner = test.split("::", 1)[0]
+    exact = tree is not None and (tree / (owner.replace(".", "/") + ".py")).is_file()
+    found = [m for m in files if owner == m or (not exact and owner.startswith(m + "."))]
+    if not found:
+        return Outcome(test, "name", "not collected on the base")
+    record = files[max(found, key=len)]
+    return Outcome(test, record.result, record.detail)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -459,3 +459,144 @@ def test_a_timeout_on_the_base_is_reported_and_not_read_as_a_result(tmp_path, mo
     report = review_bar.review(tmp_path, base, head, timeout=7)
     assert not report.base_ran and report.base_outcomes == []
     assert "The base run timed out after 7 s." in report.markdown()
+
+
+IMPORT_TIME_TEST = '''from pkg.core import check
+
+try:
+    check(1000)
+    REFUSES = False
+except ValueError:
+    REFUSES = True
+assert REFUSES, "check(1000) should refuse"
+
+
+def test_refuses():
+    assert REFUSES
+'''
+
+
+def test_a_file_the_base_cannot_collect_is_sorted_by_why(tmp_path):
+    # pytest records a collection error as message="collection failure", with the cause
+    # only in the text. A missing module is a name, an assertion while loading behaviour.
+    _init(tmp_path)
+    base, _ = _small_repo(tmp_path)
+    head = _commit(tmp_path, {
+        "src/pkg/core.py": HEAD_CORE,
+        "src/pkg/extra.py": "VALUE = 1\n",
+        "tests/test_extra.py": NEW_MODULE_TEST,
+        "tests/test_import_time.py": IMPORT_TIME_TEST,
+        "tests/test_import_time_class.py": IMPORT_TIME_TEST.replace(
+            "def test_refuses():\n    assert REFUSES\n",
+            "class TestCheck:\n    def test_refuses(self):\n        assert REFUSES\n",
+        ),
+    }, "collection")
+    report = review_bar.review(tmp_path, base, head)
+    found = {o.test: (o.result, o.detail) for o in report.base_outcomes}
+    assert found["tests.test_extra::test_value"][0] == "name"
+    assert "ModuleNotFoundError" in found["tests.test_extra::test_value"][1]
+    assert found["tests.test_import_time::test_refuses"][0] == "behaviour"
+    assert "should refuse" in found["tests.test_import_time::test_refuses"][1]
+    assert found["tests.test_import_time_class.TestCheck::test_refuses"][0] == "behaviour"
+
+
+def test_a_test_missing_on_the_base_without_a_file_error_is_a_name():
+    # A parametrize id the base does not generate leaves no collection error behind.
+    Outcome = review_bar.Outcome
+    assert review_bar._not_collected("tests.t::a[2]", {}) == Outcome(
+        "tests.t::a[2]", "name", "not collected on the base")
+    files = {"tests.t": Outcome("tests.t", "behaviour", "assert False")}
+    assert review_bar._not_collected("tests.t::a", files).result == "behaviour"
+    assert review_bar._not_collected("tests.t_other::a", files).result == "name"
+
+
+def test_a_conftest_that_fails_on_the_base_is_reported_and_not_read_as_a_result(tmp_path):
+    _init(tmp_path)
+    base, _ = _small_repo(tmp_path)
+    head = _commit(tmp_path, {
+        "src/pkg/core.py": HEAD_CORE,
+        "src/pkg/extra.py": "VALUE = 1\n",
+        "tests/conftest.py": "import pkg.extra\n",
+        "tests/test_import_time.py": IMPORT_TIME_TEST,
+    }, "conftest")
+    report = review_bar.review(tmp_path, base, head)
+    assert not report.base_ran and report.base_outcomes == []
+    text = report.markdown()
+    assert "The base run wrote no test results (pytest exited 4)" in text
+    assert "ModuleNotFoundError" in text
+
+
+@pytest.mark.parametrize(
+    ("text", "cause"),
+    [
+        ("E   AssertionError: check(1000) should refuse\nE   assert False\n",
+         "AssertionError: check(1000) should refuse"),
+        ("x\nE   RuntimeError: first\nE   second\n\ny\nE   ValueError: last\n",
+         "ValueError: last"),
+        ("E   assert False\nE    +  where False = f(1000)\n", "assert False"),
+        ("no error lines here\n", ""),
+    ],
+)
+def test_the_cause_is_the_first_line_of_the_last_error_block(text, cause):
+    assert review_bar._cause(text) == cause
+
+
+def test_a_collection_error_is_read_whatever_traceback_style_is_configured(tmp_path, monkeypatch):
+    monkeypatch.setenv("PYTEST_ADDOPTS", "--tb=native")
+    tree = tmp_path / "tree"
+    (tree / "tests").mkdir(parents=True)
+    (tree / "tests" / "test_attr.py").write_text(
+        "import os\n\nos.not_there\n\n\ndef test_x():\n    pass\n"
+    )
+    code, outcomes = review_bar.run_tests(tree, ["tests/test_attr.py"], 60)
+    assert [(o.result, o.detail) for o in outcomes] == [
+        ("name", "AttributeError: module 'os' has no attribute 'not_there'")]
+
+
+def test_a_test_file_is_explained_only_by_its_own_error(tmp_path):
+    # tests/test_mod.py fails while loading. tests/test_mod/test_x.py is a different
+    # file, so a test it did not generate on the base is not explained by that error.
+    (tmp_path / "tests" / "test_mod").mkdir(parents=True)
+    (tmp_path / "tests" / "test_mod" / "test_x.py").write_text("")
+    Outcome = review_bar.Outcome
+    files = {"tests.test_mod": Outcome("tests.test_mod", "behaviour", "assert False")}
+    explain = review_bar._not_collected
+    assert explain("tests.test_mod.test_x::t[1]", files, tmp_path).result == "name"
+    assert explain("tests.test_mod.TestA::t", files, tmp_path).result == "behaviour"
+    nested = {"tests.a": Outcome("tests.a", "behaviour"), "tests.a.b": Outcome("tests.a.b", "name")}
+    assert review_bar._not_collected("tests.a.b.TestC::t", nested).result == "name"
+
+
+def test_colour_forced_in_the_environment_does_not_hide_the_cause(tmp_path, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    monkeypatch.setenv("PY_COLORS", "1")
+    tree = tmp_path / "tree"
+    (tree / "tests").mkdir(parents=True)
+    (tree / "tests" / "test_new.py").write_text(
+        "import not_there_at_all\n\n\ndef test_x():\n    pass\n"
+    )
+    code, outcomes = review_bar.run_tests(tree, ["tests/test_new.py"], 60)
+    assert [(o.result, o.detail) for o in outcomes] == [
+        ("name", "ModuleNotFoundError: No module named 'not_there_at_all'")]
+
+
+def test_a_collection_error_with_no_error_lines_keeps_pytests_message(tmp_path):
+    tree = tmp_path / "tree"
+    (tree / "tests").mkdir(parents=True)
+    (tree / "tests" / "test_fail.py").write_text(
+        "import pytest\n\npytest.fail('stop', pytrace=False)\n\n\ndef test_x():\n    pass\n"
+    )
+    code, outcomes = review_bar.run_tests(tree, ["tests/test_fail.py"], 60)
+    assert [(o.result, o.detail) for o in outcomes] == [("behaviour", "collection failure")]
+
+
+def test_a_conftest_that_fails_on_the_head_is_named_in_the_note(tmp_path):
+    _init(tmp_path)
+    base, _ = _small_repo(tmp_path)
+    head = _commit(tmp_path, {
+        "tests/conftest.py": "raise RuntimeError('bad `x` value')\n",
+        "tests/test_core.py": HEAD_TESTS,
+    }, "conftest")
+    text = review_bar.review(tmp_path, base, head).markdown()
+    assert "No changed test passes on the head (pytest exited 4)" in text
+    assert "pytest printed `RuntimeError: bad 'x' value`." in text
