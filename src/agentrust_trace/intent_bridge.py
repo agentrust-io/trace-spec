@@ -122,10 +122,18 @@ def verify_successor_artifact(
     artifact: dict[str, Any],
     trusted_observer_jwk: dict[str, Any],
     *,
+    trusted_observer: str,
     authorization_id: str,
     after: dict[str, Any],
 ) -> dict[str, Any]:
-    """Verify observer authentication and the exact authorization-to-successor link."""
+    """Verify observer authentication and the exact authorization-to-successor link.
+
+    `trusted_observer` is the observer identity that `trusted_observer_jwk` belongs
+    to, taken from the verifier's own key configuration and never from the artifact
+    or the envelope. The signed `observer` must equal it. `evaluate_successor_observation`
+    decides trust and independence on that name, so a key the verifier accepts for one
+    observer must not be able to sign under another observer's name.
+    """
     root = _object(
         artifact,
         "successor artifact",
@@ -155,6 +163,7 @@ def verify_successor_artifact(
     )
     if not isinstance(trusted_observer_jwk, dict):
         raise IntentBridgeError("trusted_observer_jwk must be an object")
+    expected_observer = _nonempty_string(trusted_observer, "trusted_observer")
     observed_at = root.get("observed_at")
     if (
         not isinstance(observed_at, int)
@@ -169,6 +178,10 @@ def verify_successor_artifact(
     trusted_kid = trusted_observer_jwk.get("kid")
     if not isinstance(trusted_kid, str) or trusted_kid != observer_key_id:
         raise IntentBridgeError("observer_key_id does not identify the trusted observer key")
+    if observer != expected_observer:
+        raise IntentBridgeError(
+            "successor observer is not the identity the trusted observer key belongs to"
+        )
     expected_successor_digest = _digest(
         root.get("successor_observation_digest"),
         "successor.successor_observation_digest",

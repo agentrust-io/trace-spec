@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import copy
+import inspect
 
 import pytest
+import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace.intent_bridge import (
@@ -90,6 +93,7 @@ def test_successor_is_a_separate_post_execution_artifact() -> None:
     verified = verify_successor_artifact(
         successor,
         {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+        trusted_observer="observer-1",
         authorization_id=bridge["authorization"]["authorization_id"],
         after=after,
     )
@@ -109,6 +113,7 @@ def test_successor_artifact_with_wrong_authorization_id_is_rejected() -> None:
         verify_successor_artifact(
             successor,
             {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            trusted_observer="observer-1",
             authorization_id=bridge["authorization"]["authorization_id"],
             after=_after(),
         )
@@ -129,8 +134,151 @@ def test_successor_substitution_after_observer_signature_is_rejected() -> None:
         verify_successor_artifact(
             successor,
             {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            trusted_observer="observer-1",
             authorization_id="auth-7",
             after=substituted,
+        )
+
+
+def _sign_successor_body(body: dict, key: Ed25519PrivateKey) -> dict:
+    """Sign an arbitrary successor body, for cases the signer itself refuses to produce."""
+    signature = base64.urlsafe_b64encode(key.sign(rfc8785.dumps(body))).rstrip(b"=")
+    return {**body, "signature": signature.decode("ascii")}
+
+
+@pytest.mark.parametrize("claimed", ["independent-auditor", "Executor", "executor-2", "exec"])
+def test_successor_signed_under_another_observers_name_is_rejected(claimed: str) -> None:
+    # The executor holds a key the verifier accepts for its own observations. Signed
+    # under its own name the successor verifies, and the evaluator can then see that
+    # observer and executor are the same principal. Signed under another observer's
+    # name it must not verify, or the evaluator reads a name the key does not own.
+    executor_key = Ed25519PrivateKey.generate()
+    executor_jwk = {**key_to_jwk(executor_key), "kid": "executor-key"}
+    honest = _after(observer="executor")
+    verified = verify_successor_artifact(
+        sign_successor_artifact("auth-7", honest, "executor-key", executor_key),
+        executor_jwk,
+        trusted_observer="executor",
+        authorization_id="auth-7",
+        after=honest,
+    )
+    assert verified["observer"] == "executor"
+
+    # A different name, a different case, a longer name with the same prefix and a
+    # shorter one: the identity must match exactly, not loosely.
+    relabelled = _after(observer=claimed)
+    successor = sign_successor_artifact("auth-7", relabelled, "executor-key", executor_key)
+    with pytest.raises(IntentBridgeError, match="not the identity the trusted observer key"):
+        verify_successor_artifact(
+            successor,
+            executor_jwk,
+            trusted_observer="executor",
+            authorization_id="auth-7",
+            after=relabelled,
+        )
+
+
+def test_the_observer_identity_is_a_required_argument() -> None:
+    # An optional `trusted_observer` would pass every test above, which always supply it,
+    # and leave a caller who omits it where #451 started: the name chosen by the signer.
+    parameter = inspect.signature(verify_successor_artifact).parameters["trusted_observer"]
+    assert parameter.default is inspect.Parameter.empty
+    assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_successor_signed_by_a_key_other_than_the_trusted_one_is_rejected() -> None:
+    after = _after()
+    successor = sign_successor_artifact(
+        "auth-7", after, "observer-key-1", Ed25519PrivateKey.generate()
+    )
+    with pytest.raises(IntentBridgeError, match="successor signature is invalid"):
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(Ed25519PrivateKey.generate()), "kid": "observer-key-1"},
+            trusted_observer="observer-1",
+            authorization_id="auth-7",
+            after=after,
+        )
+
+
+def test_successor_naming_another_observer_key_id_is_rejected() -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-7", after, "observer-key-2", observer_key)
+    with pytest.raises(IntentBridgeError, match="does not identify the trusted observer key"):
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            trusted_observer="observer-1",
+            authorization_id="auth-7",
+            after=after,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "signed_value"), [("observer", "observer-2"), ("observed_at", 151)]
+)
+def test_successor_metadata_that_differs_from_the_envelope_is_rejected(
+    field: str, signed_value: object
+) -> None:
+    # The signer always copies observer and observed_at from the envelope, so this
+    # artifact is signed by hand: the digest binds the envelope, the signed field does not.
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    body = {
+        "profile": "tag:agentrust-io.com,2026:pic-trace-successor-v1",
+        "authorization_id": "auth-7",
+        "observer": after["observer"],
+        "observer_key_id": "observer-key-1",
+        "observed_at": after["observed_at"],
+        "successor_observation_digest": digest_jcs(after),
+    }
+    body[field] = signed_value
+    successor = _sign_successor_body(body, observer_key)
+    with pytest.raises(AuthorizationMismatch, match="metadata does not match"):
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            trusted_observer=body["observer"],
+            authorization_id="auth-7",
+            after=after,
+        )
+
+
+def test_successor_with_another_profile_is_rejected() -> None:
+    # Changed without re-signing. The signature is checked over the constant profile,
+    # so an artifact re-signed over another profile would be refused by the signature
+    # whether or not the profile check exists, and could not show that check is needed.
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-7", after, "observer-key-1", observer_key)
+    successor["profile"] = "tag:example.com,2026:another-profile"
+    with pytest.raises(IntentBridgeError, match="unknown successor profile"):
+        verify_successor_artifact(
+            successor,
+            {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+            trusted_observer="observer-1",
+            authorization_id="auth-7",
+            after=after,
+        )
+
+
+def test_sign_bridge_refuses_a_surrogate_in_a_key_with_its_own_error() -> None:
+    # Found by the intent-bridge fuzz target: the key sort inside rfc8785 raised
+    # UnicodeEncodeError, which reached the caller instead of IntentBridgeError.
+    with pytest.raises(IntentBridgeError, match="no RFC 8785 canonical form"):
+        sign_bridge({"a\udeff": 1, "b": 2}, Ed25519PrivateKey.generate())
+
+
+def test_verify_bridge_refuses_a_surrogate_in_a_tool_call_key_with_its_own_error() -> None:
+    # The verifier side of the same escape: the tool call is the caller's untrusted input.
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    with pytest.raises(IntentBridgeError, match="no RFC 8785 canonical form"):
+        verify_bridge(
+            bridge, {**key_to_jwk(key), "kid": "key-7"}, declaration=declaration,
+            pic_intent_digest=intent, pic_args_digest=args,
+            tool_call={**tool_call, "arguments": {"x\udeff": 1, "b": 2}},
+            transcript=transcript, now=150,
         )
 
 

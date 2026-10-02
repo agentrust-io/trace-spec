@@ -11,6 +11,28 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError`
+  (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the
+  UTF-16 key sort reaches it first and raised `UnicodeEncodeError`. The three places that catch
+  `CanonicalizationError` to raise their own error, the intent bridge's `_jcs` and
+  `provenance.sign_record` and `verify_record`, let it through: `sign_bridge` and `verify_bridge`
+  (a key in `tool_call.arguments`, say) raised it instead of `IntentBridgeError`, and the two
+  provenance functions instead of `ProvenanceError`. The canonicalizer now reports it as a
+  `CanonicalizationError` subclass, as it already does for nesting too deep to walk. No schema
+  or wire-format change.
+
+- **`verify_successor_artifact` binds the observer's name to the observer key (#451, following #432).**
+  It now takes `trusted_observer`, the identity `trusted_observer_jwk` belongs to, and
+  refuses a successor whose signed `observer` is anything else. Before this, any key the
+  verifier accepted for observers could sign under another observer's name, and
+  `evaluate_successor_observation`, which decides trust and independence on that name,
+  could reach `established` with independence required on evidence from the executor
+  alone. `trusted_observer` is a required keyword argument, so existing callers must
+  pass it; the function is on main only and in no release. New tests cover the four
+  refusals in the function that had none: a key other than the trusted one, a `kid`
+  mismatch, a signed `observer` or `observed_at` that differs from the envelope, and a
+  wrong profile. No schema or wire-format change.
+
 - **Proposal: the embedded `signature` value must be canonically encoded (#247). Incompatible tightening of the draft's acceptance rules.** Section 3.2.2 already names the embedded `signature` field's encoding as base64url, no padding; it does not say whether a different spelling of the same bytes is the same record. A 64-byte signature (Ed25519 or ES256) spends 86 base64url characters on 512 bits, leaving 4 unused bits in the final character; RFC 4648 section 3.5 requires those bits to be zero. The added sentence requires the canonical spelling and requires a verifier to reject a record whose signature is not canonically encoded. The schema `pattern` is tightened so an 86-character value's final character must be `A`, `Q`, `g`, or `w`; `models.py` (through the shared pattern helper of #412), the packaged schema copy, and the v0.3 draft (regenerated from canonical) track it. **Newly rejected:** an 86-character `signature` ending in any of the other 60 base64url characters, which the previous pattern `^[A-Za-z0-9_-]+$` accepted; each valid signature had 15 such respellings. The reference library verified them through 0.10.0, because its decoder discarded the unused bits, and has refused them at decode time since 0.11.0 (#418); this change makes the schema, the models and the normative text give the same answer, so a consumer that validates a record without decoding its signature refuses it too. Values of any other length are unaffected; a 96-byte ES384 signature (128 characters) has no unused bits. **Existing records:** a record whose `signature` is non-canonical is rejected. The signature bytes are unchanged, so zeroing the final character's unused bits makes the record verify again without re-signing; the respelled record is nevertheless a different record for section 3.1.3, whose `parent_record_hash` covers the parent's `signature` member, so any child that names the old spelling must be re-issued. `examples/signature-encoding/` adds a canonical vector, reusing an already-published record and signature, and two non-canonical respellings of the same 64 bytes with different unused-bit patterns, plus a re-runnable `scan_published_signatures.py`. **Scan, limited to the revisions examined:** this repository's `examples/` at `63f4d15`, `agentrust-io/trace-tests` at `da4369b` and `agentrust-io/trace-registry` at `e26b85a` hold 232 signatures, all canonical; the 2 non-canonical values the scan also reports are this change's own deliberately non-canonical vectors. The scan says nothing about records outside those revisions. The `cnf.jwk.x` and trusted-key cases raise the same question for the specification text and are not part of this change; the library's decoder has treated them alike since #418. Requested by @imran-siddique on #247; proposed by @chernistry.
 
 - Propose explicit verifier profile declarations and verifier-result field requirements for obligations 2 and 3 of #116, carried by Imran Siddique following the discussion with @lywinged. Obligations 1 and 4 remain deferred; the v0.1 cutover is unchanged.
@@ -37,6 +59,11 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   the same objects stay reachable at `agentrust_trace.citation` as before, and no
   behaviour, signature or outcome is affected. Informative only: no schema,
   wire-format or normative change.
+
+- Add an executable MCP lost-response/retry example with full paginated declaration
+  snapshots, signed transcript commitments and focused integrity checks for #324.
+  Keep the first execution outcome unknown after a reported successful retry.
+  Uses an example-local format with a v0.2 record, not a v0.3 implementation.
 
 ## [0.11.0] - 2026-09-25
 
