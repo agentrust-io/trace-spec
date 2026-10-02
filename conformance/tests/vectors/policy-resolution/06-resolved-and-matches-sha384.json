@@ -1,0 +1,62 @@
+{
+  "name": "resolved-and-matches-sha384",
+  "description": "The same accept as 02, with the digest taken in sha384. The schema admits both algorithms, so a verifier that hardcodes sha256 is wrong rather than merely limited, and this is the vector that says so.",
+  "boundary": "accept",
+  "defect": "none - positive control, sha384",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1748000000,
+    "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-5"
+    },
+    "runtime": {
+      "platform": "intel-tdx",
+      "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8",
+      "nonce": "Zm9yLXRoZS1yZWNvcmQtbm9uY2U"
+    },
+    "policy": {
+      "bundle_hash": "sha384:fac86d58e1ef453e686c343d00ceefe1cac7c4a195d5a2fc85e2ca7b54e356cf90a1402950a963ea304297d0d9d33ede",
+      "enforcement_mode": "enforce",
+      "policy_uri": "https://policy.example.org/bundles/policy-bundle-base.json"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 2,
+      "digest": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example.org",
+      "policy_ref": "https://verifier.example.org/appraisal-policy/v1",
+      "timestamp": 1748000042
+    },
+    "transparency": "https://scitt.example.org/receipts/abc123def456",
+    "cnf": {
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "dGhpcyBpcyBhIHRlc3QgeA",
+        "y": "dGhpcyBpcyBhIHRlc3QgeQ",
+        "kid": "tee-key-001"
+      }
+    }
+  },
+  "context": {
+    "cited_uri": "https://policy.example.org/bundles/policy-bundle-base.json",
+    "resolution": {
+      "outcome": "resolved"
+    },
+    "anchor": {
+      "tier": 1,
+      "source": "agentrust-io/trace-spec spec/trace-v0.2.md 4.3",
+      "text": "the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim",
+      "applies": "Read the other way: the bundle that resolves is the bundle that was sealed, so nothing was substituted and the claim stands."
+    }
+  },
+  "expected": {
+    "tr_pol_003": "pass",
+    "reason": "The resolved bytes hash to the declared sha384 digest."
+  }
+}

@@ -1,0 +1,48 @@
+name: Conformance package build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'conformance/**'
+      - '.github/workflows/conformance-package.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install build
+        run: python -m pip install --require-hashes -r requirements/release.txt
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Verify installed wheel and source distribution
+        run: |
+          for artifact in dist/*.whl dist/*.tar.gz; do
+            python -m venv "$RUNNER_TEMP/conformance-artifact"
+            "$RUNNER_TEMP/conformance-artifact/bin/pip" install "$artifact"
+            (
+              cd "$RUNNER_TEMP"
+              "$RUNNER_TEMP/conformance-artifact/bin/trace-tests" --version
+              "$RUNNER_TEMP/conformance-artifact/bin/trace-tests" verify --record "$GITHUB_WORKSPACE/conformance/tests/vectors/valid_level0.json" --level 0 --max-age 2147483647
+            )
+            rm -rf "$RUNNER_TEMP/conformance-artifact"
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: conformance-dist
+          path: conformance/dist/
