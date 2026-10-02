@@ -3,7 +3,7 @@
 **Status:** Draft proposal. Binds nothing.
 **Scope:** Components with stable IDs, a status per component, digest-bound evidence references, freshness, two relationship methods, delegated component appraisers, and a composite result the verifier derives rather than reads. Additive; every v0.2 record stays valid.
 **Target:** the verifier-issued token in the companion proposal, [`verifier-issued-trace-profile.md`](verifier-issued-trace-profile.md), and `spec/` only if both are adopted.
-**Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 107 component vectors out of 215, `codes.json` with 54 reason codes, and `coverage.json` mapping each requirement to its vectors and causal test.
+**Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 110 component vectors out of 218, `codes.json` with 54 reason codes, and `coverage.json` mapping each requirement to its vectors and causal test.
 **Implementations:** a Python reference in `prototype/verifier_token.py`, and a second verifier in JavaScript, [`tools/independent-verifier/`](https://github.com/agentrust-io/trace-spec/tree/main/tools/independent-verifier).
 **Experimental text:** [`docs/verifier-token-experimental.md`](../verifier-token-experimental.md), including the sections "Delegated component appraisal" and "Relationship methods".
 
@@ -232,7 +232,7 @@ The last two rows differ only in the accepted profiles. The per-component profil
 - 1 is gateway-only, `TR-COMP-MCP-002`: server-to-catalog binding needs a relationship method the token does not define, so the gateway enforces it on the holder-proved action.
 - 1 is informative, `TR-COMP-MIN-001`, carry digests rather than raw evidence, checked by a disclosure test.
 
-The component vectors number 107: `COMP-AUTH` 17, `COMP-BIND` 20, `COMP-COMP` 9, `COMP-EVID` 9, `COMP-FRESH` 10, `COMP-ID` 8, `COMP-MCP` 4, `COMP-REQ` 8, `COMP-STAT` 14, `COMP-TYPE` 4, `COMP-WARN` 4. Twelve of the 17 authority vectors are on delegated appraisal, and delegation has six more causal tests, one per gate. The vectors come from `gen_corpus.py`, which builds envelopes, digests and composites from `cbor2`, `rfc8785` and Ed25519 primitives and imports nothing from the reference verifier.
+The component vectors number 110: `COMP-AUTH` 17, `COMP-BIND` 20, `COMP-COMP` 9, `COMP-EVID` 9, `COMP-FRESH` 10, `COMP-ID` 8, `COMP-MCP` 7, `COMP-REQ` 8, `COMP-STAT` 14, `COMP-TYPE` 4, `COMP-WARN` 4. Twelve of the 17 authority vectors are on delegated appraisal, and delegation has six more causal tests, one per gate. The vectors come from `gen_corpus.py`, which builds envelopes, digests and composites from `cbor2`, `rfc8785` and Ed25519 primitives and imports nothing from the reference verifier.
 
 Running both verifiers over all 229 vectors (215 conformance, 14 legacy) on 30 September: every outcome agrees, token result, composite status and proof result alike. `tests/test_stage4_relationships.py` (18 tests), `tests/test_snp_collateral.py` (9), `tests/test_tdx_collateral.py` (60) and `tests/test_azure_execution_gateway.py` (8) pass.
 
@@ -282,7 +282,7 @@ Both are now settled in the experimental text and pinned by vectors. The composi
 3. **Should `resolver` be required?** The requirement as first written said yes. This profile says no, because a required hint nobody fetches adds a field without adding a check. If evidence resolution is specified, the answer may change.
 4. **Evidence resolution.** Who fetches, from where, with what retention, and what status a relying party reports when the fetch fails. The original design said `unverifiable`, not `contraindicated`, unless other evidence contradicts the claim. Nothing implements it yet.
 5. **Delegation chains and appraiser revocation.** Can an appraiser delegate further, and how does a relying party learn that an appraiser key was withdrawn before `valid_until`?
-6. **MCP server components.** What evidence an `mcp-server` component rests on (artifact provenance, endpoint identity, transport key binding), and a relationship method that binds a catalog to the server that served it.
+6. **MCP server components.** What evidence an `mcp-server` component rests on (artifact provenance, endpoint identity, transport key binding), and a relationship method that binds a catalog to the server that served it. For the catalog half, [`tool-catalog-observed-digest.md`](tool-catalog-observed-digest.md) states one derivation of a `tool-catalog` component's `observed_digest` from the served `tools/list`, with pinned bytes and `COMP-MCP-004` to `006`; it answers neither the server half nor the relationship method.
 7. **Composite precedence and freshness (§8.3).** The experiment settles both: the token's `exp` bounds the composite, and `missing` outranks `unverifiable`. Both readings were defensible, and a reviewer may still invert either one. If so, the four vectors that pin them change with the text.
 8. **Binding-only endpoints.** A binding endpoint with no entry in `requirements.components` is required but undeclared, so such a configuration can never affirm. Should requirement loading reject it?
 

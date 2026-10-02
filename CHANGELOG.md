@@ -27,6 +27,24 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   measurements from published quotes on a board with a discrete TPM. No schema or wire-format
   change.
 
+- **A recomputable `observed_digest` for `tool-catalog` components, with the pinned `tools/list`
+  bytes it recomputes from (#443).** `docs/rfcs/tool-catalog-observed-digest.md` states one
+  derivation from the `tools` member of a `tools/list` result to a digest per tool (six-member
+  allowlist, RFC 8785, SHA-256, under a literal profile label), a printable-ASCII key per tool,
+  and a catalog digest folded over the sorted `key=digest` lines, so a relying party can set
+  `expected_observed_digest` from bytes it holds and a second implementation can recompute it.
+  `examples/verifier-token-conformance/catalog/` pins two served catalogs (`mcp.deepwiki.com`,
+  three tools; `docs.mcp.cloudflare.com`, two tools), one constructed drift of the first, and
+  the digests recorded for each. Three vectors under `TR-COMP-MCP-001`: `COMP-MCP-004` pins and
+  presents the served catalog's digest; `COMP-MCP-005` (digest-mismatch) presents the drifted
+  catalog's digest; `COMP-MCP-006` (wrong-subject) presents the other server's digest. Both
+  counterexamples are `component_observation_mismatch`, because the token has no member naming
+  the server a catalog came from; separating them is the relationship method `TR-COMP-MCP-002`
+  leaves open, which this change does not propose. `gen_corpus.py` recomputes the digests from
+  the pinned files on every run, and `tests/test_tool_catalog_digest.py` recomputes them again
+  without the generator's code. Informative; endpoint identity and transport key binding stay
+  open. No schema or wire-format change.
+
 - **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError`
   (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the
   UTF-16 key sort reaches it first and raised `UnicodeEncodeError`. The three places that catch
