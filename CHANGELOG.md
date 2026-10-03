@@ -11,6 +11,22 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`verify_record` reports what a caller-supplied appraiser found about `runtime.measurement`,
+  per layer (#279 platform-measurement row, #431).** A matching composite measurement says
+  nothing about which layers were measured, which were appraised, or whether the evidence
+  describes one boot, and `verify_record` never sees the quote, log or reference values to
+  decide it. The new `platform_appraiser` argument, modelled on `citation_resolver`, is called
+  last with a copy of `runtime`; the result's new `platform_measurement` field carries its
+  report as `appraised` with a `LayerCheck` per layer (`established`, or `not_established` with
+  `layer_not_measured`, `measured_not_appraised` or `evidence_spans_multiple_boots`),
+  `appraisal_rejected` when the appraiser raised, returned another shape or appraised another
+  measurement, or `not_attempted` without one. The names are not accepted normative text. No
+  outcome moves `revocation`, the thumbprint, `citations` or `appraisal.status`, and
+  `not_attempted` is never a pass. Sixteen signed vectors in `examples/platform-measurement/`:
+  each cause with a twin that differs only in the condition producing it, and two carrying
+  measurements from published quotes on a board with a discrete TPM. No schema or wire-format
+  change.
+
 - **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError`
   (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the
   UTF-16 key sort reaches it first and raised `UnicodeEncodeError`. The three places that catch

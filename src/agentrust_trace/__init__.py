@@ -42,6 +42,11 @@ from agentrust_trace.citation import (
     CitationCheck,
     check_citations,
 )
+from agentrust_trace.platform_measurement import (
+    LayerCheck,
+    PlatformMeasurementCheck,
+    check_platform_measurement,
+)
 from agentrust_trace.revocation import (
     RevocationCheck,
     VerificationResult,
@@ -93,6 +98,9 @@ __all__ = [
     "VerificationResult",
     "check_bundle",
     "check_citations",
+    "check_platform_measurement",
+    "LayerCheck",
+    "PlatformMeasurementCheck",
     "DEFAULT_ACCEPTED_PROFILES",
     "TRACE_PROFILE_V0_2",
     "SCHEMA",

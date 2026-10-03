@@ -53,7 +53,8 @@ import pytest
 
 import agentrust_trace as at
 from agentrust_trace import (citation, content_marking, generate_key, intent_bridge, key_to_jwk,
-                             provenance, revocation, sign, successor_observation, validate)
+                             platform_measurement, provenance, revocation, sign,
+                             successor_observation, validate)
 
 #: Values a caller can supply where an object, a string, a key or bytes is expected.
 #: The last five are the ones that separate a strict canonicalizer from a permissive
@@ -68,6 +69,7 @@ JUNK: tuple[Any, ...] = (
 #: contract does not catch it.
 DOCUMENTED: dict[str, tuple[str, ...]] = {
     "citation": ("ValueError",),
+    "platform_measurement": ("ValueError",),
     "content_marking": ("ContentMarkingError", "RecordMismatch"),
     "intent_bridge": ("IntentBridgeError", "AuthorizationDenied", "AuthorizationMismatch"),
     "provenance": ("ProvenanceError", "ToolCatalogMismatch"),
@@ -89,6 +91,8 @@ _AUTHORIZATION = {"iss": "https://a.example", "sub": "urn:agent:x", "iat": int(t
 #: name -> a call varying only the first positional argument.
 CALLS: dict[str, Callable[[Any], Any]] = {
     "citation.check_citations": lambda v: citation.check_citations(v, None),
+    "platform_measurement.check_platform_measurement":
+        lambda v: platform_measurement.check_platform_measurement(v, None),
     "content_marking.build_assertion":
         lambda v: content_marking.build_assertion(v, url="https://e.example/r.json"),
     "content_marking.verify_assertion":
@@ -202,6 +206,9 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
     "citation.check_citations": (
         lambda: {"record": _TRUST_RECORD, "resolver": None}, ("resolver",),
     ),
+    "platform_measurement.check_platform_measurement": (
+        lambda: {"record": _TRUST_RECORD, "appraiser": None}, ("appraiser",),
+    ),
     "content_marking.build_assertion": (
         lambda: {"record_bytes": _RECORD_JSON, "url": "https://r.example/r.json",
                      "alg": "sha256", "anchor": None},
@@ -291,11 +298,12 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
                      "trusted_bundle_keys": _CTX["trusted_bundle_keys"],
                      "max_bundle_age_seconds": _CTX["max_bundle_age_seconds"],
                      "now": _CTX["now"], "citation_resolver": None,
+                     "platform_appraiser": None,
                      "accepted_profiles": sign.DEFAULT_ACCEPTED_PROFILES},
         ("public_key_or_jwk", "allow_embedded_key", "max_age_seconds",
          "max_future_skew_seconds", "expected_nonce", "revocation", "revocation_bundle",
          "trusted_bundle_keys", "max_bundle_age_seconds", "now", "citation_resolver",
-         "accepted_profiles"),
+         "platform_appraiser", "accepted_profiles"),
     ),
 }
 
@@ -355,7 +363,7 @@ def test_every_public_function_is_either_swept_or_declared_unsweepable() -> None
 
 def _module_of(name: str) -> Any:
     return {"citation": citation, "content_marking": content_marking,
-            "intent_bridge": intent_bridge,
+            "intent_bridge": intent_bridge, "platform_measurement": platform_measurement,
             "provenance": provenance, "revocation": revocation, "sign": sign,
             "successor_observation": successor_observation,
             "validate": validate}[name.split(".")[0]]
@@ -428,6 +436,7 @@ def test_no_keyword_argument_leaks_an_undocumented_exception(name: str, param: s
 #: come back as the documented refusal, so a clean sweep above means the call arrived.
 KEYWORD_REACHES: dict[str, tuple[str, Any, str]] = {
     "citation.check_citations": ("resolver", "a-string", "ValueError"),
+    "platform_measurement.check_platform_measurement": ("appraiser", "a-string", "ValueError"),
     "content_marking.build_assertion": ("alg", 123, "ContentMarkingError"),
     "content_marking.verify_assertion": ("record_bytes", None, "ContentMarkingError"),
     "intent_bridge.sign_bridge": ("key", None, "IntentBridgeError"),
@@ -637,6 +646,7 @@ def test_no_public_function_raises_an_undocumented_exception(name: str) -> None:
 #: of the function rather than evidence the call is wired up. An explicit witness is.
 REACHES: dict[str, tuple[Any, str]] = {
     "citation.check_citations": (None, "ValueError"),
+    "platform_measurement.check_platform_measurement": (None, "ValueError"),
     "content_marking.build_assertion": (None, "ContentMarkingError"),
     "content_marking.verify_assertion": (None, "ContentMarkingError"),
     "intent_bridge.digest_jcs": ("a-string", "IntentBridgeError"),
