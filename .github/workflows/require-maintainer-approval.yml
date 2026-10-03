@@ -33,17 +33,26 @@ jobs:
               pull_number: context.payload.pull_request.number,
             });
             // Read only reviewed base-branch data. Never execute or read policy from a PR head.
+            const readPolicy = async ref => (await github.rest.repos.getContent({
+              owner: context.repo.owner, repo: context.repo.repo,
+              path: '.github/maintainers.json', ref,
+            })).data;
             let file;
             try {
-              ({ data: file } = await github.rest.repos.getContent({
-                owner: context.repo.owner, repo: context.repo.repo,
-                path: '.github/maintainers.json', ref: pr.base.sha,
-              }));
+              file = await readPolicy(pr.base.sha);
             } catch (error) {
-              // One-commit bootstrap: the initial policy PR must be reviewable before its
-              // policy file exists on main. Missing policy on any later base fails closed.
-              if (error.status !== 404 || pr.base.sha !== "c5cfa00e1c62ca1b4da2b999fc16e943dad09d90") throw error;
-              file = { encoding: 'base64', content: Buffer.from(JSON.stringify({"schema":1,"repository":"trace-spec","source":"agentrust-io/.github:maintainers/roster.json","maintainers":["imran-siddique","lywinged","pforest","Qiang-Xu","rajnisht7"],"security_paths":[],"security_approvals":1})).toString('base64') };
+              if (error.status !== 404) throw error;
+              // A pull request opened before the policy file landed keeps that older base.sha,
+              // so read the policy at the tip of its base branch, which is reviewed data too.
+              // Qualified, so a tag with the branch's name cannot stand in for it.
+              try {
+                file = await readPolicy('refs/heads/' + pr.base.ref);
+              } catch (error) {
+                // One-commit bootstrap: the initial policy PR must be reviewable before its
+                // policy file exists on main. Missing policy on any later base fails closed.
+                if (error.status !== 404 || pr.base.sha !== "c5cfa00e1c62ca1b4da2b999fc16e943dad09d90") throw error;
+                file = { encoding: 'base64', content: Buffer.from(JSON.stringify({"schema":1,"repository":"trace-spec","source":"agentrust-io/.github:maintainers/roster.json","maintainers":["imran-siddique","lywinged","pforest","Qiang-Xu","rajnisht7"],"security_paths":[],"security_approvals":1})).toString('base64') };
+              }
             }
             if (Array.isArray(file) || file.encoding !== 'base64') {
               throw new Error('Missing base-branch maintainer policy');
