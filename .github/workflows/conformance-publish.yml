@@ -15,7 +15,12 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'conformance-v')
+    uses: ./.github/workflows/conformance-ci.yml
+
   build:
+    needs: test
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'conformance-v')
     uses: ./.github/workflows/conformance-package.yml
   tag:
