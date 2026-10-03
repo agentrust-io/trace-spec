@@ -1,0 +1,37 @@
+# TRACE Tests
+
+> Conformance test suite for TRACE: Trust Runtime Attestation and Compliance Evidence
+
+TRACE Tests is the conformance suite for TRACE (Trust Runtime Attestation and Compliance Evidence), an open specification for portable, signed runtime evidence about AI agent runs. Use it to see which conformance level a TRACE record reaches and to produce a report anyone can reproduce. It checks the shape of attestation fields, not the attestation itself. It is part of AgenTrust, open specifications for verifiable AI: https://agentrust-io.com
+
+## Get started
+
+- [Home](https://trace.agentrust-io.com/conformance/index.md)
+- [Get started](https://trace.agentrust-io.com/conformance/docs/quickstart/index.md)
+
+## Specification
+
+- [Conformance levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md)
+- [Test modules](https://trace.agentrust-io.com/conformance/docs/modules/index.md)
+- [Envelope (TR-ENV)](https://trace.agentrust-io.com/conformance/docs/modules/tr-env/index.md)
+- [Signature (TR-SIG)](https://trace.agentrust-io.com/conformance/docs/modules/tr-sig/index.md)
+- [Runtime (TR-RTE)](https://trace.agentrust-io.com/conformance/docs/modules/tr-rte/index.md)
+- [Policy (TR-POL)](https://trace.agentrust-io.com/conformance/docs/modules/tr-pol/index.md)
+- [Appraisal (TR-APR)](https://trace.agentrust-io.com/conformance/docs/modules/tr-apr/index.md)
+- [Transcript (TR-TXN)](https://trace.agentrust-io.com/conformance/docs/modules/tr-txn/index.md)
+- [Transparency (TR-ANC)](https://trace.agentrust-io.com/conformance/docs/modules/tr-anc/index.md)
+- [Provenance (TR-SCA)](https://trace.agentrust-io.com/conformance/docs/modules/tr-sca/index.md)
+- [Error codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md)
+
+## Guides
+
+- [Writing conformance tests](https://trace.agentrust-io.com/conformance/docs/tutorials/writing-conformance-tests/index.md)
+- [CI integration](https://trace.agentrust-io.com/conformance/docs/tutorials/ci-integration/index.md)
+- [Self-verification](https://trace.agentrust-io.com/conformance/measurement/REPORT/index.md)
+
+## Project
+
+- [Known limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md)
+- [Changelog](https://trace.agentrust-io.com/conformance/CHANGELOG/index.md)
+- [Contributing](https://trace.agentrust-io.com/conformance/CONTRIBUTING/index.md)
+

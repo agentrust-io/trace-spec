@@ -1,0 +1,1411 @@
+# TRACE Tests
+
+> Conformance test suite for TRACE: Trust Runtime Attestation and Compliance Evidence
+
+TRACE Tests is the conformance suite for TRACE (Trust Runtime Attestation and Compliance Evidence), an open specification for portable, signed runtime evidence about AI agent runs. Use it to see which conformance level a TRACE record reaches and to produce a report anyone can reproduce. It checks the shape of attestation fields, not the attestation itself. It is part of AgenTrust, open specifications for verifiable AI: https://agentrust-io.com
+
+# Get started
+
+[04 · Evidence: can a third party verify all of it offline, years later?](https://agentrust-io.com/#chain)
+
+# Score a TRACE record against the specification
+
+The suite checks one record and the evidence supplied with it, reports the highest conformance level reached, and writes a report anyone can reproduce from the record digest and suite version. A passing report does not establish that an entire implementation meets every requirement of the [TRACE specification](https://trace.agentrust-io.com).
+
+[Score your first record](https://trace.agentrust-io.com/conformance/docs/quickstart/index.md) [What this proves, and what it does not](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md)
+
+TL;DR
+
+[agentrust-trace-tests](https://pypi.org/project/agentrust-trace-tests/) 0.6.2 (Apache-2.0) runs eight modules against a record on your machine and writes a report carrying the record digest, the suite version and the command to reproduce it. A pass describes the record and says nothing about the agent, and TR-RTE checks the shape of attestation fields without verifying a quote against AMD or Intel roots.
+
+- **Run it**
+
+  ______________________________________________________________________
+
+  Score a record, read the failures, and produce a report from the same run.
+
+  [Getting Started](https://trace.agentrust-io.com/conformance/docs/quickstart/index.md)
+
+- **What it proves, and what it does not**
+
+  ______________________________________________________________________
+
+  The report is not evidence, and it says so on its face. Each result's scope is set out module by module.
+
+  [Limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md)
+
+- **Hardware evidence**
+
+  ______________________________________________________________________
+
+  Quote verification happens outside the suite. Check a real Intel TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+
+  [Runtime module](https://trace.agentrust-io.com/conformance/docs/modules/tr-rte/index.md)
+
+- **The chain**
+
+  ______________________________________________________________________
+
+  The suite scores TRACE records, the evidence step. The specification is at [trace.agentrust-io.com](https://trace.agentrust-io.com), and records can be anchored in the [TRACE Registry](https://agentrust-io.com/registry/).
+
+  [See the chain](https://agentrust-io.com/#chain)
+
+The [eight modules](https://trace.agentrust-io.com/conformance/docs/modules/index.md) cover envelope, signature, runtime, policy, appraisal, transcript, transparency, and provenance checks. Read the [limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md) to interpret what each result establishes.
+
+```
+pip install agentrust-trace-tests
+trace-tests verify --record path/to/trust-record.jwt --level 1
+```
+
+## A report you can hand to someone else
+
+```
+trace-tests report --record trust-record.json --html report.html --json report.json --badge trace.svg
+```
+
+- `verify` answers a question for the person running it. `report` produces an artifact for somebody who was not there.
+- `report` runs every level up to `--max-level`, because the useful answer is the highest level a record reaches, not whether it cleared the level someone happened to pick.
+- The HTML report is self-contained: no scripts, no fonts, no external CSS, no badge service, nothing fetched when it is opened.
+
+Use `--fail-under 1` to gate CI on a level. Without it the command always exits `0`, which is what you want when you are producing an artifact rather than enforcing a threshold. `report.json` is stable under `schema: agentrust-io/trace-tests/report/1` for dashboards and CI.
+
+CLI reports add an independently versioned `obligation_accounting` member for a bounded three-obligation pilot: `TR-APR-001`, `TR-POL-003`, and `TR-SCA-002`. The rows and findings come from one execution snapshot, and the report refuses an incomplete pilot matrix. This does not claim complete TRACE accounting. The extension treats `report/1` as additively extensible; compatibility with consumers requiring the exact historical top-level key set is not established. See [Known limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md) for the trust and replay boundary.
+
+A conformance report that looks authoritative and cannot be checked is the same shape of thing as a control plane writing its own log. So the report tells a reader who does not trust the sender to go and check the record instead, and gives them what they need to do it.
+
+## Where to go next
+
+- [Conformance Levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md): what each level requires, and what a record has to carry to reach it.
+- [Test Modules](https://trace.agentrust-io.com/conformance/docs/modules/index.md): the eight modules, the `TR-*` error codes they emit, and what each one checks.
+- [CI integration](https://trace.agentrust-io.com/conformance/docs/tutorials/ci-integration/index.md): gate a pipeline on a level, and write your own conformance tests against the suite.
+
+## Test modules
+
+| Module       | ID       | Tests                                                       |
+| ------------ | -------- | ----------------------------------------------------------- |
+| Envelope     | `TR-ENV` | EAT structure, required fields, `iat` validity              |
+| Signature    | `TR-SIG` | ES256/ES384/EdDSA, key binding, chain                       |
+| Runtime      | `TR-RTE` | TEE platform, measurement format, RIM URI                   |
+| Policy       | `TR-POL` | Bundle hash, enforcement mode, TEE binding                  |
+| Appraisal    | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp |
+| Transcript   | `TR-TXN` | Tool-call transcript hash binding (Phase 2+)                |
+| Transparency | `TR-ANC` | SCITT receipt URI, inclusion proof                          |
+| Provenance   | `TR-SCA` | SLSA level, builder URI, digest format                      |
+
+The suite tracks [TRACE Spec v0.2](https://trace.agentrust-io.com). See [Changelog](https://trace.agentrust-io.com/conformance/CHANGELOG/index.md) for what moved between suite versions.
+
+**Status:** agentrust-trace-tests 0.6.2 · Apache-2.0 · tracks TRACE Spec v0.2 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+
+# Quick Start
+
+## Install
+
+```
+pip install agentrust-trace-tests
+```
+
+The distribution is `agentrust-trace-tests`; `trace-tests` is the command it installs. `pip install trace-tests` returns 404.
+
+## Create a sample fixture
+
+The test suite runs against a signed TRACE Trust Record. Generate a Level 0 development record with the `agentrust-trace` library:
+
+```
+pip install agentrust-trace
+```
+
+```
+# generate_sample.py
+import time, json
+from agentrust_trace import generate_key, sign_record
+
+key = generate_key()
+
+record = {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": int(time.time()),
+    "subject": "spiffe://trust.example.org/agent/sample",
+    "model": {
+        "provider": "example-provider",
+        "model_id": "example-model-1",
+        "version": "20251001",
+    },
+    "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:" + "0" * 64,
+    },
+    "policy": {
+        "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7"
+                       "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+        "enforcement_mode": "enforce",
+    },
+    "data_class": "internal",
+    "build_provenance": {
+        "slsa_level": 1,
+        "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+                  "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    },
+    "appraisal": {
+        "status": "none",
+        "verifier": "https://verifier.example.org",
+    },
+    "transparency": "https://registry.agentrust-io.com/claim/placeholder",
+}
+
+signed = sign_record(record, key)
+
+with open("sample-record.json", "w") as f:
+    json.dump(signed, f, indent=2)
+
+print("Wrote sample-record.json")
+```
+
+```
+python generate_sample.py
+```
+
+`software-only` platform and all-zero measurement are the correct values for Level 0 development records. `generate_key()` produces a fresh Ed25519 key on each run; for CI use, load a persisted key via the `TRACE_PRIVATE_KEY_PEM` environment variable instead.
+
+## Run against a Trust Record
+
+```
+trace-tests verify --record sample-record.json --level 0
+```
+
+Level 0 is software-only (development). Level 1 requires TEE attestation. Level 2 adds transparency anchoring.
+
+## Run all levels
+
+```
+trace-tests verify --record sample-record.json --level 0
+trace-tests verify --record sample-record.json --level 1 --expected-nonce "$VERIFIER_CHALLENGE"
+trace-tests verify --record sample-record.json --level 2 --expected-nonce "$VERIFIER_CHALLENGE"
+```
+
+The sample fixture passes Level 0. Levels 1 and 2 will fail on runtime attestation and transparency fields — that is expected. See [Trust Levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md) for what each level requires.
+
+## Resolving the policy bundle
+
+If your record carries `policy.policy_uri`, TR-POL-003 can fetch the bundle and check that it has the digest `policy.bundle_hash` declares. Point `--policy-dir` at a directory holding a `resolutions.json` that maps each URI to a relative path inside it:
+
+```
+trace-tests verify --record sample-record.json --level 0 --policy-dir ./bundles
+```
+
+```
+{
+  "https://policy.example.org/bundles/agent-v1.json": "agent-v1.json"
+}
+```
+
+Without `--policy-dir` the resolution part of the check skips, so verifying offline costs you nothing. A `policy_uri` that is malformed rather than unreachable is still reported either way: that is a defect in the record, not a fetch that failed.
+
+## Exit codes
+
+| Code | Meaning                    |
+| ---- | -------------------------- |
+| 0    | All required tests passed  |
+| 1    | One or more tests failed   |
+| 2    | Record could not be loaded |
+
+## Output format
+
+Each finding prints its **module**, its status, and its message:
+
+```
+  TR-ENV  PASS        eat_profile sentinel matches
+  TR-ENV  PASS        cnf.jwk.kty present ('EC')
+  TR-SIG  PASS        cnf.jwk key type is supported (kty='EC', crv='P-256')
+  TR-SIG  UNVERIFIED  TR-SIG-005: no signature present; this record is NOT cryptographically verified
+  TR-POL  PASS        policy.bundle_hash has valid digest format
+```
+
+Error codes follow the form `TR-<MODULE>-<NNN>`. A failing or unverified finding carries its code at the front of the message; a passing one usually does not, so the module column is what identifies a `PASS`. The JSON and HTML reports carry the code as its own field for every finding.
+
+## Next steps
+
+| What                             | Where                                                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Understand what each test checks | [Test Modules](https://trace.agentrust-io.com/conformance/docs/modules/index.md)                                                    |
+| Look up a specific error code    | [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md)                                                 |
+| Write your own conformance tests | [Tutorial: Writing conformance tests](https://trace.agentrust-io.com/conformance/docs/tutorials/writing-conformance-tests/index.md) |
+| Set up CI                        | [Tutorial: CI integration](https://trace.agentrust-io.com/conformance/docs/tutorials/ci-integration/index.md)                       |
+# Specification
+
+# Conformance Levels
+
+TRACE defines three conformance levels. Higher levels require all lower-level modules plus additional ones.
+
+| Level | Required Modules               | Use Case                                            |
+| ----- | ------------------------------ | --------------------------------------------------- |
+| **0** | TR-ENV, TR-SIG, TR-POL, TR-APR | Software-only development and staging               |
+| **1** | Level 0 + TR-RTE, TR-SCA       | Records that declare a TEE platform and measurement |
+| **2** | Level 1 + TR-TXN, TR-ANC       | Full records with transparency anchoring            |
+
+## Level 0 — Software-only
+
+Level 0 records are signed with a software key. The `runtime.platform` must be `"software-only"`. All-zero measurement is conventional for development use. The `appraisal` block must be present and well-formed — a recognised `status`, a `verifier` that is an absolute URI — but Level 0 does not require the appraisal to affirm.
+
+**Minimum conformant Level 0 record:**
+
+```
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1750000000,
+  "subject": "spiffe://trust.example.org/agent/my-agent",
+  "model": {
+    "provider": "example-provider",
+    "model_id": "example-model-1",
+    "version": "20251001"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "internal",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+    }
+  },
+  "signature": "eyJhbGciOiJFZERTQSJ9..."
+}
+```
+
+**Modules tested:** TR-ENV, TR-SIG, TR-POL
+
+**What causes a Level 0 failure:**
+
+- `eat_profile` missing or wrong value — TR-ENV-001
+- `runtime.platform` is a TEE value (e.g. `amd-sev-snp`) but Level 0 is requested — TR-RTE-001 does not apply, but TR-ENV still checks the envelope
+- `policy.enforcement_mode` is `"strict"` or `"monitor"` — TR-POL-002
+- `cnf.jwk` missing, of an unsupported key type, or carrying private key material (`d`) — TR-SIG-004
+- Signature does not verify against `cnf.jwk` — TR-SIG-005
+- `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares — TR-POL-003. The malformed case is reported with or without a resolver: a reference the record got wrong needs no network to detect
+- `appraisal` is absent or not an object, or `appraisal.status` is not one of the four values the schema enumerates — TR-APR-001
+- `appraisal.verifier` is absent or is not an absolute URI — TR-APR-002
+- `appraisal.policy_ref` or `appraisal.timestamp` is present and malformed — TR-APR-003, TR-APR-004. Absent, either one is skipped rather than passed
+
+______________________________________________________________________
+
+## Level 1 — TEE Attestation
+
+Level 1 adds hardware attestation. `runtime.platform` must be a value from the `runtime.platform` enum in `schemas/trace-claim.json` other than `software-only`, which carries no hardware attestation evidence. The measurement must be non-zero. `appraisal.status` must be `"affirming"` — TR-APR-005.
+
+**Minimum conformant Level 1 record** (changes from Level 0 in bold context):
+
+```
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1750000000,
+  "subject": "spiffe://trust.example.org/agent/my-agent",
+  "model": {
+    "provider": "example-provider",
+    "model_id": "example-model-1",
+    "version": "20251001"
+  },
+  "runtime": {
+    "platform": "amd-sev-snp",
+    "measurement": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+  },
+  "policy": {
+    "bundle_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "confidential",
+  "build_provenance": {
+    "slsa_level": 2,
+    "digest": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://verifier.agentrust-io.com"
+  },
+  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+    }
+  },
+  "signature": "eyJhbGciOiJFZERTQSJ9..."
+}
+```
+
+**Modules tested:** TR-ENV, TR-SIG, TR-POL, TR-RTE, TR-SCA
+
+**What causes a Level 1 failure over Level 0:**
+
+- `runtime.platform` is `"software-only"` — TR-RTE-001
+- `runtime.measurement` is all zeros — TR-RTE-002 (all-zero is invalid at Level 1)
+- `build_provenance` missing entirely — TR-SCA-001, TR-SCA-002
+- `appraisal.status` is `"none"` — while not a hard schema violation, a conformant Level 1 record should carry `"affirming"`; TR-APR-005 reports this from Level 1 and skips it at Level 0
+
+______________________________________________________________________
+
+## Level 2 — Transparency Anchoring
+
+Level 2 adds tool transcript and transparency anchor requirements. The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT receipt. The suite checks that it parses and that the scheme and host are present; it does not resolve the URI, and it does not recognise a placeholder value.
+
+**Minimum conformant Level 2 record** (additional fields over Level 1):
+
+```
+{
+  "tool_transcript": {
+    "hash": "sha256:c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "call_count": 4
+  },
+  "transparency": "https://registry.agentrust-io.com/claim/01J3XKWP4NQZ8R5HT6YD7VMBCE"
+}
+```
+
+**Modules tested:** TR-ENV, TR-SIG, TR-POL, TR-RTE, TR-SCA, TR-TXN, TR-ANC
+
+**What causes a Level 2 failure over Level 1:**
+
+- `tool_transcript.hash` missing or not a valid `sha256:` digest — TR-TXN-001
+- `tool_transcript.call_count` negative or not an integer — TR-TXN-002
+- `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host — TR-ANC-001
+- no anchor receipt was supplied, the receipt is malformed, or its inclusion proof does not reproduce the committed `merkle_root` — TR-ANC-002. A record cannot reach Level 2 on a URI alone: pass the receipt with `--receipt`
+- `policy.policy_uri` is present, a resolver was supplied with `--policy-dir`, and the bundle could not be read — TR-POL-003. Unverified rather than failed, and unverified fails the run from Level 2
+
+______________________________________________________________________
+
+## Unverified findings
+
+An unverified finding means **the check could not be executed against the evidence the record cites**. It is held apart from a skip so that a consumer can never read it as a benign omission, and it is not a pass.
+
+Whether it fails the run is per code rather than one rule over all of them. Different checks lose their evidence for different reasons, and the level at which that stops being tolerable is a property of the check.
+
+| Code       | UNVERIFIED fails the run from level |
+| ---------- | ----------------------------------- |
+| TR-SIG-005 | 1                                   |
+| TR-POL-003 | 2                                   |
+
+A code absent from this table fails from Level 1. That default is deliberate: a new code nobody registered still fails closed, and the registration guard turns red rather than the run turning quietly permissive. The table is `UNVERIFIED_FAILS_FROM_LEVEL` in `src/trace_tests/modules/unverified.py`, and `tests/test_docs_match_the_modules.py` fails if the two disagree.
+
+______________________________________________________________________
+
+## Choosing a level
+
+- Use **Level 0** during development. Records can use `runtime.platform: "software-only"` and `build_provenance.slsa_level: 0`.
+- Use **Level 1** for production deployments in a TEE (AMD SEV-SNP, Intel TDX, NVIDIA H100).
+- Use **Level 2** when you need an auditable, tamper-evident log with a SCITT transparency service.
+
+The certification program (launching 2027) will require Level 1 at minimum.
+
+## Related
+
+- [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md) — every TR-\* error with description and fix
+- [Test Modules](https://trace.agentrust-io.com/conformance/docs/modules/index.md) — per-module test lists with positive and negative cases
+- [TRACE Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/) — full specification of what each level proves
+
+# Test Modules
+
+The TRACE conformance suite is divided into eight modules. Each module maps to a section of the TRACE specification.
+
+| Module                                                                                  | ID Prefix | Spec Section | What It Tests                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------- | --------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Envelope](https://trace.agentrust-io.com/conformance/docs/modules/tr-env/index.md)     | TR-ENV    | §3.2         | `eat_profile` URI, `iat` validity, `subject` form, presence of `cnf.jwk.kty`                                                                                                               |
+| [Signature](https://trace.agentrust-io.com/conformance/docs/modules/tr-sig/index.md)    | TR-SIG    | §3.2.1       | Private key leak detection, key type support, and the Ed25519 signature verification outcome                                                                                               |
+| [Runtime](https://trace.agentrust-io.com/conformance/docs/modules/tr-rte/index.md)      | TR-RTE    | §3.1         | TEE platform enum, measurement format, RIM URI scheme, and verifier-issued nonce comparison                                                                                                |
+| [Policy](https://trace.agentrust-io.com/conformance/docs/modules/tr-pol/index.md)       | TR-POL    | §3.1         | Policy bundle hash format, enforcement mode values, and whether the bundle at `policy_uri` has the declared digest                                                                         |
+| [Appraisal](https://trace.agentrust-io.com/conformance/docs/modules/tr-apr/index.md)    | TR-APR    | §3.1         | Appraisal status enum, verifier URI form, `policy_ref` URI form, and timestamp plausibility. The appraisal policy is never resolved                                                        |
+| [Transcript](https://trace.agentrust-io.com/conformance/docs/modules/tr-txn/index.md)   | TR-TXN    | §3.1         | Tool-call transcript hash binding                                                                                                                                                          |
+| [Transparency](https://trace.agentrust-io.com/conformance/docs/modules/tr-anc/index.md) | TR-ANC    | §3.2         | SCITT receipt URI form (TR-ANC-001), and offline replay of the inclusion proof against the committed Merkle root when a receipt is supplied (TR-ANC-002). The URI itself is never resolved |
+| [Provenance](https://trace.agentrust-io.com/conformance/docs/modules/tr-sca/index.md)   | TR-SCA    | §3.1         | SLSA provenance level and digest format                                                                                                                                                    |
+
+# TR-ENV — Envelope
+
+Tests the top-level EAT envelope structure of a TRACE Trust Record.
+
+## Required at Level 0+
+
+| Test ID    | Description                                                                 | Positive Case                                         | Negative Case                                                 |
+| ---------- | --------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
+| TR-ENV-001 | `eat_profile` present and correct URI                                       | `tag:agentrust-io.com,2026:trace-v0.2`                | missing or wrong                                              |
+| TR-ENV-002 | `iat` is a valid Unix timestamp                                             | integer, reasonable range                             | string, future date                                           |
+| TR-ENV-003 | `subject` matches SPIFFE URI or DID                                         | `spiffe://trust.example/agent/x` or `did:key:z6Mk...` | bare string                                                   |
+| TR-ENV-004 | `cnf.jwk.kty` is present. This is not a gate over the schema's required set | `cnf.jwk.kty` set to any value                        | `cnf` absent, `cnf.jwk` absent or not an object, `kty` absent |
+| TR-ENV-005 | `cnf.jwk` carries no private key material                                   | `cnf.jwk` with `kty`/`crv`/`x` only                   | `cnf.jwk` containing `d`, `p`, `q`, `dp`, `dq`, `qi` or `k`   |
+
+# TR-SIG — Signature
+
+Tests Ed25519 signature binding on the TRACE Trust Record.
+
+## Required at Level 0+
+
+| Test ID    | Description                                                                          | Positive Case                              | Negative Case                                         |
+| ---------- | ------------------------------------------------------------------------------------ | ------------------------------------------ | ----------------------------------------------------- |
+| TR-SIG-001 | cmcp only: `signature` is present, and the Ed25519 verification outcome              | signed cmcp claim                          | missing or empty `signature`, bit-flipped signature   |
+| TR-SIG-002 | cmcp only: `cnf.jwk` is an OKP/Ed25519 key carrying `x`                              | JWK with `kty` OKP, `crv` Ed25519, `x` set | ES256, RS256, missing `x`                             |
+| TR-SIG-004 | `cnf.jwk` carries no private key material, and `cnf.jwk.kty` is a supported key type | JWK with `x` only, `kty` of `OKP` or `EC`  | JWK with `d` present, missing `kty`, `RSA`            |
+| TR-SIG-005 | The signature check outcome: verified, unverifiable, not checked, or absent          | valid Ed25519 signature                    | bit-flipped signature, no signature, JWK carrying `d` |
+
+# TR-RTE: Runtime
+
+Checks runtime claim fields and, at Level 1 or above, the verifier's nonce. This module does not fetch reference manifests, verify hardware quotes, authenticate platform certificates, or compare measurements against an approved image.
+
+## Checks
+
+| Test ID    | Actual check                                                                                 | Boundary                                                                            |
+| ---------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| TR-RTE-001 | Platform belongs to the registered set; `software-only` is rejected above Level 0            | A registered platform string is not hardware evidence                               |
+| TR-RTE-002 | Measurement has `sha256:` plus 64 lowercase hex digits or `sha384:` plus 96                  | Format only; all-zero values also match this check                                  |
+| TR-RTE-003 | If present, `rim_uri` is a string starting with `https://`; absent means skipped             | No network request, HTTP status check, URI resolution, or reference-image appraisal |
+| TR-RTE-004 | At Level 1 or above, a nonempty runtime nonce matches the verifier's nonempty expected nonce | Compares claim values; does not establish binding to a hardware quote               |
+
+The registered set includes `intel-tdx`, `amd-sev-snp`, `azure-cvm-sev-snp`, `nvidia-h100`, `nvidia-blackwell`, `aws-nitro`, `arm-cca`, `google-confidential-space`, `tpm2`, and `software-only`.
+
+Use independently trusted hardware evidence, expected measurements, key binding, and provider-specific appraisal outside these format checks. See the [suite limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md) and [runtime checker source](https://github.com/agentrust-io/trace-tests/blob/main/src/trace_tests/modules/tr_rte.py).
+
+# TR-POL — Policy
+
+Tests Cedar policy bundle binding.
+
+## Required at Level 0+
+
+| Test ID    | Description                                                                                                        | Positive Case                                                  | Negative Case                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| TR-POL-001 | `policy.bundle_hash` is a valid `sha256:` or `sha384:` digest                                                      | `sha256:` + 64 hex chars, `sha384:` + 96 hex chars             | missing, wrong prefix, wrong length                                                |
+| TR-POL-002 | `policy.enforcement_mode` is `enforce`, `advisory`, `silent`, or `declared`                                        | `enforce`                                                      | `strict`, `monitor`, absent                                                        |
+| TR-POL-003 | `policy.policy_uri` is an absolute URI, and the bundle it resolves to has the digest `policy.bundle_hash` declares | absent `policy_uri`; or a resolved bundle whose digest matches | relative reference, whitespace in the URI, resolved bundle with a different digest |
+
+## Resolving the bundle
+
+TR-POL-003 needs somewhere to fetch the bundle from. The resolver is supplied by the caller and never derived from the record — a record that named its own resolver could name one that agrees with it. From the CLI that is `--policy-dir DIR`, where `DIR/resolutions.json` maps each `policy_uri` to a relative path inside `DIR`:
+
+```
+trace-tests verify --record record.json --policy-dir ./bundles
+```
+
+Without it the resolution part of the check skips, so offline verification stays a first-class use rather than a degraded one.
+
+**A malformed `policy_uri` is reported with or without a resolver.** A reference the record got wrong is a defect in the record, visible with no network at all, exactly like the digest shape TR-POL-001 tests. A referent that could not be fetched is not: that is reported as unverified, and only when a resolver was supplied and failed.
+
+# TR-APR — Appraisal
+
+Tests the evidence appraisal the record carries: the verifier's verdict, who issued it, which policy it was issued under, and when.
+
+## Required at Level 0+
+
+| Test ID    | Description                                                                                  | Positive Case                                                           | Negative Case                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| TR-APR-001 | `appraisal.status` is one of the four values `schemas/trace-claim.json` enumerates           | `affirming`, `warning`, `contraindicated`, `none`                       | `"verified"`, `"AFFIRMING"`, `7`, absent; also an absent or non-object `appraisal`             |
+| TR-APR-002 | `appraisal.verifier` is an absolute URI                                                      | `https://verifier.example.org`                                          | `nvidia-openshell/0.3.0` (no scheme), a URI carrying whitespace or a control character, absent |
+| TR-APR-003 | `appraisal.policy_ref`, when present, is an absolute URI                                     | `https://policies.example.org/appraisal/v3`; absent (optional, skipped) | `./policies/v1`, `ht tp://x`                                                                   |
+| TR-APR-004 | `appraisal.timestamp`, when present, is an integer of epoch seconds and is not in the future | a past epoch second; absent (optional, skipped)                         | `"1748000042"` (string), a float, a boolean, an epoch second in the future                     |
+
+## Required at Level 1+
+
+| Test ID    | Description                       | Positive Case | Negative Case                        |
+| ---------- | --------------------------------- | ------------- | ------------------------------------ |
+| TR-APR-005 | `appraisal.status` is `affirming` | `affirming`   | `none`, `warning`, `contraindicated` |
+
+At Level 0 this check is skipped rather than passed. `docs/levels.md`'s own minimum conformant Level 0 record carries `"status": "none"`, so a Level 0 record is not asked to affirm.
+
+## Absent optional fields skip, and a skip is not a pass
+
+`policy_ref` and `timestamp` are optional. When either is absent TR-APR reports a skip, which says the check was not performed. Reporting a pass would say the field was examined and found sound, and nothing was examined.
+
+## What TR-APR does not do
+
+**It never resolves anything.** TR-APR performs no network access and no filesystem access, and it takes no resolver. TR-APR-003 checks the *shape of the name* of the appraisal policy; it does not fetch that policy and does not compare it against anything.
+
+Resolving a cited object against a declared digest is TR-POL-003's work, on a different field: `policy.policy_uri` resolved against `policy.bundle_hash`. The record carries a digest for the enforced policy bundle and no digest for the appraisal policy, so there is nothing here for a second verifier to compare a retrieved bundle against. Two fields, two objects, no overlapping assertion.
+
+Because nothing here has a referent to lose, no TR-APR code can report `UNVERIFIED`, and none appears in the unverified-level table in `docs/levels.md`. Every check either passes, fails, or skips.
+
+`appraisal.provenance_depth_verified` is not checked. The schema admits it and no published sentence states what a verifier must do with it, so enforcing anything about it would be this suite inventing a requirement rather than testing one.
+
+# TR-TXN — Transcript
+
+Tests tool-call transcript binding.
+
+## Required at Level 2+
+
+| Test ID    | Description                                            | Positive Case                      | Negative Case                       |
+| ---------- | ------------------------------------------------------ | ---------------------------------- | ----------------------------------- |
+| TR-TXN-001 | `tool_transcript.hash` is a valid `sha256:` digest     | `sha256:` followed by 64 hex chars | missing, wrong prefix, wrong length |
+| TR-TXN-002 | `tool_transcript.call_count` is a non-negative integer | `0`, `1`, `42`                     | `-1`, `"three"`, absent             |
+
+# TR-ANC — Transparency
+
+Tests transparency anchoring via SCITT.
+
+## Required at Level 2+
+
+| Test ID    | Description                                                                                                                  | Positive Case                                                                | Negative Case                                                                                                                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-ANC-001 | `transparency` is an `https://` URI with a host. Not resolved                                                                | `https://transparency.example/entries/abc123`                                | missing field, empty string, non-string, `http://`, bare path, `ipfs://`                                                                                                                        |
+| TR-ANC-002 | The record's inclusion proof replays to the committed `merkle_root`, per RFC 9162 over an RFC 6962 tree. Offline, no network | a receipt whose `audit_path` reproduces `merkle_root` from the record's leaf | no receipt supplied, missing `leaf_index`/`audit_path`/`leaf_count`/`merkle_root`, non-hex audit node, out-of-range `leaf_index`, proof for a different record, record modified after anchoring |
+
+# TR-SCA — Provenance
+
+Tests SLSA build provenance.
+
+## Required at Level 1+
+
+| Test ID    | Description                                           | Positive Case                      | Negative Case                       |
+| ---------- | ----------------------------------------------------- | ---------------------------------- | ----------------------------------- |
+| TR-SCA-001 | `build_provenance.slsa_level` is 0–3                  | `0`, `1`, `2`, `3`                 | `4`, `5`, `-1`, `"high"`, absent    |
+| TR-SCA-002 | `build_provenance.digest` is a valid `sha256:` digest | `sha256:` followed by 64 hex chars | missing, wrong prefix, wrong length |
+
+# Error Codes
+
+All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<NNN>`.
+
+## TR-ENV — Envelope
+
+| Code       | Description                                                                                        | How to fix                                                                                                                                                                                            |
+| ---------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-ENV-001 | Missing or invalid `eat_profile` URI                                                               | Set `eat_profile` to `"tag:agentrust-io.com,2026:trace-v0.2"`                                                                                                                                         |
+| TR-ENV-002 | `iat` is missing, not an integer, or out of range                                                  | Set `iat` to a Unix timestamp integer (e.g. `int(time.time())`)                                                                                                                                       |
+| TR-ENV-003 | `subject` does not match SPIFFE URI or DID pattern                                                 | Use `spiffe://<trust-domain>/<path>` or a `did:` URI                                                                                                                                                  |
+| TR-ENV-004 | `cnf` is absent or not an object, `cnf.jwk` is absent or not an object, or `cnf.jwk.kty` is absent | Populate `cnf.jwk` with at least `kty`. This checks that one field, not the schema's full required set, which structural validation covers                                                            |
+| TR-ENV-005 | `cnf.jwk` carries private key material (`d`, `p`, `q`, `dp`, `dq`, `qi`, `k`)                      | Publish the public half only. RFC 8747 makes `cnf` a confirmation key, and a record is signed and usually anchored, so a key exposed this way must be treated as compromised and the identity revoked |
+
+## TR-SIG — Signature
+
+| Code       | Description                                                                                                                                                                                                                                                                                              | How to fix                                                                                                                                                                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-SIG-001 | In a `cmcp-runtime` envelope: `signature` is missing or empty, or the Ed25519 verification outcome for the claim                                                                                                                                                                                         | Sign the claim with an Ed25519 key and leave the signed fields unchanged. A plain TRACE record reports its signature outcome under TR-SIG-005, not here                                                                                                                                     |
+| TR-SIG-002 | In a `cmcp-runtime` envelope: `cnf.jwk` is not an OKP/Ed25519 key, or `cnf.jwk.x` is missing                                                                                                                                                                                                             | Populate `cnf.jwk` with the OKP public key `{"kty":"OKP","crv":"Ed25519","x":"..."}`; `sign_record()` does this automatically. A plain TRACE record reports key type under TR-SIG-004                                                                                                       |
+| TR-SIG-004 | `cnf.jwk` carries private key material (a `d` member), or `cnf.jwk.kty` is missing or names an unsupported key type (`OKP` and `EC` are accepted)                                                                                                                                                        | Remove `d` and embed only the public form of the JWK; `key_to_jwk()` returns it. For key type, use `OKP` or `EC`; Ed25519 signature verification additionally requires `kty: "OKP"` with `crv: "Ed25519"`, and a supported key that is not that pair passes this check and fails TR-SIG-005 |
+| TR-SIG-005 | The signature check outcome: the Ed25519 verification result, a signature that cannot be verified, a signature left unchecked because `cnf.jwk` carried private key material, or no signature at all. With no signature it is FAIL at Level 1 and above and `UNVERIFIED` at Level 0, which is not a pass | Sign the record with `sign_record(record, key)` and do not change the signed fields afterwards. An unsigned record is reported as unverified rather than skipped, so it cannot be read as a benign omission                                                                                 |
+
+## TR-RTE — Runtime
+
+| Code       | Description                                                                                                                           | How to fix                                                                                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-RTE-001 | `runtime` is missing or not an object, or `runtime.platform` is not in the registered set, or is `software-only` at Level 1 and above | Use a value from the `runtime.platform` enum in `schemas/trace-claim.json`. `software-only` carries no hardware attestation evidence and is accepted only at Level 0   |
+| TR-RTE-002 | `runtime.measurement` is not a valid `sha256:` digest                                                                                 | Provide a 64-character hex digest prefixed with `sha256:`; for Level 0 all-zeros is conventional                                                                       |
+| TR-RTE-003 | `runtime.rim_uri` is present and is not an `https://` URI                                                                             | Remove `runtime.rim_uri` if not using a RIM, or set it to an `https://` URI. The URI is not resolved and the manifest behind it is not checked; this is a format check |
+| TR-RTE-004 | Level 1+ verification is missing the verifier challenge nonce or the nonce does not match                                             | Supply the verifier's expected nonce and require the attested runtime nonce to match it                                                                                |
+
+## TR-POL — Policy
+
+| Code       | Description                                                                                                                                                                                                                                                                    | How to fix                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-POL-001 | `policy.bundle_hash` is not a valid `sha256:` or `sha384:` digest                                                                                                                                                                                                              | Compute `sha256:` + 64 hex chars, or `sha384:` + 96 hex chars, over your policy bundle bytes. Both are accepted by the schema and by the module                            |
+| TR-POL-002 | `policy.enforcement_mode` is not `enforce`, `advisory`, `silent`, or `declared`                                                                                                                                                                                                | Replace `"strict"` or `"monitor"` with one of the four accepted values; `"declared"` is the honest value for a producer that binds a policy without evaluating it          |
+| TR-POL-003 | `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares. Unverified when a resolver was supplied and the bundle could not be read; skipped when no `policy_uri` is present or no resolver was supplied | Point `policy_uri` at the bundle whose bytes hash to `bundle_hash`. A record that cites a bundle it cannot be checked against is reported as unverified rather than passed |
+
+## TR-APR — Appraisal
+
+| Code       | Description                                                                                                                                          | How to fix                                                                                                                                                                                                                      |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-APR-001 | `appraisal` is absent or not an object, or `appraisal.status` is absent or not one of `affirming`, `warning`, `contraindicated`, `none`              | Set `appraisal.status` to one of the four values the schema enumerates. An absent or non-object `appraisal` is reported as this code alone, not as a cascade                                                                    |
+| TR-APR-002 | `appraisal.verifier` is absent, not a string, or not an absolute URI                                                                                 | Set `appraisal.verifier` to the absolute URI identifying the verifier that produced the appraisal. A relative reference is rejected: the schema asks for `format: "uri"`, and a reader cannot dereference a name with no scheme |
+| TR-APR-003 | `appraisal.policy_ref` is present and is not an absolute URI. Skipped when the field is absent, which is permitted                                   | Point `policy_ref` at the appraisal policy with an absolute URI, or omit it. Only the shape of the name is checked; TR-APR never resolves it                                                                                    |
+| TR-APR-004 | `appraisal.timestamp` is present and is not an integer of epoch seconds, or is in the future. Skipped when the field is absent, which is permitted   | Set `appraisal.timestamp` to the epoch second the appraisal was produced. An appraisal dated in the future asserts something that has not happened, on the same ground TR-ENV-002 applies to `iat`                              |
+| TR-APR-005 | `appraisal.status` is not `affirming` at Level 1 or above. Skipped at Level 0, where `docs/levels.md`'s own minimum conformant record carries `none` | Re-run the appraisal until it affirms, or check the record at Level 0                                                                                                                                                           |
+
+## TR-TXN — Transcript
+
+| Code       | Description                                                | How to fix                                                                                              |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| TR-TXN-001 | `tool_transcript.hash` is not a valid `sha256:` digest     | Set `tool_transcript.hash` to `sha256:` + 64 hex chars of the Merkle root of the tool call log          |
+| TR-TXN-002 | `tool_transcript.call_count` is negative or not an integer | Set `tool_transcript.call_count` to a non-negative integer (0 is valid for sessions with no tool calls) |
+
+## TR-ANC — Transparency
+
+| Code       | Description                                                                                                                               | How to fix                                                                                                                                                                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-ANC-001 | `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host                                               | Submit the record to a SCITT transparency log and set `transparency` to the returned receipt URI. The URI is not resolved and the receipt behind it is not fetched; this is a format check on the pointer, and TR-ANC-002 is what checks the anchor                 |
+| TR-ANC-002 | No anchor receipt was supplied, the receipt is malformed, or replaying its inclusion proof does not reproduce the committed `merkle_root` | Pass the receipt with `--receipt`. Without one, nothing proves the record is in the log the URI names, so Level 2 cannot pass. If a receipt is supplied and the proof does not verify, the record is not in that tree or it has been modified since it was anchored |
+
+## TR-SCA — Provenance
+
+| Code       | Description                                               | How to fix                                                                                          |
+| ---------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| TR-SCA-001 | `build_provenance.slsa_level` is not 0–3                  | Set `build_provenance.slsa_level` to an integer 0–3 matching your SLSA build level                  |
+| TR-SCA-002 | `build_provenance.digest` is not a valid `sha256:` digest | Set `build_provenance.digest` to `sha256:` + 64 hex chars of the container image or artifact digest |
+# Guides
+
+# Writing Custom TRACE Conformance Tests
+
+Write a custom pytest test that verifies a specific field in a TRACE Trust Record using the `trace_tests` library.
+
+## What you'll learn
+
+- What the three conformance levels require and which modules activate at each level
+- How to build a minimal TRACE record fixture and call the module `check()` functions directly
+- How to interpret `Finding` results and match them to error codes
+
+## Prerequisites
+
+```
+pip install agentrust-trace-tests pytest cryptography
+```
+
+______________________________________________________________________
+
+## Understand the conformance levels
+
+TRACE defines three levels. Each level activates a cumulative set of modules:
+
+| Level | Required modules         | Typical use                                         |
+| ----- | ------------------------ | --------------------------------------------------- |
+| 0     | TR-ENV, TR-SIG, TR-POL   | Software-only development and staging               |
+| 1     | Level 0 + TR-RTE, TR-SCA | Records that declare a TEE platform and measurement |
+| 2     | Level 1 + TR-TXN, TR-ANC | Full records with SCITT transparency anchoring      |
+
+At Level 0 you can set `runtime.platform` to `"software-only"` and skip hardware attestation entirely. At Level 1 you must supply a real TEE measurement from AMD SEV-SNP, Intel TDX, NVIDIA H100, or similar. Level 2 adds a SCITT receipt URI and a bound tool-call transcript hash.
+
+The `runner.run()` function respects this table. Modules not required at the requested level are never invoked.
+
+______________________________________________________________________
+
+## Run the existing test suite
+
+The published suite uses pytest markers to group tests by level:
+
+```
+# Run everything
+pytest
+
+# Run only Level 0 tests
+pytest -m level0
+
+# Short traceback, stop after the first failure
+pytest --tb=short -x
+```
+
+Each test file uses a pytest fixture (defined in `tests/conftest.py`) that loads a JSON vector or builds a signed record in memory. The fixture names match the level they cover: `valid_level0`, `signed_eat_fixture`, `trust_record`.
+
+A passing run looks like:
+
+```
+tests/test_level0.py::TestLevel0Conformance::test_schema_valid PASSED
+tests/test_level0.py::TestLevel0Conformance::test_eat_profile_sentinel PASSED
+...
+```
+
+A skip appears when a test is conditional on an optional field:
+
+```
+tests/test_level0.py::TestLevel0Conformance::test_transcript_digest_when_present SKIPPED
+```
+
+A failure looks like:
+
+```
+FAILED tests/test_level1.py::test_tee_platform_present
+AssertionError: TR-RTE-001: runtime.platform must be a recognised TEE enum value
+```
+
+______________________________________________________________________
+
+## Understand the module system
+
+Each module is a Python file under `src/trace_tests/modules/`. Every module exposes a `check()` function that accepts the extracted TRACE fields dict and returns `list[Finding]`.
+
+```
+# Every module follows this pattern
+from trace_tests.modules import tr_pol
+from trace_tests.result import Finding, Status
+
+findings: list[Finding] = tr_pol.check(trace_dict)
+```
+
+A `Finding` carries three fields:
+
+```
+finding.code     # e.g. "TR-POL-001"
+finding.status   # Status.PASS, Status.FAIL, Status.SKIP, or Status.UNVERIFIED
+finding.message  # human-readable detail
+
+finding.passed()      # True when status == PASS
+finding.failed()      # True when status == FAIL
+finding.skipped()     # True when status == SKIP
+finding.unverified()  # True when status == UNVERIFIED
+```
+
+`UNVERIFIED` is distinct from `SKIP`. It means the record carries no signature that can be verified. At Level 0 this is allowed; at Level 1 and above it counts as a failure so a caller cannot mistake an unverified record for a passing one.
+
+______________________________________________________________________
+
+## Write a custom test
+
+The simplest pattern is to build a minimal trace dict, call the module directly, and assert on the findings.
+
+```
+# tests/custom/test_my_policy.py
+import pytest
+from trace_tests.modules import tr_pol
+from trace_tests.result import Status
+
+
+def _policy_trace(bundle_hash: str, enforcement_mode: str) -> dict:
+    return {
+        "policy": {
+            "bundle_hash": bundle_hash,
+            "enforcement_mode": enforcement_mode,
+        }
+    }
+
+
+def test_sha256_bundle_hash_passes():
+    trace = _policy_trace(
+        bundle_hash="sha256:" + "a" * 64,
+        enforcement_mode="enforce",
+    )
+    findings = tr_pol.check(trace)
+    assert all(not f.failed() for f in findings), findings
+
+
+def test_md5_bundle_hash_fails_tr_pol_001():
+    trace = _policy_trace(bundle_hash="md5:abc123", enforcement_mode="enforce")
+    codes = {f.code for f in tr_pol.check(trace) if f.failed()}
+    assert "TR-POL-001" in codes
+
+
+def test_unknown_enforcement_mode_fails_tr_pol_002():
+    trace = _policy_trace(
+        bundle_hash="sha256:" + "b" * 64,
+        enforcement_mode="strict",  # not in {enforce, advisory, silent, declared}
+    )
+    codes = {f.code for f in tr_pol.check(trace) if f.failed()}
+    assert "TR-POL-002" in codes
+```
+
+For modules that need the full raw record (TR-SIG), pass both the extracted trace and the raw record:
+
+```
+from trace_tests.modules.tr_sig import check as check_sig
+
+# fmt is "cmcp-runtime" for cMCP envelopes, "trace" for plain TRACE records
+findings = check_sig(trace=record["trace"], record=record, fmt="cmcp-runtime", level=0)
+```
+
+For TR-ENV, pass `max_age_seconds` to override the default 24-hour freshness window in tests:
+
+```
+from trace_tests.modules.tr_env import check as check_env
+
+findings = check_env(trace, max_age_seconds=3600)
+```
+
+______________________________________________________________________
+
+## Build a signed fixture
+
+When you need a cryptographically valid record (required for TR-SIG tests at Level 1+), generate a key pair and sign the canonical JSON body yourself:
+
+```
+import base64
+import json
+import time
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+
+def _b64url(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+
+
+def _canonical_json(d: dict) -> bytes:
+    return json.dumps(d, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
+
+
+def build_signed_cmcp_record(platform: str = "tpm2") -> dict:
+    priv = Ed25519PrivateKey.generate()
+    pub_raw = priv.public_key().public_bytes_raw()
+    x = _b64url(pub_raw)
+    kid = f"test-{pub_raw[:4].hex()}"
+
+    record = {
+        "cmcp_version": "1.0",
+        "trace": {
+            "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+            "iat": int(time.time()) - 30,
+            "subject": "spiffe://cmcp.gateway/session/my-test",
+            "runtime": {
+                "platform": platform,
+                "measurement": "sha256:" + "a" * 64,
+            },
+            "policy": {
+                "bundle_hash": "sha256:" + "b" * 64,
+                "enforcement_mode": "enforce",
+            },
+            "data_class": "internal",
+            "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, "kid": kid}},
+        },
+        "gateway": {"session_id": "my-test"},
+        "signature": "",
+    }
+
+    body = _canonical_json({k: v for k, v in record.items() if k != "signature"})
+    record["signature"] = _b64url(priv.sign(body))
+    return record
+```
+
+This matches the helper pattern in `tests/conftest.py` and the `_build_signed_cmcp_record` function used by the published fixtures.
+
+______________________________________________________________________
+
+## Interpret error codes
+
+Error codes follow the pattern `TR-<MODULE>-<NNN>`. The module prefix tells you which spec section failed; the number points to the specific field. The full table is at [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md).
+
+Common codes you will encounter:
+
+| Code       | Field                     | Fix                                                    |
+| ---------- | ------------------------- | ------------------------------------------------------ |
+| TR-ENV-001 | `eat_profile`             | Must be `tag:agentrust-io.com,2026:trace-v0.2`         |
+| TR-ENV-002 | `iat`                     | Must be a Unix timestamp in the last 24 hours          |
+| TR-SIG-005 | `signature`               | Signature missing, unverifiable, or does not verify    |
+| TR-SIG-004 | `cnf.jwk`                 | Supported key type, and no private key material        |
+| TR-POL-001 | `policy.bundle_hash`      | Must match `sha256:<64 hex chars>`                     |
+| TR-POL-002 | `policy.enforcement_mode` | Must be `enforce`, `advisory`, `silent`, or `declared` |
+| TR-RTE-001 | `runtime.platform`        | Must be a registered TEE platform enum                 |
+
+When a finding carries `status == Status.UNVERIFIED`, the record has no signature. This is not a benign skip at Level 1 or above.
+
+______________________________________________________________________
+
+## Summary
+
+You ran the existing suite with pytest, called individual module `check()` functions directly, and built a signed test fixture from scratch. The `Finding` dataclass with `code`, `status`, and `message` fields is the single interface across all eight modules.
+
+Next steps: [CI Integration](https://trace.agentrust-io.com/conformance/docs/tutorials/ci-integration/index.md) shows how to run these tests in GitHub Actions with matrix Python versions and artifact upload.
+
+# Running trace-tests in a CI Pipeline
+
+Configure a GitHub Actions workflow that installs `agentrust-trace-tests`, runs the full conformance suite, and uploads the test report as an artifact.
+
+## What you'll learn
+
+- A working GitHub Actions workflow file with matrix Python version testing
+- How to use `CMCP_DEV_MODE=1` to run the software-only TEE path in standard CI
+- How to read a failure back to the specific error code and field it names
+- When to skip hardware attestation tests that require real TEE hardware
+
+## Prerequisites
+
+```
+pip install agentrust-trace-tests pytest pytest-json-report
+```
+
+______________________________________________________________________
+
+## Write the workflow
+
+Create `.github/workflows/trace-tests.yml` in your repository:
+
+```
+name: TRACE conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install agentrust-trace-tests pytest pytest-json-report
+
+      - name: Run conformance suite
+        env:
+          CMCP_DEV_MODE: "1"
+        run: |
+          pytest --tb=short \
+                 --json-report \
+                 --json-report-file=report-${{ matrix.python-version }}.json
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trace-report-py${{ matrix.python-version }}
+          path: report-${{ matrix.python-version }}.json
+```
+
+The `fail-fast: false` setting lets all Python versions finish even if one matrix leg fails, so you can see whether a failure is version-specific.
+
+______________________________________________________________________
+
+## Set CMCP_DEV_MODE for software-only CI
+
+Standard CI runners have no TEE hardware. Set `CMCP_DEV_MODE=1` to allow records with `runtime.platform: "software-only"` to pass TR-RTE without a real attestation measurement.
+
+```
+- name: Run conformance suite
+  env:
+    CMCP_DEV_MODE: "1"
+  run: pytest --tb=short
+```
+
+When this environment variable is absent, TR-RTE checks that `runtime.platform` is a registered hardware TEE enum (`intel-tdx`, `amd-sev-snp`, `nvidia-h100`, etc.). With `CMCP_DEV_MODE=1`, the `software-only` platform value passes. Never set this flag in production verification.
+
+______________________________________________________________________
+
+## Skip hardware attestation tests
+
+Some tests require a live TEE to produce a real attestation report. Mark them so they skip automatically on standard runners:
+
+```
+import os
+import pytest
+
+HW_AVAILABLE = os.getenv("TEE_HARDWARE") == "1"
+
+@pytest.mark.skipif(not HW_AVAILABLE, reason="requires real TEE hardware")
+def test_amd_sev_snp_measurement_round_trip():
+    ...
+```
+
+In your workflow, standard jobs skip these tests silently. A separate job on hardware-provisioned runners can set `TEE_HARDWARE=1` to run the full set.
+
+You can also use pytest markers to exclude the hardware group entirely in CI:
+
+```
+pytest -m "not hardware" --tb=short
+```
+
+Register the marker in `pytest.ini` or `pyproject.toml` to avoid the `PytestUnknownMarkWarning`:
+
+```
+[tool.pytest.ini_options]
+markers = [
+    "hardware: tests that require a physical TEE (deselect with -m 'not hardware')",
+    "level0: Level 0 conformance tests",
+    "level1: Level 1 conformance tests",
+    "level2: Level 2 conformance tests",
+]
+```
+
+______________________________________________________________________
+
+## Read a failure back to its field
+
+When a test fails, `--tb=short` shows the assertion message, which includes the error code:
+
+```
+FAILED tests/test_level0.py::TestLevel0Conformance::test_policy_enforcement_mode_known
+AssertionError: assert 'strict' in {'advisory', 'enforce', 'silent'}
+```
+
+Match the test name to the module (`tr_pol`) and look up the code in the [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md) table. For failures surfaced by `runner.run()`, the `Finding` object carries the code directly:
+
+```
+from trace_tests.runner import run
+from trace_tests.loader import load_record
+
+record, fmt = load_record("trust-record.json")
+results = run(record, fmt, level=1)
+
+for module_id, findings in results.items():
+    for f in findings:
+        if f.failed():
+            print(f"{f.code}  {f.message}")
+```
+
+Output:
+
+```
+TR-RTE-001  TR-RTE-001: runtime.platform must be a recognised TEE enum value, got 'custom-tee'
+```
+
+The code `TR-RTE-001` maps to `runtime.platform`. Fix the field in your record and re-run.
+
+______________________________________________________________________
+
+## Upload the test report as an artifact
+
+`pytest-json-report` writes a machine-readable JSON file. The `upload-artifact` step makes it available in the GitHub Actions UI under the run summary.
+
+```
+- name: Upload test report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: trace-report-py${{ matrix.python-version }}
+    path: report-${{ matrix.python-version }}.json
+```
+
+`if: always()` uploads the report even when the test step fails, so you can inspect failures without re-running.
+
+To produce a JUnit XML report instead (for GitHub's built-in test summary):
+
+```
+pytest --tb=short --junit-xml=results.xml
+```
+
+```
+- name: Publish test results
+  uses: actions/upload-artifact@v4
+  if: always()
+  with:
+    name: junit-results
+    path: results.xml
+```
+
+______________________________________________________________________
+
+## Matrix testing across Python versions
+
+The `strategy.matrix` block runs the full suite on Python 3.10, 3.11, and 3.12 in parallel. Each leg uploads its own artifact so version-specific regressions are visible without comparing logs manually.
+
+To add a new version, append it to the list:
+
+```
+matrix:
+  python-version: ["3.10", "3.11", "3.12", "3.13"]
+```
+
+If a module uses a stdlib API that changed between versions, the matrix will catch it. The `trace_tests` library targets the same version range, so failures here indicate a compatibility problem in your custom tests or fixtures, not in the library itself.
+
+______________________________________________________________________
+
+## Summary
+
+You have a GitHub Actions workflow that installs `agentrust-trace-tests`, runs the suite across three Python versions with `CMCP_DEV_MODE=1`, and saves per-version JSON reports as artifacts. Hardware attestation tests are marked and skipped on standard runners. When a test fails, the error code in the assertion message maps directly to the spec field that failed.
+
+For more on what each error code means, see [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md). To write custom tests against specific modules, see [Writing Conformance Tests](https://trace.agentrust-io.com/conformance/docs/tutorials/writing-conformance-tests/index.md).
+
+# Does `trace-tests` notice when its own conformance checks break?
+
+**Measured** 2026-08-07 against `agentrust-io/trace-tests` @ `7fc189c` (release 0.4.1), with the normative schema from `agentrust-io/trace-spec` @ `dc7491c`.
+
+`trace-tests` is the suite an implementer runs to establish that their TRACE implementation conforms. Its output is a conformance claim. That makes a question one level up worth asking, and as far as the repository shows, unasked so far:
+
+> If a check inside a conformance module silently stopped working, would the repository's own test suite catch it?
+
+When this was first measured, the answer was no for ten of the thirty-three failure paths. Those ten are now guarded, and the measurement is what established which ones needed it.
+
+______________________________________________________________________
+
+## Result
+
+```
+modules   7        src/trace_tests/modules/tr_*.py
+checks    18       distinct TR-xxx-nnn codes
+sites     33       Finding(..., Status.FAIL, ...) constructions
+
+by check   18 of 18 verified,  0 unverified
+by site    33 of 33 verified,  0 unverified
+```
+
+Eight checks sit at margin 1, meaning exactly one test stands between them and silent regression. That is a floor, not a comfortable state, and it is the number to watch.
+
+### What the first measurement found
+
+| Check        | What it enforces                                                                            | Sites then unverified |
+| ------------ | ------------------------------------------------------------------------------------------- | --------------------- |
+| `TR-SIG-002` | `cnf.jwk` is an OKP/Ed25519 key and carries `x`                                             | 2 of 2                |
+| `TR-TXN-001` | `tool_transcript` is present at Level 2, is an object, and its hash is a well-formed digest | 3 of 3                |
+| `TR-TXN-002` | `tool_transcript.call_count` is a non-negative integer                                      | 1 of 1                |
+| `TR-SCA-001` | `build_provenance` is an object                                                             | 1 site                |
+| `TR-SIG-004` | `cnf.jwk.kty` is a supported key type                                                       | 1 site                |
+| `TR-SIG-005` | a signature that cannot be checked fails rather than going unverified                       | 1 site                |
+| `TR-ANC-001` | a transparency URI that cannot be parsed fails cleanly                                      | 1 site                |
+
+`tr_txn` and `tr_sca` had no unit tests at all, which is why every one of their failure paths measured zero. `TR-TXN-001` carried the most weight: it is the Level 2 requirement that a tool transcript exist, and nothing else in the suite enforced it.
+
+**Counting by check understates the problem by more than threefold.** A check code emitted from three places can have one failure path nothing verifies while the other two are covered, and still count as verified. The sites are where the checks actually live.
+
+`TR-TXN-001` carries the most weight. It is the Level 2 requirement that a tool transcript exist at all. If it regressed, implementations would continue to be stamped Level 2 conformant without that property being checked — and the transcript is the claim Level 2 is largely about.
+
+`TR-SIG-002` is the gate that rejects a key that is not Ed25519. With it inert, a record carrying another key type reaches signature verification rather than being refused at the key-type check.
+
+### Seven further failure paths inside otherwise-verified checks
+
+`TR-ANC-001`, `TR-SCA-001`, `TR-SIG-004` and `TR-SIG-005` each have at least one site at margin 0 while other sites of the same code are verified. Those are the paths a by-code count cannot see.
+
+### Margin is thin where it exists
+
+Twelve sites are held by exactly one test. That is the same no-margin property reported for the `trace-spec` fixture set in agentrust-io/trace-spec#124, in the repository whose output is the conformance stamp rather than in the informative fixture set.
+
+______________________________________________________________________
+
+## A separate finding: a hand-written enum has drifted
+
+`tests/test_level0.py:7` defines `VALID_PLATFORMS` as a set literal restating the schema's `runtime.platform` enum. It holds nine values; the schema holds ten. `software-only` is missing.
+
+The conformance module is correct — `tr_rte.py:_VALID_PLATFORMS` has all ten — so this is a defect in the self-test, not in what implementers run. Three-way comparison on a Level 0 record carrying `software-only`:
+
+```
+tr_rte.check(record, level=0)   PASS      (what an implementer runs)
+normative schema                accepts
+tests/test_level0.py            FAIL      (contradicts both)
+```
+
+It is latent: no vector in `tests/vectors/` uses `software-only`, so nothing triggers it today. It becomes active the moment one does — and it would then reject behaviour the project deliberately added, in PR #16/#17, which updated the conformance module and added `tests/test_software_only_platform.py` while leaving this copy behind.
+
+______________________________________________________________________
+
+## Method
+
+For every `Finding(..., Status.FAIL, ...)` construction in the conformance modules, rewrite that site so the check can never fail, run the entire suite, count how many tests notice, restore. The count is the margin. Zero means the check's failure path is unverified.
+
+### The cheap version gives the wrong answer
+
+The obvious first approach is to grep the test files for `TR-xxx-nnn` codes and diff against what the modules emit. On this tree it reports **12 unverified checks**. Mutation reports **3**.
+
+The proxy is wrong because tests exercise a module through `tr_xxx.check(...)` and assert on the returned findings without naming the codes. Naming is a convention; changing outcome is the property. The two are not related closely enough to substitute one for the other.
+
+### Guards, each of which produced a wrong answer during development
+
+- **A green baseline is a precondition.** Mutating an already-red suite attributes nothing. The script runs the baseline first and aborts if it is not green.
+- **A mutation that did not apply is indistinguishable from a check nothing notices.** Each rewrite is verified to have changed the file before the suite runs. An earlier hand-run of this measurement replaced a string that did not occur in the target, left the suite green, and would have been recorded as evidence for the opposite of the truth.
+- **An empty site list would report perfect coverage.** Zero sites is a hard stop.
+- **Restoration is verified**, not assumed, after every site.
+- **A suite that did not run against this code looks exactly like a suite that notices nothing.** A stale editable install, or any `trace_tests` earlier on `sys.path`, leaves the baseline green and every mutation unobserved: pytest never imports the file being rewritten, so the run reports zero verified. The import path is resolved and checked against this checkout before the baseline runs.
+- **A stale `__pycache__` reports a margin the code does not have.** `Status.FAIL` and `Status.PASS` are the same length, so a rewrite changes no file size, and a run can end up measuring the previous iteration's bytecode. This is the worst of the guards to be missing, because it fails *upward*: the previous iteration's failures are attributed to the site under mutation, margins come out larger than they are, and a check held by exactly one test is reported as comfortably covered. Caches are purged before every suite run. Without the purge, four consecutive runs on one unchanged tree reported the margin-1 watch list as empty three times and as two entries once; the list has eight entries. A fourth run also left `pytest` failing on 14 tests against a tree `git status` reported as clean.
+- **An empty path is rejected before it can look valid.** `Path("")` is `.`, which is a directory, so the obvious existence check passes and the script measures whichever tree it happens to be standing in. The enum comparison had exactly this hole and reported success having compared nothing — the failure it exists to find, in itself. It now refuses an empty argument, and refuses to report agreement when zero comparisons were made.
+
+______________________________________________________________________
+
+## What this does not establish
+
+- **Not that implementations can skip these checks.** The measurement is about whether a regression *in the conformance module* would be caught by `trace-tests`' own suite. An implementation still faces whatever the module does today.
+- **Not that the unverified checks are wrong.** They may be perfectly correct. They are unguarded, which is a statement about the suite, not about them.
+- **Only `Status.FAIL` sites were mutated.** `PASS` and `SKIP` paths were not, so a check could pass for the wrong reason in a way this does not see.
+- **The margin is a count of failing tests, not of independent tests.** Five tests that fail together because they share a fixture are one test for this purpose, and this measurement does not distinguish that.
+- **Nothing here was reported upstream at the time of writing**, and nothing in `trace-tests` was modified. Every mutated source file is restored, and the restoration is verified, after every site. Restoring the *file* is not the same as leaving the checkout usable: until caches were purged between runs, a completed run could leave `pytest` failing against a tree `git status` reported as clean, because the interpreter was still loading bytecode compiled from a mutated source. The cache purge above is what makes "restored" mean what it reads as.
+
+______________________________________________________________________
+
+## Reproducing
+
+```
+pip install -e ".[dev]" && pytest -q          # expect 161 passed, 5 xpassed
+
+python measurement/scripts/mutate_modules.py  # exits 1 if any check is unguarded
+python measurement/scripts/enum_drift.py      # exits 1 on any drifted enum
+```
+
+Both default to the checkout they live in, derived from the script's own location rather than the working directory, and accept an explicit path as `argv[1]`. Both exit non-zero rather than reporting success over a corpus they could not find.
+# Project
+
+# Known Limitations
+
+What this suite does **not** establish. A conformance report is only useful if the reader knows what it was never checking, so this is the companion to the report rather than a footnote to it.
+
+## What a pass means
+
+**A pass describes the record, not the agent.** Conformance means the record is well formed, internally consistent, and carries what its level requires. It says nothing about whether the agent behaved well, whether the policy it ran under was a sensible policy, or whether the run should have been allowed. A record of a bad run passes exactly as cleanly as a record of a good one.
+
+**The suite is one implementation, not the definition.** [trace-spec](https://github.com/agentrust-io/trace-spec) is normative. Where this suite and the specification disagree, the specification is what other implementations were written against and the disagreement is a bug worth reporting here.
+
+## Where the checks stop
+
+**`TR-RTE` checks the shape of the attestation fields, not the attestation.** It validates that `runtime.platform` is a recognised value, that `runtime.measurement` is a well formed digest, and that the RIM URI parses. It does not obtain a quote, and it does not verify one against AMD, Intel or a TPM manufacturer root. A record can satisfy `TR-RTE` at Level 1 carrying a syntactically perfect measurement that no hardware ever produced. Verifying the quote against the silicon vendor is the relying party's job, and `cmcp_verify` is where that happens.
+
+**`TR-ANC-002` proves inclusion relative to the receipt you hand it.** It replays the audit path against the Merkle root carried in that receipt. It does not fetch the `transparency` URI, and it does not establish that the root is one a public log actually published. A self-consistent receipt over a tree the submitter built themselves will pass. What the check rules out is a record that has been modified since anchoring, or that was never in the tree the receipt commits to. Establishing that the tree is real is a separate step and is not in scope here.
+
+`TR-ANC-001` is explicit that it checks the pointer rather than the anchor. Supplying no receipt fails `TR-ANC-002`, so Level 2 cannot be reached on a well formed URI alone.
+
+## Statuses that are easy to misread
+
+**`UNVERIFIED` is about reachability, not correctness.** It means the check could not be run against the evidence the record cites. The evidence may be perfectly good and simply out of reach. It is deliberately held apart from a skip so that it can never be read as a benign omission.
+
+Whether an unverified finding fails a run is decided per code, in `src/trace_tests/modules/unverified.py`, not by one blanket rule. `TR-POL-003` is tolerated until Level 2; anything the table does not name fails from Level 1, so a newly added code fails closed rather than turning a run quietly permissive.
+
+**A `TR-ENV` profile failure is a version mismatch before it is a defect.** Suite 0.4.0 and later require v0.2 records. Run against a v0.1 record, the profile sentinel produces a confident failure on a record that is fine. Check the suite and record versions before believing that result.
+
+**Results are perishable.** `TR-ENV` validates `iat`, so a record that passes today can fail later with nothing about the record having changed. A report is a statement about a moment, and it needs its timestamp to be read correctly.
+
+## Who is asserting what
+
+**Nothing here is independently assessed.** A report is produced by whoever ran the suite, on evidence they supplied. There is no third-party assessor and no certification programme behind it. This is why the generated report tells a reader who does not trust the sender to go and check the record themselves rather than trusting the summary.
+
+## Bounded obligation accounting
+
+**`accounting_complete` describes the pilot, not all of TRACE.** The accounting extension covers only `TR-APR-001`, `TR-POL-003`, and `TR-SCA-002`. Complete means that every attempted level has exactly one reconciled row for each of those three obligations. It does not mean every TRACE obligation was accounted for, every obligation was evaluated, or that the report independently proves which code ran or which fields it accessed. An obligation absent from both the bounded registry and its rows is outside this completeness claim and cannot be discovered by registry-to-row reconciliation alone.
+
+The pilot records `TR-SCA-002` at Level 0 as applicable but not attempted: the pinned schema requires `build_provenance.digest`, while the scheduler first runs `TR-SCA` at Level 1. The row carries that scheduler reason rather than silently presenting the state without an explanation.
+
+Each source locator includes a digest of the exact value resolved at its pinned trace-spec revision. JSON sources use RFC 6901 pointers and RFC 8785-canonical value bytes. The operational TR-POL-003 rule uses the unique exact text of verification item 5 in the pinned specification; its schema fragments are listed separately as structural support. A reader who holds those pinned bytes can resolve and compare the values. The suite does not fetch or authenticate trace-spec at report time, and a matching value does not prove that a locator is sufficient or that its checker is correct.
+
+Findings and accounting share one validated execution snapshot during supported report construction. The emitted report remains editable and unsigned. Its registry hash identifies registry content; it does not authenticate the rows, the report, or its producer.
+
+The optional policy resolver is trusted in-process Python code supplied by the caller. The accounted path isolates nested public runs and freezes ordinary decision inputs, but it is not a sandbox against a callback that rewrites interpreter globals, functions, classes, or source files.
+
+`producer_branch` is a checker-owned same-execution diagnostic. Some branches with the same accounting meaning return indistinguishable findings, so the emitted report alone cannot independently reconstruct every branch label. Applicability, evaluation state, prerequisite, contribution, findings, and report tallies are revalidated at emission; the label is not presented as independent proof of checker control flow.
+
+# Changelog
+
+## Unreleased
+
+## v0.6.2 - 2026-10-02
+
+### Added
+
+- Portable anchor inclusion vectors contributed by dinakarjs: nine valid and eighteen invalid cases, with a Python harness and independent JavaScript cross-check (trace-spec #463; original trace-tests #137).
+
+### Changed
+
+- Maintain the conformance suite in trace-spec/conformance and publish through its separate conformance publisher. Package name, import and CLI are unchanged.
+- Serve conformance documentation under trace.agentrust-io.com/conformance/.
+
+## v0.6.1 - 2026-09-26
+
+### Changed
+
+Each change here refuses input that 0.6.0 accepted, so a record that passed on 0.6.0 can fail on 0.6.1. The first two are the ones producers will hit.
+
+- **Duplicate member names are refused at load (exit 2) (#124).** This covers records, anchor receipts and policy manifests. `json.loads` kept the last value, the signature was checked over it, and a consumer whose parser keeps the first read a value no signature covered. RFC 8785 is defined over I-JSON, which forbids duplicates. A producer that emits a repeated key now gets a load error instead of a report.
+- **TR-SIG accepts one spelling of `signature` and `cnf.jwk.x` (#124):** unpadded base64url. The standard alphabet, `=` padding, characters outside the alphabet and nonzero trailing bits were all accepted before, and since the signature sits outside the body it signs, each was a different record that still verified. A record signed with padded or standard base64 now fails TR-SIG.
+- Digest, `subject` and receipt hash checks use `fullmatch` (#124). Python's `$` matched before a trailing newline, so `sha256:<64 hex>` passed TR-RTE-002, TR-SCA-002, TR-TXN-001, TR-POL-001 and TR-ENV-003.
+- TR-ANC-002 refuses claims outside the anchor-leaf profile of registry-anchor-v1 section 1: non-integer numbers and integers outside the safe range, whose leaf bytes differ between implementations (#124).
+
+### Fixed
+
+- Untrusted input no longer reaches the CLI as a traceback (#124): a non-ASCII `runtime.nonce` (`TypeError` from `hmac.compare_digest`), a lone surrogate in an object key (`UnicodeEncodeError` from `rfc8785`), a non-string `transparency` in `report --html`, and non-UTF-8, over-deep or unreadable input files. Each is now a finding or a load error.
+
+### Internal
+
+- ClusterFuzzLite targets over the record loader and every module, the signature path and the anchor receipt, run on pull requests and nightly (#124).
+- The maintainer approval gate drops the unused `statuses: write` scope and runs with `contents: read` and `pull-requests: read` (#125).
+
+## v0.6.0 - 2026-09-25
+
+### Changed
+
+- **Level 2 now verifies the anchor instead of parsing its URI (#79, closes #70).** `TR-ANC-001` only ever checked that `transparency` was a well-formed https URI, so any record could clear Level 2 by typing a string. The new `TR-ANC-002` replays the record's RFC 9162 inclusion proof against the committed Merkle root, offline and standard library only. The receipt is passed with the new `--receipt` option on `verify` and `report`; without one, `TR-ANC-002` fails. A record that passed Level 2 on 0.5.1 without a receipt will fail it on 0.6.0.
+
+### Added
+
+- **`TR-ENV-005`: `cnf.jwk` must carry no private key material (#98).** A record carrying its own private key (`d` and the other private JWK members) passed the whole suite, because `TR-ENV-004` only checked that `kty` was present. The packaged `schemas/trace-claim.json` copy is closed the same way. This is the trace-tests half of GHSA-vc4p-h84j-7qxj; trace-spec#296 fixed the other two schema copies.
+- **`TR-APR`: appraisal well-formedness at every level (#82, closes #63).** `appraisal` is required by the schema and no module read it. Five codes now check the status enum, the verifier URI and appraisal timing. No network, no filesystem, no resolver.
+- **`TR-POL-003` resolves `policy_uri` against `bundle_hash` (#69).** A `policy_resolver` callable on `runner.run` and a `--policy-dir` option on the CLI supply the policy bytes; the check compares their digest to the record.
+- Machine-readable execution accounting in CLI JSON reports for the bounded `TR-APR-001`, `TR-POL-003` and `TR-SCA-002` pilot (#93). Accounted findings and accounting come from one immutable execution snapshot; unreconciled accounting is rejected on that path, the operational policy-correspondence rule is separated from supporting schema locators and all carry value digests for comparison against the referenced trace-spec bytes, scheduler non-execution carries a reason, and existing verdict policy and CLI exit behavior are unchanged.
+
+### Fixed
+
+- `TR-SIG` reports a record with no RFC 8785 canonical form (an integer outside the safe range, a non-finite float) as a finding instead of raising and ending the run (#86).
+- Malformed arrays or objects in `policy.enforcement_mode`, `runtime.platform`, `build_provenance.slsa_level` and `cnf.jwk.kty` raised `TypeError` before the runner could return findings; boolean SLSA levels passed as `1` and `0`. Both are now findings (#85, closes #84).
+
+### Internal
+
+- The finding to level failure decision lives in one place, read by both the CLI and the JSON report (#88).
+- Release and CI actions pinned to SHAs with a token permissions floor (#97); CI installs from hash-pinned locks (#101); actionlint and a test-environment guard added (#100).
+
+## v0.5.1 - 2026-08-22
+
+- Level 1 and Level 2 verification now requires a verifier-issued challenge via `--expected-nonce` and checks it against the signed `runtime.nonce` using constant-time comparison. Previously nonce binding existed only as an assertion over the repository's own pytest fixture; the shipped runner and CLI could report conformance for a fresh signed record containing an attacker-chosen or replayed nonce.
+
+## v0.5.0 - 2026-08-09
+
+### Added
+
+- **`trace-tests report`: conformance results as an artifact somebody can forward.** `verify` answers a question for whoever ran it; a pass/fail in a terminal is useless to an auditor, a counterparty or an acquirer. The new command emits self-contained HTML, a machine-readable JSON document (`schema: agentrust-io/trace-tests/report/1`), and an SVG level badge.
+
+It runs every level up to `--max-level` instead of one, because the answer a reader needs is the highest level the record reaches, not whether it cleared the level the person running the tool happened to choose. `--fail-under N` gates CI on a level; without it the command exits `0`, since producing an artifact and enforcing a threshold are different jobs.
+
+**The report states that it is not evidence.** It is unsigned HTML describing one run of one suite version, and anyone can edit it, so every report carries the record's digest, the suite and authoring-library versions, and the command to reproduce the result - and tells a reader who does not trust the sender to go check the record instead. A conformance report that looks authoritative and cannot be checked is the same shape of thing as a control plane writing its own log, which is the problem this project exists to fix.
+
+Self-contained by construction: no scripts, no external CSS, no fonts, no badge service. A badge served from someone else's infrastructure would add a dependency to an artifact whose whole point is needing none. A test asserts the HTML fetches nothing.
+
+The HTML and the JSON are rendered from one assembled structure so they cannot disagree about the verdict, and unverified findings count as failures from Level 1 up exactly as they do in `verify`.
+
+## v0.4.1 - 2026-08-03
+
+### Fixed
+
+- **`--version` reported the wrong version.** `__version__` was a second hardcoded literal alongside `pyproject.toml` and never moved, so it sat at `0.2.0` through both the 0.3.0 and 0.4.0 releases: `trace-tests --version` printed `0.2.0` from a 0.4.0 install while `importlib.metadata` correctly returned `0.4.0`. It is now read from installed distribution metadata, so there is one source of truth and the value cannot fall behind a release again.
+
+This mattered more than a wrong string usually would. The v0.2 profile cutover shipped in 0.4.0, and a 0.2.x suite rejects every v0.2 record, so `--version` is exactly the command someone runs to work out whether their suite matches their producer. It was the one command that could not answer.
+
+## v0.4.0 - 2026-07-28
+
+### Changed
+
+- **BREAKING: the suite now conforms to TRACE v0.2.** `TR-ENV` requires the profile `tag:agentrust-io.com,2026:trace-v0.2` and fails a record carrying the v0.1 identifier. The v0.1 URI named `agentrust.io`, a domain this project never controlled, which RFC 4151 does not permit for a tag URI; see agentrust-io/trace-spec#107. Nothing else about the record format changed, so a producer migrates by updating the profile string and bumping `agentrust-trace` to 0.5.0.
+
+This is a deliberate cutover rather than dual acceptance: a conformance suite that passed both identifiers would certify records minted under a domain we do not own. A v0.1 record is checked with the 0.3.x releases of this suite, which stay published.
+
+- Registry, verifier, and documentation hosts moved from `agentrust.io` to `agentrust-io.com`.
+
+## v0.3.0 - 2026-07-21
+
+- `azure-cvm-sev-snp` platform accepted (`runtime.platform`): Azure confidential VMs run SEV-SNP behind a Hyper-V paravisor (vTPM-rooted). Added to the bundled schema enum and the TR-RTE valid-platform set so Azure TRACE records pass conformance. Matches `agentrust-trace>=0.4`.
+
+## v0.2.0 - 2026-06-19
+
+- DID subject support: `subject` now accepts `did:` URIs in addition to `spiffe://`.
+- Embedded signature verification: plain TRACE records signed with `agentrust-trace sign_record()` are now cryptographically verified at all levels.
+- SLSA Level 0: `build_provenance.slsa_level: 0` is now valid for software-only / development records.
+- Software-only platform: `runtime.platform: "software-only"` accepted at Level 0.
+- Private key leak detection: TR-SIG now fails records that embed a private key (`d` member) in `cnf.jwk`.
+
+## v0.1.0 - 2026-05-01
+
+- Initial release with 7 test modules: TR-ENV, TR-SIG, TR-RTE, TR-POL, TR-TXN, TR-ANC, TR-SCA.
+- Conformance levels 0, 1, 2.
+
+# Contributing
+
+Thank you for your interest in contributing to the TRACE test suite.
+
+## How to Contribute
+
+1. Fork the repository and create a feature branch
+1. Add or update conformance tests following the patterns in existing test files
+1. Commit using [Conventional Commits](https://www.conventionalcommits.org)
+1. Open a pull request against `main`
+
+## Running tests locally
+
+From the repository root, use Python 3.11 or later in a virtual environment:
+
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+ruff check .
+```
+
+On Windows, activate the environment with `.venv\Scripts\Activate.ps1` in PowerShell instead. To run the same subsets as CI, use `pytest -m "level0 or negative"` and `pytest tests/unit/`.
+
+## Using AI to contribute
+
+Use agents. A lot of this was built with them and saying otherwise would be dishonest.
+
+The rule is that you have to understand what you submit. If you cannot explain what your change does and how it interacts with the rest of the system, with the agent closed, do not open the pull request. Reviewing a change nobody can explain costs more than writing it did, and it becomes someone else's problem the moment it merges.
+
+That is a rule about understanding, not about tooling.
+
+## Reporting Security Issues
+
+Use [GitHub Security Advisories](https://github.com/agentrust-io/trace-tests/security/advisories/new) rather than public issues.
+
+## Code of Conduct
+
+See [CODE_OF_CONDUCT.md](https://trace.agentrust-io.com/conformance/CODE_OF_CONDUCT/index.md).
