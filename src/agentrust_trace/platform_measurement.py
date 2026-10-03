@@ -116,16 +116,17 @@ def check_platform_measurement(
 
     ``appraiser`` is called once with a deep copy of ``record["runtime"]`` and must return
     a JSON object with exactly two members: ``measurement``, the string it appraised, and
-    ``layers``, an object mapping each layer name (a non-empty string) to one of
-    ``LAYER_STATUSES``. ``None`` means no appraiser was supplied, and the result is
+    ``layers``, a non-empty object mapping each layer name (a non-empty string) to
+    one of ``LAYER_STATUSES``. ``None`` means no appraiser was supplied, and the result is
     ``not_attempted`` with cause ``no_appraiser``. A record without ``runtime.measurement``
     reports ``not_attempted`` with cause ``field_absent``.
 
     An appraiser that raises yields ``appraisal_rejected`` with cause
     ``appraiser_raised`` and the exception's class name; one that returns anything else
-    than the shape above yields cause ``appraiser_returned_invalid`` and, in the
-    evidence, which member was wrong; one whose ``measurement`` is not the record's
-    yields cause ``measurement_mismatch`` with both values. None of these propagates,
+    than the shape above, including a ``layers`` object with no layer in it, yields
+    cause ``appraiser_returned_invalid`` and, in the evidence, which member was
+    wrong; one whose ``measurement`` is not the record's yields cause
+    ``measurement_mismatch`` with both values. None of these propagates,
     and none is evidence of a defect in the record. A well-formed report about this
     measurement yields ``appraised``, the measurement and the layer count in the
     evidence, and one ``LayerCheck`` per reported layer.
@@ -171,6 +172,13 @@ def check_platform_measurement(
         return _rejected(
             "appraiser_returned_invalid", measurement=measurement, member="layers",
             returned=type(layers).__name__,
+        )
+    if not layers:
+        # A report that names no layer established nothing; carrying it as
+        # `appraised` would read as an appraisal by default.
+        return _rejected(
+            "appraiser_returned_invalid", measurement=measurement, member="layers",
+            returned="empty",
         )
 
     checks: dict[str, LayerCheck] = {}

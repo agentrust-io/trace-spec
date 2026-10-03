@@ -24,7 +24,7 @@ The measurement as a whole:
 |---|---|---|
 | `appraised` | none | the appraiser returned a well-formed report about this measurement; `layers` carries it |
 | `appraisal_rejected` | `appraiser_raised` | the appraiser raised; the exception class name is kept, never its message |
-| `appraisal_rejected` | `appraiser_returned_invalid` | the report was not `{"measurement": ..., "layers": {...}}` with known statuses |
+| `appraisal_rejected` | `appraiser_returned_invalid` | the report was not `{"measurement": ..., "layers": {...}}` with at least one layer and known statuses; a report naming no layer established nothing and is refused |
 | `appraisal_rejected` | `measurement_mismatch` | the report is about another measurement, so it is not attached to this record |
 | `not_attempted` | `no_appraiser` | no appraiser was supplied |
 | `not_attempted` | `field_absent` | the record carries no `runtime.measurement` (unreachable through `verify_record`, which the schema already gates) |

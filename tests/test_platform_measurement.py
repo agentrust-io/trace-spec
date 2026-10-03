@@ -267,6 +267,7 @@ _GOOD = "sha256:" + "5a" * 32
         ("established", "report"),
         ({"measurement": _GOOD}, "report"),
         ({"measurement": _GOOD, "layers": {}, "extra": 1}, "report"),
+        ({"measurement": _GOOD, "layers": {}}, "layers"),
         ({"measurement": _GOOD, "layers": [["pcr:0", "established"]]}, "layers"),
         ({"measurement": _GOOD, "layers": {"": "established"}}, "layer name"),
         ({"measurement": _GOOD, "layers": {"pcr:0": "affirming"}}, "layer status"),
