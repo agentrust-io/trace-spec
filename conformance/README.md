@@ -9,8 +9,8 @@ Community updates and contributor highlights: [AgenTrust on LinkedIn](https://ww
 ### Check a TRACE record and see which conformance level it reaches
 
 <p align="center">
-  <a href="https://tests.agentrust-io.com">
-    <img src="https://img.shields.io/badge/%F0%9F%93%96_Full_Documentation-tests.agentrust--io.com-C17817?style=for-the-badge&logoColor=white" alt="Full Documentation" height="40">
+  <a href="https://trace.agentrust-io.com/conformance/">
+    <img src="https://img.shields.io/badge/%F0%9F%93%96_Full_Documentation-trace.agentrust--io.com%2Fconformance-C17817?style=for-the-badge&logoColor=white" alt="Full Documentation" height="40">
   </a>
 </p>
 
@@ -102,7 +102,7 @@ remains an unsigned self-report; see [Known Limitations](LIMITATIONS.md).
 
 | | |
 |---|---|
-| 📖 Full documentation | [tests.agentrust-io.com](https://tests.agentrust-io.com) |
+| 📖 Full documentation | [trace.agentrust-io.com/conformance/](https://trace.agentrust-io.com/conformance/) |
 | 📄 TRACE Specification | [trace-spec](https://github.com/agentrust-io/trace-spec) |
 | 🗂 Test schemas | [schemas/](schemas/) |
 | 💬 Discussions | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions) |

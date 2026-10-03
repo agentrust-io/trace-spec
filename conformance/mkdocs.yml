@@ -1,6 +1,6 @@
 site_name: TRACE Tests
 site_description: "Conformance test suite for TRACE: Trust Runtime Attestation and Compliance Evidence"
-site_url: https://tests.agentrust-io.com
+site_url: https://trace.agentrust-io.com/conformance/
 repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
 edit_uri: edit/main/conformance/

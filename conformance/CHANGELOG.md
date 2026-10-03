@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## v0.6.2 - 2026-10-02
+
+### Added
+
+- Portable anchor inclusion vectors contributed by dinakarjs: nine valid and
+  eighteen invalid cases, with a Python harness and independent JavaScript
+  cross-check (trace-spec #463; original trace-tests #137).
+
+### Changed
+
+- Maintain the conformance suite in trace-spec/conformance and publish through
+  its separate conformance publisher. Package name, import and CLI are unchanged.
+- Serve conformance documentation under trace.agentrust-io.com/conformance/.
+
 ## v0.6.1 - 2026-09-26
 
 ### Changed
@@ -98,7 +112,7 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
   CI installs from hash-pinned locks (#101); actionlint and a test-environment
   guard added (#100).
 
-## v0.5.1 — 2026-08-22
+## v0.5.1 - 2026-08-22
 
 - Level 1 and Level 2 verification now requires a verifier-issued challenge via
   `--expected-nonce` and checks it against the signed `runtime.nonce` using
@@ -107,7 +121,7 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
   CLI could report conformance for a fresh signed record containing an
   attacker-chosen or replayed nonce.
 
-## v0.5.0 — 2026-08-09
+## v0.5.0 - 2026-08-09
 
 ### Added
 
@@ -115,13 +129,13 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
 
   It runs every level up to `--max-level` instead of one, because the answer a reader needs is the highest level the record reaches, not whether it cleared the level the person running the tool happened to choose. `--fail-under N` gates CI on a level; without it the command exits `0`, since producing an artifact and enforcing a threshold are different jobs.
 
-  **The report states that it is not evidence.** It is unsigned HTML describing one run of one suite version, and anyone can edit it, so every report carries the record's digest, the suite and authoring-library versions, and the command to reproduce the result — and tells a reader who does not trust the sender to go check the record instead. A conformance report that looks authoritative and cannot be checked is the same shape of thing as a control plane writing its own log, which is the problem this project exists to fix.
+  **The report states that it is not evidence.** It is unsigned HTML describing one run of one suite version, and anyone can edit it, so every report carries the record's digest, the suite and authoring-library versions, and the command to reproduce the result - and tells a reader who does not trust the sender to go check the record instead. A conformance report that looks authoritative and cannot be checked is the same shape of thing as a control plane writing its own log, which is the problem this project exists to fix.
 
   Self-contained by construction: no scripts, no external CSS, no fonts, no badge service. A badge served from someone else's infrastructure would add a dependency to an artifact whose whole point is needing none. A test asserts the HTML fetches nothing.
 
   The HTML and the JSON are rendered from one assembled structure so they cannot disagree about the verdict, and unverified findings count as failures from Level 1 up exactly as they do in `verify`.
 
-## v0.4.1 — 2026-08-03
+## v0.4.1 - 2026-08-03
 
 ### Fixed
 
@@ -129,7 +143,7 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
 
   This mattered more than a wrong string usually would. The v0.2 profile cutover shipped in 0.4.0, and a 0.2.x suite rejects every v0.2 record, so `--version` is exactly the command someone runs to work out whether their suite matches their producer. It was the one command that could not answer.
 
-## v0.4.0 — 2026-07-28
+## v0.4.0 - 2026-07-28
 
 ### Changed
 
@@ -139,11 +153,11 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
 
 - Registry, verifier, and documentation hosts moved from `agentrust.io` to `agentrust-io.com`.
 
-## v0.3.0 — 2026-07-21
+## v0.3.0 - 2026-07-21
 
 - `azure-cvm-sev-snp` platform accepted (`runtime.platform`): Azure confidential VMs run SEV-SNP behind a Hyper-V paravisor (vTPM-rooted). Added to the bundled schema enum and the TR-RTE valid-platform set so Azure TRACE records pass conformance. Matches `agentrust-trace>=0.4`.
 
-## v0.2.0 — 2026-06-19
+## v0.2.0 - 2026-06-19
 
 - DID subject support: `subject` now accepts `did:` URIs in addition to `spiffe://`.
 - Embedded signature verification: plain TRACE records signed with `agentrust-trace sign_record()` are now cryptographically verified at all levels.
@@ -151,7 +165,7 @@ Each change here refuses input that 0.6.0 accepted, so a record that passed on
 - Software-only platform: `runtime.platform: "software-only"` accepted at Level 0.
 - Private key leak detection: TR-SIG now fails records that embed a private key (`d` member) in `cnf.jwk`.
 
-## v0.1.0 — 2026-05-01
+## v0.1.0 - 2026-05-01
 
 - Initial release with 7 test modules: TR-ENV, TR-SIG, TR-RTE, TR-POL, TR-TXN, TR-ANC, TR-SCA.
 - Conformance levels 0, 1, 2.

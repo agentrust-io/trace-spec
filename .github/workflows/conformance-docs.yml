@@ -1,6 +1,7 @@
 name: Conformance docs
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths:
@@ -16,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: conformance-docs-${{ github.ref }}
+  group: conformance-docs-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
