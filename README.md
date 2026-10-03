@@ -16,7 +16,7 @@ Community updates and contributor highlights: [AgenTrust on LinkedIn](https://ww
   <a href="spec/trace-v0.2.md">Specification</a> &nbsp;|&nbsp;
   <a href="schema/trace-claim.json">Schema</a> &nbsp;|&nbsp;
   <a href="examples/">Examples</a> &nbsp;|&nbsp;
-  <a href="https://github.com/agentrust-io/trace-tests">Test Suite</a> &nbsp;|&nbsp;
+  <a href="conformance/">Test Suite</a> &nbsp;|&nbsp;
   <a href="https://github.com/agentrust-io/cmcp">Reference Impl</a>
 </p>
 
@@ -86,7 +86,7 @@ See the [Quickstart guide](https://trace.agentrust-io.com/docs/quickstart/) for 
 | 📄 Specification | [spec/trace-v0.2.md](spec/trace-v0.2.md) |
 | 🔍 Schema | [schema/trace-claim.json](schema/trace-claim.json) |
 | 📦 PyPI | [agentrust-trace](https://pypi.org/project/agentrust-trace/) |
-| 🧪 Test suite | [trace-tests](https://github.com/agentrust-io/trace-tests) |
+| 🧪 Test suite | [trace-tests](conformance/) |
 | 🗂 Registry | [trace-registry](https://github.com/agentrust-io/trace-registry) |
 | 🔗 Reference implementation | [cmcp](https://github.com/agentrust-io/cmcp) |
 | 💬 Discussions | [GitHub Discussions](https://github.com/orgs/agentrust-io/discussions) |

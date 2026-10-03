@@ -1,0 +1,201 @@
+site_name: TRACE Tests
+site_description: "Conformance test suite for TRACE: Trust Runtime Attestation and Compliance Evidence"
+site_url: https://tests.agentrust-io.com
+repo_url: https://github.com/agentrust-io/trace-spec
+repo_name: agentrust-io/trace-spec
+edit_uri: edit/main/conformance/
+docs_dir: .
+copyright: "© 2026 AgenTrust contributors. Apache 2.0"
+
+exclude_docs: |
+  .github/
+  hooks/
+  overrides/
+  node_modules/
+  src/
+  tests/
+  schemas/
+  LICENSE
+  NOTICE
+  README.md
+  ANTITRUST.md
+  ADOPTERS.md
+  MAINTAINERS.md
+  SECURITY.md
+  CHARTER.md
+  pyproject.toml
+
+theme:
+  name: material
+  custom_dir: overrides
+  font: false
+  logo: docs/assets/icon.svg
+  favicon: docs/assets/icon.svg
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+# Gives each page its own meta description; see hooks/seo.py.
+hooks:
+  - hooks/seo.py
+
+plugins:
+  - search:
+      lang: en
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >-
+        TRACE Tests is the conformance suite for TRACE (Trust Runtime
+        Attestation and Compliance Evidence), an open specification for
+        portable, signed runtime evidence about AI agent runs. Use it to see
+        which conformance level a TRACE record reaches and to produce a report
+        anyone can reproduce. It checks the shape of attestation fields, not
+        the attestation itself. It is part of AgenTrust, open specifications
+        for verifiable AI: https://agentrust-io.com
+      sections:
+        Get started:
+          - index.md
+          - docs/quickstart.md
+        Specification:
+          - docs/levels.md
+          - docs/modules.md
+          - docs/modules/tr-env.md
+          - docs/modules/tr-sig.md
+          - docs/modules/tr-rte.md
+          - docs/modules/tr-pol.md
+          - docs/modules/tr-apr.md
+          - docs/modules/tr-txn.md
+          - docs/modules/tr-anc.md
+          - docs/modules/tr-sca.md
+          - docs/error-codes.md
+        Guides:
+          - docs/tutorials/writing-conformance-tests.md
+          - docs/tutorials/ci-integration.md
+          - measurement/REPORT.md
+        Project:
+          - LIMITATIONS.md
+          - CHANGELOG.md
+          - CONTRIBUTING.md
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+extra:
+  social:
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/agentrust-io/
+      name: AgenTrust on LinkedIn
+    - icon: fontawesome/brands/github
+      link: https://github.com/agentrust-io/trace-spec
+      name: trace-tests on GitHub
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/grgzFEHgkj
+      name: Join the Discord
+  generator: false
+
+extra_css:
+  # Shared AgenTrust editorial design system. Deliberately the only stylesheet:
+  # a local override here is how this site drifted to the Material default
+  # violet last time. Change the shared file instead.
+  # The ?v= matches CSS_VERSION in agentrust-io.github.io tools/site_header.py. Browsers keep these files for hours, so bump it there and here together.
+  - https://agentrust-io.com/design-system.css?v=22
+
+nav:
+  - Home: index.md
+  - Get started: docs/quickstart.md
+  - Specification:
+      - Conformance levels: docs/levels.md
+      - Test modules: docs/modules.md
+      - Envelope (TR-ENV): docs/modules/tr-env.md
+      - Signature (TR-SIG): docs/modules/tr-sig.md
+      - Runtime (TR-RTE): docs/modules/tr-rte.md
+      - Policy (TR-POL): docs/modules/tr-pol.md
+      - Appraisal (TR-APR): docs/modules/tr-apr.md
+      - Transcript (TR-TXN): docs/modules/tr-txn.md
+      - Transparency (TR-ANC): docs/modules/tr-anc.md
+      - Provenance (TR-SCA): docs/modules/tr-sca.md
+      - Error codes: docs/error-codes.md
+  - Guides:
+      - Writing conformance tests: docs/tutorials/writing-conformance-tests.md
+      - CI integration: docs/tutorials/ci-integration.md
+      - Self-verification: measurement/REPORT.md
+  - Project:
+      - Known limitations: LIMITATIONS.md
+      - Changelog: CHANGELOG.md
+      - Contributing: CONTRIBUTING.md
+      - Sponsors: SPONSORS.md
+      - Code of conduct: CODE_OF_CONDUCT.md
+      - Privacy: PRIVACY.md
+
+extra_javascript:
+  # The ?v= matches CSS_VERSION in agentrust-io.github.io tools/site_header.py. Browsers keep these files for hours, so bump it there and here together.
+  - https://agentrust-io.com/supernav.js?v=22

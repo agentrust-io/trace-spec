@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "repository": "trace-spec",
+  "source": "agentrust-io/.github:maintainers/roster.json",
+  "maintainers": [
+    "imran-siddique",
+    "lywinged",
+    "pforest",
+    "Qiang-Xu",
+    "rajnisht7"
+  ],
+  "security_paths": [],
+  "security_approvals": 1
+}

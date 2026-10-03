@@ -362,7 +362,8 @@ class BuildProvenance(_TraceModel):
 class ReExecution(_TraceModel):
     """The result of re-running a record's reproducibility claim. Spec section 3.1.4.
 
-    Made by the party that re-ran the function, named as ``Appraisal.verifier``.
+    Attributed to the party that re-ran the function, named as ``Appraisal.verifier``.
+    In a record signed only by its producer, that attribution is the producer's report.
     ``outcome`` is the one of three that occurred, and two of them carry what
     makes them readable: ``diverged`` carries ``observed_digest``, because
     divergence localises nothing by itself and the two transcripts have to be

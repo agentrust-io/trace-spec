@@ -30,3 +30,6 @@ done
 # per target built with the library itself, so the fuzzer starts past the
 # schema instead of spending its budget discovering JSON.
 python3 .clusterfuzzlite/make_seeds.py "$OUT"
+
+# Build the separately installed conformance package and its fuzz targets.
+bash "$SRC/trace-spec/conformance/.clusterfuzzlite/build.sh"
