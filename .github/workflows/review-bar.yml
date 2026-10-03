@@ -1,0 +1,63 @@
+name: Review bar
+
+# Approximates the check "Before a pull request is reviewed" in CONTRIBUTING.md
+# asks a library fix to describe, by running the changed tests against the merge
+# base. The result goes in the job summary. The step that runs it never fails,
+# and it writes nothing to the pull request, so it needs no write token and does
+# not run the code under pull_request_target. The tests and conftest it runs
+# come from the pull request, and so can this file, so its report is evidence
+# the change brought, not a gate.
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "tools/review_bar.py"
+      - ".github/workflows/review-bar.yml"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: review-bar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Full history, so the merge base and the base commit's files are present.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev deps
+        run: |
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --no-deps -e .
+
+      # The tool comes from the base branch once it is there. That guards against
+      # an accidental change to the tool in a pull request, not a deliberate one:
+      # a pull request can edit this file too.
+      - name: Run the review bar
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git cat-file -e "$BASE_SHA:tools/review_bar.py" 2>/dev/null; then
+            git show "$BASE_SHA:tools/review_bar.py" > "$RUNNER_TEMP/review_bar.py"
+          else
+            cp tools/review_bar.py "$RUNNER_TEMP/review_bar.py"
+          fi
+          python "$RUNNER_TEMP/review_bar.py" --repo . --base "$BASE_SHA" --head "$HEAD_SHA" \
+            --summary "$GITHUB_STEP_SUMMARY"
