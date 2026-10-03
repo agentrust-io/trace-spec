@@ -16,7 +16,7 @@ The suite checks one record and the evidence supplied with it, reports the highe
 [What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
 !!! tip "TL;DR"
-    [agentrust-trace-tests](https://pypi.org/project/agentrust-trace-tests/) 0.6.1 (Apache-2.0) runs eight modules against a record on your machine and writes a report carrying the record digest, the suite version and the command to reproduce it. A pass describes the record and says nothing about the agent, and TR-RTE checks the shape of attestation fields without verifying a quote against AMD or Intel roots.
+    [agentrust-trace-tests](https://pypi.org/project/agentrust-trace-tests/) 0.6.2 (Apache-2.0) runs eight modules against a record on your machine and writes a report carrying the record digest, the suite version and the command to reproduce it. A pass describes the record and says nothing about the agent, and TR-RTE checks the shape of attestation fields without verifying a quote against AMD or Intel roots.
 
 <div class="grid cards" markdown>
 
@@ -104,4 +104,4 @@ A conformance report that looks authoritative and cannot be checked is the same 
 
 The suite tracks [TRACE Spec v0.2](https://trace.agentrust-io.com). See [Changelog](CHANGELOG.md) for what moved between suite versions.
 
-**Status:** agentrust-trace-tests 0.6.1 · Apache-2.0 · tracks TRACE Spec v0.2 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** agentrust-trace-tests 0.6.2 · Apache-2.0 · tracks TRACE Spec v0.2 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.

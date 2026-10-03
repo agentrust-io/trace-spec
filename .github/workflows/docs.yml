@@ -39,8 +39,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: docs-deploy
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.ref) || 'docs-deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   conformance:
