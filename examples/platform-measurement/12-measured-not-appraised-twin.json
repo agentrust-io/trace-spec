@@ -1,0 +1,125 @@
+{
+  "id": "TRACE-PMEAS-012",
+  "name": "measured-not-appraised-twin",
+  "description": "Twin of 011: the same report with pcr:2 established. The only difference is that one layer's status.",
+  "spec": "https://github.com/agentrust-io/trace-spec/issues/279",
+  "synthetic": true,
+  "twin_of": "TRACE-PMEAS-011",
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+    },
+    "appraisals": {
+      "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a": {
+        "measurement": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "layers": {
+          "pcr:0": "established",
+          "pcr:1": "established",
+          "pcr:2": "established",
+          "pcr:3": "established",
+          "pcr:4": "established",
+          "pcr:5": "established",
+          "pcr:6": "established",
+          "pcr:7": "established",
+          "pcr:8": "established",
+          "pcr:9": "established"
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/measured",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "tpm2",
+        "measurement": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+        }
+      },
+      "signature": "YKfryO_Myl6ftBfs6ucP_5wH45xhyLCKYoFkgCEXXDp4c1dcI6rO5Nafmn-6MlDyGBc1DQBysj1-I1Ig3gQvAQ"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "platform_measurement": {
+      "outcome": "appraised",
+      "cause": null,
+      "evidence": {
+        "measurement": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "layers": 10
+      },
+      "layers": {
+        "pcr:0": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:1": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:2": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:3": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:4": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:5": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:6": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:7": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:8": {
+          "outcome": "established",
+          "cause": null
+        },
+        "pcr:9": {
+          "outcome": "established",
+          "cause": null
+        }
+      }
+    }
+  }
+}
