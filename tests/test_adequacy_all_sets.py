@@ -138,6 +138,15 @@ def reproducibility_claim() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
 
 
+def number_spelling() -> list[Vector]:
+    """The number-spelling set (#247, proposed). Boundaries are its failure codes, one
+    per rule an integer-typed member is held to once it is decided by value: two
+    vectors each, spelled differently, and three accepting spellings of one value.
+    `tests/test_integer_by_value.py` runs plausible defective verifiers over it."""
+    return _load("number-spelling",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 def signature_encoding() -> list[Vector]:
     """The signature-encoding set (spec section 3.2.2, proposal #247). One rule, one
     code, and two rejecting vectors that trip it with different unused-bit patterns
@@ -154,6 +163,7 @@ SETS = {
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
     "verifier-compatibility": (verifier_compatibility, None),
+    "number-spelling": (number_spelling, None),
     "signature-encoding": (signature_encoding, None),
 }
 
