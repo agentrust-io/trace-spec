@@ -226,6 +226,7 @@ Registered `rel` values:
 - **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
+- **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
@@ -320,7 +321,7 @@ One optional member of the result, carried on any outcome, lets results that dis
 
 The second row is the only one that accuses, and it accuses on absence. The record cannot distinguish a tampering producer from a cause nobody has thought of yet, so the row states what was not found rather than what was done.
 
-**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal made by the party that re-ran the function, with that party as `appraisal.verifier`. It is carried under an appraisal method discriminator, with the outcome scoped under the method:
+**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal attributed to the party that re-ran the function, with that party as `appraisal.verifier`. In a record signed only by its producer, that attribution is the producer's report: the signature establishes that the producer states the named verifier reached the result, not that the verifier did. A result meant to carry independent-verifier weight needs evidence the verifier signed itself (#446). The re-execution result is carried under an appraisal method discriminator, with the outcome scoped under the method:
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -434,7 +435,7 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 
 **Signature binding.** Every TRACE Trust Record MUST be cryptographically bound by a signature over its canonical JSON form, made by the key in `cnf`. Canonicalization is RFC 8785 (JCS) unless the profile declares a different canonicalization. The signature MAY be either:
 
-- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
+- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent. The value MUST be the canonical base64url encoding (RFC 4648 section 3.5: unused trailing bits in the final character MUST be zero), and a verifier MUST reject a record whose `signature` is not canonically encoded. <!-- CHANGED: #247 - embedded signature MUST be canonical base64url -->
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
@@ -887,7 +888,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 ### Foundation Specifications
 
 - SLSA Specification v1.0 (OpenSSF): https://slsa.dev/spec/v1.0/
-- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/
+- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/overview/
 - SPDX 3.0 AI Profile: https://spdx.dev/use/specifications/
 - CycloneDX 1.7 ML-BOM: https://cyclonedx.org/specification/overview/
 - C2PA Technical Specification v2: https://c2pa.org/specifications/specifications/2.0/
@@ -895,7 +896,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Vendor Hardware Attestation
 
-- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/api-docs-nras/
+- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/index.html
 - Intel Trust Authority: https://www.intel.com/content/www/us/en/security/trust-authority.html
 - Intel TDX: https://www.intel.com/content/www/us/en/developer/tools/trust-domain-extensions/overview.html
 - AMD SEV-SNP: https://www.amd.com/en/developer/sev.html

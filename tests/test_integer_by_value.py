@@ -42,7 +42,14 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace import TraceAGTAdapter, TraceSandboxAdapter
-from agentrust_trace.intent_bridge import IntentBridgeError, digest_jcs, sign_bridge, verify_bridge
+from agentrust_trace.intent_bridge import (
+    IntentBridgeError,
+    digest_jcs,
+    sign_bridge,
+    sign_successor_artifact,
+    verify_bridge,
+    verify_successor_artifact,
+)
 from agentrust_trace.models import TrustRecord
 from agentrust_trace.provenance import FORMAT, FORMAT_V2, ProvenanceError, build_record
 from agentrust_trace.provenance import sign_record as sign_provenance_record
@@ -513,27 +520,61 @@ def test_a_bridge_time_past_the_range_has_no_canonical_form_to_check_a_signature
         _verify_bridge(tampered, key, *rest)
 
 
+def _observed(observed_at: Any = 150) -> dict[str, Any]:
+    return {"observation": {"status": "accepted"}, "observer": "observer-1",
+            "observed_at": observed_at}
+
+
+def _verify_successor(artifact: dict[str, Any], key: Ed25519PrivateKey, after: dict) -> dict:
+    return verify_successor_artifact(
+        artifact, {**key_to_jwk(key), "kid": "observer-key-1"},
+        trusted_observer="observer-1", authorization_id="auth-7", after=after,
+    )
+
+
 def test_an_observation_time_written_as_a_whole_float_binds_to_the_signed_digest() -> None:
-    bridge, key, declaration, intent, args, tool_call, transcript = _bridge_fixture()
-    respelled = copy.deepcopy(transcript)
-    respelled["after"]["observed_at"] = 150.0
-    signed = bridge["authorization"]["successor_observation_digest"]
-    assert digest_jcs(respelled["after"]) == signed
-    _verify_bridge(bridge, key, declaration, intent, args, tool_call, respelled)
+    key = Ed25519PrivateKey.generate()
+    artifact = sign_successor_artifact("auth-7", _observed(), "observer-key-1", key)
+    respelled = _observed(150.0)
+    assert digest_jcs(respelled) == artifact["successor_observation_digest"]
+    assert _verify_successor(artifact, key, respelled) == respelled
+    # Signed from the other spelling it is the same artifact: one value, one signature.
+    from_float = sign_successor_artifact("auth-7", respelled, "observer-key-1", key)
+    assert from_float["signature"] == artifact["signature"]
+    # The artifact's own copy of the time is decided the same way as the envelope's.
+    assert _verify_successor(from_float, key, _observed()) == _observed()
+    assert _verify_successor({**artifact, "observed_at": 150.0}, key, _observed()) == _observed()
 
 
-@pytest.mark.parametrize(("value", "reason"), [
+NOT_AN_OBSERVATION_TIME = [
     (150.5, "is not a whole number"),
     ("150", "it is a str"),
+    (True, "it is a bool"),
     (1e21, "outside the safe-integer range"),
     (-1.0, "it is -1"),
-])
+]
+
+
+@pytest.mark.parametrize(("value", "reason"), NOT_AN_OBSERVATION_TIME)
 def test_an_observation_time_that_is_not_an_integer_is_refused(value: Any, reason: str) -> None:
-    bridge, key, declaration, intent, args, tool_call, transcript = _bridge_fixture()
-    changed = copy.deepcopy(transcript)
-    changed["after"]["observed_at"] = value
-    with pytest.raises(IntentBridgeError, match=re.escape(reason)):
-        _verify_bridge(bridge, key, declaration, intent, args, tool_call, changed)
+    key = Ed25519PrivateKey.generate()
+    artifact = sign_successor_artifact("auth-7", _observed(), "observer-key-1", key)
+    with pytest.raises(IntentBridgeError, match=re.escape(
+        "successor envelope observed_at must be a non-negative integer"
+    ) + ".*" + re.escape(reason)):
+        _verify_successor(artifact, key, _observed(value))
+
+
+@pytest.mark.parametrize(("value", "reason"), NOT_AN_OBSERVATION_TIME)
+def test_a_successor_artifact_time_that_is_not_an_integer_is_refused(
+    value: Any, reason: str
+) -> None:
+    key = Ed25519PrivateKey.generate()
+    artifact = sign_successor_artifact("auth-7", _observed(), "observer-key-1", key)
+    with pytest.raises(IntentBridgeError, match=re.escape(
+        "successor.observed_at must be a non-negative integer"
+    ) + ".*" + re.escape(reason)):
+        _verify_successor({**artifact, "observed_at": value}, key, _observed())
 
 
 # ---- the revocation bundle ------------------------------------------------------
@@ -818,7 +859,11 @@ def test_the_scan_knows_every_integer_member() -> None:
         ("build_provenance", "slsa_level"), ("appraisal", "timestamp"),
         ("authorization", "authorized_at"), ("authorization", "expires_at"),
         ("issued_at",), ("valid_until",), ("revoked_at",),
-        ("after", "observed_at"), ("tool_catalog", "tool_count"),
+        ("tool_catalog", "tool_count"),
+        # The successor artifact, and the experimental token, holder-proof and
+        # requirements schemas: integer-typed members the scan reads from `schema/`.
+        ("observed_at",), ("expires_at",), ("exp",), ("appraised_at",),
+        ("fresh_until",), ("maximum_age_seconds",),
     }
 
 

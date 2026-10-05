@@ -37,6 +37,15 @@ _SUBJECT_RE = r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
 _DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
 _DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
 _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
+# Base64url without padding, in its canonical spelling where the length leaves
+# unused bits. An 86-character value is a 64-byte signature (Ed25519 or ES256):
+# its final character carries 2 signed bits and 4 unused ones, which RFC 4648
+# section 3.5 requires to be zero, so that character is one of A, Q, g, w. Other
+# lengths are matched as before. The same string as `schema/trace-claim.json` and
+# `_patterns._ECMA_PATTERNS`, held there by
+# `tests/test_the_schema_and_the_models_agree.py` and
+# `tests/test_schema_regex_semantics.py`.
+_SIGNATURE_RE = r"^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, raised to a MUST by spec
 # section 3.2.2. Mirrored here because these models are the other artifact a producer
@@ -377,7 +386,8 @@ class BuildProvenance(_TraceModel):
 class ReExecution(_TraceModel):
     """The result of re-running a record's reproducibility claim. Spec section 3.1.4.
 
-    Made by the party that re-ran the function, named as ``Appraisal.verifier``.
+    Attributed to the party that re-ran the function, named as ``Appraisal.verifier``.
+    In a record signed only by its producer, that attribution is the producer's report.
     ``outcome`` is the one of three that occurred, and two of them carry what
     makes them readable: ``diverged`` carries ``observed_digest``, because
     divergence localises nothing by itself and the two transcripts have to be
@@ -529,13 +539,17 @@ class TrustRecord(_TraceModel):
     """
     cnf: ConfirmationKey
     signature: Annotated[
-        str, Field(pattern=r"^[A-Za-z0-9_-]+$"),
-        AfterValidator(partial(_require_pattern, pattern=r"^[A-Za-z0-9_-]+$")),
+        str, Field(pattern=_SIGNATURE_RE),
+        AfterValidator(partial(_require_pattern, pattern=_SIGNATURE_RE)),
     ] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
-    outside the record instead of in this field."""
+    outside the record instead of in this field.
+
+    An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or
+    ES256) and must be canonically encoded per RFC 4648 section 3.5: the final
+    character's unused bits must be zero, so it must end in A, Q, g, or w."""
 
     @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:

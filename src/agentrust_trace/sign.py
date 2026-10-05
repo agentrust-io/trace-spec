@@ -302,10 +302,20 @@ def _canonical_bytes(d: Any) -> bytes:
         raise _NestingTooDeep(
             "value nests too deeply to canonicalize; no RFC 8785 form can be computed"
         ) from None
+    except UnicodeEncodeError:
+        # rfc8785 refuses a surrogate code point in a value itself. In an object key it
+        # is reached first by the UTF-16 key sort, which raises UnicodeEncodeError instead.
+        raise _KeyNotUnicode(
+            "an object key contains a surrogate code point; no RFC 8785 form can be computed"
+        ) from None
 
 
 class _NestingTooDeep(rfc8785.CanonicalizationError):
     """A value nests past what the canonicalizer can walk on the interpreter stack."""
+
+
+class _KeyNotUnicode(rfc8785.CanonicalizationError):
+    """An object key holding a surrogate code point, which JCS cannot sort by UTF-16 code unit."""
 
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
@@ -592,6 +602,7 @@ def verify_record(
     max_bundle_age_seconds: int = 86400,
     now: int | None = None,
     citation_resolver: Callable[[str], bytes] | None = None,
+    platform_appraiser: Callable[[dict[str, Any]], Any] | None = None,
 ) -> VerificationResult:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -703,11 +714,24 @@ def verify_record(
         The resolver is called last, after the signature has verified and after
         every check that can raise, so a record that fails verification drives
         no resolution.
+
+        ``platform_appraiser``, when supplied, is called once with a copy of the
+        record's ``runtime`` block and returns the measurement it appraised and a
+        status per layer. The result's ``platform_measurement`` field carries that
+        report: ``appraised`` with one ``LayerCheck`` per layer, ``appraisal_rejected``
+        when the appraiser raised, returned another shape, or appraised a measurement
+        other than ``runtime.measurement``, or ``not_attempted`` when no appraiser was
+        supplied. No outcome changes ``revocation``, the thumbprint, ``citations`` or
+        whether this function raises, and none is an ``appraisal.status``. A
+        ``platform_appraiser`` that is neither callable nor ``None`` is refused with
+        ``ValueError`` at entry. It runs after the citation resolver, for the same
+        reason. See ``agentrust_trace.platform_measurement``.
     """
     import time
     from hmac import compare_digest
 
     from agentrust_trace.citation import check_citations
+    from agentrust_trace.platform_measurement import check_platform_measurement
     from agentrust_trace.revocation import (
         NO_CHECK,
         RevocationCheck,
@@ -725,6 +749,8 @@ def verify_record(
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
     if citation_resolver is not None and not callable(citation_resolver):
         raise ValueError("citation_resolver must be callable or None")
+    if platform_appraiser is not None and not callable(platform_appraiser):
+        raise ValueError("platform_appraiser must be callable or None")
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
@@ -932,6 +958,7 @@ def verify_record(
     # Last, after the signature verified: a record that fails verification
     # drives no resolution.
     citations = check_citations(record, citation_resolver)
+    platform_measurement = check_platform_measurement(record, platform_appraiser)
 
     return VerificationResult(
         profile=profile,
@@ -939,4 +966,5 @@ def verify_record(
         revocation=revocation_check,
         trusted_key_thumbprint=jwk_thumbprint(trusted_jwk),
         citations=citations,
+        platform_measurement=platform_measurement,
     )

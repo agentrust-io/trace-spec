@@ -1,0 +1,83 @@
+{
+  "id": "TRACE-PMEAS-007",
+  "name": "measurement-mismatch",
+  "description": "The appraiser returns a report about a different measurement. A correct appraisal of other evidence is not attached to this record: appraisal_rejected with cause measurement_mismatch and both values.",
+  "spec": "https://github.com/agentrust-io/trace-spec/issues/279",
+  "synthetic": true,
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+    },
+    "appraisals": {
+      "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a": {
+        "measurement": "sha256:0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+        "layers": {
+          "pcr:0": "established",
+          "pcr:1": "established",
+          "pcr:2": "established",
+          "pcr:3": "established",
+          "pcr:4": "established",
+          "pcr:5": "established",
+          "pcr:6": "established",
+          "pcr:7": "established",
+          "pcr:8": "established",
+          "pcr:9": "established"
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/measured",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "tpm2",
+        "measurement": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "72UGSnrAhzVD8uc_wmGSdtwE1r5ILsFhASe026WS2Cw"
+        }
+      },
+      "signature": "YKfryO_Myl6ftBfs6ucP_5wH45xhyLCKYoFkgCEXXDp4c1dcI6rO5Nafmn-6MlDyGBc1DQBysj1-I1Ig3gQvAQ"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "platform_measurement": {
+      "outcome": "appraisal_rejected",
+      "cause": "measurement_mismatch",
+      "evidence": {
+        "measurement": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "appraised": "sha256:0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e"
+      },
+      "layers": {}
+    }
+  }
+}

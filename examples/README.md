@@ -51,10 +51,25 @@ checking any archived record, including these.
   See that directory's README, which also counts the published records the rule changes.
 - `condition-appraisal/`: five signed Trust Records, each citing an independent check's
   finding through a `references` entry with `rel: "condition-appraisal"`, against an
-  appraisal store committed beside them: confirmed, altered after issue, a fail that
+  appraisal store committed beside them: verified, altered after issue, a fail that
   verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
   party does not hold. Every digest recomputes; see that directory's README and
   `docs/references-registry.md`.
+- `observed-effect/`: five signed Trust Records, each citing an observed mutation
+  interval through a `references` entry with `rel: "observed-effect"`, against an effect
+  store committed beside them: verified, altered after issue, an interval where the
+  observer and the observed party disagree that verifies exactly as the agreeing one
+  does, unresolvable, and an observer whose key the relying party does not hold. Every
+  digest recomputes; see that directory's README and `docs/references-registry.md`.
+- `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
+  embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
+  not accepted normative text (#247); carries a `scan_published_signatures.py` tool
+  that reports how many published signatures are already canonical. See that
+  directory's README.
+- [`mcp-retry/`](mcp-retry/README.md): executable example writing a signed v0.2 record
+  binding two synthetic MCP attempts and full paginated declaration snapshots. A lost response stays
+  unknown after retry success; an uncalled tool changes between captures.
+  Informative local format, not an implementation of the proposed v0.3 profile.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.

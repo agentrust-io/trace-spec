@@ -1,0 +1,29 @@
+{
+  "name": "tree-3-index-2",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-2",
+    "iat": 1002,
+    "signature": "fixture-signature-2"
+  },
+  "receipt": {
+    "leaf_index": 2,
+    "leaf_count": 3,
+    "audit_path": [
+      "sha256:941b7c7342acc434973c8b9b18a7c78f9cb29c1689731a8f9330765c4af6fb5b"
+    ],
+    "merkle_root": "sha256:4c646312c43e49670aa0cccfc30b8b94b1da93c4e5e60b53ba943be79448c2a0"
+  },
+  "construction": {
+    "canonical_ascii": "{\"iat\":1002,\"signature\":\"fixture-signature-2\",\"subject\":\"agent-2\",\"transparency\":\"https://log.example.org/batches/anchor-vectors\"}",
+    "leaf_hash": "sha256:0cd183803df200a1d307042d8cd95a9b1179ef83c54b3149a60e7d4ad027789e",
+    "ordered_leaf_hashes": [
+      "sha256:f18ff20e78cff1ece9f7370d8cdb3334bcdb270683cbf9a7ef226e894dfa4f21",
+      "sha256:5765cb6e7bda5084c8b898cb8383e822d5cbc11a652fe10a270f5be3f5a85bff",
+      "sha256:0cd183803df200a1d307042d8cd95a9b1179ef83c54b3149a60e7d4ad027789e"
+    ]
+  },
+  "expected": {
+    "tr_anc_002": "pass"
+  }
+}

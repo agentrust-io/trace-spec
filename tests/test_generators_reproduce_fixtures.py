@@ -83,6 +83,13 @@ NOT_GENERATED: dict[str, frozenset[str]] = {
         "08-same-party-self-report.json",
         "09-unsupported-physical-completion.json",
     }),
+    # codes.json is the published reason-code list, maintained by hand and checked
+    # against the reference source by tests/test_conformance_corpus.py. coverage.json
+    # is written by that test module and fails there when it goes stale.
+    "examples/verifier-token-conformance/gen_corpus.py": frozenset({
+        "codes.json",
+        "coverage.json",
+    }),
 }
 
 

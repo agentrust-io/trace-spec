@@ -1,0 +1,35 @@
+{
+  "name": "tree-9-index-8",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-8",
+    "iat": 1008,
+    "signature": "fixture-signature-8"
+  },
+  "receipt": {
+    "leaf_index": 8,
+    "leaf_count": 9,
+    "audit_path": [
+      "sha256:06d5c5a47bbc67fc8305265f0b8dcac2813099fa898f0025962b82c990fc22c2"
+    ],
+    "merkle_root": "sha256:4e441e8be2d38b7973ddb6ff1bf4224a21427d89e992a91bceff57b95a2a68da"
+  },
+  "construction": {
+    "canonical_ascii": "{\"iat\":1008,\"signature\":\"fixture-signature-8\",\"subject\":\"agent-8\",\"transparency\":\"https://log.example.org/batches/anchor-vectors\"}",
+    "leaf_hash": "sha256:4818f9a8d0642d7680ce56d928dc95a33af1c8677a626231b5b3a2bbef9bed2d",
+    "ordered_leaf_hashes": [
+      "sha256:f18ff20e78cff1ece9f7370d8cdb3334bcdb270683cbf9a7ef226e894dfa4f21",
+      "sha256:5765cb6e7bda5084c8b898cb8383e822d5cbc11a652fe10a270f5be3f5a85bff",
+      "sha256:0cd183803df200a1d307042d8cd95a9b1179ef83c54b3149a60e7d4ad027789e",
+      "sha256:61a19d5eb9a3d9494cb3ce43d0be0875fef8f4836a01bbf493a24d94a0610744",
+      "sha256:59151ceaf84622ee6725a687f68341d502462232dd5e3be424a2b8ea7dd52653",
+      "sha256:5e0adb0e485f40a30ab0eed5842275e34729c51ba5e284f6f3877a9f84173f3c",
+      "sha256:9ad67ba201c813cf6a75a843ea22d8d92f8e077a01df9650b79471c4f00e622e",
+      "sha256:ffd62f792d15877b9d9946392f85a11bbf2966322d20df769a7a73319fba0294",
+      "sha256:4818f9a8d0642d7680ce56d928dc95a33af1c8677a626231b5b3a2bbef9bed2d"
+    ]
+  },
+  "expected": {
+    "tr_anc_002": "pass"
+  }
+}

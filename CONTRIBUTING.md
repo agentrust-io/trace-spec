@@ -1,6 +1,6 @@
 # Contributing to TRACE
 
-TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 
 ## Running the reference-library checks
 
@@ -28,6 +28,41 @@ meant, with the check passing: a ban on a character cannot see the shape of the
 replacement. Read the changed line in the shape a reader meets it, rendered
 rather than as source, and run something that could have caught the new mistake.
 The check you just fixed is not that something.
+
+## Before a pull request is reviewed
+
+A pull request gets a full review once every `test` job of the `CI` workflow,
+which runs the checks above, succeeds on its head commit. Other checks on the
+pull request, such as the maintainer-approval gate, do not hold a review,
+though a reviewer may ask about them. If the jobs fail for a reason the pull
+request did not cause, such as a failure already on main, the reviewer says so
+and reviews it anyway. If the workflow has not run, a Maintainer approves the
+run for a first-time contributor after reading the diff, or the reviewer asks
+the author to resolve the merge conflict that is stopping it.
+
+A pull request that changes code or a schema to fix a bug, or to make it reject
+input it used to accept, also shows in its description a test that fails when
+the change is switched off, keeping any names it adds, so that it fails on the
+bug or on the input now rejected and not on a missing name. Where the change
+adds more than one rejection, give one test for each, each failing when that
+rejection is switched off. If no test can observe the change, say so and why.
+A reviewer who suspects a simpler fix can propose one in review.
+
+A reason that does not hold counts as missing. Where the pull request's own
+change makes the jobs fail, or a test is missing, the reviewer's first review
+asks for what is missing and points here, and goes no further until it is
+there. This applies to every author. Pull requests already open when this
+section was added are reviewed as before.
+
+Issues are not held to this. An issue about the reference library helps most
+when it names the commit or release it was found at and gives a reproduction
+that runs there.
+
+Separately, and not a condition for review: before opening a pull request,
+have the description and the diff read by someone who has seen none of your
+work, such as another contributor or a new AI agent session given the
+repository and the sources the description cites. Say in the description what
+that reader found and what you changed because of it.
 
 ## Using AI to contribute
 

@@ -1,0 +1,62 @@
+{
+  "name": "policy-uri-carries-a-space",
+  "description": "An absolute URI with a legitimate scheme and a space in the path. A transcription accident rather than a wrong form, and one that survives a diff unnoticed unless something checks for it.",
+  "boundary": "malformed",
+  "defect": "reference carries a space in its path",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1748000000,
+    "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-5"
+    },
+    "runtime": {
+      "platform": "intel-tdx",
+      "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8",
+      "nonce": "Zm9yLXRoZS1yZWNvcmQtbm9uY2U"
+    },
+    "policy": {
+      "bundle_hash": "sha256:d8764863e75e702ff64e53951eb3d005a84858979598f7f0bda11fc901416adc",
+      "enforcement_mode": "enforce",
+      "policy_uri": "https://policy.example.org/bundles/policy bundle base.json"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 2,
+      "digest": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example.org",
+      "policy_ref": "https://verifier.example.org/appraisal-policy/v1",
+      "timestamp": 1748000042
+    },
+    "transparency": "https://scitt.example.org/receipts/abc123def456",
+    "cnf": {
+      "jwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "dGhpcyBpcyBhIHRlc3QgeA",
+        "y": "dGhpcyBpcyBhIHRlc3QgeQ",
+        "kid": "tee-key-001"
+      }
+    }
+  },
+  "context": {
+    "cited_uri": "https://policy.example.org/bundles/policy bundle base.json",
+    "resolution": {
+      "outcome": "not_attempted"
+    },
+    "anchor": {
+      "tier": 2,
+      "source": "schemas/trace-claim.json properties.policy.properties.policy_uri",
+      "text": "URI to the policy bundle for verification.",
+      "applies": "The schema asks for format: uri, which is the absolute form. A reference the record got wrong is a defect in the record, visible with no network. This is a conformance statement about the packaged schema, not a claim about the specification, which says nothing about policy_uri at all."
+    }
+  },
+  "expected": {
+    "tr_pol_003": "fail",
+    "reason": "A URI carrying a raw space is not a URI. Paired with 08: the scheme rule and the character rule catch different mistakes."
+  }
+}

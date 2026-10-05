@@ -40,7 +40,7 @@ REPO = HERE.parents[1]
 SCHEMAS = REPO / "schema"
 
 # Integer-typed in prose, with no schema to read it from.
-PROSE_MEMBERS = {("after", "observed_at"), ("tool_catalog", "tool_count")}
+PROSE_MEMBERS = {("tool_catalog", "tool_count")}
 # `cnf.jwk` members the schema does not name are held to `canonicalizableValue`,
 # which admits integers and no `number`.
 INTEGER_SUBTREE = ("cnf", "jwk")
