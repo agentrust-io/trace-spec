@@ -1,0 +1,49 @@
+# The Acta receipt verifier against the receipt-signature conformance corpus.
+#
+# `tests/test_acta_receipt_vectors.py` drives `tools/acta_receipt_verifier.py`
+# through the pinned `agent-evidence-vectors` package, which needs Python 3.13.
+# The `CI` matrix is 3.11 and 3.12 and skips that file, so it runs here. The
+# verifier's own unit tests and the fixture tests run in `CI` as usual.
+#
+# Nothing here is skipped on 3.13: a missing package, or a verifier answer the
+# corpus grades as a failure, fails this job.
+name: acta-receipt-vectors
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**"]
+  pull_request:
+    paths:
+      - "tools/acta_receipt_verifier.py"
+      - "tests/test_acta_receipt_vectors.py"
+      - "examples/action-receipts/acta/**"
+      - "requirements/acta-receipt-vectors.txt"
+      - ".github/workflows/acta-receipt-vectors.yml"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  receipt-signature:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      # Everything comes from hash-pinned locks, as in ci.yml, and the local
+      # package goes in with --no-deps.
+      - name: Install package, dev deps, and the corpus
+        run: |
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --require-hashes -r requirements/acta-receipt-vectors.txt
+          pip install --no-deps -e .
+
+      - name: Grade the Acta receipt verifier
+        run: pytest tests/test_acta_receipt_vectors.py
