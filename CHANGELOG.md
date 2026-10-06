@@ -16,6 +16,35 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   `no_check_performed` when no revocation store is supplied from `verified` when
   the supplied store was checked and clean for this call. Revoked-key refusal is
   unchanged. No new revocation source or bundle support is introduced.
+- **BREAKING: a verifier that reports `affirming` after a section 3.3 step 4 reference
+  match, while its appraisal policy requires a layer, must now establish that layer in
+  `appraisal.platform_measurement` (section 3.1.5, rule 2, #279).** Reporting `affirming`
+  with the block absent, or with a required layer not established or not listed, is no
+  longer conformant. Records do not change: the schema change is one new optional member
+  of `appraisal`, and no existing document changes verdict. v0.2 is a Draft, so the
+  30-day period in GOVERNANCE does not apply.
+- **`appraisal.platform_measurement`: what a matching measurement covers, layer by layer
+  (section 3.1.5, #279).** A matching composite `runtime.measurement` does not say which
+  layers recorded anything, which were appraised before they ran, or whether the evidence
+  describes one boot, and the record could say only `appraisal.status: none` about it. A
+  verifier now writes, per layer, `established` or `not-established` with one of three
+  reasons: `layer-not-measured`, `measured-not-appraised` or `evidence-spans-multiple-boots`.
+  The first two are what a digest comparison reports as a pass; the third is what a replay
+  check reports as tampering. A layer the result does not list is not established, nor is
+  any layer of a record without the block; a replay mismatch the verifier cannot attribute
+  to one boot is not, on that basis alone, `contraindicated`; and a record carrying a result
+  does not report `status: none`. The block is a member of `appraisal` in its own right,
+  not an `appraisal.method` value, so it sits beside a re-execution result; its `measurement`
+  equals `runtime.measurement`, a `reason` is never `null`, and on `tpm2` a layer is named
+  `pcr:<n>` for a register from 0 to 23. Schema, packaged copy, reference model and
+  `docs/schema.md` carry it; the v0.3 draft schema is regenerated.
+  `tests/test_safe_integer_range.py` now admits a map whose every member is one object
+  schema, which it then holds to the same rule. Forty-four signed vectors in
+  `examples/platform-measurement-appraisal/`: five case-and-twin pairs, two records carrying
+  measurements from published quotes on a board with a discrete TPM, at least two
+  rejections per rule, and an accepting twin for every rejection that differs from it only
+  in the rule it tests. Proposed and written by @revenue7-eng in #279; carried by
+  @imran-siddique as sponsoring maintainer.
 
 - **`verify_record` reports what a caller-supplied appraiser found about `runtime.measurement`,
   per layer (#279 platform-measurement row, #431).** A matching composite measurement says

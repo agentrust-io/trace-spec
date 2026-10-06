@@ -1,0 +1,67 @@
+{
+  "name": "dev-measured-not-appraised",
+  "description": "Real measurement: a cold-start quote over PCR 0 to 12 from a development image. Four IMA entries in PCR 11 and 12 replay to the quoted values; the policy that leaves them unappraised is not in the log. Only the layers the appraiser reported are carried. The quote was taken by hand with tpm2_quote under the board's registered attestation key; the image's attestation agent quotes PCR 0 to 9 only, so PCR 11 and 12 are not in its envelope.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "source": "https://github.com/revenue7-eng/tactiq-os/blob/main/measurements/tpm-quotes-dev-20261002.md (cold.* files and check.py beside it)",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746",
+        "layers": {
+          "pcr:11": {
+            "outcome": "not-established",
+            "reason": "measured-not-appraised"
+          },
+          "pcr:12": {
+            "outcome": "not-established",
+            "reason": "measured-not-appraised"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "ooA9EzRSKou8UGQPJdT-k2uQW95xVJnjFeGkFKkyt2U3Rr0XL9hcd4tzVrhKkJy35-MOxCWNbJywSe-rsun4Bg"
+  },
+  "expected": {
+    "outcome": "accept",
+    "codes": [],
+    "reading": {
+      "pcr:11": {
+        "outcome": "not-established",
+        "reason": "measured-not-appraised"
+      },
+      "pcr:12": {
+        "outcome": "not-established",
+        "reason": "measured-not-appraised"
+      }
+    }
+  }
+}

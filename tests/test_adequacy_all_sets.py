@@ -138,6 +138,15 @@ def reproducibility_claim() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
 
 
+def platform_measurement_appraisal() -> list[Vector]:
+    """The platform-measurement appraisal set (spec section 3.1.5). One code per rule
+    the schema or the reference model holds, at least two vectors per code, and
+    twenty-eight accepting records: five case-and-twin pairs, a twin for every rejection,
+    and two from published measurements."""
+    return _load("platform-measurement-appraisal",
+                 lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
+
+
 def number_spelling() -> list[Vector]:
     """The number-spelling set (#247, proposed). Boundaries are its failure codes, one
     per rule an integer-typed member is held to once it is decided by value: two
@@ -159,6 +168,7 @@ def signature_encoding() -> list[Vector]:
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "reproducibility-claim": (reproducibility_claim, None),
+    "platform-measurement-appraisal": (platform_measurement_appraisal, None),
     "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),

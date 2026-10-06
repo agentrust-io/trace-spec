@@ -608,6 +608,81 @@
             }
           ],
           "additionalProperties": false
+        },
+        "platform_measurement": {
+          "type": "object",
+          "description": "Per-layer appraisal of the platform measurement, attributed to appraisal.verifier. In a record signed only by its producer this attribution is the producer's report. A member of appraisal in its own right, not an appraisal.method value, so it can sit next to a re-execution result. measurement must equal runtime.measurement, a cross-field rule the reference model enforces. Spec section 3.1.5.",
+          "required": [
+            "measurement",
+            "layers"
+          ],
+          "properties": {
+            "measurement": {
+              "type": "string",
+              "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+              "description": "The digest this appraisal is about. Must equal runtime.measurement: a result about another measurement is not about this record."
+            },
+            "layers": {
+              "type": "object",
+              "minProperties": 1,
+              "description": "Keyed by the platform's name for the layer; on tpm2, pcr: followed by a register number from 0 to 23 in decimal without leading zeros. A result naming no layer establishes nothing.",
+              "additionalProperties": {
+                "type": "object",
+                "description": "One layer's outcome. Spec section 3.1.5. reason is required when outcome is not-established and absent when it is established.",
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "established",
+                      "not-established"
+                    ],
+                    "description": "established: the evidence establishes this layer. not-established: it does not, for the reason given; never reported as established, and a layer the result does not list is not established either."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "layer-not-measured",
+                      "measured-not-appraised",
+                      "evidence-spans-multiple-boots"
+                    ],
+                    "description": "layer-not-measured: the layer holds no measurement, its value is the initial value or, on a TPM, a separator and nothing else. measured-not-appraised: the measurements replay to the quoted value and nothing in the evidence establishes that what ran was appraised before it ran. evidence-spans-multiple-boots: the evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value."
+                  }
+                },
+                "allOf": [
+                  {
+                    "$comment": "A not-established layer carries its reason; an established one carries none.",
+                    "if": {
+                      "required": [
+                        "outcome"
+                      ],
+                      "properties": {
+                        "outcome": {
+                          "const": "not-established"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "reason"
+                      ]
+                    },
+                    "else": {
+                      "not": {
+                        "required": [
+                          "reason"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "allOf": [
@@ -633,6 +708,23 @@
               "required": [
                 "re_execution"
               ]
+            }
+          }
+        },
+        {
+          "$comment": "Section 3.1.5, rule 5: a verifier that writes platform_measurement has performed an appraisal, so status is not none. Mirrors the check in the reference model.",
+          "if": {
+            "required": [
+              "platform_measurement"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "const": "none"
+                }
+              }
             }
           }
         }
@@ -820,6 +912,49 @@
             "properties": {
               "platform": {
                 "const": "software-only"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Section 3.1.5: on a TPM a layer is named pcr: and a register number from 0 to 23, in decimal without leading zeros. Mirrors the layer-name check in the reference model.",
+      "if": {
+        "required": [
+          "runtime",
+          "appraisal"
+        ],
+        "properties": {
+          "runtime": {
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "const": "tpm2"
+              }
+            }
+          },
+          "appraisal": {
+            "required": [
+              "platform_measurement"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "appraisal": {
+            "properties": {
+              "platform_measurement": {
+                "properties": {
+                  "layers": {
+                    "propertyNames": {
+                      "pattern": "^pcr:([0-9]|1[0-9]|2[0-3])$"
+                    }
+                  }
+                }
               }
             }
           }

@@ -2,7 +2,7 @@
 
 import re
 
-# Only the four pattern forms shipped in TRACE v0.2 are adapted here. This is
+# Only the five pattern forms shipped in TRACE v0.2 are adapted here. This is
 # not a general ECMA-262 translator: a new schema pattern needs explicit review.
 # None of these forms has a literal/escaped dot or dollar, or a dot in a class.
 _ECMA_PATTERNS = (
@@ -12,6 +12,8 @@ _ECMA_PATTERNS = (
      r"(T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))?"
      r"|T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))$"),
     '^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$',
+    # Section 3.1.5: a TPM layer key. No dot, no \\d; only the anchor is adapted.
+    '^pcr:([0-9]|1[0-9]|2[0-3])$',
 )
 _PYTHON_PATTERNS = {
     pattern: re.compile(

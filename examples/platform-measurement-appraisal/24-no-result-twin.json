@@ -1,0 +1,58 @@
+{
+  "name": "no-result-twin",
+  "description": "Twin of 23: the same record with a result that lists pcr:2 as established. The only difference is the result.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "synthetic": true,
+  "twin_of": "23",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:56bb3d160a6956c49d9cf1204822eb0962bcb2ab54ccffd1c192aff87cc3c1ca"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:56bb3d160a6956c49d9cf1204822eb0962bcb2ab54ccffd1c192aff87cc3c1ca",
+        "layers": {
+          "pcr:2": {
+            "outcome": "established"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "AWHPCpigz9DuVjqCMPNFQyRGYyMJAuVqI9ZlqqyTYRWa3C-QYPz_IHiAh8Gsn-MTEp_7fR_d3-Hvjalv3MkGBQ"
+  },
+  "expected": {
+    "outcome": "accept",
+    "codes": [],
+    "reading": {
+      "pcr:2": {
+        "outcome": "established"
+      }
+    }
+  }
+}

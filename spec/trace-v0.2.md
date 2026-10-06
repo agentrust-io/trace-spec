@@ -366,6 +366,69 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 
 **Out of scope.** This section names no journal format, no transcript shape, and no way of storing or resolving a closure; those belong to the profile or annex that describes the function.
 
+#### 3.1.5 `appraisal.platform_measurement`: what a matching measurement covers
+
+<!-- CHANGED: #279 - platform-measurement appraisal: per-layer outcome with a named reason -->
+
+On a measured-boot platform `runtime.measurement` is a composite digest over many layers. A verifier that compares it against a reference learns that the composite is the one the reference names. It does not learn which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot. Three conditions are routinely collapsed into an outcome a completed check would have produced. The last column is that collapse, the error this section removes, not what this section prescribes:
+
+| Reason | Condition | Collapsed, without this section, into |
+|---|---|---|
+| `layer-not-measured` | The layer holds no measurement: its value is the initial value, or on a TPM a separator and nothing else. A match confirms only that nothing was recorded. | pass |
+| `measured-not-appraised` | The layer's measurements replay exactly to the quoted value, so the evidence establishes what ran. Nothing in the evidence establishes that what ran was appraised before it ran. | pass |
+| `evidence-spans-multiple-boots` | The evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value. A platform whose measurement registers survive a warm reboot produces this, and so do a quote and a log taken from different boots, and a truncated log. | a failure, read as tampering |
+
+The first two collapse into a pass. The third collapses the other way, into a failure. Under this section all three are `not-established`, which is neither: it never passes, and it is not a finding of tampering. All three are decided against evidence the record does not carry (a quote, an event log, a reference), so they are appraisal outcomes and not properties of `runtime`.
+
+A layer is `established` when the evidence establishes what ran in it: the layer holds measurements, its event log replays from the initial value to the quoted value, and nothing else the verifier's policy requires of that layer is missing. Where the policy requires that what ran was appraised and the evidence does not show it, the layer is `measured-not-appraised`. A log that replays from the initial value to the quoted value accounts for every extension since the register was last reset, so for that layer the number of boots does not change what the evidence establishes; `evidence-spans-multiple-boots` arises only when the log does not replay. The reason is named for its most common cause, a platform whose registers survive a warm reboot, and covers the other causes its definition lists.
+
+**Placement.** The result is carried as `appraisal.platform_measurement`, a member of `appraisal` in its own right, as `appraisal.provenance_depth_verified` is. It is not an `appraisal.method` value, so a record can carry it next to a re-execution result (§3.1.4). It is attributed to `appraisal.verifier`; in a record signed only by its producer that attribution is the producer's report, as §3.1.4 states.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `appraisal.platform_measurement` | no | The result block: `measurement`, the digest the appraisal is about; and `layers`, an object with at least one member, each member carrying `outcome`, one of `established` or `not-established`, and `reason`, required when `outcome` is `not-established` and absent otherwise, one of the three reasons above; a `null` reason is neither present nor absent and is refused. |
+
+`appraisal.platform_measurement.measurement` MUST equal `runtime.measurement`: a result about another measurement is not about this record, and a verifier MUST NOT treat it as one. Layers are keyed by the platform's name for them. On a TPM the key MUST be `pcr:` followed by a register number from 0 to 23, the registers a TPM 2.0 PC Client platform defines, in decimal without leading zeros (`pcr:0`, `pcr:10`, `pcr:23`); other platforms name their layers in their profile or annex.
+
+**Rules.**
+
+1. `not-established` MUST NOT be reported as `established`. A layer the result does not list is not established either, and a record that carries no `appraisal.platform_measurement` establishes no layer: a relying party MUST NOT treat an unlisted layer, or any layer of a record without the block, as `established`.
+2. A verifier MUST NOT set `appraisal.status` to `affirming` while any layer its appraisal policy requires is `not-established` or is not listed, and that includes a record in which it writes no `appraisal.platform_measurement` at all.
+3. A verifier that finds the event log does not replay to the quoted value, and cannot establish that the evidence describes a single boot, MUST report the affected layers `not-established` with `evidence-spans-multiple-boots`, and MUST NOT on that basis alone set `appraisal.status` to `contraindicated`. Where the verifier does establish that the evidence describes a single boot, the mismatch is evidence that resolves and contradicts the record, and §3.3.1's rule for that case applies. How a verifier establishes that evidence describes a single boot is platform-specific and out of scope here; a platform profile that wants a replay mismatch read as a contradiction names how its verifiers establish a single boot, and without such a means rule 3 applies. The reason is available only when the log does not replay to the quoted value, and a verifier that reaches for it more often than it should loses a diagnosis, not a rejection: the layer is `not-established` either way.
+4. `measured-not-appraised` is reported when the evidence does not show that the layer was appraised. It is not a finding that appraisal was off: evidence that is silent about appraisal does not establish either.
+5. A verifier that writes `appraisal.platform_measurement` has performed an appraisal and MUST NOT set `appraisal.status` to `none`.
+
+**What the record can and cannot show.** Rules 1, 4 and 5 are about the record and can be checked from it. Rules 2 and 3 bind what a verifier writes: the record carries the verifier's per-layer findings but not its policy, so a reader cannot tell from the record alone which layers the policy required, and cannot check either rule. A relying party that needs that assurance reads the layers it requires itself, under rule 1, and does not rely on `appraisal.status` for them.
+
+**Why rule 2 touches `appraisal.status` when §3.1.4 does not.** A re-execution outcome is about one claim the record makes, reproducibility, which a relying party reads in its own block. A required layer that is not established means the appraisal did not establish what its own policy asked of it, and that is what `affirming` reports; leaving `status` free here would let it say the opposite of the layers beneath it.
+
+**What rule 3 costs.** On a platform whose quote does not show that the measurement registers were reset since the event log began, a verifier cannot establish a single boot, and under rule 3 a replay mismatch on that platform is never `contraindicated` on its own. A TPM's reset counter is an example: on a platform whose TPM is not reset by a warm reboot the counter does not move across one, so it cannot separate the two cases rule 3 is about. This is intended. The alternative reports every unreset platform as tampered, which is the collapse this section exists to remove.
+
+**Why rule 3 does not open a downgrade.** An adversary who can make a tampered boot look like a two-boot mix moves the affected layers from a failure to `not-established`. Rules 1 and 2 make that worthless: `not-established` is never a pass, and a verifier whose policy requires the layer cannot report `affirming`, so a relying party that reads only `appraisal.status` and one that reads the layers both decline the record. The difference between the two readings matters to diagnosis, not to acceptance. What rule 3 prevents is the opposite error, a benign unreset platform reported as tampered.
+
+**Why this is not `appraisal.status: none`.** `none` says no appraisal was performed. Here one was, and its finding is per layer. A record that can only say `none` cannot tell a layer that was never measured from a log that failed to replay across two boots, and the reason that distinguishes them is the finding.
+
+Example result, for a reference composite in which one layer holds a separator only. `warning` here is the verifier's policy choice for a layer it does not require; rule 2 fixes only that `affirming` is unavailable when a required layer is not established.
+
+```json
+"appraisal": {
+  "status": "warning",
+  "verifier": "https://verifier.example.org",
+  "platform_measurement": {
+    "measurement": "sha256:1f3e5d7c...",
+    "layers": {
+      "pcr:0": {"outcome": "established"},
+      "pcr:2": {"outcome": "not-established", "reason": "layer-not-measured"},
+      "pcr:4": {"outcome": "established"}
+    }
+  }
+}
+```
+
+**Relation to the reference library.** `verify_record` already reports a caller-supplied appraiser's per-layer report as its `platform_measurement` field (#457), with the same three causes written `layer_not_measured`, `measured_not_appraised` and `evidence_spans_multiple_boots`. That field is library output and binds no record. This section names the outcomes a record carries.
+
+**Out of scope.** This section does not say how a verifier decides each outcome, and fixes no quote or event-log format; those belong to the platform's profile or annex.
+
 ### 3.2 Wire format
 
 **Envelope: ** EAT (RFC 9711): JWT (JSON, human-readable contexts) or CWT/CBOR-COSE (constrained and high-throughput contexts).
