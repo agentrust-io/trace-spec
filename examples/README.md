@@ -28,11 +28,12 @@ checking any archived record, including these.
 - `action-receipts/`: informative fixture shapes for action-level receipt
   verification. These are not TRACE Trust Records and are not validated against
   `schema/trace-claim.json`.
-- `build-provenance-depth/`: six vectors that separate the three depths a verifier can
-  stop at when checking `build_provenance`. Each is accepted by the depth below it and
-  rejected by the depth in its filename, so a verifier's stopping point is visible in
-  its verdicts. Informative: not Trust Records, not validated against
-  `schema/trace-claim.json`. See that directory's README.
+- `build-provenance-depth/`: seven vectors that separate the three depths a verifier can
+  stop at when checking `build_provenance`, including an accepting control. Separating
+  vectors introduce a rejection or a named depth downgrade, so the stopping point is
+  visible in the complete appraisal. The explicit-empty-list fixture pairs with the
+  control to catch a missing-key-only check. Informative: not Trust Records, not
+  validated against `schema/trace-claim.json`. See that directory's README.
 - `reproducibility-claim/`: 21 signed Trust Records that pin the shape rules spec
   section 3.1.4 states for the `reproducibility` claim and its `appraisal.re_execution`
   result: two vectors per rule and five accepting records. Each file is a test-vector
