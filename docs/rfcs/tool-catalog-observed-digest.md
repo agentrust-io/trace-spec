@@ -32,10 +32,10 @@ For one tool definition `t`:
 2. **Wrap** the restricted object under a profile label:
 
    ```json
-   {"profile": "agentavow.mcp-tool-definition.v1", "tool": <restricted definition>}
+   {"profile": "trace.mcp-tool-definition.v1", "tool": <restricted definition>}
    ```
 
-   The label is the profile label of the producing implementation. It is part of the preimage, carried literally, and versions the derivation: if the member set or any rule here changes, the label changes, and a digest under one label never equals a digest under another. A different producing implementation that adopts this derivation unchanged uses this exact string, or its digests do not recompute.
+   This document defines the derivation under the `trace.` label. The label is part of the preimage, carried literally, and versions the derivation: if the member set or any rule here changes, the label changes, and a digest under one label never equals a digest under another. An implementation that adopts this derivation unchanged uses this exact string, or its digests do not recompute. AgentAvow's issuer publishes the same derivation under its own label, with a documented mapping to this one.
 
 3. **Canonicalize** the wrapped object with RFC 8785 (JCS) and hash the canonical bytes with SHA-256.
 
@@ -60,10 +60,10 @@ With the per-tool map `{key: digest}` from sections 3 and 4:
 2. Write one line per key, `key=digest`, joined by a single `\n` with no trailing newline.
 3. The catalog digest is `sha256:` and the SHA-256 of the UTF-8 bytes of that text.
 
-Reordering the array is therefore not drift, and a change to one definition changes exactly one line. Two edge rules of the producing implementation are stated for completeness; neither is exercised by the pinned catalogs:
+Reordering the array is therefore not drift, and a change to one definition changes exactly one line. Two edge rules are stated for completeness; neither is exercised by the pinned catalogs:
 
-- Two definitions with the same key fold into one entry, whose digest is SHA-256 over the UTF-8 text `agentavow.mcp-tool-definition.v1.duplicates\n` followed by the sorted per-tool digests joined by `\n`.
-- Beyond 500 entries, the first 500 keys in sorted order are kept and the rest fold into one entry keyed `tools:overflow`, whose digest is SHA-256 over `agentavow.mcp-tool-definition.v1.overflow\n` followed by the remaining `key=digest` lines joined by `\n`.
+- Two definitions with the same key fold into one entry, whose digest is SHA-256 over the UTF-8 text `trace.mcp-tool-definition.v1.duplicates\n` followed by the sorted per-tool digests joined by `\n`.
+- Beyond 500 entries, the first 500 keys in sorted order are kept and the rest fold into one entry keyed `tools:overflow`, whose digest is SHA-256 over `trace.mcp-tool-definition.v1.overflow\n` followed by the remaining `key=digest` lines joined by `\n`.
 
 ## 6. Where the values go in the token
 
@@ -79,26 +79,26 @@ Three catalogs are pinned under `catalog/`. The first and third were fetched fro
 
 | Catalog | File | Served by | Tools | Catalog digest |
 |---|---|---|---|---|
-| deepwiki | `deepwiki-tools-list.json` | `https://mcp.deepwiki.com/mcp`, 2026-10-01 | 3 | `sha256:9d4a7d42e2b6c025099570b6dfff977f9e58ea3fce98f727c58454e936025e84` |
-| deepwiki-drifted | `deepwiki-tools-list-drifted.json` | constructed from deepwiki | 3 | `sha256:6049cb261461618634c2a4fa6a197239273819b165e88b8ecd567a834d82d7e8` |
-| cloudflare-docs | `cloudflare-docs-tools-list.json` | `https://docs.mcp.cloudflare.com/mcp`, 2026-10-02 | 2 | `sha256:211d64b4964c1fa9bba7d4d21b7d0f486c7e61f40f2fb720670045192edc9da5` |
+| deepwiki | `deepwiki-tools-list.json` | `https://mcp.deepwiki.com/mcp`, 2026-10-01 | 3 | `sha256:b3d3955a3da0c0eb95a263ac53e4df2efcb0634193b7cbee92337144f4146cbd` |
+| deepwiki-drifted | `deepwiki-tools-list-drifted.json` | constructed from deepwiki | 3 | `sha256:fffdf1917378cc03057ab6dc7973731123e392adb365f6833dff650281a9dbf6` |
+| cloudflare-docs | `cloudflare-docs-tools-list.json` | `https://docs.mcp.cloudflare.com/mcp`, 2026-10-02 | 2 | `sha256:aa6ec740288222f2e1081056057f05a0d4a38d4114fe3914ba9b95270835e53b` |
 
 Per-tool digests:
 
 | Key | deepwiki | deepwiki-drifted |
 |---|---|---|
-| `tool:ask_wiki_question` | `sha256:171a53c9725874258b0b1125bc1d1c517e1b02f91a236096a37f53cc3a763dc9` | `sha256:93eb4ba06e95b9f5f9277f7958494a3aae3e967ba0674de077d018ce1f6ce28b` |
-| `tool:read_wiki_contents` | `sha256:3582a81089d120634d681ccf94e9ab7f15f471ddd48f4a82e06b05d10905d9c4` | unchanged |
-| `tool:read_wiki_structure` | `sha256:9bd57ff3e9534bbed54167ef1a74b2bc0e4b46128db28218767f0eed6e8f79a8` | unchanged |
+| `tool:ask_wiki_question` | `sha256:7b433df44e34a9356d6481fc370283840a598c47b879d0f663952e91d8b3e729` | `sha256:a7da4da5eca7b1d7f329a555a7dd748587124dadd75056f375b306129215b4d6` |
+| `tool:read_wiki_contents` | `sha256:60d4ddd7838f28963920e8687ef644096fb38e8602cb25b8a53149fe87fc72d5` | unchanged |
+| `tool:read_wiki_structure` | `sha256:9b1330cf1cf19a6b003fc093dc0d92bdea53a47de4cf4efd17b7a0add7945c50` | unchanged |
 
 | Key | cloudflare-docs |
 |---|---|
-| `tool:search_cloudflare_documentation` | `sha256:6294e99197f065f40014c8f43b0cd632affb227f790e8ec57b8c21e77937a84b` |
-| `tool:migrate_pages_to_workers_guide` | `sha256:4cea48b1da7e1cf9b964d39568c73593b2a726d09f57f02080cd89b9753b2a01` |
+| `tool:search_cloudflare_documentation` | `sha256:c4411b558681b396ca09a421f5dad4582804d906f80cd02a6f823d5d6b3d700e` |
+| `tool:migrate_pages_to_workers_guide` | `sha256:8f5e64cb597baefb37e8f11d4325f7fe88d23e4947301ef777897aa2ea8e599b` |
 
 The deepwiki definitions each carry `name`, `description`, `inputSchema`, `outputSchema` and `_meta`, and no `title` or `annotations`; the cloudflare definitions carry `annotations` on both, `outputSchema` on one, and no `title` or `_meta`. Between them, every allowed member except `title` is present in at least one definition and absent from another, and the excluded `_meta` is present in three.
 
-Every value in both tables was recomputed from the pinned files by `gen_corpus.py` when it built the vectors and, separately, by `tests/test_tool_catalog_digest.py`, and the first table's deepwiki row was additionally checked against an attestation the producing implementation had signed over the same served catalog.
+Every value in both tables was recomputed from the pinned files by `gen_corpus.py` when it built the vectors and, separately, by `tests/test_tool_catalog_digest.py`.
 
 ## 8. The cases
 
@@ -132,7 +132,7 @@ It establishes nothing about:
 
 ## 10. Open points for review
 
-1. **A profile identifier.** The preimage label is the producing implementation's and is fixed. Whether this derivation should also be named by an identifier in the project's namespace, for `accepted_profiles`, is the project's to decide; adopting one would not change any digest.
+1. **A profile identifier.** The preimage label `trace.mcp-tool-definition.v1` names the derivation and is fixed. Whether the same identifier, or another in the project's namespace, should also name this derivation for `accepted_profiles` is the project's to decide; adopting one would not change any digest.
 2. **Carrying the per-tool map.** The token carries one `observed_digest` per component. Whether a `tool-catalog` component should also carry the per-tool map, so that a verifier can localize drift without the pinned bytes, is a schema question this document does not raise.
 3. **The evidence reference.** Whether the served `tools/list` object should be the component's cited evidence, and under what media type.
 

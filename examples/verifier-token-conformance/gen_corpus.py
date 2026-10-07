@@ -278,11 +278,11 @@ def recompose(token: dict, requirements: dict, delegated: frozenset[str] = froze
 
 # Tool-catalog observed digest, recomputed here from the pinned tools/list files
 # under catalog/ (docs/rfcs/tool-catalog-observed-digest.md). The label is part of
-# every per-tool preimage; it is the producing implementation's and is carried
-# literally. tests/test_tool_catalog_digest.py recomputes the same values from the
-# same bytes without this code.
+# every per-tool preimage; it names the derivation that document defines and is
+# carried literally. tests/test_tool_catalog_digest.py recomputes the same values
+# from the same bytes without this code.
 CATALOG = HERE / "catalog"
-TOOL_LABEL = "agentavow.mcp-tool-definition.v1"
+TOOL_LABEL = "trace.mcp-tool-definition.v1"
 TOOL_FIELDS = ("name", "title", "description", "inputSchema", "outputSchema", "annotations")
 TOOL_KEY_UNSAFE = re.compile(r"[^\x21-\x7e]|[%=]")
 
