@@ -3044,7 +3044,7 @@ For one tool definition `t`:
 {"profile": "trace.mcp-tool-definition.v1", "tool": <restricted definition>}
 ```
 
-This document defines the derivation under the `trace.` label. The label is part of the preimage, carried literally, and versions the derivation: if the member set or any rule here changes, the label changes, and a digest under one label never equals a digest under another. An implementation that adopts this derivation unchanged uses this exact string, or its digests do not recompute. AgentAvow's issuer publishes the same derivation under its own label, with a documented mapping to this one.
+This document defines the derivation under the `trace.` label. The label is part of the preimage, carried literally, and versions the derivation: if the member set or any rule here changes, the label changes, and a digest under one label never equals a digest under another. An implementation that adopts this derivation unchanged uses this exact string, or its digests do not recompute.
 
 1. **Canonicalize** the wrapped object with RFC 8785 (JCS) and hash the canonical bytes with SHA-256.
 1. **Write** the digest as `sha256:` followed by 64 lowercase hexadecimal characters, which is the form the token schema accepts for `observed_digest`.
