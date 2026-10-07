@@ -126,7 +126,7 @@ Expected: `PASS: saved record verified against the retained public key`. By defa
 
 The verification call above does not check hardware attestation or whether the record was published to a registry. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
 
-## Add hardware attestation (Level 2)
+## Add hardware evidence and transparency (Levels 1 and 2)
 
 To show that a record came from protected hardware, follow the [cMCP integration guide](integration/cmcp.md), [trust levels](trust-levels.md), and [platform documentation](platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
 
