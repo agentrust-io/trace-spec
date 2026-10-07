@@ -1,20 +1,25 @@
 # Platform: Bernstein (software-only)
 
-Bernstein is an open-source governance layer for AI agents: a deterministic Python scheduler that coordinates agent workloads with no model in the coordination loop, records every run into a hash-chained journal, and signs a TRACE Trust Record over that journal with an Ed25519 install identity. This annex maps that producer onto the Trust Record. It is informative, in the sense GOVERNANCE gives vendor annexes: it binds no implementation, and where it quotes a requirement it names the section that carries it.
+This page is for anyone who runs Bernstein or receives TRACE records from it. It shows how Bernstein fills in each field of a TRACE record, what a verifier can check without asking Bernstein's operator, and where the evidence stops.
 
-There is no hardware root. `runtime.platform` is `software-only` on every record, for the reason section 3.1.1 gives: nothing attested the execution. What the producer has instead is a different kind of evidence, and this page says exactly what it is and what it is not: a signed record whose digests a verifier recomputes from the journal, and, once the emitter carries section 3.1.4's claim, a coordination sequence a verifier re-derives without the producer.
+Bernstein is open-source software that coordinates AI agents. A fixed set of Python rules decides what runs next (no AI model makes those decisions), every step of a run is written to a log where each entry includes a hash of the one before (a hash-chained journal, so an edited entry breaks the chain), and at the end Bernstein signs a TRACE Trust Record over that log with a key unique to each installation (an Ed25519 install identity). This annex maps that producer onto the Trust Record. It is informative, in the sense GOVERNANCE gives vendor annexes: it binds no implementation, and where it quotes a requirement it names the section that carries it.
+
+No hardware vouches for these runs. `runtime.platform` is `software-only` on every record, for the reason section 3.1.1 gives: nothing attested the execution. What Bernstein offers instead is a different kind of evidence, and this page says exactly what it is and what it is not: a signed record whose digests a verifier recomputes from the journal, and, once the emitter carries section 3.1.4's claim, a coordination sequence a verifier re-derives without the producer.
 
 Every code path and vector below is pinned to `sipyourdrink-ltd/bernstein` at [`4281e3c1`](https://github.com/sipyourdrink-ltd/bernstein/tree/4281e3c1ac86adbfae704dc4d1e69d4bb2a61559). The emitter is [`src/bernstein/core/observability/trust_record.py`](https://github.com/sipyourdrink-ltd/bernstein/blob/4281e3c1ac86adbfae704dc4d1e69d4bb2a61559/src/bernstein/core/observability/trust_record.py); its module docstring is the producer's own specification of the mapping and this page follows it.
 
 ## What the producer records
 
-Each run writes one journal, `.sdd/runs/<run_id>/journal.jsonl`, through a single always-on recorder. Every row carries `event_hash = H(prev_hash, event_type, payload_hash, index)`, where `payload_hash` is a digest of the event payload with the wall-clock envelope (`ts`, `elapsed_s`) excluded, so two identical executions chain to the same hashes regardless of timing. The head hash content-addresses the surviving journal state. A seal, taken separately, is what identifies that state as the complete finished journal; an unsealed clean prefix says the rows were not edited, not that none are missing. That is the seal boundary the emitter states for itself: the signed record proves the journal presented matches what was sealed, and cannot prove that every action taken was recorded in the first place.
+Each run writes one journal file. Every entry carries a hash that covers the entry before it, so changing or reordering an entry changes every hash after it. Timing fields are left out of the hashes, so two identical runs produce the same chain. A separate seal marks the journal as finished. The signed record proves the journal you are shown matches what was sealed; it cannot prove that every action was recorded in the first place.
 
-One distinction matters for anyone recomputing anything. The journal's own hashes are computed under a code-point key order with ASCII escaping, the encoding this repository's `canonicalization-boundary` vectors exist to warn about. They identify journal state inside Bernstein and are not TRACE digests. Every digest that reaches a Trust Record is computed with the producer's `canonicalize_jcs`, an RFC 8785 canonicalizer with UTF-16 code-unit key order; the supplementary-plane pair below is the vector that tells the two apart.
+??? info "Technical detail: journal hashing and the two encodings"
+    Each run writes one journal, `.sdd/runs/<run_id>/journal.jsonl`, through a single always-on recorder. Every row carries `event_hash = H(prev_hash, event_type, payload_hash, index)`, where `payload_hash` is a digest of the event payload with the wall-clock envelope (`ts`, `elapsed_s`) excluded, so two identical executions chain to the same hashes regardless of timing. The head hash content-addresses the surviving journal state. A seal, taken separately, is what identifies that state as the complete finished journal; an unsealed clean prefix says the rows were not edited, and does not say none are missing. That is the seal boundary the emitter states for itself: the signed record proves the journal presented matches what was sealed, and cannot prove that every action taken was recorded in the first place.
+
+    One distinction matters for anyone recomputing anything. The journal's own hashes are computed under a code-point key order with ASCII escaping, the encoding this repository's `canonicalization-boundary` vectors exist to warn about. They identify journal state inside Bernstein and are not TRACE digests. Every digest that reaches a Trust Record is computed with the producer's `canonicalize_jcs`, an RFC 8785 canonicalizer with UTF-16 code-unit key order; the supplementary-plane pair below is the vector that tells the two apart.
 
 ## TRACE representation
 
-One record per execution hop, minted from that hop's journal by `bernstein trace export`. The mapping, field by field:
+Bernstein writes one record for each step of a run where one agent hands work to another (an execution hop), built from that hop's journal by `bernstein trace export`. Most fields are digests (hashes) of something in the journal, so a verifier holding the journal can recompute them. The mapping, field by field:
 
 | Field | Value on a Bernstein record | Derived from |
 |---|---|---|
@@ -40,17 +45,23 @@ Optional members are omitted when absent, never carried as `null`. RFC 8785 trea
 
 ### Delegation: one record per hop
 
+When one agent hands work to another, each hop gets its own record, and the child's record points at its parent by including a hash of the parent's whole signed record. Swapping in a different parent record breaks that link.
+
 A delegated run is a chain of hops, each with its own record, linked and not nested, which is the shape section 3.4 fixes. A child hop's `delegation.parent_record_hash` is SHA-256 over the RFC 8785 bytes of the complete signed parent record, `signature` included, the preimage section 3.1.3 states. The choice is load-bearing for an orchestrator: a digest over the signed body alone would let a chain be rebuilt from a differently-signed parent that says the same thing, and for a multi-agent run that is the attack. `credential_id` names the delegation credential the hop acted under.
 
 The scheduler bounds spawn depth and narrows a child's `data_class` from its parent's. The three-hop vector set below is built so that both rules have something to fire on: a chain two links deep, and a narrowing pair.
 
 ### Aggregate: one record per run
 
+Bernstein can also write one summary record for a whole run, which lists every hop's record by name and hash.
+
 A run-level record rolls the hops up. It reads no journal, since no journal exists for the run as a whole, and every member is a rollup: `iat` is the latest member's; `model` the last member's; `policy.bundle_hash` a digest over the ordered list of member bundle hashes, a hash of hashes and not a policy of its own; `data_class` the most restrictive member's; `tool_transcript` a digest over the ordered member transcript hashes with the counts summed. It carries no `delegation`. Its `references` hold one `{rel: "member-execution", id, resolver, digest}` entry per hop: `id` is the member's own `subject`, `digest` is SHA-256 over the RFC 8785 bytes of the member's complete signed record, the same preimage a delegation link uses, so a verifier resolves a member by name and binds it by recomputing that digest over the record it holds. Its `subject` is `spiffe://bernstein.run/run/<run_id>`.
 
 Neither `member-execution` nor `produced-artifact` is a registered `rel` value. Section 3.1.2 keeps `rel` open and calls its values a registry; both are producer-defined relations until registered.
 
 ## Two commitments, and where they sit today
+
+A commitment is a hash in the record that a verifier can recompute from the original data. A software-only record can carry two of them, and today a Bernstein record fills in only one.
 
 Section 3.1.4 notes that a software-only record can carry two recomputable commitments, `runtime.measurement` and `transcript_digest`, over different objects. On a Bernstein record today:
 
@@ -59,17 +70,20 @@ Section 3.1.4 notes that a software-only record can carry two recomputable commi
 
 ## The reproducibility claim
 
-The coordination logic is a deterministic function of the run, and the producer already ships the check that re-runs it: `bernstein replay <run> --re-derive` takes the two things coordination did not choose, the recorded plan graph and the recorded per-task outcomes, walks them through the scheduler's coordination state machine, refuses any step the rules could not have produced at that point, and appends the accepted steps to a fresh journal in a sandbox, so the result ends with a head computed from inputs rather than copied from the recorded chain. It re-executes no agent, needs no adapter, task server or network, and reads one file to write another. That is the shape section 3.1.4 gives the claim, and the mapping onto it is:
+Because Bernstein's scheduling decisions follow fixed rules, anyone can replay a run's recorded plan and outcomes through those rules and check that they arrive at the same sequence of steps. The replay does not re-run any agent or call any model. The schema has a place to record this claim, but Bernstein's emitter does not fill it in yet (see the end of this section).
 
-| Claim member | Bernstein value |
-|---|---|
-| `function` | the coordination state machine in `bernstein.core.replay.rederive` |
-| `code_identity` | the digest of the release artifact that contains it; where `build_provenance.digest` names that same artifact the two are equal, as section 3.1.4 provides |
-| `code_resolver` | the package index the release is published to |
-| `input_closure` | the recorded plan graph and every recorded outcome the function reads, each as a content-addressed journal row; a recorded model interaction is an input here, never something a verifier re-invokes |
-| `transcript_digest` | SHA-256 over the RFC 8785 bytes of the ordered list of accepted coordination steps, each projected as the journal projects a payload, chain and timing fields excluded |
+??? info "Technical detail: how the replay works and how it maps to the claim"
+    The coordination logic is a deterministic function of the run, and the producer already ships the check that re-runs it: `bernstein replay <run> --re-derive` takes the two things coordination did not choose, the recorded plan graph and the recorded per-task outcomes, walks them through the scheduler's coordination state machine, refuses any step the rules could not have produced at that point, and appends the accepted steps to a fresh journal in a sandbox, so the result ends with a head computed from inputs rather than copied from the recorded chain. It re-executes no agent, needs no adapter, task server or network, and reads one file to write another. That is the shape section 3.1.4 gives the claim, and the mapping onto it is:
 
-Two things a verifier should know before re-running. The re-derived journal head that `--re-derive` compares is Bernstein's own commitment, computed under the journal's code-point encoding; the record's `transcript_digest` is the RFC 8785 digest over the same sequence, and the two are not interchangeable. And the outcome vocabulary is section 3.1.4's: `reproduced` when the digests agree, `diverged` with the observed digest when they do not, and `not-attempted` with the reason when a closure row cannot be obtained, the artifact at `code_identity` cannot be obtained, or the function reads beyond the closure. The re-derivation's own refusal codes, a step the rules cannot produce and a head that differs, are both `diverged` in that vocabulary, since in both cases the re-run completed on the closure alone and did not reach the claimed transcript.
+    | Claim member | Bernstein value |
+    |---|---|
+    | `function` | the coordination state machine in `bernstein.core.replay.rederive` |
+    | `code_identity` | the digest of the release artifact that contains it; where `build_provenance.digest` names that same artifact the two are equal, as section 3.1.4 provides |
+    | `code_resolver` | the package index the release is published to |
+    | `input_closure` | the recorded plan graph and every recorded outcome the function reads, each as a content-addressed journal row; a recorded model interaction is an input here, never something a verifier re-invokes |
+    | `transcript_digest` | SHA-256 over the RFC 8785 bytes of the ordered list of accepted coordination steps, each projected as the journal projects a payload, chain and timing fields excluded |
+
+    Two things a verifier should know before re-running. The re-derived journal head that `--re-derive` compares is Bernstein's own commitment, computed under the journal's code-point encoding; the record's `transcript_digest` is the RFC 8785 digest over the same sequence, and the two are not interchangeable. And the outcome vocabulary is section 3.1.4's: `reproduced` when the digests agree, `diverged` with the observed digest when they do not, and `not-attempted` with the reason when a closure row cannot be obtained, the artifact at `code_identity` cannot be obtained, or the function reads beyond the closure. The re-derivation's own refusal codes, a step the rules cannot produce and a head that differs, are both `diverged` in that vocabulary, since in both cases the re-run completed on the closure alone and did not reach the claimed transcript.
 
 The emitter at the pinned commit does not carry the block; the schema shape landed after it, in agentrust-io/trace-spec#366. Until it does, a verifier finds no claim on a Bernstein record and has nothing to re-run. The mapping is fixed here so that the emitter change is a change to what the record says, not to what the words mean.
 
@@ -84,13 +98,13 @@ Steps 1 to 3 need the records alone. Step 4 needs the journal, which is run-priv
 
 ## Assurance boundary
 
-Level 0. A software-only record cannot reach Level 1 by construction: the conformance suite's `TR-RTE-001` refuses `software-only` at hardware-attested levels and `TR-RTE-004` wants a verifier-issued nonce that a committed record cannot carry. A committed corpus also cannot pass `TR-ENV-002` without `--max-age`, since a record that regenerates byte-for-byte carries a fixed `iat`; this repository's own `examples/amd-sev-snp.json` has the same property. None of that is a defect of the producer; it is what a published record is. See [trust levels](../trust-levels.md).
+Bernstein records sit at Level 0, the software-signed level. Without hardware evidence a record cannot reach Level 1: the conformance suite's `TR-RTE-001` refuses `software-only` at hardware-attested levels and `TR-RTE-004` wants a verifier-issued nonce that a committed record cannot carry. A committed corpus also cannot pass `TR-ENV-002` without `--max-age`, since a record that regenerates byte-for-byte carries a fixed `iat`; this repository's own `examples/amd-sev-snp.json` has the same property. None of that is a defect of the producer; it is what a published record is. See [trust levels](../trust-levels.md).
 
 What the producer's evidence establishes, once verified: that the install identity signed these digests over this journal, that the chain of hops is the chain the parent signed, and, when the claim is carried, that the coordination sequence re-derives from its recorded inputs. What it does not establish: that the journal is complete, beyond what the seal says; and anything about the workload's side effects or the model's answers, which are inputs.
 
 ## Vectors
 
-Seven signed records in [`tests/fixtures/trust-record-vectors/`](https://github.com/sipyourdrink-ltd/bernstein/tree/4281e3c1ac86adbfae704dc4d1e69d4bb2a61559/tests/fixtures/trust-record-vectors), all minted by the emitter over journals written through the real recorder, never hand-written, under a frozen clock and a pinned Ed25519 seed. Regeneration is byte-identical and a test holds it to the committed files.
+Test vectors are fixed sample records, with known correct answers, that another implementation can check itself against. Seven signed records in [`tests/fixtures/trust-record-vectors/`](https://github.com/sipyourdrink-ltd/bernstein/tree/4281e3c1ac86adbfae704dc4d1e69d4bb2a61559/tests/fixtures/trust-record-vectors), all minted by the emitter over journals written through the real recorder, never hand-written, under a frozen clock and a pinned Ed25519 seed. Regeneration is byte-identical and a test holds it to the committed files.
 
 | Vector | What it is |
 |---|---|

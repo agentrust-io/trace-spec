@@ -1,5 +1,7 @@
 # Acta Decision Receipts Cross-walk
 
+Acta is an IETF draft format for signed receipts that record whether an AI agent's tool call was allowed before it ran. This page shows how such a receipt can travel next to a TRACE record as supporting evidence, and which Acta fields a TRACE verifier checks. It is for teams that already produce Acta receipts; neither format changes.
+
 > **Non-normative.** This document is informative only. Nothing here changes TRACE v0.1 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.1 Trust Record as defined in [`spec/trace-v0.1.md`](../../spec/trace-v0.1.md). References to "Acta" mean the receipt format specified in [draft-farley-acta-signed-receipts](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) (revision 02); section references of the form "Acta s2.1" are to that draft.
 
 ---

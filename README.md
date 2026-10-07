@@ -33,9 +33,9 @@ Community updates and contributor highlights: [AgenTrust on LinkedIn](https://ww
 
 > **Developer Preview.** Launched at Confidential Computing Summit, 23 June 2026. Spec v0.2 is current. See [LIMITATIONS.md](LIMITATIONS.md) before relying on it in production.
 
-An open specification for portable, signed runtime evidence about AI agent runs. TRACE defines the format, anchoring protocol, and verification rules for a record of what an agent ran, where, under which policy, touching which data, and calling which tools, signed so any third party can check it offline. A v0.2 signature proves who produced a record and that it has not changed; hardware provenance needs attestation verified against a trusted root, which the proposed [v0.3 runtime evidence profile](docs/rfcs/runtime-evidence-profile.md) adds.
+TRACE is an open format for a signed receipt of an AI agent run: what ran, where, under which rules, on what kind of data, and which tools it called. Anyone holding the receipt (a Trust Record) can check it on their own computer, without asking the operator. This repository holds the specification, the JSON schema, test vectors and the `agentrust-trace` Python library.
 
-A TRACE Trust Record answers: _what ran, where, under which policy, touching which data, calling which tools_, in a form any third party can check offline without asking the operator.
+A v0.2 signature proves who made a record and that it has not changed. It does not prove the hardware claims inside it: that needs a signed report from the processor itself (attestation), checked against the chip maker's root certificate, which the proposed [v0.3 runtime evidence profile](docs/rfcs/runtime-evidence-profile.md) adds.
 
 ## What a Trust Record claims
 
@@ -100,7 +100,7 @@ Hosted at the Linux Foundation as its own series, "TRACE Specification, a Series
 
 ### What is TRACE?
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for signed records of AI agent runs. It defines the record format, how records are published to a public log, and the rules for checking them. A record states that an agent ran under a specific policy, on a stated platform, on a given class of data, calling identified tools; the signature makes those statements tamper-evident, and hardware attestation, where present, is what backs the platform claim.
 
 ### What does a TRACE Trust Record prove?
 
@@ -116,11 +116,11 @@ Install the library with `pip install agentrust-trace`, sign a record with `sign
 
 ### How does TRACE relate to AGT and cMCP?
 
-TRACE is the evidence format. AGT and cMCP produce and consume Trust Records, so you can connect them into an end-to-end agent governance pipeline. See the integration guides for details.
+TRACE is the evidence format. AGT and cMCP write and read Trust Records, so you can connect them so that every agent action ends in a record someone else can check. See the integration guides for details.
 
 ### What is the current status of TRACE?
 
-The current specification is TRACE v0.2, published with a conformance test suite. See the Limitations page for scope boundaries before relying on it in production.
+The current specification is TRACE v0.2, published with a conformance test suite, as a Developer Preview. TRACE is a Series of LF Projects, and a proposal to bring it into the Agentic AI Foundation as a Sandbox project is in progress ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42)). See the Limitations page for what it does not cover before relying on it in production.
 
 ## Contributing
 

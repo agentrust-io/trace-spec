@@ -1,5 +1,7 @@
 # N'KEMBA Institutional Reconstruction Consumer Cross-walk
 
+N'KEMBA checks whether an organisation's decision is backed by evidence from several places: the agent run itself, who authorised it, who approved it, and what happened afterwards. This page explains which of those questions a TRACE record answers (the run) and which it cannot answer on its own. It is for teams building that kind of review on top of TRACE.
+
 > **Non-normative.** This document is informative only. Nothing here changes a TRACE schema field, wire format, required claim, or conformance requirement. References to TRACE mean the TRACE v0.2 Trust Record defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md). References to N'KEMBA mean a downstream consumer that reconstructs whether an institutional outcome is supported by independently verified evidence.
 
 ---

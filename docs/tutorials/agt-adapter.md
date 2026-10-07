@@ -1,6 +1,8 @@
 # Build a TRACE Record from AGT Session Inputs
 
-Map policy bytes and audit entries into a signed software record. This local example uses synthetic inputs; it does not run AGT, call a model, or appraise hardware.
+This page is for developers who use AGT (the Agent Governance Toolkit, open-source software that checks an AI agent's actions against rules) and want each session to produce a TRACE record. You will turn a session's rule file and its log of tool calls into a signed record on your own computer, in about one minute.
+
+The example uses made-up inputs. It does not run AGT, call an AI model, or check any hardware.
 
 ## Setup
 
@@ -42,16 +44,23 @@ assert "transparency" not in signed
 print("PASS: mapped and signed synthetic session; no hardware appraisal or registry anchor")
 ```
 
-The nonzero build digest is illustrative metadata, not verified build provenance. The chain tip is synthetic. The example checks mapping and a software signature only.
+The script prints `PASS` when the session has been turned into a record and signed. Some values are placeholders: the build digest (a fingerprint meant to identify how the software was built) is illustrative, and nobody checked it, and the chain tip (the last link in AGT's tamper-evident log) is made up. So the example checks two things only: that the fields were filled in correctly, and that the software signature works.
 
 ## Use real session evidence
 
-Supply the exact policy bytes used for the session, audit entries as plain dictionaries, the session's chain tip, and its authenticated identity. The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
+For a real session, pass in four things: the exact rule file (policy) the session used, byte for byte; the log entries as plain dictionaries; the session's chain tip; and the agent's checked identity. The adapter turns the log and the chain tip into fingerprints (hashes) that go into the record. By default it counts one call per log entry.
 
-The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `enforcement_mode` is required and has no default: a default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. This tutorial passes `"declared"` because synthetic input ran through no policy engine; pass the mode your deployment actually ran under. This does not change runtime enforcement defaults or behavior.
+The record says which enforcement mode you configured, meaning whether the rules were meant to block actions or only to be noted. Writing the mode down does not prove the rules ran. That is why the adapter has no default and makes you choose the mode yourself. This tutorial passes `"declared"` because no rule engine ran on the made-up input. Pass the mode your deployment really ran under.
 
-`appraisal.status` defaults to `none` for the same reason: building a record does not appraise it, and the field is the verifier's (spec section 3.3.1). Set the record's claims to the checks actually performed before signing.
+The appraisal status (whether anyone checked the evidence) starts as `none` for the same reason. Building a record is not checking it. Before signing, set each claim to match the checks that really happened.
+
+??? info "Technical detail: how the adapter hashes its inputs and why the defaults are what they are"
+    The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
+
+    The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `enforcement_mode` is required and has no default: a default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. This does not change runtime enforcement defaults or behavior.
+
+    `appraisal.status` defaults to `none` because the field is the verifier's (spec section 3.3.1).
 
 ## Verify and extend
 
-Recipients obtain the issuer key independently and use [record verification](verifying-a-trust-record.md). Add hardware evidence through a runtime-specific profile and verifier; adding a platform name is insufficient. For Level 2, also follow the [registry anchor format](../../spec/registry-anchor-v1.md). Re-sign after changing signed fields.
+Whoever receives the record should get your public key through their own trusted channel, then follow [record verification](verifying-a-trust-record.md). To add hardware evidence, use a profile and checker built for that hardware; writing a hardware name into the record proves nothing by itself. For Level 2 (records also published to a public log), follow the [registry anchor format](../../spec/registry-anchor-v1.md). If you change any signed field, sign the record again.

@@ -1,6 +1,8 @@
 # Platform: NVIDIA H100 Confidential Computing
 
-NVIDIA GPU attestation provides evidence about a GPU's identity and firmware state. NVIDIA Remote Attestation Service (NRAS), its Reference Integrity Manifest service, and certificate-status services have separate roles. See [NVIDIA's attestation documentation](https://docs.nvidia.com/attestation/index.html) and [H100 attestation example](https://docs.nvidia.com/attestation/quick-start-guide/latest/attestation-examples/hopper_single_gpu.html).
+This page is for teams whose agents use NVIDIA H100 GPUs in confidential computing mode. It explains what GPU evidence covers, what it does not, and how a TRACE record refers to it.
+
+NVIDIA GPU attestation is a signed report about which GPU this is and what firmware it runs. Several NVIDIA services take part, each with its own job: NVIDIA Remote Attestation Service (NRAS) checks the evidence, a Reference Integrity Manifest service supplies the expected values, and certificate-status services say whether a certificate has been revoked. See [NVIDIA's attestation documentation](https://docs.nvidia.com/attestation/index.html) and [H100 attestation example](https://docs.nvidia.com/attestation/quick-start-guide/latest/attestation-examples/hopper_single_gpu.html).
 
 ## TRACE representation
 
@@ -10,9 +12,9 @@ The cMCP configuration name `opaque` belongs to that runtime's provider interfac
 
 ## CPU, GPU, and signing-key binding
 
-An accepted GPU attestation does not automatically attest the CPU workload, model weights, policy enforcement, or record-signing key. A combined deployment needs explicit evidence linking the relevant components and the signing key under a documented profile. This page does not define a universal combined CPU/GPU digest or an additional `runtime.extensions` wire field.
+A good GPU report covers the GPU only. It does not, by itself, vouch for the program on the CPU, the model weights, whether a policy was enforced, or the key that signed the record. A deployment that uses both needs explicit evidence linking those parts and the signing key, under a documented profile. This page does not define a universal combined CPU/GPU digest or an additional `runtime.extensions` wire field.
 
-Hardware appraisal supports Level 1. Level 2 additionally requires transparency anchoring. Read [trust levels](../trust-levels.md) and the producing runtime's [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/) before relying on a deployment claim.
+Checked hardware evidence supports Level 1. Level 2 also needs a public log entry (transparency anchoring). Read [trust levels](../trust-levels.md) and the producing runtime's [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/) before relying on a deployment claim.
 
 ## Getting started
 

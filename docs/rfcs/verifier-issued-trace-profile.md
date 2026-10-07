@@ -1,5 +1,7 @@
 # RFC Proposal: a verifier-issued, holder-bound TRACE token
 
+Today an agent signs its own TRACE record. This proposal adds a second kind of token, signed by an independent checker (a verifier) after it has assessed the agent, which only the agent it describes can present, because presenting it takes a key that agent holds. It is for people building gateways that decide whether to let an agent act. The format is experimental and can still change.
+
 **Status:** Draft proposal. Binds nothing. Experimental wire, `urn:agentrust:trace:verifier-token:experimental-v1`.
 **Scope:** A new signed token in which an appraisal verifier signs the result and `cnf` names a different key, held by the agent that presents it; a holder proof; and a separately signed gateway decision receipt. Additive: every v0.2 record keeps its meaning, and a v0.2 verifier refuses the new token as an unsupported profile.
 **Target:** a new profile document next to `spec/trace-v0.2.md`, not an edit to it.

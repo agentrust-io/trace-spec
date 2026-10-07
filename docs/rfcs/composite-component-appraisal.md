@@ -1,5 +1,7 @@
 # RFC Proposal: composite component appraisal, and knowing which part failed
 
+Today a TRACE record gives one verdict for the whole agent. This proposal gives each part (the code, the model, the policy, the processor, the tools) its own verdict, so that when something fails the reader can see which part and fix the right thing. It is for people who write verifiers or set access rules for agents. It is a draft and binds nothing yet.
+
 **Status:** Draft proposal. Binds nothing.
 **Scope:** Components with stable IDs, a status per component, digest-bound evidence references, freshness, two relationship methods, delegated component appraisers, and a composite result the verifier derives rather than reads. Additive; every v0.2 record stays valid.
 **Target:** the verifier-issued token in the companion proposal, [`verifier-issued-trace-profile.md`](verifier-issued-trace-profile.md), and `spec/` only if both are adopted.
