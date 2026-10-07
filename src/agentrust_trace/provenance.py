@@ -24,6 +24,7 @@ import rfc8785
 from pydantic import ValidationError
 
 from agentrust_trace.models import RuntimeInfo
+from agentrust_trace.revocation import NO_CHECK, RevocationCheck
 from agentrust_trace.sign import (
     JCS_SAFE_INTEGER,
     RevocationStore,
@@ -431,7 +432,7 @@ def verify_record(
     max_future_skew_seconds: int = 300,
     now: int | None = None,
     required_format: str | None = None,
-) -> None:
+) -> RevocationCheck:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
 
     ``now`` is an optional non-negative integer Unix timestamp for replaying a
@@ -452,6 +453,11 @@ def verify_record(
     thumbprint *and* its ``kid``. Both a revoked key and an unreachable store fail
     closed. ``None`` skips the check and keeps verification offline; offline
     verification cannot prove non-revocation.
+
+    Successful verification returns a :class:`RevocationCheck`: outcome
+    ``no_check_performed`` when no store is supplied, or ``verified`` when the
+    supplied store is clean for this call. A revoked key still raises
+    :class:`ProvenanceError`.
 
     ``max_age_seconds`` bounds how old ``issued_at`` may be. It defaults to
     ``None``, unlike the 86400 of a Trust Record, because a provenance record
@@ -585,6 +591,10 @@ def verify_record(
         pub.verify(sig_bytes, body)
     except Exception as exc:  # cryptography raises InvalidSignature
         raise ProvenanceError(f"signature does not verify: {exc}") from exc
+
+    if revocation is not None:
+        return RevocationCheck(outcome="verified", evidence={"source": "store"})
+    return NO_CHECK
 
 
 def check_tool_catalog(
