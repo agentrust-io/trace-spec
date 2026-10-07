@@ -26,6 +26,7 @@ from agentrust_trace.provenance import (
     tool_catalog_hash,
     verify_record,
 )
+from agentrust_trace.revocation import NO_CHECK, RevocationCheck
 from agentrust_trace.sign import (
     JCS_SAFE_INTEGER,
     _canonical_bytes,
@@ -675,11 +676,15 @@ def test_an_unreachable_revocation_source_fails_closed() -> None:
         verify_record(signed, key_to_jwk(key), revocation=unreachable)
 
 
-def test_an_unrevoked_key_passes_the_check() -> None:
+@pytest.mark.parametrize("store", [set(), {"some-other-key"}])
+def test_an_unrevoked_key_passes_the_check(store) -> None:
     """The check must not reject what it should accept."""
     key = generate_key()
     signed = sign_record(_record(), key)
-    verify_record(signed, key_to_jwk(key), revocation={"some-other-key"})
+    result = verify_record(signed, key_to_jwk(key), revocation=store)
+    assert isinstance(result, RevocationCheck)
+    assert result.outcome == "verified"
+    assert result.evidence == {"source": "store"}
 
 
 def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
@@ -689,7 +694,10 @@ def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
     now has somewhere to put a store, not that one is imposed.
     """
     key = generate_key()
-    verify_record(sign_record(_record(), key), key_to_jwk(key))
+    result = verify_record(sign_record(_record(), key), key_to_jwk(key), revocation=None)
+    assert isinstance(result, RevocationCheck)
+    assert result == NO_CHECK
+    assert result.outcome == "no_check_performed"
 
 
 # --- policy inputs, per the review on #164 ----------------------------------
