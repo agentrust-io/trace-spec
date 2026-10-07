@@ -615,11 +615,14 @@
   },
   "TR-COMP-MCP-001": {
    "positive": [
-    "COMP-MCP-001"
+    "COMP-MCP-001",
+    "COMP-MCP-004"
    ],
    "counterexamples": [
     "COMP-MCP-002",
     "COMP-MCP-003",
+    "COMP-MCP-005",
+    "COMP-MCP-006",
     "COMP-MCP-007"
    ],
    "causal": "tests/test_conformance_causal.py::test_disabling_gate_admits_counterexample[TR-COMP-MCP-001]",

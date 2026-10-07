@@ -2728,7 +2728,7 @@ python -m pytest -q tests/test_independent_verifier.py tests/test_conformance_co
 
 # RFC Proposal: composite component appraisal, and knowing which part failed
 
-**Status:** Draft proposal. Binds nothing. **Scope:** Components with stable IDs, a status per component, digest-bound evidence references, freshness, two relationship methods, delegated component appraisers, and a composite result the verifier derives rather than reads. Additive; every v0.2 record stays valid. **Target:** the verifier-issued token in the companion proposal, [`verifier-issued-trace-profile.md`](https://trace.agentrust-io.com/docs/rfcs/verifier-issued-trace-profile/index.md), and `spec/` only if both are adopted. **Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 107 component vectors out of 215, `codes.json` with 54 reason codes, and `coverage.json` mapping each requirement to its vectors and causal test. **Implementations:** a Python reference in `prototype/verifier_token.py`, and a second verifier in JavaScript, [`tools/independent-verifier/`](https://github.com/agentrust-io/trace-spec/tree/main/tools/independent-verifier). **Experimental text:** [`docs/verifier-token-experimental.md`](https://trace.agentrust-io.com/docs/verifier-token-experimental/index.md), including the sections "Delegated component appraisal" and "Relationship methods".
+**Status:** Draft proposal. Binds nothing. **Scope:** Components with stable IDs, a status per component, digest-bound evidence references, freshness, two relationship methods, delegated component appraisers, and a composite result the verifier derives rather than reads. Additive; every v0.2 record stays valid. **Target:** the verifier-issued token in the companion proposal, [`verifier-issued-trace-profile.md`](https://trace.agentrust-io.com/docs/rfcs/verifier-issued-trace-profile/index.md), and `spec/` only if both are adopted. **Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 110 component vectors out of 218, `codes.json` with 54 reason codes, and `coverage.json` mapping each requirement to its vectors and causal test. **Implementations:** a Python reference in `prototype/verifier_token.py`, and a second verifier in JavaScript, [`tools/independent-verifier/`](https://github.com/agentrust-io/trace-spec/tree/main/tools/independent-verifier). **Experimental text:** [`docs/verifier-token-experimental.md`](https://trace.agentrust-io.com/docs/verifier-token-experimental/index.md), including the sections "Delegated component appraisal" and "Relationship methods".
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.
 
@@ -2955,7 +2955,7 @@ The last two rows differ only in the accepted profiles. The per-component profil
 - 1 is gateway-only, `TR-COMP-MCP-002`: server-to-catalog binding needs a relationship method the token does not define, so the gateway enforces it on the holder-proved action.
 - 1 is informative, `TR-COMP-MIN-001`, carry digests rather than raw evidence, checked by a disclosure test.
 
-The component vectors number 107: `COMP-AUTH` 17, `COMP-BIND` 20, `COMP-COMP` 9, `COMP-EVID` 9, `COMP-FRESH` 10, `COMP-ID` 8, `COMP-MCP` 4, `COMP-REQ` 8, `COMP-STAT` 14, `COMP-TYPE` 4, `COMP-WARN` 4. Twelve of the 17 authority vectors are on delegated appraisal, and delegation has six more causal tests, one per gate. The vectors come from `gen_corpus.py`, which builds envelopes, digests and composites from `cbor2`, `rfc8785` and Ed25519 primitives and imports nothing from the reference verifier.
+The component vectors number 110: `COMP-AUTH` 17, `COMP-BIND` 20, `COMP-COMP` 9, `COMP-EVID` 9, `COMP-FRESH` 10, `COMP-ID` 8, `COMP-MCP` 7, `COMP-REQ` 8, `COMP-STAT` 14, `COMP-TYPE` 4, `COMP-WARN` 4. Twelve of the 17 authority vectors are on delegated appraisal, and delegation has six more causal tests, one per gate. The vectors come from `gen_corpus.py`, which builds envelopes, digests and composites from `cbor2`, `rfc8785` and Ed25519 primitives and imports nothing from the reference verifier.
 
 Running both verifiers over all 229 vectors (215 conformance, 14 legacy) on 30 September: every outcome agrees, token result, composite status and proof result alike. `tests/test_stage4_relationships.py` (18 tests), `tests/test_snp_collateral.py` (9), `tests/test_tdx_collateral.py` (60) and `tests/test_azure_execution_gateway.py` (8) pass.
 
@@ -3005,11 +3005,154 @@ Both are now settled in the experimental text and pinned by vectors. The composi
 1. **Should `resolver` be required?** The requirement as first written said yes. This profile says no, because a required hint nobody fetches adds a field without adding a check. If evidence resolution is specified, the answer may change.
 1. **Evidence resolution.** Who fetches, from where, with what retention, and what status a relying party reports when the fetch fails. The original design said `unverifiable`, not `contraindicated`, unless other evidence contradicts the claim. Nothing implements it yet.
 1. **Delegation chains and appraiser revocation.** Can an appraiser delegate further, and how does a relying party learn that an appraiser key was withdrawn before `valid_until`?
-1. **MCP server components.** What evidence an `mcp-server` component rests on (artifact provenance, endpoint identity, transport key binding), and a relationship method that binds a catalog to the server that served it.
+1. **MCP server components.** What evidence an `mcp-server` component rests on (artifact provenance, endpoint identity, transport key binding), and a relationship method that binds a catalog to the server that served it. For the catalog half, [`tool-catalog-observed-digest.md`](https://trace.agentrust-io.com/docs/rfcs/tool-catalog-observed-digest/index.md) states one derivation of a `tool-catalog` component's `observed_digest` from the served `tools/list`, with pinned bytes and `COMP-MCP-004` to `006`; it answers neither the server half nor the relationship method.
 1. **Composite precedence and freshness (§8.3).** The experiment settles both: the token's `exp` bounds the composite, and `missing` outranks `unverifiable`. Both readings were defensible, and a reviewer may still invert either one. If so, the four vectors that pin them change with the text.
 1. **Binding-only endpoints.** A binding endpoint with no entry in `requirements.components` is required but undeclared, so such a configuration can never affirm. Should requirement loading reject it?
 
 The checks behind all of this can be run from a checkout: `node tools/independent-verifier/verify.mjs examples/verifier-token-conformance/vectors/*.json` prints one outcome per vector, and `python -m pytest tests/test_stage4_relationships.py` runs the worked example in §7 on the saved packets.
+
+# Tool-catalog observed digest: a recomputable preimage for `tool-catalog` components
+
+**Status:** Draft, informative. Binds nothing. **Scope:** How the `observed_digest` of a `tool-catalog` component is derived from the `tools/list` a server served, so that a relying party can set `expected_observed_digest` from bytes it holds and a second implementation can recompute every value from the same bytes. Two counterexamples, digest-mismatch and wrong-subject, with the pinned bytes they recompute from. **Target:** `TR-COMP-MCP-001` in [`composite-component-appraisal.md`](https://trace.agentrust-io.com/docs/rfcs/composite-component-appraisal/index.md), and input to open question 6 there. What an `mcp-server` component rests on (endpoint identity, transport key binding) and the server-to-catalog relationship method (`TR-COMP-MCP-002`) stay open. **Conformance material:** [`examples/verifier-token-conformance/catalog/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance/catalog) (three pinned catalogs and `digests.json`), vectors `COMP-MCP-004` to `COMP-MCP-006`, and `tests/test_tool_catalog_digest.py`, which recomputes every digest from the pinned bytes without the generator.
+
+Requirement keywords are lowercase throughout, on the same line the composite proposal draws: this is informative text and binds no implementation.
+
+______________________________________________________________________
+
+## 1. What a catalog digest is for
+
+A `tool-catalog` component carries an `observed_digest`, and a relying party may pin an `expected_observed_digest` in its requirement; a token whose component differs is rejected with `component_observation_mismatch`. The composite proposal says that much and no more. It does not say what the digest is a digest of, so today the pin is a value the relying party copies from somewhere and cannot check against anything a server actually served.
+
+This document fixes one derivation: from the `tools` member of a `tools/list` result to one digest per tool, keyed by tool name, and one digest for the whole catalog. A relying party that holds the `tools/list` a server served computes the catalog digest itself and pins it; an appraiser that observed the same catalog carries the same digest; a verifier compares two strings it can recompute from bytes. No party needs to call another to obtain the value.
+
+The per-tool digests are the unit that matters at the gateway, where one call is authorized against one definition. The catalog digest is a fold over them and is what the `tool-catalog` component carries, because the component has one `observed_digest`.
+
+## 2. Input
+
+The input is the `tools` member of a `tools/list` result: a JSON array of tool definitions, as served. The derivation reads the JSON value, so the whitespace, member order and transport framing of the response (JSON body or SSE frame) do not matter. The pinned catalogs under `catalog/` are that array, re-serialized with indentation for review and byte-identical in value to what was served.
+
+A definition that RFC 8785 cannot canonicalize (a number outside the IEEE 754 double range, for instance) has no digest under this derivation.
+
+## 3. Per-tool digest
+
+For one tool definition `t`:
+
+1. **Restrict** `t` to the members `name`, `title`, `description`, `inputSchema`, `outputSchema` and `annotations`, in that this is the set the model and client act on. A member that is absent, or present with the value `null`, is omitted. Any other value is kept as is: an empty string, an empty object and `false` are hashed. `_meta` and every member not in the set are never hashed, so a change confined to them is not drift.
+1. **Wrap** the restricted object under a profile label:
+
+```
+{"profile": "trace.mcp-tool-definition.v1", "tool": <restricted definition>}
+```
+
+This document defines the derivation under the `trace.` label. The label is part of the preimage, carried literally, and versions the derivation: if the member set or any rule here changes, the label changes, and a digest under one label never equals a digest under another. An implementation that adopts this derivation unchanged uses this exact string, or its digests do not recompute. AgentAvow's issuer publishes the same derivation under its own label, with a documented mapping to this one.
+
+1. **Canonicalize** the wrapped object with RFC 8785 (JCS) and hash the canonical bytes with SHA-256.
+1. **Write** the digest as `sha256:` followed by 64 lowercase hexadecimal characters, which is the form the token schema accepts for `observed_digest`.
+
+## 4. Key
+
+Each per-tool digest is keyed by the tool's name, encoded so that the key is printable ASCII, cannot contain the separators the fold uses, and is bounded in length:
+
+1. Start from the `name` member as a string. A definition with no `name`, or an empty one, is keyed as `unnamed`.
+1. Every character outside `0x21` to `0x7E` (space, controls, DEL and every non-ASCII character), plus `%` and `=`, is replaced by its UTF-8 bytes, each written as `%` and two uppercase hexadecimal digits. Every other character is literal.
+1. If the encoded body is longer than 128 characters, it is cut to its first 96 characters and suffixed with `~` and the first 16 lowercase hexadecimal characters of SHA-256 over the raw UTF-8 bytes of the original name. The cut is a count of characters in the encoded body, not of source characters, and may fall inside a `%XX` triplet; the partial triplet is kept as it falls.
+1. The key is `tool:` followed by the encoded body.
+
+Because `=` and every control character are encoded, no name can forge a line of the fold in section 5. The two pinned servers have plain ASCII names, so `digests.json` also carries thirteen name-to-key pairs that exercise rules 2 and 3, including a body of exactly 128 characters that stays literal, bodies of 129 and 200 ASCII characters and of 50 two-byte characters that are cut, and two names whose cut lands inside a triplet.
+
+## 5. Catalog digest
+
+With the per-tool map `{key: digest}` from sections 3 and 4:
+
+1. Sort the keys in ascending code-point order (the keys are printable ASCII, so byte order and code-point order agree).
+1. Write one line per key, `key=digest`, joined by a single `\n` with no trailing newline.
+1. The catalog digest is `sha256:` and the SHA-256 of the UTF-8 bytes of that text.
+
+Reordering the array is therefore not drift, and a change to one definition changes exactly one line. Two edge rules are stated for completeness; neither is exercised by the pinned catalogs:
+
+- Two definitions with the same key fold into one entry, whose digest is SHA-256 over the UTF-8 text `trace.mcp-tool-definition.v1.duplicates\n` followed by the sorted per-tool digests joined by `\n`.
+- Beyond 500 entries, the first 500 keys in sorted order are kept and the rest fold into one entry keyed `tools:overflow`, whose digest is SHA-256 over `trace.mcp-tool-definition.v1.overflow\n` followed by the remaining `key=digest` lines joined by `\n`.
+
+## 6. Where the values go in the token
+
+- The `tool-catalog` component's `observed_digest` is the catalog digest of the `tools/list` the appraiser observed.
+- The relying party's requirement for that component sets `expected_observed_digest` to the catalog digest of the `tools/list` it holds for the server it is asking about.
+- The verifier compares the two strings. A difference is `component_observation_mismatch`, as today.
+
+Nothing else in the token changes. The component's `profile` is whatever appraisal profile produced the status; the vectors use the corpus's example profile. Which profile identifier names this derivation for `accepted_profiles` is left to the project (section 10).
+
+## 7. Pinned catalogs and their digests
+
+Three catalogs are pinned under `catalog/`. The first and third were fetched from the servers named, with one `initialize` and one `tools/list` request each, and are the `tools` member of the result as served. The second was not served: it is the first with one sentence appended to the description of `ask_wiki_question`, and stands for what the server would serve after one definition changed.
+
+| Catalog          | File                               | Served by                                         | Tools | Catalog digest                                                            |
+| ---------------- | ---------------------------------- | ------------------------------------------------- | ----- | ------------------------------------------------------------------------- |
+| deepwiki         | `deepwiki-tools-list.json`         | `https://mcp.deepwiki.com/mcp`, 2026-10-01        | 3     | `sha256:b3d3955a3da0c0eb95a263ac53e4df2efcb0634193b7cbee92337144f4146cbd` |
+| deepwiki-drifted | `deepwiki-tools-list-drifted.json` | constructed from deepwiki                         | 3     | `sha256:fffdf1917378cc03057ab6dc7973731123e392adb365f6833dff650281a9dbf6` |
+| cloudflare-docs  | `cloudflare-docs-tools-list.json`  | `https://docs.mcp.cloudflare.com/mcp`, 2026-10-02 | 2     | `sha256:aa6ec740288222f2e1081056057f05a0d4a38d4114fe3914ba9b95270835e53b` |
+
+Per-tool digests:
+
+| Key                        | deepwiki                                                                  | deepwiki-drifted                                                          |
+| -------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `tool:ask_wiki_question`   | `sha256:7b433df44e34a9356d6481fc370283840a598c47b879d0f663952e91d8b3e729` | `sha256:a7da4da5eca7b1d7f329a555a7dd748587124dadd75056f375b306129215b4d6` |
+| `tool:read_wiki_contents`  | `sha256:60d4ddd7838f28963920e8687ef644096fb38e8602cb25b8a53149fe87fc72d5` | unchanged                                                                 |
+| `tool:read_wiki_structure` | `sha256:9b1330cf1cf19a6b003fc093dc0d92bdea53a47de4cf4efd17b7a0add7945c50` | unchanged                                                                 |
+
+| Key                                    | cloudflare-docs                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| `tool:search_cloudflare_documentation` | `sha256:c4411b558681b396ca09a421f5dad4582804d906f80cd02a6f823d5d6b3d700e` |
+| `tool:migrate_pages_to_workers_guide`  | `sha256:8f5e64cb597baefb37e8f11d4325f7fe88d23e4947301ef777897aa2ea8e599b` |
+
+The deepwiki definitions each carry `name`, `description`, `inputSchema`, `outputSchema` and `_meta`, and no `title` or `annotations`; the cloudflare definitions carry `annotations` on both, `outputSchema` on one, and no `title` or `_meta`. Between them, every allowed member except `title` is present in at least one definition and absent from another, and the excluded `_meta` is present in three.
+
+Every value in both tables was recomputed from the pinned files by `gen_corpus.py` when it built the vectors and, separately, by `tests/test_tool_catalog_digest.py`.
+
+## 8. The cases
+
+All three vectors share one requirement set: `mcp.server` (type `mcp-server`, no pin, as in `COMP-MCP-001`) and `tools.catalog` (type `tool-catalog`) with `expected_observed_digest` set to the deepwiki catalog digest. They differ only in what the token's `tools.catalog` component presents.
+
+| Vector         | Kind                            | Presents                            | Outcome                          |
+| -------------- | ------------------------------- | ----------------------------------- | -------------------------------- |
+| `COMP-MCP-004` | positive                        | the deepwiki catalog digest         | `valid`, composite `affirming`   |
+| `COMP-MCP-005` | counterexample, digest-mismatch | the deepwiki-drifted catalog digest | `component_observation_mismatch` |
+| `COMP-MCP-006` | counterexample, wrong-subject   | the cloudflare-docs catalog digest  | `component_observation_mismatch` |
+
+**Digest-mismatch** is drift after appraisal: the same server, one definition changed. Of the three per-tool lines, one differs, so a party holding both catalogs can name the tool that moved. The token carries only the fold, so the verifier reports the mismatch and not the tool; the per-tool localization is in the pinned material, not in the token.
+
+**Wrong-subject** is a correct digest of the wrong catalog: every per-tool digest is right for what `docs.mcp.cloudflare.com` served, and none of its keys appears in the pinned catalog. The relying party asked about one server and was shown another server's catalog.
+
+Both counterexamples carry the same reason code, and that is a statement about the token, not an oversight in the vectors. The token has no member that names the server a catalog came from, so inside the token the two cases are the same event: the presented digest is not the pinned one. The pinned bytes are what tell them apart. Separating them in the token is exactly the server-to-catalog relationship method that `TR-COMP-MCP-002` leaves to the gateway, and this document does not propose one.
+
+`tests/test_tool_catalog_digest.py` holds each vector to the recorded roles: the pin in its context is the deepwiki digest, the component presents the digest of the catalog named for it, and the expected outcome is as above. It also pins the properties the derivation claims: `_meta` and unknown members do not change a digest, `null` and absent are the same and an empty string is not, reordering the array is not drift, drift changes one line, and the wrong-subject catalog shares no key with the pinned one.
+
+## 9. What this establishes, and what it does not
+
+A pinned catalog digest that matches establishes exactly this: the appraiser observed, at `appraised_at`, a `tools/list` whose definitions, restricted to the six members above, are the ones the relying party holds. Freshness, authority and the rest of the component's checks apply as the composite proposal says.
+
+It establishes nothing about:
+
+- **Runtime behavior.** What a tool does when called, whether its implementation matches its description, or what the server does between two observations.
+- **Definitions not observed.** A tool the appraiser did not see has no line in the fold.
+- **Which server served it.** The catalog digest does not contain the server's identity. A valid digest presented for the wrong server is caught only because the relying party pinned a value for the server it meant, which is `COMP-MCP-006`. Endpoint identity and transport key binding are what an `mcp-server` component would rest on and are open (composite proposal, section 11, question 6).
+- **The evidence object.** The component's `evidence_refs` are not defined here. The served `tools/list` object is a natural candidate for the evidence an appraiser cites, but that choice, and the digest form it would take, is not made in this document.
+- **The gateway's own catalog hash.** A gateway may project a catalog into a different digest for its own binding, as the cMCP gateway does with a Merkle root over leaves of a different shape (`tests/test_cmcp_catalog_binding.py`). That projection and this derivation are different functions of the same catalog; neither is derivable from the other, and the `profile` a component carries is what says which one its `observed_digest` is.
+
+## 10. Open points for review
+
+1. **A profile identifier.** The preimage label `trace.mcp-tool-definition.v1` names the derivation and is fixed. Whether the same identifier, or another in the project's namespace, should also name this derivation for `accepted_profiles` is the project's to decide; adopting one would not change any digest.
+1. **Carrying the per-tool map.** The token carries one `observed_digest` per component. Whether a `tool-catalog` component should also carry the per-tool map, so that a verifier can localize drift without the pinned bytes, is a schema question this document does not raise.
+1. **The evidence reference.** Whether the served `tools/list` object should be the component's cited evidence, and under what media type.
+
+## 11. Reproduction
+
+```
+python examples/verifier-token-conformance/gen_corpus.py
+python -m pytest tests/test_tool_catalog_digest.py tests/test_conformance_corpus.py
+node tools/independent-verifier/verify.mjs examples/verifier-token-conformance/vectors/COMP-MCP-00[456].json
+```
+
+The generator recomputes the three catalog digests from the files under `catalog/` on every run; the test recomputes them again without the generator's code and checks `digests.json`, the vectors and the properties in section 8; the independent verifier reports the expected outcome for each vector.
 # Guides
 
 # Sign Your First Trust Record
@@ -3872,6 +4015,7 @@ ______________________________________________________________________
 
 - **BREAKING:** Successful `provenance.verify_record()` calls previously returned `None`; they now return `RevocationCheck` (#279). Callers can distinguish `no_check_performed` when no revocation store is supplied from `verified` when the supplied store was checked and clean for this call. Revoked-key refusal is unchanged. No new revocation source or bundle support is introduced.
 - **`verify_record` reports what a caller-supplied appraiser found about `runtime.measurement`, per layer (#279 platform-measurement row, #431).** A matching composite measurement says nothing about which layers were measured, which were appraised, or whether the evidence describes one boot, and `verify_record` never sees the quote, log or reference values to decide it. The new `platform_appraiser` argument, modelled on `citation_resolver`, is called last with a copy of `runtime`; the result's new `platform_measurement` field carries its report as `appraised` with a `LayerCheck` per layer (`established`, or `not_established` with `layer_not_measured`, `measured_not_appraised` or `evidence_spans_multiple_boots`), `appraisal_rejected` when the appraiser raised, returned another shape or appraised another measurement, or `not_attempted` without one. The names are not accepted normative text. No outcome moves `revocation`, the thumbprint, `citations` or `appraisal.status`, and `not_attempted` is never a pass. Sixteen signed vectors in `examples/platform-measurement/`: each cause with a twin that differs only in the condition producing it, and two carrying measurements from published quotes on a board with a discrete TPM. No schema or wire-format change.
+- **A recomputable `observed_digest` for `tool-catalog` components, with the pinned `tools/list` bytes it recomputes from (#443).** `docs/rfcs/tool-catalog-observed-digest.md` states one derivation from the `tools` member of a `tools/list` result to a digest per tool (six-member allowlist, RFC 8785, SHA-256, under a literal profile label), a printable-ASCII key per tool, and a catalog digest folded over the sorted `key=digest` lines, so a relying party can set `expected_observed_digest` from bytes it holds and a second implementation can recompute it. `examples/verifier-token-conformance/catalog/` pins two served catalogs (`mcp.deepwiki.com`, three tools; `docs.mcp.cloudflare.com`, two tools), one constructed drift of the first, and the digests recorded for each. Three vectors under `TR-COMP-MCP-001`: `COMP-MCP-004` pins and presents the served catalog's digest; `COMP-MCP-005` (digest-mismatch) presents the drifted catalog's digest; `COMP-MCP-006` (wrong-subject) presents the other server's digest. Both counterexamples are `component_observation_mismatch`, because the token has no member naming the server a catalog came from; separating them is the relationship method `TR-COMP-MCP-002` leaves open, which this change does not propose. `gen_corpus.py` recomputes the digests from the pinned files on every run, and `tests/test_tool_catalog_digest.py` recomputes them again without the generator's code. Informative; endpoint identity and transport key binding stay open. No schema or wire-format change.
 - **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError` (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the UTF-16 key sort reaches it first and raised `UnicodeEncodeError`. The three places that catch `CanonicalizationError` to raise their own error, the intent bridge's `_jcs` and `provenance.sign_record` and `verify_record`, let it through: `sign_bridge` and `verify_bridge` (a key in `tool_call.arguments`, say) raised it instead of `IntentBridgeError`, and the two provenance functions instead of `ProvenanceError`. The canonicalizer now reports it as a `CanonicalizationError` subclass, as it already does for nesting too deep to walk. No schema or wire-format change.
 - **`verify_successor_artifact` binds the observer's name to the observer key (#451, following #432).** It now takes `trusted_observer`, the identity `trusted_observer_jwk` belongs to, and refuses a successor whose signed `observer` is anything else. Before this, any key the verifier accepted for observers could sign under another observer's name, and `evaluate_successor_observation`, which decides trust and independence on that name, could reach `established` with independence required on evidence from the executor alone. `trusted_observer` is a required keyword argument, so existing callers must pass it; the function is on main only and in no release. New tests cover the four refusals in the function that had none: a key other than the trusted one, a `kid` mismatch, a signed `observer` or `observed_at` that differs from the envelope, and a wrong profile. No schema or wire-format change.
 - **Proposal: the embedded `signature` value must be canonically encoded (#247). Incompatible tightening of the draft's acceptance rules.** Section 3.2.2 already names the embedded `signature` field's encoding as base64url, no padding; it does not say whether a different spelling of the same bytes is the same record. A 64-byte signature (Ed25519 or ES256) spends 86 base64url characters on 512 bits, leaving 4 unused bits in the final character; RFC 4648 section 3.5 requires those bits to be zero. The added sentence requires the canonical spelling and requires a verifier to reject a record whose signature is not canonically encoded. The schema `pattern` is tightened so an 86-character value's final character must be `A`, `Q`, `g`, or `w`; `models.py` (through the shared pattern helper of #412), the packaged schema copy, and the v0.3 draft (regenerated from canonical) track it. **Newly rejected:** an 86-character `signature` ending in any of the other 60 base64url characters, which the previous pattern `^[A-Za-z0-9_-]+$` accepted; each valid signature had 15 such respellings. The reference library verified them through 0.10.0, because its decoder discarded the unused bits, and has refused them at decode time since 0.11.0 (#418); this change makes the schema, the models and the normative text give the same answer, so a consumer that validates a record without decoding its signature refuses it too. Values of any other length are unaffected; a 96-byte ES384 signature (128 characters) has no unused bits. **Existing records:** a record whose `signature` is non-canonical is rejected. The signature bytes are unchanged, so zeroing the final character's unused bits makes the record verify again without re-signing; the respelled record is nevertheless a different record for section 3.1.3, whose `parent_record_hash` covers the parent's `signature` member, so any child that names the old spelling must be re-issued. `examples/signature-encoding/` adds a canonical vector, reusing an already-published record and signature, and two non-canonical respellings of the same 64 bytes with different unused-bit patterns, plus a re-runnable `scan_published_signatures.py`. **Scan, limited to the revisions examined:** this repository's `examples/` at `63f4d15`, `agentrust-io/trace-tests` at `da4369b` and `agentrust-io/trace-registry` at `e26b85a` hold 232 signatures, all canonical; the 2 non-canonical values the scan also reports are this change's own deliberately non-canonical vectors. The scan says nothing about records outside those revisions. The `cnf.jwk.x` and trusted-key cases raise the same question for the specification text and are not part of this change; the library's decoder has treated them alike since #418. Requested by @imran-siddique on #247; proposed by @chernistry.
