@@ -49,6 +49,9 @@ import { isPlainObject, isSet, own, timingSafeEqual } from "./text.js";
 /** The profile URI this build implements, and the only one `verifyRecord` accepts. */
 export const TRACE_PROFILE_V0_2 = "tag:agentrust-io.com,2026:trace-v0.2";
 
+/** Every profile this build accepts, reported whole on each result (section 3.3). */
+export const ACCEPTED_PROFILES: readonly string[] = Object.freeze([TRACE_PROFILE_V0_2]);
+
 /** The superseded v0.1 identifier, named only so its rejection can say why. */
 const TRACE_PROFILE_V0_1 = "tag:agentrust.io,2026:trace-v0.1";
 
@@ -96,6 +99,10 @@ export interface VerifyOptions {
 }
 
 export interface VerificationResult {
+  /** The `eat_profile` the record carries, which this verifier accepted. */
+  readonly profile: string;
+  /** The complete set of profiles this verifier accepts, `ACCEPTED_PROFILES`. */
+  readonly acceptedProfiles: readonly string[];
   /** What the revocation check reported. Only `verified` is a revocation check that passed. */
   readonly revocation: RevocationCheck;
   /** RFC 7638 thumbprint of the key the signature was verified against. */
@@ -279,9 +286,17 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     });
   }
 
-  // From here the schema holds: cnf.jwk is an object and iat an integer in range.
-  const cnf = record["cnf"] as Record<string, unknown>;
-  const embeddedJwk = cnf["jwk"];
+  // From here the schema holds for the members it saw. A schema validator reads
+  // through the prototype chain; the signature pre-image is built from own
+  // members only, so every member read from here on is own, and an inherited
+  // `cnf` or `iat` stands for nothing.
+  const cnf = own(record, "cnf");
+  if (!isPlainObject(cnf)) {
+    fail("schema_invalid", "the record does not conform to the TRACE v0.2 schema at cnf: not a plain object of the record's own", {
+      path: "cnf",
+    });
+  }
+  const embeddedJwk = own(cnf, "jwk");
 
   let trustedJwk: unknown;
   let trustedKeySource: "caller" | "record";
@@ -329,7 +344,7 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("cnf_key_mismatch", "the record's cnf.jwk does not identify the trusted key that verifies its signature");
   }
 
-  const iat = record["iat"];
+  const iat = own(record, "iat");
   if (typeof iat !== "number" || !Number.isSafeInteger(iat)) {
     fail("iat_invalid", "the record has no valid integer iat for the freshness check");
   }
@@ -344,7 +359,8 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("record_stale", `the record is ${age}s old, past the maximum age of ${s.maxAgeSeconds}s`);
   }
   if (s.expectedNonce !== undefined) {
-    const nonce = own(record["runtime"] as Record<string, unknown>, "nonce");
+    const runtime = own(record, "runtime");
+    const nonce = isPlainObject(runtime) ? own(runtime, "nonce") : undefined;
     if (typeof nonce !== "string" || !timingSafeEqual(nonce, s.expectedNonce)) {
       fail("nonce_mismatch", "the record's runtime.nonce does not match the expected nonce");
     }
@@ -364,5 +380,11 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("signature_invalid", "the signature does not verify over the record's RFC 8785 form");
   }
 
-  return { revocation, trustedKeyThumbprint: trustedIds[0] as string, trustedKeySource };
+  return {
+    profile,
+    acceptedProfiles: ACCEPTED_PROFILES,
+    revocation,
+    trustedKeyThumbprint: trustedIds[0] as string,
+    trustedKeySource,
+  };
 }

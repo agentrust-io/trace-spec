@@ -37,6 +37,7 @@ export {
   type SchemaViolation,
 } from "./schema.js";
 export {
+  ACCEPTED_PROFILES,
   TRACE_PROFILE_V0_2,
   verifyRecord,
   type RevocationStore,

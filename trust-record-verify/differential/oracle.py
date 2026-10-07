@@ -210,6 +210,8 @@ def run_verify(case: dict[str, Any]) -> dict[str, Any]:
             return {"verdict": "rejected", **classify(exc)}
     return {
         "verdict": "verified",
+        "profile": result.profile,
+        "accepted_profiles": list(result.accepted_profiles),
         "thumbprint": result.trusted_key_thumbprint,
         # Which key verified the record. The result carries no such member, so
         # this states it the way verify_record resolves it: the caller's key when

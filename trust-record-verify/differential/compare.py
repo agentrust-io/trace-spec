@@ -59,6 +59,8 @@ def summarise(verdict: dict[str, Any]) -> tuple:
         revocation = verdict.get("revocation") or {}
         return (
             "verified",
+            verdict.get("profile"),
+            json.dumps(sorted(verdict.get("accepted_profiles") or [])),
             verdict.get("thumbprint"),
             verdict.get("key_source"),
             revocation.get("outcome"),

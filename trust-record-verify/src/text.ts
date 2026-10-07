@@ -94,18 +94,34 @@ export function timingSafeEqual(a: string, b: string): boolean {
  * all foreign. The three tests below read the shape or an internal slot instead.
  */
 
+// Each realm has its own `Object`, and all of them print the same source text.
+const objectConstructorSource = Function.prototype.toString.call(Object);
+
 /**
  * True for an object written as `{...}` or made by `Object.create(null)`, in any
- * realm: it has no prototype, or a prototype that has none of its own, which is
- * what `Object.prototype` is everywhere. An array, a `Date`, a class instance
- * and `Object.create({})` each have a longer chain.
+ * realm, and for nothing else: its prototype is null, or it is a realm's
+ * `Object.prototype`, which has no prototype of its own and whose own
+ * `constructor` is that realm's `Object`. An array, a `Date`, a class instance,
+ * `Object.create({})` and `Object.create(Object.create(null))` are each refused;
+ * the last has a null-prototype prototype, which is not `Object.prototype`.
  */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
   const proto = Object.getPrototypeOf(value) as object | null;
-  return proto === null || Object.getPrototypeOf(proto) === null;
+  if (proto === null) {
+    return true;
+  }
+  if (Object.getPrototypeOf(proto) !== null) {
+    return false;
+  }
+  const constructor = Object.getOwnPropertyDescriptor(proto, "constructor")?.value as unknown;
+  return (
+    typeof constructor === "function" &&
+    constructor.prototype === proto &&
+    Function.prototype.toString.call(constructor) === objectConstructorSource
+  );
 }
 
 // The %TypedArray%.prototype[@@toStringTag] getter reads the [[TypedArrayName]]

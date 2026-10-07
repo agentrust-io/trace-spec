@@ -24,6 +24,8 @@ const result = await verifyRecord(record, {
   trustedBundleKeys: [logJwk],
 });
 
+result.profile;                   // the record's eat_profile, accepted by this verifier
+result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
 result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
 result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
 ```
@@ -111,7 +113,8 @@ reason: the same failure code, and for a schema failure the same member, since t
 order is shared and the first member faulted must be the same one; for a record that
 verifies, the same key thumbprint, the same source of that key (the caller's or the
 record's own `cnf.jwk`, which the thumbprint alone cannot tell apart when they are the same
-key) and the same revocation outcome, cause and evidence. Every disagreement is argued in
+key), the same profile and complete accepted set (section 3.3), and the same revocation
+outcome, cause and evidence. Every disagreement is argued in
 [`differential/known-divergences.json`](differential/known-divergences.json), matched on
 both the case and the pair of reported reasons, so a new disagreement in a family already
 listed is reported rather than absorbed. The ledger holds in the other direction too: each
@@ -123,25 +126,23 @@ Latest run, against this repository's implementation at the commit under test (i
 
 | Group | Cases | Identical |
 |---|---:|---:|
-| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1384 |
+| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1416 |
 | RFC 8785 canonicalization corpus | 34 | 33 |
 | RFC 7638 thumbprints | 14 | 14 |
 | Chain digests over the delegation corpus | 134 | 134 |
 | This repository's conformance vectors | 34 | 34 |
 | Published conformance vectors | 12 | 12 |
-| **Total** | **1644** | **1611** |
+| **Total** | **1644** | **1643** |
 
-Every published vector agrees. The 33 remaining cases are the ledger's 2 entries, each
-pinned to the number of cases that land on it. Both are the JSON number model, which the
-two languages hold differently: one lands in the configurations that reach the `iat`
-check, and one is a single case in the RFC 8785 corpus.
+Every published vector agrees. The 1 remaining case is the ledger's 1 entry, pinned to
+the number of cases that land on it: the JSON number model, which the two languages hold
+differently, in a single case in the RFC 8785 corpus.
 
 | Ledger entry | Cases | Where |
 |---|---:|---|
-| `iat` written `1785000000.0` or `1.785e9` (`m20`, `m21`) | 32 | mutation matrix, both spellings in the 16 configurations that reach the `iat` check |
 | `1.0e+21`: a float in Python, an integer past 2^53 here (`jcs-10`) | 1 | RFC 8785 corpus |
 
-Eleven entries have left the ledger, each reported by the harness as an entry no case
+Twelve entries have left the ledger, each reported by the harness as an entry no case
 reached, which is how a divergence that stopped is meant to leave. Six went when the
 reference stopped diverging after 0.10.0:
 
@@ -173,6 +174,12 @@ one in the standard alphabet showed it too, and the decoding here moved ahead of
 schema, to where the reference has it. Both now report `signature_malformed` for all
 three, and the empty string, which decodes to no bytes, is still refused by the schema's
 pattern on both sides.
+
+The twelfth went with #404, which has the reference decide integer-typed members by value:
+`iat` written `1785000000.0` or `1.785e9` (`m20`, `m21`) is an integer after `JSON.parse`
+and a float after `json.loads`, and the reference required an `int`. It now accepts a whole
+number however it is written, as this implementation always had, so the 32 cases that
+landed on that entry agree.
 
 The differential compares verdicts, so it is silent on anything that does not change a
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,

@@ -193,3 +193,25 @@ for (const [label, signature] of [
 test("an empty signature string reaches schema validation", async () => {
   await rejects(verifyRecord({ eat_profile: TRACE_PROFILE_V0_2, signature: "" }), "schema_invalid");
 });
+
+test("canonicalJson refuses a symbol-keyed member on an array as it does on an object", () => {
+  const sym = Symbol("s");
+  const refused = (error) =>
+    error instanceof TraceVerificationError && error.code === "canonicalization_failed";
+  assert.throws(() => canonicalJson(Object.assign([1, 2], { [sym]: 3 })), refused);
+  assert.throws(() => canonicalJson({ a: Object.assign([], { [sym]: 1 }) }), refused);
+  assert.equal(canonicalJson([1, 2]), "[1,2]");
+});
+
+test("a plain object is one whose prototype is null or a realm's Object.prototype, and nothing else", () => {
+  const refused = (error) =>
+    error instanceof TraceVerificationError && error.code === "canonicalization_failed";
+  assert.equal(canonicalJson(Object.create(null)), "{}");
+  assert.equal(canonicalJson(vm.runInNewContext("({ a: 1 })")), '{"a":1}');
+  assert.equal(canonicalJson(vm.runInNewContext("Object.create(null)")), "{}");
+  // One hop past a null prototype is not Object.prototype, in any realm.
+  assert.throws(() => canonicalJson(Object.create(Object.create(null))), refused);
+  assert.throws(() => canonicalJson(vm.runInNewContext("Object.create(Object.create(null))")), refused);
+  assert.throws(() => canonicalJson(Object.create({})), refused);
+  assert.throws(() => canonicalJson(new (class Record {})()), refused);
+});

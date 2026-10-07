@@ -91,6 +91,8 @@ async function runVerify(item) {
     const result = await verifyRecord(record, settings);
     return {
       verdict: "verified",
+      profile: result.profile,
+      accepted_profiles: [...result.acceptedProfiles],
       thumbprint: result.trustedKeyThumbprint,
       key_source: result.trustedKeySource,
       revocation: {

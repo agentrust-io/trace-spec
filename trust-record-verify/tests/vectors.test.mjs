@@ -12,7 +12,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-import { parentRecordHash, TraceVerificationError, verifyRecord } from "../dist/index.js";
+import { ACCEPTED_PROFILES, parentRecordHash, TRACE_PROFILE_V0_2, TraceVerificationError, verifyRecord } from "../dist/index.js";
 
 const EXAMPLES = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "examples");
 
@@ -211,4 +211,52 @@ test("a record, its options and a revocation set made in another realm verify as
     rejected: true,
     code: "invalid_argument",
   });
+});
+
+function verifying() {
+  const found = vectors("canonicalization-boundary").find(({ vector }) => vector.expected.outcome === "verified");
+  assert.ok(found, "no verifying vector in canonicalization-boundary");
+  return found.vector;
+}
+
+test("a verified result reports the profile and the complete accepted set (section 3.3)", async () => {
+  const vector = verifying();
+  const result = await verifyRecord(vector.record, {
+    trustedKey: vector.trusted_key,
+    now: vector.record.iat,
+    maxAgeSeconds: null,
+  });
+  assert.equal(result.profile, TRACE_PROFILE_V0_2);
+  assert.deepEqual([...result.acceptedProfiles], [...ACCEPTED_PROFILES]);
+  assert.deepEqual([...ACCEPTED_PROFILES], [TRACE_PROFILE_V0_2]);
+  assert.ok(Object.isFrozen(ACCEPTED_PROFILES));
+});
+
+test("an inherited cnf or iat does not stand in for an absent one", async (t) => {
+  // A record from another realm is a plain object; that realm's Object.prototype
+  // is polluted with the member, so a prototype-chain read finds it and an own
+  // read does not. The schema reads through the chain; verification must not.
+  const vector = verifying();
+  // Non-enumerable, so the pollution is invisible to for-in and the schema's
+  // additionalProperties check on nested objects; only a chain read finds it.
+  const inherit = vm.runInNewContext(
+    "(json, member) => { const r = JSON.parse(json); " +
+      "Object.defineProperty(Object.prototype, member, { value: r[member], configurable: true }); " +
+      "delete r[member]; return r; }",
+  );
+  const options = { trustedKey: vector.trusted_key, now: vector.record.iat, maxAgeSeconds: null };
+  for (const [member, code] of [["iat", "iat_invalid"], ["cnf", "schema_invalid"]]) {
+    await t.test(member, async () => {
+      const record = inherit(JSON.stringify(vector.record), member);
+      assert.equal(record[member] !== undefined, true, "the member is reachable through the chain");
+      assert.equal(Object.hasOwn(record, member), false, "and is not own");
+      await assert.rejects(
+        verifyRecord(record, options),
+        (error) =>
+          error instanceof TraceVerificationError &&
+          error.code === code &&
+          (code !== "schema_invalid" || error.path === member),
+      );
+    });
+  }
 });

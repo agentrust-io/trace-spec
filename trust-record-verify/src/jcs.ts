@@ -112,6 +112,9 @@ function serialize(
   }
   ancestors.add(node);
   if (Array.isArray(node)) {
+    if (Object.getOwnPropertySymbols(node).length > 0) {
+      fail("canonicalization_failed", `${describe(path)} has a symbol-keyed member, which has no JSON form`);
+    }
     parts.push("[");
     for (let i = 0; i < node.length; i++) {
       if (!Object.hasOwn(node, i)) {
