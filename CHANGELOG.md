@@ -11,6 +11,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **BREAKING:** Successful `provenance.verify_record()` calls previously returned
+  `None`; they now return `RevocationCheck` (#279). Callers can distinguish
+  `no_check_performed` when no revocation store is supplied from `verified` when
+  the supplied store was checked and clean for this call. Revoked-key refusal is
+  unchanged. No new revocation source or bundle support is introduced.
+
 - **`verify_record` reports what a caller-supplied appraiser found about `runtime.measurement`,
   per layer (#279 platform-measurement row, #431).** A matching composite measurement says
   nothing about which layers were measured, which were appraised, or whether the evidence
