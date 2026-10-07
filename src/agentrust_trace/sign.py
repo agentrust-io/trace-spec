@@ -267,7 +267,7 @@ def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None
             )
 
 
-def _canonical_bytes(d: dict[str, Any]) -> bytes:
+def _canonical_bytes(d: Any) -> bytes:
     """Return the RFC 8785 (JCS) canonical UTF-8 byte sequence for *d*.
 
     This is the signature pre-image mandated by spec/trace-v0.2.md §3.2.2. JCS
@@ -279,17 +279,34 @@ def _canonical_bytes(d: dict[str, Any]) -> bytes:
     for IEEE 754 number formatting, which would break cross-implementation
     verification, so a conformant library is used instead.
 
+    The safe-integer range of section 3.2.2 is checked on the value, which is how
+    that section decides what an integer is. `rfc8785` refuses an `int` outside
+    the range and writes a `float` as it stands, and `json.loads` returns a float
+    for `9.007199254740993e15` and `1e21`, both whole numbers past the bound. Such
+    a float is refused here, with the error `rfc8785` raises for the same value
+    parsed as an `int`.
+
     Raises ``rfc8785.CanonicalizationError`` for a value JCS has no form for. That
     includes nesting deeper than the interpreter stack: ``rfc8785`` walks the value
     recursively, and a document a few kilobytes long reaches past the default limit.
     The ``RecursionError`` is reported as the library's own refusal so that every
-    caller already written against ``CanonicalizationError`` refuses it too.
+    caller already written against ``CanonicalizationError`` refuses it too. The
+    range walk recurses over the same containers, so it runs inside the same guard:
+    ahead of it, a value nested past the stack would surface the walk's own
+    ``RecursionError`` instead of the documented refusal.
     """
     try:
+        _refuse_whole_floats_out_of_range(d)
         return rfc8785.dumps(d)
     except RecursionError:
         raise _NestingTooDeep(
             "value nests too deeply to canonicalize; no RFC 8785 form can be computed"
+        ) from None
+    except UnicodeEncodeError:
+        # rfc8785 refuses a surrogate code point in a value itself. In an object key it
+        # is reached first by the UTF-16 key sort, which raises UnicodeEncodeError instead.
+        raise _KeyNotUnicode(
+            "an object key contains a surrogate code point; no RFC 8785 form can be computed"
         ) from None
 
 
@@ -297,9 +314,70 @@ class _NestingTooDeep(rfc8785.CanonicalizationError):
     """A value nests past what the canonicalizer can walk on the interpreter stack."""
 
 
+class _KeyNotUnicode(rfc8785.CanonicalizationError):
+    """An object key holding a surrogate code point, which JCS cannot sort by UTF-16 code unit."""
+
+
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, which spec section 3.2.2
 # raises to a MUST for anything canonicalized under it.
 JCS_SAFE_INTEGER = 9007199254740991
+
+
+def _refuse_whole_floats_out_of_range(value: Any) -> None:
+    """Raise ``rfc8785.IntegerDomainError`` for a whole-valued float outside the range.
+
+    Walks the containers `rfc8785` serializes. Every finite double of magnitude
+    2^53 or more is a whole number, so this is every such float in *value*; a
+    non-finite one is left to `rfc8785`, which refuses it as a float.
+    """
+    if isinstance(value, float):
+        if value.is_integer() and not -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER:
+            raise rfc8785.IntegerDomainError(int(value))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _refuse_whole_floats_out_of_range(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _refuse_whole_floats_out_of_range(item)
+
+
+def _integer_value(value: Any, name: str) -> int:
+    """The integer a parsed JSON number stands for, decided by value (spec section 3.2.2).
+
+    JSON has one number type, and a fraction or an exponent is a way of writing a
+    value, not a second type: `1785000000`, `1785000000.0` and `1.785e9` are one
+    number. RFC 8785 writes a number back out by value, so the three have one
+    canonical form and one signature, and a JavaScript parser, having only the
+    double, never sees which spelling it was given. Python's `json` module does:
+    it returns an `int` for the first and a `float` for the other two. A type test
+    here therefore rejected two spellings of a value the signature cannot tell
+    apart, and only in Python.
+
+    Returns the value as an `int`. Raises ``ValueError`` naming which of the two
+    rules failed: the value is not an integer (a boolean, a string, anything else
+    that is not a JSON number, or a number that is not a whole number), or it is a
+    whole number outside the safe-integer range. ``bool`` is refused explicitly: it
+    is an ``int`` subclass in Python and not a number in JSON. The range is checked
+    here as well as in `_canonical_bytes`, so that a member read before anything
+    is canonicalized, such as `iat` for the freshness check, reports it itself.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(
+            f"{name} is not an integer value: it is a {type(value).__name__}, not a "
+            "JSON number"
+        )
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(
+                f"{name} is not an integer value: {value!r} is not a whole number"
+            )
+        value = int(value)
+    if not -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER:
+        raise ValueError(
+            f"{name} is {value}, outside the safe-integer range -{JCS_SAFE_INTEGER} "
+            f"to {JCS_SAFE_INTEGER}"
+        )
+    return int(value)
 
 
 class UnanchorableValue(ValueError):
@@ -524,6 +602,7 @@ def verify_record(
     max_bundle_age_seconds: int = 86400,
     now: int | None = None,
     citation_resolver: Callable[[str], bytes] | None = None,
+    platform_appraiser: Callable[[dict[str, Any]], Any] | None = None,
 ) -> VerificationResult:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -635,11 +714,24 @@ def verify_record(
         The resolver is called last, after the signature has verified and after
         every check that can raise, so a record that fails verification drives
         no resolution.
+
+        ``platform_appraiser``, when supplied, is called once with a copy of the
+        record's ``runtime`` block and returns the measurement it appraised and a
+        status per layer. The result's ``platform_measurement`` field carries that
+        report: ``appraised`` with one ``LayerCheck`` per layer, ``appraisal_rejected``
+        when the appraiser raised, returned another shape, or appraised a measurement
+        other than ``runtime.measurement``, or ``not_attempted`` when no appraiser was
+        supplied. No outcome changes ``revocation``, the thumbprint, ``citations`` or
+        whether this function raises, and none is an ``appraisal.status``. A
+        ``platform_appraiser`` that is neither callable nor ``None`` is refused with
+        ``ValueError`` at entry. It runs after the citation resolver, for the same
+        reason. See ``agentrust_trace.platform_measurement``.
     """
     import time
     from hmac import compare_digest
 
     from agentrust_trace.citation import check_citations
+    from agentrust_trace.platform_measurement import check_platform_measurement
     from agentrust_trace.revocation import (
         NO_CHECK,
         RevocationCheck,
@@ -657,6 +749,8 @@ def verify_record(
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
     if citation_resolver is not None and not callable(citation_resolver):
         raise ValueError("citation_resolver must be callable or None")
+    if platform_appraiser is not None and not callable(platform_appraiser):
+        raise ValueError("platform_appraiser must be callable or None")
 
     from cryptography.exceptions import InvalidSignature as _InvalidSignature  # noqa: F401
 
@@ -826,9 +920,12 @@ def verify_record(
     # Both bounds are verifier configuration, not record data, and a malformed
     # one is checked before it is used -- see `_check_seconds`.
     _check_seconds("max_age_seconds", max_age_seconds, optional=True)
-    iat = record.get("iat")
-    if not isinstance(iat, int) or isinstance(iat, bool):
-        raise ValueError("record has no valid integer 'iat' for freshness check")
+    # Decided by value, not by spelling (section 3.2.2): `json.loads` returns a float
+    # for `1785000000.0` and `1.785e9`, and both are the integer the signature covers.
+    try:
+        iat = _integer_value(record.get("iat"), "'iat'")
+    except ValueError as exc:
+        raise ValueError(f"record has no valid integer 'iat' for freshness check: {exc}") from exc
     age = verification_time - iat
     if age < -max_future_skew_seconds:
         raise ValueError(
@@ -861,6 +958,7 @@ def verify_record(
     # Last, after the signature verified: a record that fails verification
     # drives no resolution.
     citations = check_citations(record, citation_resolver)
+    platform_measurement = check_platform_measurement(record, platform_appraiser)
 
     return VerificationResult(
         profile=profile,
@@ -868,4 +966,5 @@ def verify_record(
         revocation=revocation_check,
         trusted_key_thumbprint=jwk_thumbprint(trusted_jwk),
         citations=citations,
+        platform_measurement=platform_measurement,
     )

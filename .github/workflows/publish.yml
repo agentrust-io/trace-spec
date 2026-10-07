@@ -7,13 +7,16 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # OIDC trusted publishing: no stored API token needed
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,6 +57,8 @@ jobs:
 
   publish:
     needs: build
+    permissions:
+      id-token: write  # Only the publishing job may request an OIDC token.
     runs-on: ubuntu-latest
     environment: pypi
     steps:

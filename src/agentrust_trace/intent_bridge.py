@@ -12,18 +12,20 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace.sign import (
-    JCS_SAFE_INTEGER,
     _b64url_decode,
     _canonical_bytes,
+    _integer_value,
     _pubkey_from_jwk,
 )
 
 BRIDGE_PROFILE = "tag:agentrust-io.com,2026:pic-trace-bridge-v1"
+SUCCESSOR_PROFILE = "tag:agentrust-io.com,2026:pic-trace-successor-v1"
 PIC_PROFILE = "PIC-CJSON/1.0"
 
 __all__ = [
-    "BRIDGE_PROFILE", "PIC_PROFILE", "IntentBridgeError", "AuthorizationDenied",
-    "AuthorizationMismatch", "digest_jcs", "sign_bridge", "verify_bridge",
+    "BRIDGE_PROFILE", "SUCCESSOR_PROFILE", "PIC_PROFILE", "IntentBridgeError",
+    "AuthorizationDenied", "AuthorizationMismatch", "digest_jcs", "sign_bridge",
+    "verify_bridge", "sign_successor_artifact", "verify_successor_artifact",
 ]
 
 
@@ -86,6 +88,136 @@ def sign_bridge(authorization: dict[str, Any], key: Ed25519PrivateKey) -> dict[s
     return {**artifact, "signature": signature.decode("ascii")}
 
 
+def sign_successor_artifact(
+    authorization_id: str,
+    after: dict[str, Any],
+    observer_key_id: str,
+    key: Ed25519PrivateKey,
+) -> dict[str, Any]:
+    """Authenticate a post-execution successor envelope and its authorization link."""
+    if not isinstance(key, Ed25519PrivateKey):
+        raise IntentBridgeError(
+            f"key must be an Ed25519PrivateKey, got {type(key).__name__}. The successor "
+            "profile fixes the algorithm, so there is no other key this can sign with."
+        )
+    _nonempty_string(authorization_id, "authorization_id")
+    _nonempty_string(observer_key_id, "observer_key_id")
+    successor_digest = digest_jcs(after)
+    bound = _bind_successor_observation(after, successor_digest)
+    body = {
+        "profile": SUCCESSOR_PROFILE,
+        "authorization_id": authorization_id,
+        "observer": bound["observer"],
+        "observer_key_id": observer_key_id,
+        "observed_at": bound["observed_at"],
+        "successor_observation_digest": successor_digest,
+    }
+    signature = base64.urlsafe_b64encode(
+        key.sign(_jcs(body, "the successor artifact"))
+    ).rstrip(b"=")
+    return {**body, "signature": signature.decode("ascii")}
+
+
+def verify_successor_artifact(
+    artifact: dict[str, Any],
+    trusted_observer_jwk: dict[str, Any],
+    *,
+    trusted_observer: str,
+    authorization_id: str,
+    after: dict[str, Any],
+) -> dict[str, Any]:
+    """Verify observer authentication and the exact authorization-to-successor link.
+
+    `trusted_observer` is the observer identity that `trusted_observer_jwk` belongs
+    to, taken from the verifier's own key configuration and never from the artifact
+    or the envelope. The signed `observer` must equal it. `evaluate_successor_observation`
+    decides trust and independence on that name, so a key the verifier accepts for one
+    observer must not be able to sign under another observer's name.
+    """
+    root = _object(
+        artifact,
+        "successor artifact",
+        {
+            "profile",
+            "authorization_id",
+            "observer",
+            "observer_key_id",
+            "observed_at",
+            "successor_observation_digest",
+            "signature",
+        },
+    )
+    if root.get("profile") != SUCCESSOR_PROFILE:
+        raise IntentBridgeError("unknown successor profile; best-effort parsing is refused")
+    expected_authorization_id = _nonempty_string(authorization_id, "authorization_id")
+    actual_authorization_id = _nonempty_string(
+        root.get("authorization_id"), "successor.authorization_id"
+    )
+    if expected_authorization_id != actual_authorization_id:
+        raise AuthorizationMismatch(
+            "successor artifact does not name the authorization that was verified"
+        )
+    observer = _nonempty_string(root.get("observer"), "successor.observer")
+    observer_key_id = _nonempty_string(
+        root.get("observer_key_id"), "successor.observer_key_id"
+    )
+    if not isinstance(trusted_observer_jwk, dict):
+        raise IntentBridgeError("trusted_observer_jwk must be an object")
+    expected_observer = _nonempty_string(trusted_observer, "trusted_observer")
+    # By value, not by spelling (spec section 3.2.2), as in the envelope it is
+    # compared with below: the signed body is its RFC 8785 form, which writes
+    # `150.0` as `150`, so a type test here refused a spelling the signature covers.
+    try:
+        observed_at = _integer_value(root.get("observed_at"), "successor.observed_at")
+    except ValueError as exc:
+        raise IntentBridgeError(
+            "successor.observed_at must be a non-negative integer within "
+            f"the JCS safe-integer range: {exc}"
+        ) from exc
+    if observed_at < 0:
+        raise IntentBridgeError(
+            "successor.observed_at must be a non-negative integer within "
+            f"the JCS safe-integer range: it is {observed_at}"
+        )
+    trusted_kid = trusted_observer_jwk.get("kid")
+    if not isinstance(trusted_kid, str) or trusted_kid != observer_key_id:
+        raise IntentBridgeError("observer_key_id does not identify the trusted observer key")
+    if observer != expected_observer:
+        raise IntentBridgeError(
+            "successor observer is not the identity the trusted observer key belongs to"
+        )
+    expected_successor_digest = _digest(
+        root.get("successor_observation_digest"),
+        "successor.successor_observation_digest",
+    )
+    signature_value = root.get("signature")
+    if not isinstance(signature_value, str):
+        raise IntentBridgeError("successor signature must be a base64url string")
+    try:
+        signature = _b64url_decode(signature_value, field="successor.signature")
+    except ValueError as exc:
+        raise IntentBridgeError(str(exc)) from exc
+    signed = {
+        "profile": SUCCESSOR_PROFILE,
+        "authorization_id": actual_authorization_id,
+        "observer": observer,
+        "observer_key_id": observer_key_id,
+        "observed_at": observed_at,
+        "successor_observation_digest": expected_successor_digest,
+    }
+    body = _jcs(signed, "the successor artifact")
+    try:
+        _pubkey_from_jwk(trusted_observer_jwk).verify(signature, body)
+    except Exception as exc:
+        raise IntentBridgeError("successor signature is invalid") from exc
+    bound = _bind_successor_observation(after, expected_successor_digest)
+    if bound["observer"] != observer or bound["observed_at"] != observed_at:
+        raise AuthorizationMismatch(
+            "successor artifact metadata does not match the bound successor envelope"
+        )
+    return bound
+
+
 def _object(value: Any, field: str, keys: set[str]) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise IntentBridgeError(f"{field} must be an object")
@@ -120,42 +252,45 @@ def _bind_successor_observation(
     sufficiency are deliberately evaluated separately.
     """
     if not isinstance(after, dict):
-        raise AuthorizationMismatch("transcript.after must be a successor observation object")
+        raise AuthorizationMismatch("successor envelope must be a successor observation object")
     required = {"observation", "observer", "observed_at"}
     missing = required - set(after)
     unknown = set(after) - required
     if missing:
         raise AuthorizationMismatch(
-            f"transcript.after is missing successor fields: {sorted(missing)}"
+            f"successor envelope is missing successor fields: {sorted(missing)}"
         )
     if unknown:
         raise AuthorizationMismatch(
-            f"transcript.after contains unknown successor fields: {sorted(unknown)}"
+            f"successor envelope contains unknown successor fields: {sorted(unknown)}"
         )
     if not isinstance(after["observation"], dict):
-        raise AuthorizationMismatch("transcript.after.observation must be an object")
-    _nonempty_string(after["observer"], "transcript.after.observer")
-    observed_at = after["observed_at"]
-    if (
-        not isinstance(observed_at, int)
-        or isinstance(observed_at, bool)
-        or observed_at < 0
-        or observed_at > JCS_SAFE_INTEGER
-    ):
+        raise AuthorizationMismatch("successor envelope observation must be an object")
+    _nonempty_string(after["observer"], "successor envelope observer")
+    # By value, not by spelling (spec section 3.2.2): the digest below is taken over
+    # the RFC 8785 form, which writes `150.0` as `150`, so both are the one value it binds.
+    try:
+        observed_at = _integer_value(after["observed_at"], "successor envelope observed_at")
+    except ValueError as exc:
         raise IntentBridgeError(
-            "transcript.after.observed_at must be a non-negative integer within "
-            "the JCS safe-integer range"
+            "successor envelope observed_at must be a non-negative integer within "
+            f"the JCS safe-integer range: {exc}"
+        ) from exc
+    if observed_at < 0:
+        raise IntentBridgeError(
+            "successor envelope observed_at must be a non-negative integer within "
+            f"the JCS safe-integer range: it is {observed_at}"
         )
     expected = _digest(expected_successor_digest, "expected_successor_digest")
     try:
         actual = digest_jcs(after)
     except IntentBridgeError:
         raise AuthorizationMismatch(
-            "transcript.after has no RFC 8785 canonical form"
+            "successor envelope has no RFC 8785 canonical form"
         ) from None
     if not compare_digest(expected, actual):
         raise AuthorizationMismatch(
-            "transcript.after does not match the expected digest binding"
+            "successor envelope does not match the expected digest binding"
         )
     return after
 
@@ -189,7 +324,8 @@ def verify_bridge(
 
     PIC digests are compared as PIC-defined values and never recomputed here.
     Bridge-specific declaration and tool-call digests use RFC 8785 JCS.  When a
-    transcript is required, both its before and after halves must be supplied.
+    transcript is required, its pre-execution/dispatch before half must be supplied.
+    Post-execution successor evidence is verified as a separate observer-signed artifact.
     """
     root = _object(bridge, "bridge", {"profile", "authorization", "signature"})
     if root.get("profile") != BRIDGE_PROFILE:
@@ -212,9 +348,9 @@ def verify_bridge(
     fields = {
         "authorization_id", "decision", "authorizer", "authorizer_key_id",
         "authorized_at", "expires_at", "scope", "pic", "declaration_digest",
-        "tool_call_digest", "successor_observation_digest", "transcript_required",
+        "tool_call_digest", "transcript_required",
     }
-    required_fields = fields - {"successor_observation_digest"}
+    required_fields = fields
     authorization = _object(root.get("authorization"), "authorization", fields)
     missing = required_fields - set(authorization)
     if missing:
@@ -238,13 +374,20 @@ def verify_bridge(
         raise IntentBridgeError("authorizer_key_id does not identify the trusted key")
     if authorization["decision"] != "allow":
         raise AuthorizationDenied("the signed decision is not allow")
+    # By value, not by spelling (spec section 3.2.2): `100.0` is the timestamp 100, which
+    # is what the signature above covers. A value outside the safe-integer range does
+    # not get this far, because `_jcs` refused it before the signature was checked.
     for field in ("authorized_at", "expires_at"):
-        if (
-            not isinstance(authorization[field], int)
-            or isinstance(authorization[field], bool)
-            or authorization[field] < 0
-        ):
-            raise IntentBridgeError(f"{field} must be a non-negative integer Unix timestamp")
+        try:
+            timestamp = _integer_value(authorization[field], f"authorization.{field}")
+        except ValueError as exc:
+            raise IntentBridgeError(
+                f"{field} must be a non-negative integer Unix timestamp: {exc}"
+            ) from exc
+        if timestamp < 0:
+            raise IntentBridgeError(
+                f"{field} must be a non-negative integer Unix timestamp: it is {timestamp}"
+            )
     invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
     if invalid_now_type or (now is not None and now < 0):
         raise IntentBridgeError("now must be a non-negative integer Unix timestamp")
@@ -291,20 +434,12 @@ def verify_bridge(
 
     if not isinstance(authorization["transcript_required"], bool):
         raise IntentBridgeError("transcript_required must be boolean")
-    successor_digest_present = "successor_observation_digest" in authorization
-    if authorization["transcript_required"] and not successor_digest_present:
-        raise IntentBridgeError(
-            "authorization.successor_observation_digest is required when "
-            "transcript_required is true"
-        )
-    if not authorization["transcript_required"] and successor_digest_present:
-        raise IntentBridgeError(
-            "authorization.successor_observation_digest must be absent when "
-            "transcript_required is false"
-        )
     if authorization["transcript_required"]:
-        if not isinstance(transcript, dict) or set(transcript) != {"before", "after"}:
-            raise AuthorizationMismatch("a full before/after transcript is required")
+        if not isinstance(transcript, dict) or set(transcript) != {"before"}:
+            raise AuthorizationMismatch(
+                "a pre-execution/dispatch transcript with exactly before is required; "
+                "successor evidence is a separate authenticated artifact"
+            )
         before = transcript.get("before")
         before_call = before.get("tool_call") if isinstance(before, dict) else None
         if not isinstance(before_call, dict):
@@ -318,10 +453,4 @@ def verify_bridge(
             _jcs(tool_call, "tool_call"),
         ):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
-        after = transcript.get("after")
-        expected_successor_digest = _digest(
-            authorization["successor_observation_digest"],
-            "authorization.successor_observation_digest",
-        )
-        _bind_successor_observation(after, expected_successor_digest)
     return authorization

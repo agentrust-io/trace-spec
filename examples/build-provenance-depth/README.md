@@ -54,9 +54,10 @@ rather than just observable.
 | `03-…-attestation-builder-mismatch` | accept | reject | reject | attestation names a different builder |
 | `04-…-dependency-unattested` | accept | accept | accept, verified `builder` | a build input has no publisher attestation |
 | `05-…-dependency-publisher-untrusted` | accept | accept | reject | an input's attestation was signed under an untrusted issuer |
-| `06-…-resolved-dependencies-absent` | accept | accept | accept, verified `builder` | the attestation declares no build inputs at all |
+| `06-…-resolved-dependencies-absent` | accept | accept | accept, verified `builder` | the attestation omits `resolvedDependencies` |
+| `07-…-resolved-dependencies-empty` | accept | accept | accept, verified `builder` | the attestation explicitly declares `resolvedDependencies: []` |
 
-`04` and `06` are the vectors that separate a boundary without rejecting anything, and
+`04`, `06` and `07` are the vectors that separate a boundary without rejecting anything, and
 they are why separation is defined over everything the verifier reports rather than over
 rejections. Their evidence never resolves, so a verifier that walks the dependencies
 learns only that it cannot finish — and says so, by recording `builder` and naming the
@@ -84,7 +85,27 @@ That digest is constructed rather than derived for exactly this reason. The thre
 dependency digests are `sha256("trace-spec/build-provenance-depth/" + purl)` over the
 decoded package URL — `pkg:npm/@example-org/agent-core@1.8.2`, not the `%40` form the
 `resolvedDependencies` entry carries — so they regenerate from the file itself. The
-artifact digest the six vectors share is a fixed constant and derives from nothing.
+artifact digest the seven vectors share is a fixed constant and derives from nothing.
+
+## Explicit empty list and its control
+
+`07` pairs with the existing accepting control `01`. Apart from descriptive metadata
+and expected appraisals, its only change is `resolvedDependencies: []`; the context,
+including available publisher attestations, stays identical. At `surface` and `builder`
+the complete appraisals agree. At attempted `transitive`, both accept, but `01` reaches
+`transitive` with no unresolved evidence while `07` records `builder` and
+`resolved_dependencies_absent`.
+
+This pins the [item 11 ruling in #448](https://github.com/agentrust-io/trace-spec/issues/448#issuecomment-5998068818):
+a producer declaring no inputs does not by itself establish that the build had none.
+This informative corpus therefore caps that case at `builder`; the pair does not
+change the wire format or verification rules.
+
+The test module replaces only the absent-dependencies predicate with a missing-key-only
+check. That weakened verifier still matches all 18 appraisals of the original six
+fixtures and passes `01`, but incorrectly claims `transitive` for `07`. Comparing only
+accept/reject would miss it. The pair compares all four appraisal fields and the test
+pins the mutant's incorrect result as well as the reference result.
 
 ## What each vector carries
 

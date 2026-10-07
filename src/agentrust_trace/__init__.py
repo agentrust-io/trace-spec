@@ -38,6 +38,15 @@ from agentrust_trace.sign import (
     sign_record,
     verify_record,
 )
+from agentrust_trace.citation import (
+    CitationCheck,
+    check_citations,
+)
+from agentrust_trace.platform_measurement import (
+    LayerCheck,
+    PlatformMeasurementCheck,
+    check_platform_measurement,
+)
 from agentrust_trace.revocation import (
     RevocationCheck,
     VerificationResult,
@@ -83,10 +92,15 @@ __all__ = [
     "RuntimeInfo",
     "ToolTranscript",
     "TrustRecord",
+    "CitationCheck",
     "RevocationCheck",
     "RevocationStore",
     "VerificationResult",
     "check_bundle",
+    "check_citations",
+    "check_platform_measurement",
+    "LayerCheck",
+    "PlatformMeasurementCheck",
     "DEFAULT_ACCEPTED_PROFILES",
     "TRACE_PROFILE_V0_2",
     "SCHEMA",

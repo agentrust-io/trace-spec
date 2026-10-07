@@ -10,6 +10,11 @@ unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and 
 can share one. A value that needs to be larger is carried as a string. The same bound applies to members a
 `cnf.jwk` carries that this schema does not name.
 
+Whether a number is an integer is decided by its value, not by how it is written (spec section 3.2.2, "What
+counts as an integer"). `1785000000.0` and `1.785e9` are the integer 1785000000; `1785000000.5` is not an
+integer. JSON Schema defines `integer` the same way, so validating against this schema already gives that
+answer.
+
 <a id="top-level-fields"></a>
 
 ## Top-level fields {#trace-fields}
@@ -32,7 +37,7 @@ can share one. A value that needs to be larger is carried as a string. The same 
 | `appraisal` | object | **yes** | Verifier judgment |
 | `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
 | `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
-| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included |
+| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included. An 86-character value (a 64-byte Ed25519 or ES256 signature) MUST be canonically encoded per RFC 4648 section 3.5: it MUST end in `A`, `Q`, `g`, or `w` |
 
 <a id="model"></a>
 
@@ -129,13 +134,13 @@ A record whose `kind` is not `self` **must** carry `runtime.platform: "software-
 
 ## `references` {#trace-field-references}
 
-An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding. What the signature attests is that this record points there, not the truth of what it points at.
+An array of pointers to facts held outside this record: an authorization decided before execution, a human approval, a behavioural trace, an independent check's finding, an observed change of state. What the signature attests is that this record points there, not the truth of what it points at.
 
 `origin` records where evidence *came from* and can lower assurance. `references` records what a record *points at* and cannot. Before the block existed, a record that needed to name something external had to use `origin` and take `runtime.platform: "software-only"` with it, which said something untrue about how the evidence was obtained.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`, `observed-effect`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
@@ -151,7 +156,7 @@ Spec section 3.1.2 also binds verifiers: one **must not** reject a record becaus
 
 The claim that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals `transcript_digest`. Spec section 3.1.4. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and not the model calls, which are not deterministic; the boundary is drawn around every non-deterministic interaction, and each one enters the closure as a recorded, content-addressed input.
 
-The block is the claim, not its result. The result is an appraisal made by the party that re-ran the function, carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
+The block is the claim, not its result. The result is an appraisal attributed to the party that re-ran the function (in a record signed only by its producer, the producer's report of that party's result, not authenticated by it), carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -196,7 +201,7 @@ Verifier judgment on the evidence in this record.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `status` | string | **yes** | One of: `affirming`, `warning`, `contraindicated`, `none` |
-| `verifier` | string | **yes** | URI of the verifier that produced this appraisal |
+| `verifier` | string | **yes** | URI of the verifier the record names for this appraisal. In a record signed only by its producer this is the producer's claim, not authenticated by that verifier |
 | `policy_ref` | string | no | URI to the appraisal policy applied |
 | `timestamp` | integer | no | Unix epoch seconds when appraisal was performed |
 | `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
@@ -205,7 +210,7 @@ Verifier judgment on the evidence in this record.
 
 ### `appraisal.re_execution` members {#trace-field-appraisal-re-execution}
 
-The result of re-running a `reproducibility` claim, made by the party named as `verifier`. `not-attempted` is not `status: none`: an appraisal was performed, and what it could not do is reported with its cause rather than rounded to either outcome a completed check would have produced. Spec section 3.1.4 says why the two are kept apart.
+The result of re-running a `reproducibility` claim, attributed to the party named as `verifier`. `not-attempted` is not `status: none`: an appraisal was performed, and what it could not do is reported with its cause rather than rounded to either outcome a completed check would have produced. Spec section 3.1.4 says why the two are kept apart.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -230,7 +235,7 @@ Confirmation method. Contains the signing key bound to this record.
 |---|---|---|
 | `jwk` | object | JWK-format public key used to verify `signature` |
 
-For TEE-issued records, this key was generated inside the measured enclave and its private half never leaves it. The hardware measurement in `runtime` cryptographically binds this key to the TEE.
+For a hardware-backed deployment, authenticated platform evidence is expected to bind this public key to the measured environment (see [trust levels](trust-levels.md)). That binding establishes key association only. It does not by itself establish where the private key was generated, whether it can be exported, or that it never left the TEE: a key generated outside and committed from inside the guest satisfies the same binding. Those properties are claimed only where a platform profile supplies evidence for them, and are reported separately from the binding (#433).
 
 ### `cnf.jwk` members {#trace-field-cnf-jwk}
 

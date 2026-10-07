@@ -249,6 +249,7 @@ def test_fixture_set_is_complete() -> None:
         "04-builder-accepts-dependency-unattested.json",
         "05-builder-accepts-dependency-publisher-untrusted.json",
         "06-builder-accepts-resolved-dependencies-absent.json",
+        "07-builder-accepts-resolved-dependencies-empty.json",
     ]
 
 
@@ -611,3 +612,76 @@ def test_a_verifier_that_stops_early_in_the_dependency_list_is_caught(count: int
         f"a verifier checking only the first {count} of resolvedDependencies is accepted "
         f"by every vector that separates this boundary: {[n for n, _ in separating]}"
     )
+
+
+EMPTY_DEPENDENCIES = _load(
+    FIXTURE_DIR / "07-builder-accepts-resolved-dependencies-empty.json"
+)
+
+
+def test_empty_dependencies_fixture_changes_only_the_controls_dependency_list() -> None:
+    paired = copy.deepcopy(CONTROL)
+    statement = _attestation(paired)
+    assert statement is not None
+    assert statement["predicate"]["buildDefinition"]["resolvedDependencies"]
+    statement["predicate"]["buildDefinition"]["resolvedDependencies"] = []
+    # Names, explanation and expected appraisals describe the pair, not its evidence.
+    for key in ("name", "description", "expected"):
+        paired[key] = EMPTY_DEPENDENCIES[key]
+    assert paired == EMPTY_DEPENDENCIES
+
+
+@pytest.mark.parametrize("depth", DEPTHS)
+def test_empty_dependencies_pair_pins_the_complete_appraisal(depth: str) -> None:
+    assert verify(CONTROL, depth) == {
+        "outcome": "accept",
+        "verified_depth": depth,
+        "failures": [],
+        "unresolved": [],
+    }
+    assert verify(EMPTY_DEPENDENCIES, depth) == {
+        "outcome": "accept",
+        "verified_depth": "builder" if depth == "transitive" else depth,
+        "failures": [],
+        "unresolved": ["resolved_dependencies_absent"] if depth == "transitive" else [],
+    }
+
+
+def test_a_missing_key_only_dependency_check_is_caught_by_the_empty_list_pair() -> None:
+    """The old six fixtures pass this shortcut; the new pair observes its false depth."""
+
+    def missing_key_only(vector: dict[str, Any]) -> bool:
+        statement = _attestation(vector)
+        if statement is None:
+            return False
+        return "resolvedDependencies" not in statement.get("predicate", {}).get(
+            "buildDefinition", {}
+        )
+
+    weakened = tuple(
+        Rule(rule.code, rule.depth, rule.effect, missing_key_only)
+        if rule.code == "resolved_dependencies_absent"
+        else rule
+        for rule in RULES
+    )
+    # Establish the audit's gap, including the accepting control, rather than merely
+    # declaring that a mutant exists. All 18 original depth comparisons still pass.
+    for name, vector in FIXTURES:
+        if name == "07-builder-accepts-resolved-dependencies-empty":
+            continue
+        for depth in DEPTHS:
+            assert verify(vector, depth, weakened) == vector["expected"][depth]
+    for depth in DEPTHS:
+        assert verify(CONTROL, depth, weakened) == CONTROL["expected"][depth]
+        if depth != "transitive":
+            assert verify(EMPTY_DEPENDENCIES, depth, weakened) == EMPTY_DEPENDENCIES[
+                "expected"
+            ][depth]
+    wrong = verify(EMPTY_DEPENDENCIES, "transitive", weakened)
+    assert wrong == {
+        "outcome": "accept",
+        "verified_depth": "transitive",
+        "failures": [],
+        "unresolved": [],
+    }
+    assert wrong != EMPTY_DEPENDENCIES["expected"]["transitive"]

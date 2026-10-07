@@ -138,6 +138,24 @@ def reproducibility_claim() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
 
 
+def number_spelling() -> list[Vector]:
+    """The number-spelling set (#247, proposed). Boundaries are its failure codes, one
+    per rule an integer-typed member is held to once it is decided by value: two
+    vectors each, spelled differently, and three accepting spellings of one value.
+    `tests/test_integer_by_value.py` runs plausible defective verifiers over it."""
+    return _load("number-spelling",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
+def signature_encoding() -> list[Vector]:
+    """The signature-encoding set (spec section 3.2.2, proposal #247). One rule, one
+    code, and two rejecting vectors that trip it with different unused-bit patterns
+    (0001 and 1111), so the boundary is not covered by one specific bad string a
+    shortcut implementation could special-case."""
+    return _load("signature-encoding",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "reproducibility-claim": (reproducibility_claim, None),
@@ -145,6 +163,8 @@ SETS = {
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
     "verifier-compatibility": (verifier_compatibility, None),
+    "number-spelling": (number_spelling, None),
+    "signature-encoding": (signature_encoding, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
@@ -236,12 +256,30 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # Experimental profile, not a stable TRACE conformance corpus. The 14 original
+    # vectors, also carried byte for byte as LEGACY-01 to LEGACY-14 in the set below.
+    "verifier-token-profile": "tests/test_verifier_token_profile.py, which executes "
+                              "all positive and negative vectors; "
+                              "tests/test_independent_verifier.py runs them through "
+                              "the second verifier",
+    # Expected outcomes are verifier result codes and composite statuses, not
+    # accept/reject, and every requirement's causal test lives beside the loader.
+    "verifier-token-conformance": "tests/test_conformance_corpus.py, which executes "
+                                  "every vector and gates per-requirement coverage; "
+                                  "tests/test_conformance_causal.py disables each gate; "
+                                  "tests/test_independent_verifier.py runs the second "
+                                  "verifier",
     # Not loadable here: every vector verifies, and the outcomes are per-surface
     # resolvability rather than accept/reject, so `trivially_satisfied_by` would
     # grade the set as passable by an implementation that accepts everything.
     "citation-resolution": "tests/test_citation_resolution.py, which compares the "
                            "citations mapping of every vector against its expected "
                            "block and holds the invariants I1 to I11",
+    # Not loadable here, for the reason given for citation-resolution: every vector
+    # verifies, and the outcome is what the appraiser reported, not accept/reject.
+    "platform-measurement": "tests/test_platform_measurement.py, which compares the "
+                            "platform_measurement field of every vector against its "
+                            "expected block and holds the invariants P1 to P11",
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
     # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,
@@ -265,6 +303,11 @@ MEASURED_ELSEWHERE = {
     "condition-appraisal": "tests/test_condition_appraisal_fixtures.py, which recomputes "
                            "every verdict from the committed record and appraisal store "
                            "instead of reading expected.json, and re-runs the generator",
+    # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the effect store beside them.
+    "observed-effect": "tests/test_observed_effect_fixtures.py, which recomputes every "
+                       "verdict from the committed record and effect store instead of "
+                       "reading expected.json, and re-runs the generator",
 }
 
 

@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "BindingRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "relationship": {
+          "const": "same-workload",
+          "title": "Relationship",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "same-instance-v1",
+            "same-evidence-v1"
+          ],
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "relationship",
+        "method"
+      ],
+      "title": "BindingRequirement",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "component_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "component_type": {
+          "enum": [
+            "identity",
+            "code",
+            "model",
+            "policy",
+            "runtime",
+            "accelerator",
+            "mcp-server",
+            "tool-catalog",
+            "guardrail",
+            "data-state"
+          ],
+          "title": "Component Type",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "accepted_profiles": {
+          "items": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Accepted Profiles",
+          "type": "array"
+        },
+        "accepted_authorities": {
+          "items": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Accepted Authorities",
+          "type": "array"
+        },
+        "maximum_age_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Maximum Age Seconds",
+          "type": "integer"
+        },
+        "expected_observed_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Observed Digest"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_type",
+        "required",
+        "accepted_profiles",
+        "accepted_authorities",
+        "maximum_age_seconds"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "components": {
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Components",
+      "type": "array"
+    },
+    "bindings": {
+      "items": {
+        "$ref": "#/$defs/BindingRequirement"
+      },
+      "maxItems": 128,
+      "title": "Bindings",
+      "type": "array"
+    },
+    "allow_warnings": {
+      "title": "Allow Warnings",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "components",
+    "bindings",
+    "allow_warnings"
+  ],
+  "title": "Requirements",
+  "type": "object"
+}

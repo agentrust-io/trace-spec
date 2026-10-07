@@ -120,6 +120,10 @@ attempts, and MUST NOT be presented as counts of business operations completed.
 
 These are required test designs, not claims of tests already implemented.
 
+The executable [MCP retry example](../examples/mcp-retry/README.md) illustrates a
+subset using a signed v0.2 record and an explicitly local evidence format. Its
+tests do not implement this proposed profile or settle the choices in section 7.
+
 | Positive control | Negative or boundary case | Required distinction |
 |---|---|---|
 | Retained complete snapshot matches the signed commitment | Change an uncalled tool, output schema or extension | Snapshot mismatch |

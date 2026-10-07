@@ -1,0 +1,20 @@
+{
+  "name": "missing-leaf-prefix",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-0",
+    "iat": 1000,
+    "signature": "fixture-signature-0"
+  },
+  "receipt": {
+    "leaf_index": 0,
+    "leaf_count": 1,
+    "audit_path": [],
+    "merkle_root": "sha256:31ed258d719e1b0c6814bd2da0f7b23bef64334a9818a6e2e90329641f77e3fd"
+  },
+  "expected": {
+    "tr_anc_002": "fail"
+  },
+  "positive_twin": "tree-1-index-0",
+  "reason": "Leaf hashing includes the 0x00 prefix."
+}
