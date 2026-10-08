@@ -23,6 +23,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 - [Schema reference](https://trace.agentrust-io.com/docs/schema/index.md)
 - [References registry](https://trace.agentrust-io.com/docs/references-registry/index.md)
 - [Verification outcome statements](https://trace.agentrust-io.com/docs/verification-outcome-statements/index.md)
+- [Verifying after the freshness window](https://trace.agentrust-io.com/docs/verifying-after-the-freshness-window/index.md)
 - [Runtime evidence and verifier grades](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md)
 - [Verifier-issued, holder-bound token](https://trace.agentrust-io.com/docs/rfcs/verifier-issued-trace-profile/index.md)
 - [Composite component appraisal](https://trace.agentrust-io.com/docs/rfcs/composite-component-appraisal/index.md)

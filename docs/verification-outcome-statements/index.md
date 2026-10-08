@@ -94,4 +94,5 @@ Moving these into the record would be a schema change, which is out of scope for
 - [Verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) - the rules these outcomes come from.
 - [Build provenance verification depth](https://trace.agentrust-io.com/docs/build-provenance-depth/index.md) - what each stopping point leaves unknown.
 - [Known limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) - what a TRACE claim does not prevent, at record level.
+- [Verifying a record after the freshness window](https://trace.agentrust-io.com/docs/verifying-after-the-freshness-window/index.md) - a separate, historical replay of the freshness comparison at a time bounded by a registry anchor, for a record older than the freshness window.
 - [trace-spec#66](https://github.com/agentrust-io/trace-spec/issues/66) - the discussion this page grew out of.
