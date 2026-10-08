@@ -5,7 +5,7 @@ repo_url: https://github.com/agentrust-io/trace-spec
 repo_name: agentrust-io/trace-spec
 edit_uri: edit/main/
 docs_dir: .
-copyright: "© 2026 TRACE Specification contributors. Specification: Community Specification License 1.0. Code: Apache 2.0. Other documentation: CC BY 4.0."
+copyright: "© 2026 The TRACE Specification Authors. Specification: Community Specification License 1.0. Code: Apache 2.0. Other documentation: CC BY 4.0."
 
 exclude_docs: |
   .github/
