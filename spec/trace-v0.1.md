@@ -333,7 +333,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
 - **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
 - **`data_class` claim.** Data classification schemes are established (DLP labels, NIST SP 800-60, sensitivity tags). TRACE adds: a classification label is attached to inputs and outputs at the per-call layer and recorded in the Trust Record alongside the runtime evidence.

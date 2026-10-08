@@ -3,7 +3,7 @@
 Spec note: trace-spec added `software-only` as a valid `runtime.platform`
 value for development and CI use. It carries no hardware attestation evidence
 and is therefore only acceptable at Level 0. Level 1+ must reject it with a
-clear message that names the reason (development-mode, not hardware-attested)
+clear message that names the reason (development-mode, not a hardware TEE platform)
 rather than the generic "unknown platform" error.
 
 Covers:

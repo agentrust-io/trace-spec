@@ -15,8 +15,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   docstrings and unsigned test records use vendor-neutral placeholders
   (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards
   organizations, and the Appendix B reference titles use each project's own name. The Acta crosswalk now cites v0.2 sections. Platform pages no
-  longer name a cMCP provider value. The package description no longer says
-  "hardware-attested", since `verify_record()` performs no attestation verification.
+  longer name a cMCP provider value. The package description, spec abstract, charter,
+  schema descriptions and conformance messages no longer say "hardware-attested": a
+  record is a signed governance record that can carry hardware attestation evidence, and
+  `verify_record()` performs no attestation verification.
   Signed and digest-pinned vectors are unchanged. No normative text changes.
 - **Conformance site links** point at trace.agentrust-io.com/conformance/, where the
   combined docs build publishes it; the stale `conformance/CNAME` is removed.

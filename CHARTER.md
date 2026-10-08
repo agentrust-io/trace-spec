@@ -10,7 +10,7 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 

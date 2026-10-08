@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentrust.io/schema/trace-v0.1.json",
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.1 Trust Record: hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.1 Trust Record: a signed governance record for an AI agent execution, which can carry hardware attestation evidence.",
   "type": "object",
   "required": [
     "eat_profile",
