@@ -214,6 +214,7 @@ A verifier's judgment on the evidence in this record, and who made it.
 | `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
 | `method` | string | no | The method this appraisal used. A closed set, because a verifier keys on it; this version defines `re-execution`, the result of re-running the record's `reproducibility` claim. `status` is untouched by it: the outcome is not folded into the EAR set |
 | `re_execution` | object | when `method` is `re-execution` | The re-execution result, described below. Present exactly when `method` is `re-execution`, and absent otherwise |
+| `platform_measurement` | object | no | Per-layer appraisal of `runtime.measurement`, described below. A member of `appraisal` in its own right, not a `method` value, so it can sit next to a re-execution result |
 
 ### `appraisal.re_execution` members {#trace-field-appraisal-re-execution}
 
@@ -225,6 +226,22 @@ The result of re-running a `reproducibility` claim, attributed to the party name
 | `observed_digest` | string | when `outcome` is `diverged` | The verifier's digest of the transcript its re-run produced. Divergence localises nothing by itself, so the two transcripts have to be comparable by a third party |
 | `reason` | string | when `outcome` is `not-attempted` | Why no outcome could be reported. A named absence and a generic one are different findings |
 | `verifier_code_identity` | string | no | Digest of the verifier's own implementation. Self-asserted and of no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over one closure is verifier drift |
+
+### `appraisal.platform_measurement` members {#trace-field-appraisal-platform-measurement}
+
+What a matching `runtime.measurement` covers, layer by layer, attributed to the party named as `verifier`. A composite that matches its reference does not say which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot; this block says it. `status` is untouched by it, except that a verifier does not report `affirming` while a layer its policy requires is not established or not listed, and a record carrying this block does not report `none`. Spec section 3.1.5.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `measurement` | string | **yes** | The digest this appraisal is about. Must equal `runtime.measurement`: a result about another measurement is not about this record |
+| `layers` | object | **yes** | At least one member, keyed by the platform's name for the layer. On `tpm2` the key is `pcr:` and a register number from 0 to 23 in decimal without leading zeros (`pcr:0`, `pcr:23`). Each member carries `outcome` and, when not established, `reason`. A layer not listed is not established, and a record without this block establishes no layer |
+
+Each member of `layers`:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `outcome` | string | **yes** | `established`, or `not-established`, which is never reported as `established` |
+| `reason` | string | when `outcome` is `not-established` | `layer-not-measured`: the layer holds no measurement (its initial value, or on a TPM a separator and nothing else). `measured-not-appraised`: the measurements replay to the quoted value and nothing in the evidence shows they were appraised before they ran. `evidence-spans-multiple-boots`: the evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value; not reported as tampering on that basis alone |
 
 <a id="transparency"></a>
 

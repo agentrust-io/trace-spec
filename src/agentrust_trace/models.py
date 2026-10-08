@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 from functools import partial
 
-from agentrust_trace._patterns import _require_pattern
+from agentrust_trace._patterns import _PYTHON_PATTERNS, _require_pattern
 
 from pydantic import (
     BaseModel,
@@ -17,6 +17,10 @@ from pydantic import (
 )
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+
+# Section 3.1.5: a TPM layer key. Mirrored in schema/trace-claim.json and its copy,
+# and run through the same adapted pattern the schema validator uses.
+_TPM_LAYER_RE = r"^pcr:([0-9]|1[0-9]|2[0-3])$"
 
 # A workload identity, not a namespace. A SPIFFE ID names a trust domain *and* a
 # workload path within it, and a DID names a method and an identifier within that
@@ -424,6 +428,50 @@ class ReExecution(_TraceModel):
         return self
 
 
+class PlatformMeasurementLayer(_TraceModel):
+    """One layer's outcome in a platform-measurement appraisal. Spec section 3.1.5.
+
+    ``not-established`` carries ``reason``, because the three reasons are
+    different findings: a layer that holds nothing, a layer measured and never
+    shown to be appraised, and evidence that does not describe one boot. An
+    ``established`` layer carries no reason.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["established", "not-established"]
+    reason: Literal[
+        "layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"
+    ] | None = None
+
+    @model_validator(mode="after")
+    def _not_established_names_its_reason(self) -> PlatformMeasurementLayer:
+        if "reason" in self.model_fields_set and self.reason is None:
+            # The schema refuses an explicit null; so does the model, so the two agree.
+            raise ValueError("reason is absent or one of the three reasons; null is neither")
+        if (self.outcome == "not-established") != (self.reason is not None):
+            raise ValueError(
+                "a layer carries reason exactly when its outcome is 'not-established'; "
+                f"got outcome={self.outcome!r} and reason={self.reason!r}"
+            )
+        return self
+
+
+class PlatformMeasurement(_TraceModel):
+    """Per-layer appraisal of ``runtime.measurement``. Spec section 3.1.5.
+
+    A member of ``Appraisal`` in its own right, not an ``Appraisal.method``
+    value, so it can sit next to a re-execution result. ``measurement`` must
+    equal ``runtime.measurement``; ``TrustRecord`` holds that, since it spans
+    two members of the record. A result naming no layer establishes nothing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    measurement: DigestStr
+    layers: Annotated[dict[str, PlatformMeasurementLayer], Field(min_length=1)]
+
+
 class Appraisal(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -437,6 +485,19 @@ class Appraisal(_TraceModel):
     # untouched by it; the re-execution outcome is not folded into the EAR set.
     method: Literal["re-execution"] | None = None
     re_execution: ReExecution | None = None
+    # Not a method value: it can sit next to a re-execution result. Section 3.1.5.
+    platform_measurement: PlatformMeasurement | None = None
+
+    @model_validator(mode="after")
+    def _a_written_result_is_an_appraisal(self) -> Appraisal:
+        """Section 3.1.5, rule 5: a verifier that writes a per-layer result has
+        performed an appraisal, so ``status`` is not ``none``."""
+        if self.platform_measurement is not None and self.status == "none":
+            raise ValueError(
+                "appraisal.status is 'none' while appraisal.platform_measurement is "
+                "present: a written result is an appraisal"
+            )
+        return self
 
     @model_validator(mode="after")
     def _re_execution_present_exactly_when_the_method_says_so(self) -> Appraisal:
@@ -570,4 +631,30 @@ class TrustRecord(_TraceModel):
                 "another party's output has no hardware root, so the platform must be "
                 "'software-only'"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _platform_measurement_is_about_this_record(self) -> TrustRecord:
+        """Section 3.1.5: the per-layer result is about ``runtime.measurement``.
+
+        A result about another measurement is not about this record. On a TPM a
+        layer is named ``pcr:`` and the register number in decimal without
+        leading zeros, so two verifiers name the same register the same way.
+        """
+        pm = self.appraisal.platform_measurement
+        if pm is None:
+            return self
+        if pm.measurement != self.runtime.measurement:
+            raise ValueError(
+                "appraisal.platform_measurement.measurement must equal "
+                "runtime.measurement: a result about another measurement is not "
+                "about this record"
+            )
+        if self.runtime.platform == "tpm2":
+            bad = sorted(k for k in pm.layers if not _PYTHON_PATTERNS[_TPM_LAYER_RE].search(k))
+            if bad:
+                raise ValueError(
+                    "on tpm2 a layer is named pcr: and a register number from 0 to "
+                    f"23 in decimal without leading zeros; got {bad}"
+                )
         return self

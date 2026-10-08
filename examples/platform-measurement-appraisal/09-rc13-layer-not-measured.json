@@ -1,0 +1,96 @@
+{
+  "name": "rc13-layer-not-measured",
+  "description": "Real measurement: the v2.1.0-rc13 release reference over PCR 0 to 9. PCR 2, 3, 5 and 7 hold a single separator and nothing else, so a digest comparison passes them while nothing was measured there. PCR 10 is outside the quote's selection and is not listed, so a reader asking about it reads not-listed.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "source": "https://github.com/revenue7-eng/tactiq-os/releases/tag/v2.1.0-rc13 (VERIFY-L3-rc13.md and l3-evidence-rc13.tar.gz)",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:2ee6f2d22d3b8e704d1ee8119220aed62a5caff4624c5804b8185debdff1f745"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:2ee6f2d22d3b8e704d1ee8119220aed62a5caff4624c5804b8185debdff1f745",
+        "layers": {
+          "pcr:0": {
+            "outcome": "established"
+          },
+          "pcr:1": {
+            "outcome": "established"
+          },
+          "pcr:2": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:3": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:4": {
+            "outcome": "established"
+          },
+          "pcr:5": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:6": {
+            "outcome": "established"
+          },
+          "pcr:7": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:8": {
+            "outcome": "established"
+          },
+          "pcr:9": {
+            "outcome": "established"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "0pfDTgY9jaGpeMi_DLQB_oSG7ybETM-rSlsB_NHes-sVxhc83-ZPxmiDlZhTy0d8gelc64fhPGaOKkMg9s4yBQ"
+  },
+  "expected": {
+    "outcome": "accept",
+    "codes": [],
+    "reading": {
+      "pcr:2": {
+        "outcome": "not-established",
+        "reason": "layer-not-measured"
+      },
+      "pcr:4": {
+        "outcome": "established"
+      },
+      "pcr:10": {
+        "outcome": "not-established",
+        "reason": "not-listed"
+      }
+    }
+  }
+}

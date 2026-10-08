@@ -274,7 +274,15 @@ FULL: dict[str, Any] = {
                   "method": "re-execution",
                   "re_execution": {"outcome": "diverged",
                                    "observed_digest": "sha256:" + "4" * 64,
-                                   "verifier_code_identity": "sha256:" + "5" * 64}},
+                                   "verifier_code_identity": "sha256:" + "5" * 64},
+                  # Section 3.1.5: a member of appraisal in its own right, so it
+                  # sits next to the re-execution result. Its measurement is the
+                  # record's runtime.measurement, which the model requires.
+                  "platform_measurement": {
+                      "measurement": BASE["runtime"]["measurement"],
+                      "layers": {"pcr:0": {"outcome": "established"},
+                                 "pcr:2": {"outcome": "not-established",
+                                           "reason": "layer-not-measured"}}}},
     "signature": "abcDEF-_123",
 }
 
