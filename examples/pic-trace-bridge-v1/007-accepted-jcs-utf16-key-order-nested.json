@@ -1,0 +1,128 @@
+{
+  "id": "TRACE-PIC-BRIDGE-007",
+  "name": "accepted-jcs-utf16-key-order-nested",
+  "description": "Nested tool-call digesting preserves UTF-16 code-unit key order recursively.",
+  "profile": "trace.pic-trace-bridge.conformance.v1",
+  "conformance": {
+    "status": "conformant"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-206",
+        "decision": "allow",
+        "authorizer": "policy-engine",
+        "authorizer_key_id": "key-206",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "send_invoice",
+            "archive_invoice"
+          ],
+          "impacts": [
+            "external-side-effect",
+            "internal-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc",
+        "tool_call_digest": "sha256:1e9f93ccf7ae7e2a9fa0853921c27f0a6e0e654f3117795e6e4f48395711d38f",
+        "transcript_required": true
+      },
+      "signature": "jfu5M8gVU9C10CWg9ryBbidu_2XTdRJWEQ-G6qTaikcyY8GHu3dW1Z8EntN_bzCZ6CAUFWEdwke7Oq6s_7QPCA"
+    },
+    "trusted_authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg",
+      "kid": "key-206"
+    },
+    "declaration": {
+      "impact": "external-side-effect",
+      "purpose": "send invoice",
+      "metadata": {
+        "channel": "email",
+        "reference": "INV-7"
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "tool_call": {
+      "name": "send_invoice",
+      "arguments": {
+        "invoice_id": "INV-7",
+        "options": {
+          "notify": true
+        },
+        "zmeta": {
+          "zk😀": "sorts-first-under-rfc-8785",
+          "zk�": "sorts-second-under-rfc-8785"
+        }
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "send_invoice",
+          "arguments": {
+            "invoice_id": "INV-7",
+            "options": {
+              "notify": true
+            },
+            "zmeta": {
+              "zk😀": "sorts-first-under-rfc-8785",
+              "zk�": "sorts-second-under-rfc-8785"
+            }
+          }
+        }
+      },
+      "after": {
+        "status": "accepted",
+        "receipt_id": "receipt-206"
+      }
+    },
+    "now": 150
+  },
+  "reproducibility": {
+    "authorization_signature": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhdXRob3JpemF0aW9uIjp7ImF1dGhvcml6YXRpb25faWQiOiJhdXRoLTIwNiIsImF1dGhvcml6ZWRfYXQiOjEwMCwiYXV0aG9yaXplciI6InBvbGljeS1lbmdpbmUiLCJhdXRob3JpemVyX2tleV9pZCI6ImtleS0yMDYiLCJkZWNpc2lvbiI6ImFsbG93IiwiZGVjbGFyYXRpb25fZGlnZXN0Ijoic2hhMjU2OmY0NjM5MWVhNjNlNDVlNjBjNThkMzZmZjYyMzhiOWJmMDI5OWM4MzUyNDExM2FhMWQ2NjMzZjY1Zjg1ZWQ0Y2MiLCJleHBpcmVzX2F0IjoyMDAsInBpYyI6eyJhcmdzX2RpZ2VzdCI6InNoYTI1NjoyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwiaW50ZW50X2RpZ2VzdCI6InNoYTI1NjoxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwicHJvZmlsZSI6IlBJQy1DSlNPTi8xLjAifSwic2NvcGUiOnsiaW1wYWN0cyI6WyJleHRlcm5hbC1zaWRlLWVmZmVjdCIsImludGVybmFsLXNpZGUtZWZmZWN0Il0sInRvb2xzIjpbInNlbmRfaW52b2ljZSIsImFyY2hpdmVfaW52b2ljZSJdfSwidG9vbF9jYWxsX2RpZ2VzdCI6InNoYTI1NjoxZTlmOTNjY2Y3YWU3ZTJhOWZhMDg1MzkyMWMyN2YwYTZlMGU2NTRmMzExNzc5NWU2ZTRmNDgzOTU3MTFkMzhmIiwidHJhbnNjcmlwdF9yZXF1aXJlZCI6dHJ1ZX0sInByb2ZpbGUiOiJ0YWc6YWdlbnRydXN0LWlvLmNvbSwyMDI2OnBpYy10cmFjZS1icmlkZ2UtdjEifQ",
+      "canonical_preimage_sha256": "sha256:42fcc853e74f6d50eaed79f13574d6e265d0128b2f22247e158a86a4c3a0ed1c"
+    },
+    "declaration_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJpbXBhY3QiOiJleHRlcm5hbC1zaWRlLWVmZmVjdCIsIm1ldGFkYXRhIjp7ImNoYW5uZWwiOiJlbWFpbCIsInJlZmVyZW5jZSI6IklOVi03In0sInB1cnBvc2UiOiJzZW5kIGludm9pY2UifQ",
+      "canonical_preimage_sha256": "sha256:f46391ea63e45e60c58d36ff6238b9bf0299c83524113aa1d6633f65f85ed4cc"
+    },
+    "tool_call_digest": {
+      "applicable": true,
+      "canonical_preimage_base64url": "eyJhcmd1bWVudHMiOnsiaW52b2ljZV9pZCI6IklOVi03Iiwib3B0aW9ucyI6eyJub3RpZnkiOnRydWV9LCJ6bWV0YSI6eyJ6a_CfmIAiOiJzb3J0cy1maXJzdC11bmRlci1yZmMtODc4NSIsInpr77-9Ijoic29ydHMtc2Vjb25kLXVuZGVyLXJmYy04Nzg1In19LCJuYW1lIjoic2VuZF9pbnZvaWNlIn0",
+      "canonical_preimage_sha256": "sha256:1e9f93ccf7ae7e2a9fa0853921c27f0a6e0e654f3117795e6e4f48395711d38f"
+    }
+  },
+  "coverage": {
+    "rule": null,
+    "variant": "jcs_utf16_key_order_nested",
+    "declared_defect": "shallow_utf16_key_sort"
+  },
+  "expected": {
+    "case_schema": "valid",
+    "bridge_schema": "valid",
+    "conformant_runtime": {
+      "classification": "accepted",
+      "codes": [],
+      "result": {
+        "authorization_id": "auth-206",
+        "tool": "send_invoice",
+        "impact": "external-side-effect",
+        "transcript_bound": true
+      }
+    }
+  }
+}
