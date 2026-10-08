@@ -104,6 +104,7 @@ plugins:
           - docs/schema.md
           - docs/references-registry.md
           - docs/verification-outcome-statements.md
+          - docs/verifying-after-the-freshness-window.md
           - docs/rfcs/runtime-evidence-profile.md
           - docs/rfcs/verifier-issued-trace-profile.md
           - docs/rfcs/composite-component-appraisal.md
@@ -230,6 +231,7 @@ nav:
           - Schema reference: docs/schema.md
           - References registry: docs/references-registry.md
           - Verification outcome statements: docs/verification-outcome-statements.md
+          - Verifying after the freshness window: docs/verifying-after-the-freshness-window.md
           - Build provenance depth: docs/build-provenance-depth.md
           - How the conformance vectors are built: docs/conformance-method.md
       - RFCs:

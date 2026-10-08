@@ -270,6 +270,8 @@ A `transparency` URI names a claimed log entry. It does not establish inclusion 
 
 An authenticated inclusion proof establishes inclusion under that checkpoint. It does not establish the truth of the record's claims, complete logging, or future log availability.
 
+To check a record after its freshness window has passed, the anchor's time can bound a separate, historical replay of the freshness comparison; see [Verifying a record after the freshness window](verifying-after-the-freshness-window.md).
+
 ## Action receipts and embodied workflows
 
 An action receipt is a small signed note about one action, such as a robot controller accepting or refusing a command. "Embodied" means an agent that acts in the physical world.
