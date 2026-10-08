@@ -8,7 +8,7 @@ NVIDIA GPU attestation is a signed report about which GPU this is and what firmw
 
 Standalone TRACE registers `runtime.platform="nvidia-h100"` and `"nvidia-blackwell"`. A registered identifier does not mean this Python SDK collects GPU evidence or verifies an NRAS result. The producer must define how its `runtime.measurement` relates to authenticated GPU evidence.
 
-The cMCP configuration name `opaque` belongs to that runtime's provider interface; it is not a standalone TRACE platform value. Follow the producing runtime's envelope and verifier documentation rather than substituting names between formats.
+cMCP's configuration names belong to that runtime's provider interface; they are not standalone TRACE platform values. Follow the producing runtime's envelope and verifier documentation rather than substituting names between formats.
 
 ## CPU, GPU, and signing-key binding
 
