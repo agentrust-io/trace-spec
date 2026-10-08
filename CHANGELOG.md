@@ -11,6 +11,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Accuracy pass on non-normative text.** Examples, schema descriptions, adapter
+  docstrings and unsigned test records use vendor-neutral placeholders
+  (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards
+  organizations, and the Appendix B reference titles use each project's own name. The Acta crosswalk now cites v0.2 sections. Platform pages no
+  longer name a cMCP provider value. The package description no longer says
+  "hardware-attested", since `verify_record()` performs no attestation verification.
+  Signed and digest-pinned vectors are unchanged. No normative text changes.
+- **Conformance site links** point at trace.agentrust-io.com/conformance/, where the
+  combined docs build publishes it; the stale `conformance/CNAME` is removed.
+- **Generators write LF on every platform.** `gen_number_spelling.py` and the
+  anchor-inclusion generator opened their output in text mode, so a Windows run wrote
+  CRLF and the byte-for-byte regeneration check failed.
 - **BREAKING:** Successful `provenance.verify_record()` calls previously returned
   `None`; they now return `RevocationCheck` (#279). Callers can distinguish
   `no_check_performed` when no revocation store is supplied from `verified` when
