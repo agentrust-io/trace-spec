@@ -1,6 +1,8 @@
 # Test Modules
 
-The TRACE conformance suite is divided into eight modules. Each module maps to a section of the TRACE specification.
+The TRACE conformance suite is divided into eight modules. A module is a group of related checks on one part of a record, such as its signature or the hardware it says it ran on. Each module maps to a section of the TRACE specification, and each one's page lists every check with an example that passes and one that fails.
+
+The table below uses the record's own field names (in code font). The [conformance levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md) page says which modules run at which level.
 
 | Module                                                                                  | ID Prefix | Spec Section | What It Tests                                                                                                                                                                              |
 | --------------------------------------------------------------------------------------- | --------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

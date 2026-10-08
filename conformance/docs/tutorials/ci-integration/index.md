@@ -1,11 +1,13 @@
 # Running trace-tests in a CI Pipeline
 
-Configure a GitHub Actions workflow that installs `agentrust-trace-tests`, runs the full conformance suite, and uploads the test report as an artifact.
+This guide is for teams that want every code change checked automatically. It sets up a GitHub Actions workflow (GitHub's built-in system for running jobs on each push) that installs `agentrust-trace-tests`, runs your conformance tests, and saves the results as a downloadable file.
+
+If all you need is to stop a pipeline when a record falls below a level, one command does it: `trace-tests report --record trust-record.json --json report.json --fail-under 1` exits non-zero when the record does not reach Level 1. The rest of this page covers running your own pytest tests against the suite's library.
 
 ## What you'll learn
 
 - A working GitHub Actions workflow file with matrix Python version testing
-- How to use `CMCP_DEV_MODE=1` to run the software-only TEE path in standard CI
+- What `CMCP_DEV_MODE=1` does, and does not do, for software-only records in standard CI
 - How to read a failure back to the specific error code and field it names
 - When to skip hardware attestation tests that require real TEE hardware
 
@@ -71,7 +73,7 @@ ______________________________________________________________________
 
 ## Set CMCP_DEV_MODE for software-only CI
 
-Standard CI runners have no TEE hardware. Set `CMCP_DEV_MODE=1` to allow records with `runtime.platform: "software-only"` to pass TR-RTE without a real attestation measurement.
+Standard CI runners have no TEE hardware (no trusted execution environment, the processor mode that keeps a program's memory sealed off). The suite itself does not read `CMCP_DEV_MODE`: checked against the 0.6.1 source, no file under `src/` mentions it. A software-only record passes at Level 0 because Level 0 does not run TR-RTE, and it fails TR-RTE-001 at Level 1 and above whatever the environment says. Keep the variable in the workflow only if your own fixtures or tools read it.
 
 ```
 - name: Run conformance suite
@@ -80,13 +82,13 @@ Standard CI runners have no TEE hardware. Set `CMCP_DEV_MODE=1` to allow records
   run: pytest --tb=short
 ```
 
-When this environment variable is absent, TR-RTE checks that `runtime.platform` is a registered hardware TEE enum (`intel-tdx`, `amd-sev-snp`, `nvidia-h100`, etc.). With `CMCP_DEV_MODE=1`, the `software-only` platform value passes. Never set this flag in production verification.
+At Level 1 and above, TR-RTE checks that `runtime.platform` is a registered hardware TEE value (`intel-tdx`, `amd-sev-snp`, `nvidia-h100`, etc.). To check a software-only record in CI, run it at Level 0. Never treat a Level 0 pass as evidence about hardware.
 
 ______________________________________________________________________
 
 ## Skip hardware attestation tests
 
-Some tests require a live TEE to produce a real attestation report. Mark them so they skip automatically on standard runners:
+Some tests need real TEE hardware to produce an attestation report (the processor's signed statement of what code it is running). Mark them so they skip automatically on standard runners:
 
 ```
 import os
@@ -198,12 +200,12 @@ matrix:
   python-version: ["3.10", "3.11", "3.12", "3.13"]
 ```
 
-If a module uses a stdlib API that changed between versions, the matrix will catch it. The `trace_tests` library targets the same version range, so failures here indicate a compatibility problem in your custom tests or fixtures, not in the library itself.
+If a module uses a stdlib API that changed between versions, the matrix will catch it. The package requires Python 3.11 or later (`requires-python = ">=3.11"` in `pyproject.toml`), so the 3.10 leg in the example above cannot install it; drop 3.10 from your matrix. On 3.11 and later, a failure that appears on one version only points at your custom tests or fixtures.
 
 ______________________________________________________________________
 
 ## Summary
 
-You have a GitHub Actions workflow that installs `agentrust-trace-tests`, runs the suite across three Python versions with `CMCP_DEV_MODE=1`, and saves per-version JSON reports as artifacts. Hardware attestation tests are marked and skipped on standard runners. When a test fails, the error code in the assertion message maps directly to the spec field that failed.
+You have a GitHub Actions workflow that installs `agentrust-trace-tests`, runs your tests on each Python version in the matrix, and saves per-version JSON reports as artifacts. Hardware attestation tests are marked and skipped on standard runners. When a test fails, the error code in the assertion message maps directly to the spec field that failed.
 
 For more on what each error code means, see [Error Codes](https://trace.agentrust-io.com/conformance/docs/error-codes/index.md). To write custom tests against specific modules, see [Writing Conformance Tests](https://trace.agentrust-io.com/conformance/docs/tutorials/writing-conformance-tests/index.md).

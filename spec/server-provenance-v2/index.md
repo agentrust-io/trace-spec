@@ -6,6 +6,8 @@
 | Status  | Draft proposal, companion to TRACE v0.2 |
 | License | CC BY 4.0                               |
 
+**In plain terms.** Version 2 of the MCP server provenance format adds four of a tool's self-declared behaviours (for example, whether it only reads data) to what gets signed, so a later change to them is detectable. It is for people who publish or check MCP server provenance records, and it is a draft proposal.
+
 ## 1. Scope and inherited requirements
 
 This version binds four behavioral declarations in an MCP tool catalog. All requirements of [Server Provenance v1](https://trace.agentrust-io.com/spec/server-provenance-v1/index.md) apply except the format identifier and catalog projection specified below. In particular, identity, assurance kinds, trusted-key selection, signatures, anchoring and absence retain their v1 meanings. This is a separate provenance format version, not a new TRACE Trust Record version.

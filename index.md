@@ -2,19 +2,19 @@
 
 # Evidence a third party can check, years later
 
-TRACE specifies the record, anchoring protocol and verification rules that tie an agent run to its workload, policy, data class and tool transcript, so anyone holding the record can verify it offline.
+TRACE is a free, open format for a signed receipt of what an AI agent did: which program ran, under which rules, on what kind of data, and which tools it called. Anyone holding the receipt can check it on their own computer, with no access to the system that produced it. This site is for engineers who produce or check these receipts, and for anyone deciding how much a receipt can be trusted ([the terms, in plain English](https://agentrust-io.com/#plain-terms)).
 
 [Create and verify your first record](https://trace.agentrust-io.com/docs/quickstart/index.md) [What this proves, and what it does not](https://trace.agentrust-io.com/LIMITATIONS/index.md)
 
 TL;DR
 
-Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 reference library sign and verify records in software with no cloud account, and a v0.2 signature proves who produced a record and that it has not changed while every hardware field in it is still the producer's claim. The proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) grades inlined quotes as platform-attested or attested, and the attested grade is specified but not yet demonstrated.
+With spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 Python library you can sign and check records on a laptop, with no cloud account. A v0.2 signature proves who made a record and that nobody changed it afterwards; what the record says about the hardware is still only the producer's word until the proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) adds checkable hardware reports, and its top "attested" grade is specified but not yet demonstrated.
 
 - **Run it**
 
   ______________________________________________________________________
 
-  Sign a record, verify it with a separately retained key, and see what a failed check looks like.
+  Sign a record, check it with a key kept somewhere else, and see what a failed check looks like.
 
   [Quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md)
 
@@ -22,7 +22,7 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  A signed field is a producer's claim. The verification protocol sets out what a verifier still has to check.
+  A signature tells you who said something, not that it is true. The verification page lists what a checker still has to confirm on its own.
 
   [Verification protocol](https://trace.agentrust-io.com/docs/verification/index.md)
 
@@ -30,7 +30,7 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  TRACE carries evidence to verifiers that already exist; the runtime evidence profile uses agent-manifest's TDX verifier. Check a real TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+  Some processors can produce a signed report of what is running on them (attestation). TRACE carries those reports to existing checkers; the runtime evidence profile uses agent-manifest's checker for Intel TDX reports. Check a real TDX report at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
 
   [Runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md)
 
@@ -38,11 +38,13 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  TRACE is the evidence step. Anchor records in the [TRACE Registry](https://agentrust-io.com/registry/) and score them with the [conformance suite](https://tests.agentrust-io.com).
+  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://tests.agentrust-io.com).
 
   [See the chain](https://agentrust-io.com/#chain)
 
 ## What the record contains
+
+Each row is a question a reader might ask about an agent run, the part of the record that answers it, and what a checker needs beyond the signature before believing the answer.
 
 | Question                      | Fields to inspect  | What the verifier still needs                                       |
 | ----------------------------- | ------------------ | ------------------------------------------------------------------- |
@@ -53,21 +55,21 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 | What transcript is committed? | `tool_transcript`  | Transcript evidence when individual calls matter                    |
 | Was evidence anchored?        | `transparency`     | A verified receipt and the required log trust policy                |
 
-A signed field is a producer's claim. Signature verification alone does not establish that the described execution occurred or that a policy was enforced. See the [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) for the full evaluation path.
+Every field is the producer's claim. A valid signature alone does not show that the run happened as described or that the rules were actually applied. The [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) walks through the full set of checks.
 
 ## Where to go next
 
-- [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the normative specification, with the claim set, the anchoring protocol, and the verification rules.
-- [Conformance suite](https://tests.agentrust-io.com): score an implementation by conformance level before claiming compliance.
-- [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): emit and consume Trust Records from AGT, cMCP, and sandboxed agent runtimes.
+- [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the specification itself, with the fields, the publishing protocol and the checking rules.
+- [Conformance suite](https://tests.agentrust-io.com): test an implementation, level by level, before saying it complies.
+- [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): produce and read Trust Records from AGT, cMCP and sandboxed agent runtimes.
 
 ## What it is built on
 
-TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
+TRACE reuses published internet standards instead of inventing new ones: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
 
 ## Status and governance
 
-The specification is a **Developer Preview**. v0.2 is current and published with a conformance test suite. Read [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for the scope boundaries before relying on it in production.
+The specification is a **Developer Preview**: usable now, and still expected to change. v0.2 is current and ships with a conformance test suite. Read [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for what it does not cover before relying on it in production.
 
 TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](https://trace.agentrust-io.com/GOVERNANCE/index.md) for how decisions are made and [Contributing](https://trace.agentrust-io.com/CONTRIBUTING/index.md) for how to propose a change.
 

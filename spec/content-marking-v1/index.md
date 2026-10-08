@@ -8,6 +8,8 @@
 | Relevant obligation | EU AI Act Article 50(2) and 50(4), in force since 2 August 2026                           |
 | License             | CC BY 4.0                                                                                 |
 
+**In plain terms.** When an AI system produces an image, video or text, EU law (AI Act Article 50) asks that the output carry a machine-readable label saying it is AI generated. This draft ties that label (a C2PA mark) to the TRACE record of the run that produced the content, so the label can be checked. It is for teams that generate content and must mark it.
+
 Defines one C2PA assertion, `com.agentrust-io.trace`, that ties a marked asset to the Trust Record of the execution that produced it.
 
 ## 0. What this does not do, first

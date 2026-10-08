@@ -1,12 +1,14 @@
 # Integration: sandboxed agent runtimes
 
-A sandboxed agent runtime confines one agent on one machine. Filesystem, process and network isolation at the kernel, an egress policy, and credentials injected so the agent never holds them. That answers what a single agent may touch.
+This page is for people who build or run a sandbox for AI agents and want each session to produce a signed TRACE record. It shows the few lines of code needed, what goes into the record, and how far the record can be trusted with and without hardware evidence.
+
+A sandboxed agent runtime confines one agent on one machine: the operating system limits which files, processes and network connections it can use, a policy limits where it may send data, and passwords and keys are supplied from outside so the agent never holds them. That answers what a single agent may touch.
 
 It does not answer, on its own, three questions that arrive next:
 
 - **Across the estate.** Which agent, on which of the two hundred machines, took that action, and under whose authority?
 - **From a regulator.** Not what the policy said, but what actually ran, evidenced.
-- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM, or a confidential VM, or no secure hardware at all.
+- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM (a security chip on the motherboard), or a confidential VM (a virtual machine sealed off from the cloud host), or no secure hardware at all.
 
 `TraceSandboxAdapter` answers them from what the runtime already has at session close. It requires no change to the runtime.
 
@@ -49,6 +51,8 @@ That record is Level 0: signed, offline-verifiable, and honest that no hardware 
 
 ## Adding a root of trust
 
+A root of trust is hardware that can vouch for what ran, by producing a signed report called an attestation. If your machine has one, you can pass its evidence to the adapter. The adapter only copies that evidence into the record; checking it is your job, and the two warnings after the example explain exactly what is left to you.
+
 Pass a `SandboxAttestation` and the same call emits a Level 1-*shaped* record: `runtime.platform` and `runtime.measurement` carry the supplied evidence verbatim. Nothing else about the call changes. Actual Level 1 assurance requires that evidence to have been independently verified -- by your own attestation verifier, against genuine hardware from the named platform -- *before* you construct the `SandboxAttestation` below. See the boundary spelled out just after the example.
 
 ```
@@ -68,9 +72,15 @@ This is the point of the adapter spanning both levels. A sandbox runs wherever t
 
 **The adapter checks the shape of an attestation, not its truth.** `platform` is only ever set from a supplied attestation; an attestation may not name `software-only`; the platform is checked against the enum on `RuntimeInfo` rather than a copy of it; and the measurement must be a `sha256:` or `sha384:` digest. None of that is cryptographic verification: nothing here checks a quote, a signature, or a nonce, so code in your own process can construct a `SandboxAttestation` with an invented platform and an invented digest and the adapter will emit a record that says `tpm2` (or any other platform) anyway. Call this adapter only after your own attestation verifier has checked genuine evidence from the named platform. This is the same boundary [trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) states for every Level 1 producer: `agentrust_trace.verify_record` does not appraise hardware quotes, and this adapter does not either.
 
-**Verified evidence is still not the whole requirement.** [Trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) says Level 1 needs "authenticated evidence binding the record-signing key to the expected environment," and [verification](https://trace.agentrust-io.com/docs/verification/#verifying-hardware-rooted-records) puts the responsibility for that binding on the producing profile -- this adapter, for a sandbox runtime. It does not define one: nothing here ties `measurement` or `nonce` to the key you eventually pass to `sign_record`, and that key is chosen independently of, and after, whatever attestation you verified. Verifying a genuine quote and then signing with an unrelated key is still not Level 1 assurance; this code cannot distinguish that case from a fabricated one. If your platform's quote supports a caller-supplied challenge (TPM qualifying data, SEV-SNP `REPORT_DATA`, TDX `REPORTDATA`), request it with that field set to a value derived from the signing key's RFC 7638 thumbprint, verify the binding yourself, and only then carry the challenge through as `nonce`.
+**Verified evidence is still not the whole requirement.** [Trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) says Level 1 needs "authenticated evidence binding the record-signing key to the expected environment," and [verification](https://trace.agentrust-io.com/docs/verification/#verifying-hardware-rooted-records) puts the responsibility for that binding on the producing profile -- this adapter, for a sandbox runtime. It does not define one: nothing here ties `measurement` or `nonce` to the key you eventually pass to `sign_record`, and that key is chosen independently of, and after, whatever attestation you verified. Verifying a genuine quote and then signing with an unrelated key is still not Level 1 assurance; this code cannot distinguish that case from a fabricated one.
+
+Technical detail: binding the quote to your signing key
+
+If your platform's quote supports a caller-supplied challenge (TPM qualifying data, SEV-SNP `REPORT_DATA`, TDX `REPORTDATA`), request it with that field set to a value derived from the signing key's RFC 7638 thumbprint, verify the binding yourself, and only then carry the challenge through as `nonce`.
 
 ## Field mapping
+
+Each record field comes from something the runtime already has. Where a field is a hash, anyone holding the original input can recompute it.
 
 | Record field                 | Source                                                                        |
 | ---------------------------- | ----------------------------------------------------------------------------- |
@@ -88,11 +98,13 @@ The hash helpers are public static methods, so a runtime written in another lang
 
 **The policy bundle must be bytes you can reproduce.** The bundle hash is the load bearing field: edit the policy and the record changes. Where a runtime composes policy from several files, concatenate them in a defined order and keep that order stable. A hash both sides derive differently proves nothing.
 
-**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** The two agree on ASCII and diverge on non-ASCII strings and number formatting, and a decision log carries paths and hostnames. Using the same canonicalisation as the signature pre-image keeps the record reproducible across implementations.
+**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** JCS (RFC 8785) is a fixed way of writing JSON as bytes, so every implementation hashes the same thing. The two methods agree on plain ASCII text and differ on other characters and on how numbers are written, and a decision log carries paths and hostnames. Using the same canonicalisation as the signature pre-image keeps the record reproducible across implementations.
 
 **An unappraised record says so.** `appraisal.status` defaults to `"none"`. Building a record does not appraise it, and stamping `affirming` on an unappraised record puts a verdict in the field a consumer reads to find out whether anybody checked. Set it only when an appraisal actually happened.
 
 ## Levels
+
+Level 0 is a record signed in software. Level 1 adds checked hardware evidence, and Level 2 adds an entry in a public log (a SCITT transparency receipt). The table shows what each level asks of you and what it proves by itself.
 
 | Level | What you pass                                    | `runtime.platform`    | Assurance this establishes on its own                                                                                                                                                                                                                                                         |
 | ----- | ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

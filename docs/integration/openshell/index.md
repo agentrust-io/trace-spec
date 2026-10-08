@@ -1,10 +1,12 @@
 # Integration: NVIDIA OpenShell
 
-[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) is a sandbox runtime that enforces filesystem, process, network, and inference policy. OpenShell emits machine-readable OCSF events for observable sandbox behavior. A TRACE adapter can bind those events to an execution record without treating a control-plane log as hardware attestation.
+This page is for teams that run agents inside NVIDIA OpenShell and want a TRACE record of what happened in each sandbox. It lists the inputs the adapter needs, how the policies and logs are tied into the record, and what the record can and cannot prove.
+
+[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) is a sandbox runtime: it runs an agent in a confined space and enforces rules about which files, processes, network addresses and AI models the agent may use. OpenShell logs what it sees as security events in OCSF, a standard machine-readable event format. A TRACE adapter can tie those events to a record of the run, while keeping clear that a log from the software managing the sandbox is not hardware attestation (a signed report from the processor itself).
 
 ## Assurance boundary
 
-An OpenShell import has the following mandatory TRACE signals:
+Because the evidence comes from OpenShell's own logs and not from hardware, every imported record says so in four fields. An OpenShell import has the following mandatory TRACE signals:
 
 | TRACE field        | Value                        |
 | ------------------ | ---------------------------- |
@@ -30,7 +32,7 @@ The adapter requires:
 
 ## Policy binding
 
-OpenShell and ACS enforce different layers. Bind both into one canonical policy bundle:
+Two sets of rules apply: OpenShell's sandbox policy, and the agent's application rules written for AGT's Agent Control Specification (ACS). The adapter puts both into one policy bundle, written in a fixed byte form, so one hash covers both:
 
 ```
 {
@@ -55,7 +57,7 @@ OpenShell and ACS enforce different layers. Bind both into one canonical policy 
 
 ## Transcript binding
 
-`tool_transcript.hash` commits to a canonical envelope containing:
+The record's transcript hash covers everything below, so a verifier with the original files can recompute it. `tool_transcript.hash` commits to a canonical envelope containing:
 
 - sandbox identifier;
 - capture start and end;
@@ -68,6 +70,6 @@ Reordering an event, changing a policy revision, or changing an ACS decision cha
 
 ## Implementation
 
-The `agentrust-trace-adapters` package exposes `OpenShellEvidence` and `build_openshell_record`. Evidence assembly returns an unsigned Level 0 record; signing remains a separate `agentrust_trace.sign_record` operation so callers cannot accidentally conflate collection with key custody.
+The `agentrust-trace-adapters` package exposes `OpenShellEvidence` and `build_openshell_record`. Assembling the evidence returns an unsigned Level 0 record. Signing is a separate `agentrust_trace.sign_record` call, so collecting evidence and holding the signing key stay separate steps that a caller cannot mix up by accident.
 
 See the runnable integration in [`agentrust-io/integrations`](https://github.com/agentrust-io/integrations/tree/main/integrations/openshell).

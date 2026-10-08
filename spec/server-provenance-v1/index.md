@@ -7,6 +7,8 @@
 | Anchoring | [Registry Anchor Format v1](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md) |
 | License   | CC BY 4.0                                                                                    |
 
+**In plain terms.** MCP servers are the tool providers an AI agent calls. This format lets someone sign a statement about one server (what it is and which tools it offers) so others can check who said it. It is for people who publish or vet MCP servers, and it is a draft.
+
 A signed statement **about** an MCP server: what it is, what tools it exposes, who is saying so, and how much that is worth.
 
 ## 0. What this is not

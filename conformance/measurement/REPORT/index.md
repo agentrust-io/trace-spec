@@ -1,5 +1,7 @@
 # Does `trace-tests` notice when its own conformance checks break?
 
+In plain terms: this page asks whether the suite's own tests would notice if one of its checks quietly stopped working. The method is to break each check on purpose, one at a time, and count how many tests fail. The result below: every failure path is now caught by at least one test, and eight checks rely on exactly one.
+
 **Measured** 2026-08-07 against `agentrust-io/trace-tests` @ `7fc189c` (release 0.4.1), with the normative schema from `agentrust-io/trace-spec` @ `dc7491c`.
 
 `trace-tests` is the suite an implementer runs to establish that their TRACE implementation conforms. Its output is a conformance claim. That makes a question one level up worth asking, and as far as the repository shows, unasked so far:
@@ -39,7 +41,7 @@ Eight checks sit at margin 1, meaning exactly one test stands between them and s
 
 **Counting by check understates the problem by more than threefold.** A check code emitted from three places can have one failure path nothing verifies while the other two are covered, and still count as verified. The sites are where the checks actually live.
 
-`TR-TXN-001` carries the most weight. It is the Level 2 requirement that a tool transcript exist at all. If it regressed, implementations would continue to be stamped Level 2 conformant without that property being checked — and the transcript is the claim Level 2 is largely about.
+`TR-TXN-001` carries the most weight. It is the Level 2 requirement that a tool transcript exist at all. If it regressed, implementations would continue to be stamped Level 2 conformant without that property being checked, and the transcript is the claim Level 2 is largely about.
 
 `TR-SIG-002` is the gate that rejects a key that is not Ed25519. With it inert, a record carrying another key type reaches signature verification rather than being refused at the key-type check.
 
@@ -57,7 +59,7 @@ ______________________________________________________________________
 
 `tests/test_level0.py:7` defines `VALID_PLATFORMS` as a set literal restating the schema's `runtime.platform` enum. It holds nine values; the schema holds ten. `software-only` is missing.
 
-The conformance module is correct — `tr_rte.py:_VALID_PLATFORMS` has all ten — so this is a defect in the self-test, not in what implementers run. Three-way comparison on a Level 0 record carrying `software-only`:
+The conformance module is correct (`tr_rte.py:_VALID_PLATFORMS` has all ten), so this is a defect in the self-test, not in what implementers run. Three-way comparison on a Level 0 record carrying `software-only`:
 
 ```
 tr_rte.check(record, level=0)   PASS      (what an implementer runs)
@@ -65,7 +67,7 @@ normative schema                accepts
 tests/test_level0.py            FAIL      (contradicts both)
 ```
 
-It is latent: no vector in `tests/vectors/` uses `software-only`, so nothing triggers it today. It becomes active the moment one does — and it would then reject behaviour the project deliberately added, in PR #16/#17, which updated the conformance module and added `tests/test_software_only_platform.py` while leaving this copy behind.
+It is latent: no vector in `tests/vectors/` uses `software-only`, so nothing triggers it today. It becomes active the moment one does, and it would then reject behaviour the project deliberately added, in PR #16/#17, which updated the conformance module and added `tests/test_software_only_platform.py` while leaving this copy behind.
 
 ______________________________________________________________________
 
@@ -87,7 +89,7 @@ The proxy is wrong because tests exercise a module through `tr_xxx.check(...)` a
 - **Restoration is verified**, not assumed, after every site.
 - **A suite that did not run against this code looks exactly like a suite that notices nothing.** A stale editable install, or any `trace_tests` earlier on `sys.path`, leaves the baseline green and every mutation unobserved: pytest never imports the file being rewritten, so the run reports zero verified. The import path is resolved and checked against this checkout before the baseline runs.
 - **A stale `__pycache__` reports a margin the code does not have.** `Status.FAIL` and `Status.PASS` are the same length, so a rewrite changes no file size, and a run can end up measuring the previous iteration's bytecode. This is the worst of the guards to be missing, because it fails *upward*: the previous iteration's failures are attributed to the site under mutation, margins come out larger than they are, and a check held by exactly one test is reported as comfortably covered. Caches are purged before every suite run. Without the purge, four consecutive runs on one unchanged tree reported the margin-1 watch list as empty three times and as two entries once; the list has eight entries. A fourth run also left `pytest` failing on 14 tests against a tree `git status` reported as clean.
-- **An empty path is rejected before it can look valid.** `Path("")` is `.`, which is a directory, so the obvious existence check passes and the script measures whichever tree it happens to be standing in. The enum comparison had exactly this hole and reported success having compared nothing — the failure it exists to find, in itself. It now refuses an empty argument, and refuses to report agreement when zero comparisons were made.
+- **An empty path is rejected before it can look valid.** `Path("")` is `.`, which is a directory, so the obvious existence check passes and the script measures whichever tree it happens to be standing in. The enum comparison had exactly this hole and reported success having compared nothing: the failure it exists to find, in itself. It now refuses an empty argument, and refuses to report agreement when zero comparisons were made.
 
 ______________________________________________________________________
 

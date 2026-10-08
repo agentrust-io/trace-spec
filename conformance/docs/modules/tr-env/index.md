@@ -1,6 +1,8 @@
-# TR-ENV — Envelope
+# TR-ENV: Envelope
 
-Tests the top-level EAT envelope structure of a TRACE Trust Record.
+Checks the outer wrapper of a record and its basic fields: which version of the format it uses, when it was issued, which agent it is about, and the public key used to check its signature. A common cause of failure here is a record made for an older version of TRACE (see [Known limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md)).
+
+Technically, the envelope is an EAT (Entity Attestation Token, an IETF format for signed statements about a system), and these checks cover its top-level structure.
 
 ## Required at Level 0+
 

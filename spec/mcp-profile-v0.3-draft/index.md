@@ -2,6 +2,8 @@
 
 Status: proposed requirements, not an adopted profile or implemented wire format. This document does not change TRACE v0.2 verifier acceptance. Field names below describe logical requirements; serialization and a profile identifier remain subject to normative review before implementations claim conformance.
 
+**In plain terms.** This is a proposal for how a TRACE record should describe each tool call an agent makes through MCP (the common protocol agents use to call tools), including which tool list the agent was offered. It is for implementers and reviewers of the next TRACE version. Nothing here is adopted yet, and it does not change what a v0.2 verifier accepts.
+
 ## 1. Scope
 
 This proposal covers evidence for MCP tool-call attempts, including the complete tool declaration set the producer used when selecting and dispatching a call. It targets [MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog), which removed protocol sessions and documents OpenTelemetry context propagation. Earlier MCP revisions can supply additional protocol-session metadata; that metadata does not replace the evidence identity defined here.

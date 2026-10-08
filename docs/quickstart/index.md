@@ -1,10 +1,12 @@
 # Quickstart
 
-Create a signed record, verify it, then change one field and watch verification fail. This local example uses synthetic claims and software signing. It does not execute an AI agent, enforce a policy, contact a registry, or produce hardware attestation.
+This page walks you through making your first TRACE record on your own computer in about ten minutes. A TRACE record (also called a Trust Record) is a signed receipt that says what an AI agent ran and under which rules; signing it means anyone with the matching public key can tell who made it and whether it was changed afterwards. It is for developers who want to see that work before reading the specification.
+
+You will create a signed record, check it, then change one field and watch the check fail. The example uses made-up values and a key held in software. It does not run an AI agent, enforce a policy, contact a registry, or produce hardware attestation (a signed report from the processor itself, covered under [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)).
 
 ## Install
 
-Use Python 3.11+, Git, and Bash on Linux, macOS, or Windows with WSL. Install from the source checkout for this example: the published 0.9.0 package still bundles an older schema that requires a transparency entry, even for an unanchored record.
+Use Python 3.11+, Git, and Bash on Linux, macOS, or Windows with WSL. The steps below install the library from a copy of this repository, so the code matches this page. An older published release, agentrust-trace 0.9.0, bundled a schema that demanded a transparency entry even for a record that was never logged; 0.11.0 on PyPI no longer does (checked 2026-10-07 by running this page's scripts against it).
 
 ```
 git clone https://github.com/agentrust-io/trace-spec.git trace-quickstart
@@ -16,7 +18,7 @@ python -m pip install -e .
 
 ## Generate a signing key
 
-The script below generates one key and uses it to sign the record. It saves only the public key, so you can verify the record in another process. Keep that public key separate from untrusted records. In a real deployment, the verifier must obtain an approved issuer key through its own trust channel.
+Signing uses a key pair: a private key that only the signer holds, and a public key that anyone can use to check the signature. The script below makes one pair and signs the record with the private key. It saves only the public key, so you can check the record later in a separate run. Keep that public key apart from the records you receive, because a record cannot vouch for its own key. In a real deployment, the verifier must obtain an approved issuer key through its own trust channel.
 
 ## Emit a Trust Record (standalone)
 
@@ -83,11 +85,11 @@ PASS: changed record rejected
 Saved session.trace.json and issuer-public.pem; no hardware attestation
 ```
 
-The policy and build hashes are placeholders. A valid signature binds these declarations; it does not prove that a model ran or a policy was enforced.
+The policy and build hashes are placeholders. (A hash is a short fingerprint of a file: change one byte and the fingerprint changes.) A valid signature locks these statements in place; it does not prove that a model ran or a policy was enforced.
 
 ## Emit with a persistent key
 
-The example's private key exists only in memory. Its saved public key can still verify earlier records after the process exits. To sign future records as the same issuer, retain the private key through an approved key-management mechanism. See [signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md) for signing APIs and [verification](https://trace.agentrust-io.com/docs/verification/index.md) for trust and revocation requirements.
+The example's private key exists only while the script runs. Its saved public key can still verify earlier records after the process exits. To sign future records as the same issuer, retain the private key through an approved key-management mechanism. See [signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md) for signing APIs and [verification](https://trace.agentrust-io.com/docs/verification/index.md) for trust and revocation requirements.
 
 ## Verify
 
@@ -106,7 +108,7 @@ verify_record(record, public_key_or_jwk=trusted_key)
 print("PASS: saved record verified against the retained public key")
 ```
 
-Expected: `PASS: saved record verified against the retained public key`. Verification uses a default maximum age of 24 hours, so rerun the first script if the demo record has expired. A wrong key, changed record, or stale timestamp must fail; investigate the error instead of enabling embedded-key trust to make it pass.
+Expected: `PASS: saved record verified against the retained public key`. By default a record older than 24 hours is refused, so rerun the first script if the demo record has expired. A wrong key, changed record, or stale timestamp must fail; investigate the error instead of enabling embedded-key trust to make it pass.
 
 ## What you now have
 
@@ -118,11 +120,11 @@ Expected: `PASS: saved record verified against the retained public key`. Verific
 | `runtime.platform: software-only` | This example provides no hardware provenance         |
 | `appraisal.status: none`          | No external appraisal occurred                       |
 
-The verification call above does not check hardware attestation or registry inclusion. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
+The verification call above does not check hardware attestation or whether the record was published to a registry. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
 
-## Add hardware attestation (Level 2)
+## Add hardware evidence and transparency (Levels 1 and 2)
 
-Follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md), [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md), and [platform documentation](https://trace.agentrust-io.com/docs/platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
+To show that a record came from protected hardware, follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md), [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md), and [platform documentation](https://trace.agentrust-io.com/docs/platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
 
 ## Troubleshooting
 

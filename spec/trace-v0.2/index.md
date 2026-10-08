@@ -11,6 +11,8 @@
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
+**In plain terms.** This is the rulebook for TRACE: it defines the Trust Record (a signed receipt describing one AI agent run), how records are anchored in a public log, and the exact checks a verifier runs. You need it if you are writing software that produces or checks records; to try TRACE first, start with the [quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md). It is a draft (v0.2, Developer Preview), so details can still change before v1.0.
+
 ## Authority and conformance claims
 
 This specification defines the meaning of TRACE claims and the requirements for conformance. Normative companion specifications apply within the scope this specification assigns them. The following rules govern the relationship between the specification and its supporting artifacts:

@@ -1,6 +1,10 @@
-# TR-ANC — Transparency
+# TR-ANC: Transparency
 
-Tests transparency anchoring via SCITT.
+Checks that the record was entered in a public, append-only log, so it cannot be quietly replaced later. TR-ANC-001 checks the link to the log entry. TR-ANC-002 uses a receipt you supply to prove, offline, that this exact record is in the log the receipt describes. Both apply from Level 2.
+
+Technical detail: what the receipt proof covers
+
+The log follows SCITT, the IETF format for transparency services. The receipt carries an inclusion proof (a short list of hashes linking the record to a Merkle root, the single hash that commits to the whole log). The proof is checked against the root in that receipt; whether a public log really published that root is outside this module, as [Known limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/index.md) explains.
 
 ## Required at Level 2+
 

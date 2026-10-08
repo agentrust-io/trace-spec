@@ -7,6 +7,8 @@
 | Applies to | The `transparency` claim (TRACE v0.2 §3.1) and Level 2 conformance                           |
 | License    | CC BY 4.0                                                                                    |
 
+**In plain terms.** Anchoring means publishing a fingerprint of a record in an append-only log, so anyone can later prove the record existed and was not quietly swapped. This document is for people building or checking that log; it is a normative companion to TRACE v0.2 and the basis for Level 2 conformance.
+
 This document specifies how TRACE Trust Records are anchored into an append-only registry, and how a third party verifies, **without trusting the registry operator**, that a given record was included in an anchor.
 
 It is published here rather than only in the registry implementation for a reason that matters more than tidiness: an inclusion proof nobody outside can check is not transparency. A conforming verifier can be written from this document alone. The reference tooling named in §7 is one implementation, not the definition.

@@ -1,5 +1,7 @@
 # Quick Start
 
+This page installs the suite, makes a sample TRACE record, and checks it. It is for anyone who wants to see the suite work before reading the details. You need Python 3.11 or later and `pip`.
+
 ## Install
 
 ```
@@ -10,7 +12,7 @@ The distribution is `agentrust-trace-tests`; `trace-tests` is the command it ins
 
 ## Create a sample fixture
 
-The test suite runs against a signed TRACE Trust Record. Generate a Level 0 development record with the `agentrust-trace` library:
+The suite checks a signed TRACE record (also called a Trust Record): a small JSON file describing one agent run, signed so that any later change is detectable. Make a Level 0 record, the level meant for development, with the `agentrust-trace` library:
 
 ```
 pip install agentrust-trace
@@ -66,7 +68,7 @@ print("Wrote sample-record.json")
 python generate_sample.py
 ```
 
-`software-only` platform and all-zero measurement are the correct values for Level 0 development records. `generate_key()` produces a fresh Ed25519 key on each run; for CI use, load a persisted key via the `TRACE_PRIVATE_KEY_PEM` environment variable instead.
+`software-only` means the record makes no claim about secure hardware, and the all-zero measurement is the matching placeholder. Both are the correct values for Level 0 development records. `generate_key()` produces a fresh Ed25519 key on each run; for CI use, load a persisted key via the `TRACE_PRIVATE_KEY_PEM` environment variable instead.
 
 ## Run against a Trust Record
 
@@ -74,7 +76,7 @@ python generate_sample.py
 trace-tests verify --record sample-record.json --level 0
 ```
 
-Level 0 is software-only (development). Level 1 requires TEE attestation. Level 2 adds transparency anchoring.
+Level 0 is for development records with no secure hardware. Level 1 requires the record to name a TEE (a trusted execution environment: a processor mode that keeps a program's memory sealed off and can report what code is running) and its measurement. Level 2 adds proof that the record was entered in a public transparency log.
 
 ## Run all levels
 
@@ -84,9 +86,11 @@ trace-tests verify --record sample-record.json --level 1 --expected-nonce "$VERI
 trace-tests verify --record sample-record.json --level 2 --expected-nonce "$VERIFIER_CHALLENGE"
 ```
 
-The sample fixture passes Level 0. Levels 1 and 2 will fail on runtime attestation and transparency fields — that is expected. See [Trust Levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md) for what each level requires.
+The sample fixture passes Level 0. Levels 1 and 2 will fail on the runtime attestation and transparency fields, which is expected. See [Trust Levels](https://trace.agentrust-io.com/conformance/docs/levels/index.md) for what each level requires.
 
 ## Resolving the policy bundle
+
+A policy bundle is the file of rules the agent ran under. The record carries the bundle's digest (a fingerprint of its bytes), and the suite can fetch the bundle from a local folder to confirm the fingerprint matches.
 
 If your record carries `policy.policy_uri`, TR-POL-003 can fetch the bundle and check that it has the digest `policy.bundle_hash` declares. Point `--policy-dir` at a directory holding a `resolutions.json` that maps each URI to a relative path inside it:
 

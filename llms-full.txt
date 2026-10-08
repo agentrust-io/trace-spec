@@ -10,19 +10,19 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 
 # Evidence a third party can check, years later
 
-TRACE specifies the record, anchoring protocol and verification rules that tie an agent run to its workload, policy, data class and tool transcript, so anyone holding the record can verify it offline.
+TRACE is a free, open format for a signed receipt of what an AI agent did: which program ran, under which rules, on what kind of data, and which tools it called. Anyone holding the receipt can check it on their own computer, with no access to the system that produced it. This site is for engineers who produce or check these receipts, and for anyone deciding how much a receipt can be trusted ([the terms, in plain English](https://agentrust-io.com/#plain-terms)).
 
 [Create and verify your first record](https://trace.agentrust-io.com/docs/quickstart/index.md) [What this proves, and what it does not](https://trace.agentrust-io.com/LIMITATIONS/index.md)
 
 TL;DR
 
-Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 reference library sign and verify records in software with no cloud account, and a v0.2 signature proves who produced a record and that it has not changed while every hardware field in it is still the producer's claim. The proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) grades inlined quotes as platform-attested or attested, and the attested grade is specified but not yet demonstrated.
+With spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 Python library you can sign and check records on a laptop, with no cloud account. A v0.2 signature proves who made a record and that nobody changed it afterwards; what the record says about the hardware is still only the producer's word until the proposed [runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md) adds checkable hardware reports, and its top "attested" grade is specified but not yet demonstrated.
 
 - **Run it**
 
   ______________________________________________________________________
 
-  Sign a record, verify it with a separately retained key, and see what a failed check looks like.
+  Sign a record, check it with a key kept somewhere else, and see what a failed check looks like.
 
   [Quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md)
 
@@ -30,7 +30,7 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  A signed field is a producer's claim. The verification protocol sets out what a verifier still has to check.
+  A signature tells you who said something, not that it is true. The verification page lists what a checker still has to confirm on its own.
 
   [Verification protocol](https://trace.agentrust-io.com/docs/verification/index.md)
 
@@ -38,7 +38,7 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  TRACE carries evidence to verifiers that already exist; the runtime evidence profile uses agent-manifest's TDX verifier. Check a real TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+  Some processors can produce a signed report of what is running on them (attestation). TRACE carries those reports to existing checkers; the runtime evidence profile uses agent-manifest's checker for Intel TDX reports. Check a real TDX report at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
 
   [Runtime evidence profile](https://trace.agentrust-io.com/docs/rfcs/runtime-evidence-profile/index.md)
 
@@ -46,11 +46,13 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 
   ______________________________________________________________________
 
-  TRACE is the evidence step. Anchor records in the [TRACE Registry](https://agentrust-io.com/registry/) and score them with the [conformance suite](https://tests.agentrust-io.com).
+  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://tests.agentrust-io.com).
 
   [See the chain](https://agentrust-io.com/#chain)
 
 ## What the record contains
+
+Each row is a question a reader might ask about an agent run, the part of the record that answers it, and what a checker needs beyond the signature before believing the answer.
 
 | Question                      | Fields to inspect  | What the verifier still needs                                       |
 | ----------------------------- | ------------------ | ------------------------------------------------------------------- |
@@ -61,21 +63,21 @@ Spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0
 | What transcript is committed? | `tool_transcript`  | Transcript evidence when individual calls matter                    |
 | Was evidence anchored?        | `transparency`     | A verified receipt and the required log trust policy                |
 
-A signed field is a producer's claim. Signature verification alone does not establish that the described execution occurred or that a policy was enforced. See the [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) for the full evaluation path.
+Every field is the producer's claim. A valid signature alone does not show that the run happened as described or that the rules were actually applied. The [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) walks through the full set of checks.
 
 ## Where to go next
 
-- [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the normative specification, with the claim set, the anchoring protocol, and the verification rules.
-- [Conformance suite](https://tests.agentrust-io.com): score an implementation by conformance level before claiming compliance.
-- [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): emit and consume Trust Records from AGT, cMCP, and sandboxed agent runtimes.
+- [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the specification itself, with the fields, the publishing protocol and the checking rules.
+- [Conformance suite](https://tests.agentrust-io.com): test an implementation, level by level, before saying it complies.
+- [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): produce and read Trust Records from AGT, cMCP and sandboxed agent runtimes.
 
 ## What it is built on
 
-TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
+TRACE reuses published internet standards instead of inventing new ones: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
 
 ## Status and governance
 
-The specification is a **Developer Preview**. v0.2 is current and published with a conformance test suite. Read [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for the scope boundaries before relying on it in production.
+The specification is a **Developer Preview**: usable now, and still expected to change. v0.2 is current and ships with a conformance test suite. Read [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for what it does not cover before relying on it in production.
 
 TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](https://trace.agentrust-io.com/GOVERNANCE/index.md) for how decisions are made and [Contributing](https://trace.agentrust-io.com/CONTRIBUTING/index.md) for how to propose a change.
 
@@ -83,11 +85,13 @@ TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted
 
 # Quickstart
 
-Create a signed record, verify it, then change one field and watch verification fail. This local example uses synthetic claims and software signing. It does not execute an AI agent, enforce a policy, contact a registry, or produce hardware attestation.
+This page walks you through making your first TRACE record on your own computer in about ten minutes. A TRACE record (also called a Trust Record) is a signed receipt that says what an AI agent ran and under which rules; signing it means anyone with the matching public key can tell who made it and whether it was changed afterwards. It is for developers who want to see that work before reading the specification.
+
+You will create a signed record, check it, then change one field and watch the check fail. The example uses made-up values and a key held in software. It does not run an AI agent, enforce a policy, contact a registry, or produce hardware attestation (a signed report from the processor itself, covered under [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md)).
 
 ## Install
 
-Use Python 3.11+, Git, and Bash on Linux, macOS, or Windows with WSL. Install from the source checkout for this example: the published 0.9.0 package still bundles an older schema that requires a transparency entry, even for an unanchored record.
+Use Python 3.11+, Git, and Bash on Linux, macOS, or Windows with WSL. The steps below install the library from a copy of this repository, so the code matches this page. An older published release, agentrust-trace 0.9.0, bundled a schema that demanded a transparency entry even for a record that was never logged; 0.11.0 on PyPI no longer does (checked 2026-10-07 by running this page's scripts against it).
 
 ```
 git clone https://github.com/agentrust-io/trace-spec.git trace-quickstart
@@ -99,7 +103,7 @@ python -m pip install -e .
 
 ## Generate a signing key
 
-The script below generates one key and uses it to sign the record. It saves only the public key, so you can verify the record in another process. Keep that public key separate from untrusted records. In a real deployment, the verifier must obtain an approved issuer key through its own trust channel.
+Signing uses a key pair: a private key that only the signer holds, and a public key that anyone can use to check the signature. The script below makes one pair and signs the record with the private key. It saves only the public key, so you can check the record later in a separate run. Keep that public key apart from the records you receive, because a record cannot vouch for its own key. In a real deployment, the verifier must obtain an approved issuer key through its own trust channel.
 
 ## Emit a Trust Record (standalone)
 
@@ -166,11 +170,11 @@ PASS: changed record rejected
 Saved session.trace.json and issuer-public.pem; no hardware attestation
 ```
 
-The policy and build hashes are placeholders. A valid signature binds these declarations; it does not prove that a model ran or a policy was enforced.
+The policy and build hashes are placeholders. (A hash is a short fingerprint of a file: change one byte and the fingerprint changes.) A valid signature locks these statements in place; it does not prove that a model ran or a policy was enforced.
 
 ## Emit with a persistent key
 
-The example's private key exists only in memory. Its saved public key can still verify earlier records after the process exits. To sign future records as the same issuer, retain the private key through an approved key-management mechanism. See [signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md) for signing APIs and [verification](https://trace.agentrust-io.com/docs/verification/index.md) for trust and revocation requirements.
+The example's private key exists only while the script runs. Its saved public key can still verify earlier records after the process exits. To sign future records as the same issuer, retain the private key through an approved key-management mechanism. See [signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md) for signing APIs and [verification](https://trace.agentrust-io.com/docs/verification/index.md) for trust and revocation requirements.
 
 ## Verify
 
@@ -189,7 +193,7 @@ verify_record(record, public_key_or_jwk=trusted_key)
 print("PASS: saved record verified against the retained public key")
 ```
 
-Expected: `PASS: saved record verified against the retained public key`. Verification uses a default maximum age of 24 hours, so rerun the first script if the demo record has expired. A wrong key, changed record, or stale timestamp must fail; investigate the error instead of enabling embedded-key trust to make it pass.
+Expected: `PASS: saved record verified against the retained public key`. By default a record older than 24 hours is refused, so rerun the first script if the demo record has expired. A wrong key, changed record, or stale timestamp must fail; investigate the error instead of enabling embedded-key trust to make it pass.
 
 ## What you now have
 
@@ -201,11 +205,11 @@ Expected: `PASS: saved record verified against the retained public key`. Verific
 | `runtime.platform: software-only` | This example provides no hardware provenance         |
 | `appraisal.status: none`          | No external appraisal occurred                       |
 
-The verification call above does not check hardware attestation or registry inclusion. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
+The verification call above does not check hardware attestation or whether the record was published to a registry. Production verification also needs an issuer trust policy and any required revocation, nonce, measurement, and transparency checks.
 
-## Add hardware attestation (Level 2)
+## Add hardware evidence and transparency (Levels 1 and 2)
 
-Follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md), [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md), and [platform documentation](https://trace.agentrust-io.com/docs/platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
+To show that a record came from protected hardware, follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md), [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md), and [platform documentation](https://trace.agentrust-io.com/docs/platforms/index.md). Hardware evidence and transparency receipts require their own generation and verification steps. Installing a runtime or declaring a hardware platform does not automatically establish a conformance level.
 
 ## Troubleshooting
 
@@ -223,7 +227,13 @@ Follow the [cMCP integration guide](https://trace.agentrust-io.com/docs/integrat
 
 # Trust Levels
 
-TRACE's conformance suite groups checks into three levels. A level describes required checks; it is not a blanket guarantee that an agent behaved correctly. The recipient supplies trust anchors, evidence, and an acceptance policy.
+This page explains the three levels of evidence a TRACE record can carry, from a plain software signature up to hardware proof and a public log entry. Read it if you produce records and need to know what each level asks of you, or if you receive records and need to decide how much to trust them.
+
+TRACE's conformance suite (the public set of tests an implementation runs to show it follows the specification) groups its checks into three levels. A level describes which checks are required; it is not a blanket guarantee that an agent behaved correctly. The recipient still supplies its own trust anchors (the keys and roots it already trusts), the evidence, and the rules for what it will accept.
+
+- **Level 0, software:** the record is signed with a key held in ordinary software.
+- **Level 1, hardware evidence:** the record also carries a signed report from the processor showing where it ran.
+- **Level 2, transparency:** the record is also published to an append-only log that others can audit.
 
 ## Summary
 
@@ -237,19 +247,25 @@ See the [suite's level definitions](https://tests.agentrust-io.com/docs/levels/)
 
 ## Level 0: software-only
 
-A software-held key signs the record. `software-only` identifies the absence of hardware assurance. A recipient checks the signature against a key obtained through its own trust channel; the key embedded in an incoming record cannot establish its own authority.
+A key held in ordinary software signs the record. The platform value `software-only` says plainly that no hardware backs the record. A recipient checks the signature against a key obtained through its own trust channel; the key embedded in an incoming record cannot establish its own authority.
 
-A valid signature authenticates the key's statement. It does not prove that a policy ran or an action completed. A privileged party holding that key can sign other statements.
+A valid signature shows that the holder of that key made the statement. It does not prove that a policy ran or an action completed, and anyone who controls that key can sign other statements too.
 
-`runtime.measurement` is required on every record, including `software-only` ones. Under `software-only`, the field is not a hardware measurement: it is a software commitment defined by the producing profile (for example, a hash over an image digest and policy bundle, or over a chain-tip), and that profile must document its preimage so a verifier can recompute it. All-zero (`sha256:000...000`) is reserved for a producer that has no commitment to offer at all, such as a bare development record with nothing measured; it is not the default for `software-only` in general. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path. Use the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md) for a complete runnable record rather than copying abbreviated field examples.
+Every record, even a software-only one, carries a `runtime.measurement` value, and `appraisal.status` is `"none"` when no hardware checker was involved. Use the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md) for a complete runnable record rather than copying abbreviated field examples.
+
+Technical detail: `runtime.measurement` on a software-only record
+
+`runtime.measurement` is required on every record, including `software-only` ones. Under `software-only`, the field is not a hardware measurement: it is a software commitment defined by the producing profile (for example, a hash over an image digest and policy bundle, or over a chain-tip), and that profile must document its preimage so a verifier can recompute it. All-zero (`sha256:000...000`) is reserved for a producer that has no commitment to offer at all, such as a bare development record with nothing measured; it is not the default for `software-only` in general. The `appraisal.status` of `"none"` is correct when no hardware verifier is in the path.
 
 ## Level 1: hardware evidence
+
+At Level 1 the record also points to evidence from the hardware it ran on. Confidential-computing processors from AMD, Intel and NVIDIA can produce a signed report (called a quote or attestation) describing the protected environment, and a verifier checks that report against the manufacturer's keys. It also records build provenance: where the software came from and how it was built.
 
 | Build-provenance field        | Schema range                                                        |
 | ----------------------------- | ------------------------------------------------------------------- |
 | `build_provenance.slsa_level` | SLSA Build Level (0-3); verify the supporting provenance separately |
 
-A hardware-backed deployment needs authenticated evidence binding the record-signing key to the expected environment. Merely changing `runtime.platform`, copying a nonzero digest, or setting `appraisal.status="affirming"` does not establish that evidence.
+A hardware-backed deployment needs authenticated evidence tying the record-signing key to the expected environment. Merely changing `runtime.platform`, copying a nonzero digest, or setting `appraisal.status="affirming"` does not establish that evidence.
 
 Use the standalone platform identifiers from the [schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json), not a runtime's configuration aliases. Provider guarantees differ: a TPM quote is not equivalent to protecting application memory in a confidential VM. See [attestation platforms](https://trace.agentrust-io.com/docs/platforms/index.md).
 
@@ -257,19 +273,21 @@ Use the standalone platform identifiers from the [schema](https://github.com/age
 
 ## Level 2: transparency anchoring
 
-Level 2 adds transparency and transcript requirements to the lower levels. A `transparency` URI is a reference, not an inclusion proof. The verifier needs proof bound to the record and a log or checkpoint it independently trusts. Inclusion does not establish that every event was logged or that each claim is true.
+Level 2 adds two things on top of the lower levels: the record is published to a transparency log (an append-only public list that nobody can quietly edit), and the record commits to the transcript of tool calls the agent made. A `transparency` URI is a reference, not an inclusion proof. The verifier needs proof bound to the record and a log or checkpoint it independently trusts. Inclusion does not establish that every event was logged or that each claim is true.
 
-Changing any signed field, including `transparency`, changes the signature preimage. Re-sign after adding or changing that field. The [registry anchor format](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md) defines which bytes the anchor commits to; the receipt must match that format and the signed record being checked.
+Changing any signed field, including `transparency`, changes the bytes the signature covers. Re-sign after adding or changing that field. The [registry anchor format](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md) defines which bytes the anchor commits to; the receipt must match that format and the signed record being checked.
 
 For the worked sequence, see [anchoring to the registry](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md). A software-only record does not become hardware-backed simply because it is logged.
 
 ## Choosing an acceptance policy
 
-Decide which issuer, hardware evidence, artifact commitments, freshness, revocation status, and log you require for the operation. A successful signature check is only one input to that decision. These levels do not certify regulatory compliance or replace application authorization.
+An acceptance policy is your own rule for when you will rely on a record. Decide which issuer, hardware evidence, artifact commitments, freshness, revocation status, and log you require for the operation. A successful signature check is only one input to that decision. These levels do not certify regulatory compliance or replace application authorization.
 
 Read [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) for the checks and [limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for the remaining boundaries.
 
 # Verification Protocol
+
+This page explains how to check a TRACE record you have received: that it really came from the issuer you trust, that nobody changed it, and what else you must check before relying on what it says. It is for engineers who build or run a verifier (the program that does these checks). You get the five basic steps first, then the extra checks for revoked keys, hardware evidence, build history, public logs and per-action receipts.
 
 A TRACE verifier authenticates a signed record and evaluates the evidence required by the recipient's policy. Offline verification needs the relevant artifacts and trust inputs already available. It cannot infer missing hardware, revocation, or transparency evidence from the record's assertions.
 
@@ -279,19 +297,21 @@ This is an implementation guide to [section 3.3 of the specification](https://tr
 
 ### Step 1: Parse the envelope
 
-Validate the complete standalone record against the canonical schema and supported EAT profile. A cMCP `RuntimeClaim` is a different envelope and requires its runtime-specific verifier.
+Check that the record has the expected shape before trusting anything in it. Validate the complete standalone record against the canonical schema and supported EAT profile. A cMCP `RuntimeClaim` is a different envelope and requires its runtime-specific verifier.
 
 ### Step 2: Resolve the public key
 
-Obtain an approved issuer key through the recipient's own trust configuration. The incoming `cnf.jwk` cannot establish its own authority. The trusted key and signed confirmation key must match under the signature profile.
+Decide which public key should have signed this record, using your own list of trusted issuers. Obtain an approved issuer key through the recipient's own trust configuration. The incoming `cnf.jwk` cannot establish its own authority. The trusted key and signed confirmation key must match under the signature profile.
 
 ### Step 3: Verify the signature
 
-Use `agentrust_trace.verify_record(record, public_key_or_jwk=trusted_key)`. It checks the standalone schema, supported profile, key binding, and Ed25519 signature, with configured freshness, nonce, and revocation inputs. It rejects missing trust input by default. The signature covers every field except `signature`, including `cnf` and any `transparency` value, using RFC 8785 canonicalization.
+Confirm the signature matches that key, which shows the record was not changed after signing. Use `agentrust_trace.verify_record(record, public_key_or_jwk=trusted_key)`. It checks the standalone schema, supported profile, key binding, and Ed25519 signature, with configured freshness, nonce, and revocation inputs. It rejects missing trust input by default. The signature covers every field except `signature`, including `cnf` and any `transparency` value, using RFC 8785 canonicalization.
 
 A signature proves a statement came from the trusted key. It does not establish the truth of every claim in that statement.
 
 ### Step 4: Check the EAT profile
+
+The `eat_profile` value names which version of the TRACE format the record follows (EAT, the Entity Attestation Token of RFC 9711, is the IETF format TRACE builds on). Accept only versions your verifier actually understands.
 
 [Section 3.3](https://trace.agentrust-io.com/spec/trace-v0.2/#33-verification) requires a nonempty `accepted_profiles` set containing only profiles whose schemas and verification semantics the verifier implements. Reject an unsupported member anywhere in that declaration, even if the record names a supported profile. Also reject a record whose `eat_profile` is outside the declared set.
 
@@ -301,7 +321,7 @@ The current SDK accepts only `tag:agentrust-io.com,2026:trace-v0.2` and rejects 
 
 ### Step 5: Appraise the claims
 
-Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
+To appraise is to check each claim against outside evidence, instead of taking the record's word for it. Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
 
 | Claimed status    | Interpretation                                                                               |
 | ----------------- | -------------------------------------------------------------------------------------------- |
@@ -314,11 +334,17 @@ The recipient decides whether the checks performed satisfy the operation's requi
 
 ### Resolving cited objects
 
+Some fields in a record are links to documents kept elsewhere, such as the policy, the expected hardware values and the model's bill of materials. `verify_record` can try to fetch each one with a function you supply and report whether it got the bytes, but it never treats a fetched document as proof that the document was in force.
+
+Technical detail: the `citation_resolver` contract
+
 A record cites objects it does not carry: `appraisal.policy_ref`, `runtime.rim_uri` and `model.aibom_uri` are URIs, and the schema checks only that each parses as one. Whether the object behind a URI can still be obtained is a fact about the world at verification time, so `verify_record` records it rather than assuming it. Pass `citation_resolver`, a function from URI to bytes that you supply, and the result's `citations` field reports one row per surface: `resolved`, with the SHA-256 over exactly the bytes the resolver returned and their count; `unresolvable`, with the cause and the exception's class name when the resolver raised or the returned value's type name when it returned something other than bytes; or `not_attempted`, when no resolver was supplied, the record does not carry the field, or the surface is deferred. The resolver is called only after the signature verifies and after every check that can raise, so a record that fails verification drives no resolution. `transparency` is deferred: its resolution is coordinated in [agentrust-io/trace-tests#92](https://github.com/agentrust-io/trace-tests/issues/92) and stays with the open question in section 7 of the specification.
 
 Three things this does not do. It does not read `references[]`: [§3.1.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) rule 3 says a verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence; the block is a pointer this check does not follow. It does not take the resolver from the record: a record that names its own checker can name one that agrees with it, so the resolver is yours or there is none. And it does not appraise: `resolved` says bytes were produced and hashed, not that the object was in force or that it binds the record, and no row changes the revocation outcome, the thumbprint, or whether verification raises. Which `appraisal.status` an unresolvable citation carries is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open, alongside the revocation outcomes in the section below. [`examples/citation-resolution/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/citation-resolution/) carries the conformance vectors, with the cited bytes in hand so every vector is offline.
 
 ## Checking revocation status
+
+A key is revoked when its owner declares it can no longer be trusted, for example because it was stolen. A signature check cannot see that by itself, so a verifier also needs a revocation list, a live lookup, or a signed bundle of revocation statements it downloaded earlier.
 
 Signature verification alone cannot discover a later key revocation. Offline appraisal requires cached revocation evidence as well as the record and trusted key. Report which evidence was checked and whether it remains current.
 
@@ -358,6 +384,10 @@ Both failure modes raise `ValueError`, including a store that cannot answer:
 
 The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted", and the result says so rather than leaving it implied.
 
+`verify_record()` can also read a signed revocation bundle, a file of revocation statements you download ahead of time so you can check revocation while offline.
+
+Technical detail: revocation bundles
+
 `verify_record()` also consumes the bundle format §3.2.3 publishes. Pass `revocation_bundle`, a `TraceRevocationBundle/1.0` object, and `trusted_bundle_keys`, the JWKs whose signatures the caller accepts on a bundle:
 
 ```
@@ -377,11 +407,15 @@ What neither path does yet is entry-ID-scoped revocation. Both answer "is this k
 
 ## Verifying hardware-rooted records
 
+A hardware-rooted record carries a signed report from the processor it ran on. Checking it means confirming the report is genuine, recent, describes the software you expected, and is tied to the key that signed the record.
+
 Hardware appraisal supports Level 1; Level 2 adds transparency anchoring. Verify the report or quote signature and accepted trust chain, its freshness and platform policy, the independently approved measurement, and its binding to the record-signing key. The producing profile defines that binding.
 
 `verify_record` does not perform these hardware checks. Comparing a record's digest to an unauthenticated reference or reading `affirming` is not a substitute. See [attestation platforms](https://trace.agentrust-io.com/docs/platforms/index.md) and the producing runtime's verifier.
 
 ## Verifying build provenance depth
+
+Build provenance is the record of how a piece of software was built and from what inputs. Depth says how far back the check went: `surface` checks only the finished file, `builder` also checks the build service's signed statement, and `transitive` also checks every input that went into the build. A verifier writes down the depth it really reached; when evidence is missing it may stop at a lower depth, but when evidence shows the record is wrong, the check fails.
 
 The normative rules are defined by [§3.3.1 of the specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md). `build_provenance.provenance_depth` declares how far down the supply chain the issuer claims to have walked. A verifier records what it actually checked in `appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the record.
 
@@ -418,6 +452,10 @@ A verifier whose configured floor is not met by `provenance_depth_verified` sets
 
 The floors above name the EU AI Act. This section records what that Regulation actually requires, together with the Cyber Resilience Act, which is the instrument most often reached for in its place. Verification at any depth is not evidence of compliance with either of them, and neither is a floor that is met.
 
+In short, neither the EU AI Act nor the Cyber Resilience Act requires a verification depth, and meeting a floor here is not evidence of compliance with either.
+
+Technical detail: what the two Regulations say, article by article
+
 **Regulation (EU) 2024/1689.** Annex IV is the technical documentation schedule whose elements Article 11(1) requires the technical documentation to contain at a minimum. It is not a classification annex, since high-risk classification runs through Article 6 with Annexes I and III, and neither Article 11 nor Annex IV imposes a verification obligation of the kind `provenance_depth_verified` records. Article 12 does not impose one either, since it requires that a high-risk system technically allow the automatic recording of events over its lifetime, which is a capability requirement about logging rather than a statement about provenance or build inputs. Two adjacent provisions are sometimes read as supplying one, and neither does. Article 25(4), as amended by Regulation (EU) 2026/1744, requires the provider of a high-risk AI system and a third party supplying an AI system, AI model, tools, services, components or processes used or integrated in it to specify by written agreement the information, capabilities, technical access and other assistance the provider needs, and it does not apply to third parties making tools, services, processes or components other than general-purpose AI models publicly available under a free and open-source licence. Article 15(5) requires technical solutions addressing, where appropriate, data poisoning, model poisoning, adversarial examples, confidentiality attacks and model flaws, which is stated as an outcome rather than as a depth of supply-chain verification. Articles 11, 12, 15 and 25 sit in Sections 2 and 3 of Chapter III, whose application Regulation (EU) 2026/1744 moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III, and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I. Article 111(2), as replaced by the same Regulation, applies the AI Act to operators of high-risk systems, other than the systems referred to in Article 111(1), that have been placed on the market or put into service before that date of application, only if, as from that date, those systems are subject to significant changes in their designs, and in any case requires providers and deployers of high-risk systems intended to be used by public authorities to take the necessary steps to comply by 2 August 2030. The reading that one unit lawfully placed on the market or put into service carries the other units of the same type and model is recital 39 of Regulation (EU) 2026/1744 rather than operative text.
 
 **Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify and document vulnerabilities and components, including by drawing up a software bill of materials in a commonly used and machine-readable format covering at the very least the top-level dependencies of the product. That is a component inventory obligation, so it does not by itself establish `builder` or `transitive` verification, both of which are claims about provenance rather than about composition. Its Annex I obligations apply from 11 December 2027, with the reporting obligations in Article 14 applying from 11 September 2026.
@@ -440,11 +478,15 @@ The reference SDK exposes a Python API; it does not install an `agentrust-trace`
 
 ## SCITT-anchored records
 
+SCITT is an IETF design for append-only transparency logs. A record anchored there has been added to a public list that cannot be quietly edited, and the log returns a receipt proving it.
+
 A `transparency` URI names a claimed log entry. It does not establish inclusion by itself. Retrieve the receipt, verify its binding to the record, and verify the inclusion proof against an independently trusted log or checkpoint. See [anchoring to the registry](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md) for the reference format and sequence.
 
 An authenticated inclusion proof establishes inclusion under that checkpoint. It does not establish the truth of the record's claims, complete logging, or future log availability.
 
 ## Action receipts and embodied workflows
+
+An action receipt is a small signed note about one action, such as a robot controller accepting or refusing a command. "Embodied" means an agent that acts in the physical world.
 
 Some deployments attach per-action receipts below the session layer. For example, an embodied-agent controller can sign a receipt that says a specific call was accepted, rejected, aborted, or handed off to another authority. These receipts extend the audit chain; they do not replace Trust Record verification.
 
@@ -495,67 +537,67 @@ See [Limitations](https://trace.agentrust-io.com/LIMITATIONS/index.md) for the f
 
 # Glossary
 
-Terms used in the TRACE specification and documentation.
+This page defines the terms used across the TRACE specification and these docs. Each entry starts with a plain explanation, followed by the exact technical meaning. For the basic ideas behind all the AgenTrust projects (AI agent, tool call, attestation, signed receipt, verifying offline), see [the terms in plain English](https://agentrust-io.com/#plain-terms) on the AgenTrust site.
 
 ______________________________________________________________________
 
-**Appraisal** The process of evaluating a TEE evidence bundle against a reference integrity manifest (RIM) to produce an `appraisal.status` verdict. An `"affirming"` verdict means the measured environment matches the expected state. Defined in IETF RFC 9334 (RATS).
+**Appraisal** Checking hardware evidence against the values you expected, and writing down the verdict. The process of evaluating a TEE (trusted execution environment: a protected area of a processor whose memory the host cannot read) evidence bundle against a reference integrity manifest (RIM) to produce an `appraisal.status` verdict. An `"affirming"` verdict means the measured environment matches the expected state. Defined in IETF RFC 9334 (RATS).
 
 ______________________________________________________________________
 
-**cnf / JWK** The TRACE `cnf` field (from RFC 7800) carries a JSON Web Key (`jwk` sub-field) that contains the Ed25519 public key used to sign the record. It is included in the signed payload so the verifier does not need to retrieve the key out-of-band.
+**cnf / JWK** The public key that belongs to the record's signer, written inside the record. The TRACE `cnf` field (from RFC 7800) carries a JSON Web Key (`jwk` sub-field) that contains the Ed25519 public key used to sign the record. It is included in the signed payload so the verifier does not need to retrieve the key out-of-band. The verifier still has to compare it with a key it already trusts: a record cannot vouch for its own key (see [verification](https://trace.agentrust-io.com/docs/verification/index.md)).
 
 ______________________________________________________________________
 
-**Conformance** A trust record is conformant if it passes all test cases required at its declared trust level. Conformance is verified by the `trace-tests` test suite. Partial conformance (record passes some but not all required tests) is not valid.
+**Conformance** Passing the official tests. A trust record is conformant if it passes all test cases required at its declared trust level. Conformance is verified by the `trace-tests` test suite. Partial conformance (record passes some but not all required tests) is not valid.
 
 ______________________________________________________________________
 
-**EAT: Entity Attestation Token** A JWT-based format for conveying evidence about a hardware or software entity. TRACE records use the EAT `eat_profile` claim to identify the specific TRACE profile version. Defined in IETF draft-ietf-rats-eat.
+**EAT: Entity Attestation Token** An IETF standard format for a signed statement about a device or program, which TRACE records follow. A JWT-based format for conveying evidence about a hardware or software entity. TRACE records use the EAT `eat_profile` claim to identify the specific TRACE profile version. Defined in IETF draft-ietf-rats-eat, now published as RFC 9711.
 
 ______________________________________________________________________
 
-**GatewayClaim** A cMCP claim embedded in a TRACE trust record that binds the record to a specific cMCP session. Contains the session ID, gateway DID, and the Cedar policy bundle hash that governed the session.
+**GatewayClaim** The part of a record that ties it to one session of the cMCP gateway, the component that sits between an agent and its tools. A cMCP claim embedded in a TRACE trust record that binds the record to a specific cMCP session. Contains the session ID, gateway DID, and the Cedar policy bundle hash that governed the session.
 
 ______________________________________________________________________
 
-**Input closure** The complete content-addressed set of everything a reproducibility claim's deterministic function reads: the initial configuration and every recorded external interaction, model calls included, each pinned as `{id, digest, resolver}`. A closure that omits anything which can change the transcript makes the claim malformed. Defined in §3.1.4 of the specification.
+**Input closure** Everything a rerun of the agent would need to read, each item pinned by its fingerprint. The complete content-addressed set of everything a reproducibility claim's deterministic function reads: the initial configuration and every recorded external interaction, model calls included, each pinned as `{id, digest, resolver}`. A closure that omits anything which can change the transcript makes the claim malformed. Defined in §3.1.4 of the specification.
 
 ______________________________________________________________________
 
-**JCS: JSON Canonicalization Scheme** RFC 8785. A deterministic serialization of JSON objects: Unicode code-point-ordered keys, no whitespace, IEEE 754 double-precision number encoding. TRACE uses JCS to canonicalize the record before computing the Ed25519 signature.
+**JCS: JSON Canonicalization Scheme** A fixed way of writing JSON so the same data always produces the same bytes, which is what makes the signature repeatable. RFC 8785. A deterministic serialization of JSON objects: Unicode code-point-ordered keys, no whitespace, IEEE 754 double-precision number encoding. TRACE uses JCS to canonicalize the record before computing the Ed25519 signature.
 
 ______________________________________________________________________
 
-**Reproducibility claim** The optional `reproducibility` member of a Trust Record: a claim that re-executing a named deterministic function of the run over a pinned input closure yields a transcript whose RFC 8785 digest equals `transcript_digest`. The result of a verifier re-running it is carried under `appraisal.method: "re-execution"` as `reproduced`, `diverged` or `not-attempted`. Defined in §3.1.4 of the specification.
+**Reproducibility claim** An optional statement that running the same job again on the same inputs gives the same result. The optional `reproducibility` member of a Trust Record: a claim that re-executing a named deterministic function of the run over a pinned input closure yields a transcript whose RFC 8785 digest equals `transcript_digest`. The result of a verifier re-running it is carried under `appraisal.method: "re-execution"` as `reproduced`, `diverged` or `not-attempted`. Defined in §3.1.4 of the specification.
 
 ______________________________________________________________________
 
-**RIM: Reference Integrity Manifest** A signed document describing the expected firmware and software measurements for a TEE environment. During Level 1 appraisal, the verifier compares the TEE's runtime measurements against the RIM. The `runtime.rim_uri` field optionally points to a RIM.
+**RIM: Reference Integrity Manifest** The list of values the hardware should report if it is running the expected software. A signed document describing the expected firmware and software measurements for a TEE environment. During Level 1 appraisal, the verifier compares the TEE's runtime measurements against the RIM. The `runtime.rim_uri` field optionally points to a RIM.
 
 ______________________________________________________________________
 
-**RATS: Remote Attestation Procedures** The IETF working group and architecture (RFC 9334) that defines the roles and flows for remote attestation: Attester (the hardware), Verifier (checks evidence against RIM), Relying Party (consumes the resulting attestation result). TRACE Level 1 and 2 follow the RATS architecture.
+**RATS: Remote Attestation Procedures** The IETF's standard roles for proving to someone far away what a machine is running. The IETF working group and architecture (RFC 9334) that defines the roles and flows for remote attestation: Attester (the hardware), Verifier (checks evidence against RIM), Relying Party (consumes the resulting attestation result). TRACE Level 1 and 2 follow the RATS architecture.
 
 ______________________________________________________________________
 
-**SCITT: Supply Chain Integrity, Transparency, and Trust** An IETF draft standard for append-only transparency logs of software and attestation artifacts. TRACE Level 2 records include a SCITT receipt URI in the `transparency` field, anchoring the record to a public or shared log.
+**SCITT: Supply Chain Integrity, Transparency, and Trust** A design for public logs that can only be added to, never quietly edited. An IETF draft standard for append-only transparency logs of software and attestation artifacts. TRACE Level 2 records include a SCITT receipt URI in the `transparency` field, anchoring the record to a public or shared log.
 
 ______________________________________________________________________
 
-**SPIFFE / SPIRE** SPIFFE (Secure Production Identity Framework For Everyone) defines URI-based workload identities of the form `spiffe://<trust-domain>/<workload-path>`. TRACE requires the `subject` field to be a SPIFFE URI or a DID. SPIRE is the reference implementation.
+**SPIFFE / SPIRE** A standard way to name a running program, like a web address for a workload. SPIFFE (Secure Production Identity Framework For Everyone) defines URI-based workload identities of the form `spiffe://<trust-domain>/<workload-path>`. TRACE requires the `subject` field to be a SPIFFE URI or a DID. SPIRE is the reference implementation.
 
 ______________________________________________________________________
 
-**Trust Level** A numeric value (0, 1, or 2) that summarizes the strength of the guarantees carried by a trust record. See [Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) for the full definition of each level.
+**Trust Level** How strong the evidence behind a record is, from software signing only (0) to hardware evidence (1) to public logging (2). A numeric value (0, 1, or 2) that summarizes the strength of the guarantees carried by a trust record. See [Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) for the full definition of each level.
 
 ______________________________________________________________________
 
-**Trust Record** A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
+**Trust Record** The signed receipt TRACE defines: what an agent ran, where, under which policy, touching which data. A signed JSON document emitted by an AI agent at the end of a governed session. It asserts the agent's identity, model, policy, data class, tool invocations, and (at Level 1+) hardware attestation state. Defined in full in the [TRACE Specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md).
 
 ______________________________________________________________________
 
-**Transparency** In the TRACE context, transparency means that a trust record has been submitted to an append-only log (SCITT) and can be independently audited by any party with access to the log. The `transparency` field holds the receipt URI. Required at Level 2.
+**Transparency** Publishing a record to a shared log so others can audit it later. In the TRACE context, transparency means that a trust record has been submitted to an append-only log (SCITT) and can be independently audited by any party with access to the log. The `transparency` field holds the receipt URI. Required at Level 2.
 # Specification
 
 # TRACE Specification: Trust, Runtime Attestation, and Compliance Evidence
@@ -570,6 +612,8 @@ ______________________________________________________________________
 | License                  | Community Specification License 1.0 (see [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE)) |
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
+
+**In plain terms.** This is the rulebook for TRACE: it defines the Trust Record (a signed receipt describing one AI agent run), how records are anchored in a public log, and the exact checks a verifier runs. You need it if you are writing software that produces or checks records; to try TRACE first, start with the [quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md). It is a draft (v0.2, Developer Preview), so details can still change before v1.0.
 
 ## Authority and conformance claims
 
@@ -1341,6 +1385,8 @@ ______________________________________________________________________
 | Applies to | The `transparency` claim (TRACE v0.2 §3.1) and Level 2 conformance                           |
 | License    | CC BY 4.0                                                                                    |
 
+**In plain terms.** Anchoring means publishing a fingerprint of a record in an append-only log, so anyone can later prove the record existed and was not quietly swapped. This document is for people building or checking that log; it is a normative companion to TRACE v0.2 and the basis for Level 2 conformance.
+
 This document specifies how TRACE Trust Records are anchored into an append-only registry, and how a third party verifies, **without trusting the registry operator**, that a given record was included in an anchor.
 
 It is published here rather than only in the registry implementation for a reason that matters more than tidiness: an inclusion proof nobody outside can check is not transparency. A conforming verifier can be written from this document alone. The reference tooling named in §7 is one implementation, not the definition.
@@ -1506,6 +1552,8 @@ An operator that satisfies 1 through 3 but not 4 is running a log, not a transpa
 | Anchoring | [Registry Anchor Format v1](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md) |
 | License   | CC BY 4.0                                                                                    |
 
+**In plain terms.** MCP servers are the tool providers an AI agent calls. This format lets someone sign a statement about one server (what it is and which tools it offers) so others can check who said it. It is for people who publish or vet MCP servers, and it is a draft.
+
 A signed statement **about** an MCP server: what it is, what tools it exposes, who is saying so, and how much that is worth.
 
 ## 0. What this is not
@@ -1634,6 +1682,8 @@ Step 3, key distribution, is deliberately out of scope. A consumer that skips st
 
 Status: proposed requirements, not an adopted profile or implemented wire format. This document does not change TRACE v0.2 verifier acceptance. Field names below describe logical requirements; serialization and a profile identifier remain subject to normative review before implementations claim conformance.
 
+**In plain terms.** This is a proposal for how a TRACE record should describe each tool call an agent makes through MCP (the common protocol agents use to call tools), including which tool list the agent was offered. It is for implementers and reviewers of the next TRACE version. Nothing here is adopted yet, and it does not change what a v0.2 verifier accepts.
+
 ## 1. Scope
 
 This proposal covers evidence for MCP tool-call attempts, including the complete tool declaration set the producer used when selecting and dispatching a call. It targets [MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog), which removed protocol sessions and documents OpenTelemetry context propagation. Earlier MCP revisions can supply additional protocol-session metadata; that metadata does not replace the evidence identity defined here.
@@ -1708,6 +1758,8 @@ Signatures authenticate commitments from an identified producer. They do not pro
 | Status  | Draft proposal, companion to TRACE v0.2 |
 | License | CC BY 4.0                               |
 
+**In plain terms.** Version 2 of the MCP server provenance format adds four of a tool's self-declared behaviours (for example, whether it only reads data) to what gets signed, so a later change to them is detectable. It is for people who publish or check MCP server provenance records, and it is a draft proposal.
+
 ## 1. Scope and inherited requirements
 
 This version binds four behavioral declarations in an MCP tool catalog. All requirements of [Server Provenance v1](https://trace.agentrust-io.com/spec/server-provenance-v1/index.md) apply except the format identifier and catalog projection specified below. In particular, identity, assurance kinds, trusted-key selection, signatures, anchoring and absence retain their v1 meanings. This is a separate provenance format version, not a new TRACE Trust Record version.
@@ -1756,6 +1808,8 @@ In addition to v1's inherited checks, v2 conformance requires accepting omitted 
 | Marking standard    | C2PA 2.1                                                                                  |
 | Relevant obligation | EU AI Act Article 50(2) and 50(4), in force since 2 August 2026                           |
 | License             | CC BY 4.0                                                                                 |
+
+**In plain terms.** When an AI system produces an image, video or text, EU law (AI Act Article 50) asks that the output carry a machine-readable label saying it is AI generated. This draft ties that label (a C2PA mark) to the TRACE record of the run that produced the content, so the label can be checked. It is for teams that generate content and must mark it.
 
 Defines one C2PA assertion, `com.agentrust-io.trace`, that ties a marked asset to the Trust Record of the execution that produced it.
 
@@ -1846,7 +1900,13 @@ Step 3 is the one most likely to be skipped, because it requires a fetch. An ass
 
 # Schema Reference
 
-JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
+This page lists every field a TRACE v0.2 Trust Record can contain, its type, and whether it is required. A Trust Record is the signed receipt TRACE produces for one AI agent run. Use this page when you write code that produces or reads records; if you only want to see one working, start with the [quickstart](https://trace.agentrust-io.com/docs/quickstart/index.md).
+
+The machine-readable version is a JSON Schema (a file that software uses to check a record has the right shape): [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
+
+In short: whole numbers in a record have a size limit, and anything larger is written as a string. The detail is below.
+
+Technical detail: the integer range and what counts as an integer
 
 Every field typed `integer` here is bounded to -9007199254740991 through 9007199254740991, and no field is typed `number`. That is not a size limit on the data; it is what spec section 3.2.2 can canonicalize unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and two integers outside that range can share one. A value that needs to be larger is carried as a string. The same bound applies to members a `cnf.jwk` carries that this schema does not name.
 
@@ -1876,7 +1936,7 @@ Whether a number is an integer is decided by its value, not by how it is written
 
 ## `model`
 
-Binds the model artifact used in this session.
+Which AI model the run used. These fields tie the record to one exact model artifact (the model file and version).
 
 | Field            | Type   | Required | Description                                      |
 | ---------------- | ------ | -------- | ------------------------------------------------ |
@@ -1888,7 +1948,7 @@ Binds the model artifact used in this session.
 
 ## `runtime`
 
-Binds the execution environment. Platform-specific fields vary by TEE type.
+Where the run happened: the machine or protected environment it ran in. Some fields depend on the platform, for example which kind of TEE (trusted execution environment, a hardware-isolated area of a processor) was used.
 
 | Field              | Type   | Required | Description                                                                                                                                                              |
 | ------------------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1900,7 +1960,7 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 
 ## `policy`
 
-Binds the governance policy in force during this session.
+Which rule set (the governance policy) was in force during the run, pinned by its hash.
 
 | Field              | Type   | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------ | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1919,7 +1979,7 @@ Custom values are allowed and should follow your organization's data classificat
 
 ## `tool_transcript`
 
-Audit summary of tool invocations during the session.
+A summary of the tool calls the agent made during the run, with a hash that commits to the full list.
 
 | Field            | Type    | Required | Description                                                   |
 | ---------------- | ------- | -------- | ------------------------------------------------------------- |
@@ -1929,7 +1989,7 @@ Audit summary of tool invocations during the session.
 
 ## `delegation`
 
-A2A profile. Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
+Used when another agent handed this agent the authority to act (delegation, defined by the A2A profile). Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
 
 | Field                | Type   | Required | Description                                                  |
 | -------------------- | ------ | -------- | ------------------------------------------------------------ |
@@ -1938,7 +1998,7 @@ A2A profile. Present when this execution acted on authority delegated by another
 
 ## `origin`
 
-Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
+Says who assembled the record. Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
 
 It exists because `runtime.platform: "software-only"` is ambiguous on its own: it is the honest value for a dev-mode record, where nothing attested the execution, and for a record transcribed from another vendor's control plane, where the party asserting the evidence also wrote the log.
 
@@ -1971,6 +2031,8 @@ Spec section 3.1.2 also binds verifiers: one **must not** reject a record becaus
 
 ## `reproducibility`
 
+In plain terms: a claim that someone can re-run the part of the run that decided what happened, and get the same transcript. The precise boundary follows.
+
 The claim that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals `transcript_digest`. Spec section 3.1.4. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and not the model calls, which are not deterministic; the boundary is drawn around every non-deterministic interaction, and each one enters the closure as a recorded, content-addressed input.
 
 The block is the claim, not its result. The result is an appraisal attributed to the party that re-ran the function (in a record signed only by its producer, the producer's report of that party's result, not authenticated by it), carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
@@ -1997,7 +2059,7 @@ Signed vectors that exercise the claim and its result, two per rule the schema e
 
 ## `build_provenance`
 
-Build-time provenance binding the deployed artifact.
+Where the deployed software came from: which build system produced it and the digest (fingerprint) of what it built, following SLSA, a common format for signed build records.
 
 | Field              | Type    | Required | Description                                                                                |
 | ------------------ | ------- | -------- | ------------------------------------------------------------------------------------------ |
@@ -2009,7 +2071,7 @@ Build-time provenance binding the deployed artifact.
 
 ## `appraisal`
 
-Verifier judgment on the evidence in this record.
+A verifier's judgment on the evidence in this record, and who made it.
 
 | Field                       | Type    | Required                        | Description                                                                                                                                                                                                                                              |
 | --------------------------- | ------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2038,7 +2100,7 @@ String. URI of the SCITT transparency log entry anchoring this record. Omitted, 
 
 ## `cnf`
 
-Confirmation method. Contains the signing key bound to this record.
+Confirmation method: the public key bound to this record, which a verifier uses to check the record's signature.
 
 | Field | Type   | Description                                      |
 | ----- | ------ | ------------------------------------------------ |
@@ -2117,6 +2179,8 @@ See the full example files in [`examples/`](https://github.com/agentrust-io/trac
 
 # The `references` relation registry
 
+A Trust Record can point at facts kept somewhere else, such as a human approval or a test result. Each pointer carries a label, `rel`, that says what kind of thing it points at. This page lists the agreed labels, what each one points at, and how to propose a new one. It is for people building tools that write or read these pointers.
+
 Informative. The registered values of `references[].rel` (§3.1.2), what each one's referenced object is, what a verifier may conclude from a resolved one, and how a name is added.
 
 ## What registration does, and does not do
@@ -2134,6 +2198,8 @@ What a registered value therefore cannot carry: a requirement on a verifier, an 
 The registry is enforced without being normative: `tests/test_references_block.py::test_the_registered_rel_values_stay_documented_in_all_three_places` fails if `rel` is closed again, and if a registered value stops being named in the schema description, in `docs/schema.md`, or in this document.
 
 ## Registered values
+
+The five labels agreed so far, what each one points at, and where it is defined:
 
 | `rel`                 | Referenced object                                                                               | Defined in                                                                                                                                                                | Example                                                                                                          |
 | --------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -2228,11 +2294,13 @@ A registration is a non-breaking spec change of the informative kind under [GOVE
 
 # Verification outcome statements
 
+When software checks a TRACE record, it reports a result. This page is for auditors, assessors, customers and anyone else who has to turn that result into a written conclusion: for each kind of result it gives the strongest sentence the evidence supports, the claim to leave out, and what to keep on file.
+
 > **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. [Section 3.3 of the specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) and the [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md) carry the normative rules; where those documents already speak, this page repeats their wording rather than adding to it.
 
 ## Purpose
 
-A TRACE verifier produces an outcome: an `appraisal.status`, a recorded provenance depth, a set of checks it ran and did not run. The people who consume that outcome are often not verifiers. Auditors, assessors, customers and regulators read verifier output and have to turn it into a written conclusion. The failure mode this page exists to prevent is assurance overclaim - a conclusion written slightly stronger than the evidence behind it, so that a valid signature quietly becomes "the agent complied", or a signed acceptance receipt becomes "the action succeeded".
+A TRACE verifier (the software that checks a record) produces an outcome: an `appraisal.status`, a recorded provenance depth, a set of checks it ran and did not run. The people who use that outcome are often not the ones who ran the check. Auditors, assessors, customers and regulators read verifier output and have to turn it into a written conclusion. The mistake this page exists to prevent is overclaiming: writing a conclusion slightly stronger than the evidence behind it, so that a valid signature quietly becomes "the agent complied", or a signed acceptance receipt becomes "the action succeeded".
 
 Two pages already tell a reader what not to conclude, each cut a different way: [Trust Levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) carries a *What it does not prove* line under each level, and the [OWASP Agentic Top 10 crosswalk](https://trace.agentrust-io.com/docs/crosswalks/owasp-agentic-top-10/index.md) carries a *Limitations / out of scope* column and a closing *What TRACE does not do* list. This page is the third view of the same discipline, indexed by verifier outcome rather than by trust level or risk category. Where wording overlaps, those two pages carry the meaning and this page follows them.
 
@@ -2244,7 +2312,7 @@ Machine-checkable verifier-output/statement pairs are out of scope for this page
 
 ## Interpretation matrix
 
-The rows are representative, not exhaustive. Each row reads: the outcome a verifier records, the strongest statement the evidence supports, the claim that has to stay out of the same sentence, the evidence worth retaining alongside the record, and a sensible follow-up.
+The rows are typical cases; the list is not complete. Each row reads: the outcome a verifier records, the strongest statement the evidence supports, the claim that has to stay out of the same sentence, the evidence worth retaining alongside the record, and a sensible follow-up.
 
 | Verification outcome                                                                                                                                                                                                                                                                         | Supported bounded statement                                                                                                                                                                                                                                                                                                                                      | Required non-claim                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Evidence to retain                                                                                                                                                                                                                                                                                              | Follow-up                                                                                                                                                                                                                                                       |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2323,6 +2391,8 @@ Moving these into the record would be a schema change, which is out of scope for
 - [trace-spec#66](https://github.com/agentrust-io/trace-spec/issues/66) - the discussion this page grew out of.
 
 # RFC Proposal: runtime evidence, and what a verifier may conclude without it
+
+A v0.2 record can name a hardware platform, but that name is only the producer's claim. This proposal lets a record carry the hardware's own signed report (attestation evidence), and sets out what a checker may conclude with and without it, as a small set of grades. It is a draft for v0.3, aimed at verifier authors, and its 14 test vectors are built on a real Intel TDX report.
 
 **Status:** Draft proposal. Binds nothing. **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid. **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3. **Conformance material:** [`examples/runtime-evidence/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence): 14 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one. **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](https://trace.agentrust-io.com/schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
@@ -2539,6 +2609,8 @@ What is still missing: the capture is not a vector, so the `runtime-evidence` CI
 
 # RFC Proposal: a verifier-issued, holder-bound TRACE token
 
+Today an agent signs its own TRACE record. This proposal adds a second kind of token, signed by an independent checker (a verifier) after it has assessed the agent, which only the agent it describes can present, because presenting it takes a key that agent holds. It is for people building gateways that decide whether to let an agent act. The format is experimental and can still change.
+
 **Status:** Draft proposal. Binds nothing. Experimental wire, `urn:agentrust:trace:verifier-token:experimental-v1`. **Scope:** A new signed token in which an appraisal verifier signs the result and `cnf` names a different key, held by the agent that presents it; a holder proof; and a separately signed gateway decision receipt. Additive: every v0.2 record keeps its meaning, and a v0.2 verifier refuses the new token as an unsupported profile. **Target:** a new profile document next to `spec/trace-v0.2.md`, not an edit to it. **Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 215 vectors, the generator, `codes.json` (54 reason codes) and `coverage.json` (47 requirements). The 14 earlier vectors in [`examples/verifier-token-profile/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-profile). A second verifier in JavaScript at [`tools/independent-verifier/`](https://github.com/agentrust-io/trace-spec/tree/main/tools/independent-verifier). Both implementations return the expected outcome on all 229. **Draft schemas:** `schema/trace-token-experimental-v1.json`, `schema/trace-holder-proof-experimental-v1.json`, `schema/trace-requirements-experimental-v1.json`, `schema/trace-decision-receipt-experimental-v1.json`. **Companion:** composite components (what goes in `components`, `bindings` and `composite_appraisal`) are in the companion proposal, [`docs/rfcs/composite-component-appraisal.md`](https://trace.agentrust-io.com/docs/rfcs/composite-component-appraisal/index.md). This document covers the token around them.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. The wire described here was built and tested before it was written down, and it is still experimental: nothing in it is registered, and every choice listed in §9 can change.
@@ -2727,6 +2799,8 @@ python -m pytest -q tests/test_independent_verifier.py tests/test_conformance_co
 ```
 
 # RFC Proposal: composite component appraisal, and knowing which part failed
+
+Today a TRACE record gives one verdict for the whole agent. This proposal gives each part (the code, the model, the policy, the processor, the tools) its own verdict, so that when something fails the reader can see which part and fix the right thing. It is for people who write verifiers or set access rules for agents. It is a draft and binds nothing yet.
 
 **Status:** Draft proposal. Binds nothing. **Scope:** Components with stable IDs, a status per component, digest-bound evidence references, freshness, two relationship methods, delegated component appraisers, and a composite result the verifier derives rather than reads. Additive; every v0.2 record stays valid. **Target:** the verifier-issued token in the companion proposal, [`verifier-issued-trace-profile.md`](https://trace.agentrust-io.com/docs/rfcs/verifier-issued-trace-profile/index.md), and `spec/` only if both are adopted. **Conformance material:** [`examples/verifier-token-conformance/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance): 110 component vectors out of 218, `codes.json` with 54 reason codes, and `coverage.json` mapping each requirement to its vectors and causal test. **Implementations:** a Python reference in `prototype/verifier_token.py`, and a second verifier in JavaScript, [`tools/independent-verifier/`](https://github.com/agentrust-io/trace-spec/tree/main/tools/independent-verifier). **Experimental text:** [`docs/verifier-token-experimental.md`](https://trace.agentrust-io.com/docs/verifier-token-experimental/index.md), including the sections "Delegated component appraisal" and "Relationship methods".
 
@@ -3013,6 +3087,8 @@ The checks behind all of this can be run from a checkout: `node tools/independen
 
 # Tool-catalog observed digest: a recomputable preimage for `tool-catalog` components
 
+When an agent connects to an MCP server, the server sends a list of the tools it offers (its tool catalog). This note fixes one way to turn that list into a fingerprint (a digest) that anyone holding the same list can recompute and compare, without asking anyone else for the value. It is for people building gateways and verifiers, and it is a draft that binds nothing.
+
 **Status:** Draft, informative. Binds nothing. **Scope:** How the `observed_digest` of a `tool-catalog` component is derived from the `tools/list` a server served, so that a relying party can set `expected_observed_digest` from bytes it holds and a second implementation can recompute every value from the same bytes. Two counterexamples, digest-mismatch and wrong-subject, with the pinned bytes they recompute from. **Target:** `TR-COMP-MCP-001` in [`composite-component-appraisal.md`](https://trace.agentrust-io.com/docs/rfcs/composite-component-appraisal/index.md), and input to open question 6 there. What an `mcp-server` component rests on (endpoint identity, transport key binding) and the server-to-catalog relationship method (`TR-COMP-MCP-002`) stay open. **Conformance material:** [`examples/verifier-token-conformance/catalog/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/verifier-token-conformance/catalog) (three pinned catalogs and `digests.json`), vectors `COMP-MCP-004` to `COMP-MCP-006`, and `tests/test_tool_catalog_digest.py`, which recomputes every digest from the pinned bytes without the generator.
 
 Requirement keywords are lowercase throughout, on the same line the composite proposal draws: this is informative text and binds no implementation.
@@ -3157,35 +3233,43 @@ The generator recomputes the three catalog digests from the files under `catalog
 
 # Sign Your First Trust Record
 
-Sign a complete standalone TRACE record, then verify it using a separately retained public key. Start with the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md), which includes the source installation, complete script, expected output, and an edited-record rejection.
+This page is for developers producing their first TRACE record, a signed file describing one AI agent run. It explains what the signature protects and what it does not, so you can describe your record honestly.
+
+The steps themselves are in the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md): install, run one complete script, see the expected output, and watch an edited record get rejected. You sign a record, then check it with a copy of the public key you kept aside.
 
 ## What the signature covers
 
-`sign_record(record, key)` adds the public confirmation key and signs the RFC 8785 canonical representation of every field except `signature`. The confirmation key is part of the signed preimage. Changing the subject, policy hash, transcript, appraisal, or transparency reference requires a new signature.
+The signature covers every field in the record, plus the public key that matches the signing key. Change anything (the agent's name, the policy fingerprint, the tool-call log, the appraisal, the registry link) and the record needs a new signature.
+
+Technical detail: what exactly gets signed
+
+`sign_record(record, key)` adds the public confirmation key and signs the RFC 8785 canonical representation of every field except `signature`. The confirmation key is part of the signed preimage.
 
 `json.dumps(sort_keys=True)` is not a substitute for RFC 8785 canonicalization. Use the SDK signing function so non-ASCII strings and numeric constraints follow the same rules as verification.
 
 ## Keep trust separate
 
-Retain the public key when creating your local demo authority. A recipient of a production record obtains its trusted issuer key through an approved channel; the incoming record cannot choose that authority.
+Keep a copy of the public key when you create your demo signing key. In real use, whoever receives a record gets the producer's public key through a channel they already trust. The record cannot tell them which key to trust, since a forger would simply name their own.
 
-The embedded `cnf.jwk` supports key binding. It does not remove the need to distribute trust. `verify_record` requires a trusted key by default and performs schema/profile validation as well as signature verification. The explicit embedded-key option checks internal consistency only.
+The record carries its own copy of the public key (`cnf.jwk`), which ties the record to the key. That does not replace getting the key from a trusted source. `verify_record` asks for a trusted key by default, and checks the record's structure as well as its signature. The option to use the key inside the record only shows the record agrees with itself.
 
 ## Describe the evidence honestly
 
-The quick-start record contains synthetic claims and software signing. It does not run an agent, enforce policy, produce hardware attestation, or submit to a registry. `appraisal.status="none"` records that no appraisal was performed. Set `affirming` only for an appraisal actually performed by an authorized producer under a stated policy.
+The quick-start record contains made-up claims and a software signature. It does not run an agent, apply any rules, produce a hardware report, or publish to a registry. `appraisal.status="none"` says nobody checked the evidence. Set `affirming` only when an authorized producer really checked it under stated rules.
 
-A software measurement can be a documented commitment to inputs. Use an all-zero measurement only when no commitment is offered. Do not add a placeholder registry URI and describe it as an anchor.
+A software measurement can be a documented fingerprint of the inputs. Use an all-zero measurement only when no commitment is offered. Do not add a placeholder registry URI and describe it as an anchor.
 
 Continue to [verify a received record](https://trace.agentrust-io.com/docs/tutorials/verifying-a-trust-record/index.md), [hardware evidence](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md), or [transparency anchoring](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md).
 
 # Verify a Trust Record
 
-Verify a standalone TRACE record against a separately trusted issuer key, reject a changed record, and preserve the result of the revocation check. This walkthrough checks signed evidence; it does not authorize an agent action or appraise hardware.
+This page is for anyone who receives a TRACE record and needs to check it. You will confirm the record was signed by the producer you trust and has not been changed, watch an edited copy get rejected, and see how the result reports whether the key was checked for revocation (being withdrawn).
+
+A passing check tells you the record is authentic and unchanged. It does not approve whatever the agent did, and it does not check any hardware.
 
 ## Prerequisites
 
-Complete the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md) from a source checkout. It creates `session.trace.json` and `issuer-public.pem`. Run the blocks below from that directory, in one Python script. In production, obtain the issuer key through your own trust configuration rather than accepting a key supplied with an incoming record.
+Complete the [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md) from a source checkout. It creates `session.trace.json` (the record) and `issuer-public.pem` (the producer's public key). Run the blocks below from that directory, in one Python script. In real use, get the producer's key from your own trusted settings, never from the record or the message it came with.
 
 ## Verify the record
 
@@ -3202,7 +3286,11 @@ assert result.revocation.outcome == "no_check_performed"
 print("signature and record checks passed; no revocation check performed")
 ```
 
-`verify_record` checks schema and profile, key binding and signature, record age, future clock skew, and any nonce/revocation inputs you configure. It requires a trusted key by default. `allow_embedded_key=True` is an explicit consistency-only option, not issuer authentication.
+`verify_record` checks that the record has the right structure, that the signature matches your trusted key, that the record is not too old or dated in the future, and any replay or revocation checks you set up. It asks for a trusted key by default. `allow_embedded_key=True` uses the key inside the record instead, which only shows the record agrees with itself; it does not tell you who produced it.
+
+Technical detail: the full list of checks
+
+`verify_record` checks schema and profile, key binding and signature, record age, future clock skew, and any nonce/revocation inputs you configure. `allow_embedded_key=True` is an explicit consistency-only option, not issuer authentication.
 
 The default maximum age is 24 hours. If the quick-start record has expired, recreate it. For historical evaluation, pin the evaluation time and retain the trust and revocation evidence used for that decision.
 
@@ -3222,9 +3310,11 @@ else:
     raise AssertionError("edited record accepted")
 ```
 
-The replacement subject is schema-valid, so this case reaches the signature check. A malformed field can fail schema validation earlier and does not exercise the same check.
+The new agent name is well formed, so the record passes the structure check and fails at the signature, which is the check this example is meant to show. A malformed field can fail schema validation earlier and does not exercise the same check.
 
 ## Revocation is a separate outcome
+
+Revocation means a producer's key has been withdrawn, for example after it was stolen. Checking for it needs a list of withdrawn keys, so the result reports it separately.
 
 Without a store or bundle, the result reports `no_check_performed`. A supplied bundle that cannot establish status can produce `unverified_for_revocation`; it does not necessarily raise. If your policy requires a current revocation check, inspect the result and refuse to proceed unless that requirement is satisfied.
 
@@ -3232,23 +3322,29 @@ See [checking revocation status](https://trace.agentrust-io.com/docs/verificatio
 
 ## Appraisal and hardware claims
 
-A signed `appraisal.status` authenticates a statement about appraisal. This function does not independently verify the hardware report, expected measurement, policy execution, or transcript contents. Do not treat `affirming` or a non-software platform string as sufficient evidence to act.
+A signed `appraisal.status` proves the producer said the evidence was checked; it does not prove the check happened. This function does not independently verify the hardware report, expected measurement, policy execution, or transcript contents. Do not treat `affirming` or a non-software platform string as sufficient evidence to act.
 
 For cMCP's `RuntimeClaim`, use [cmcp-verify](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/). That envelope is different from standalone TRACE. For the wider distinction, read [hardware evidence](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md) and [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md).
 
 ## Failure handling
 
-`InvalidSignature` rejects a signature mismatch. `ValueError` rejects other supported verification failures, such as malformed input, an unsupported profile, an untrusted/mismatched key, stale timestamps, or configured nonce/revocation failures. Do not return a successful verification result when either is raised.
+Any error means the record failed. `InvalidSignature` rejects a signature mismatch. `ValueError` rejects other supported verification failures, such as malformed input, an unsupported profile, an untrusted/mismatched key, stale timestamps, or configured nonce/revocation failures. Do not return a successful verification result when either is raised.
 
 The returned verification result still needs the recipient's acceptance policy. A signed statement is not proof of task completion, hardware isolation, or complete audit history.
 
 # Interpreting Hardware Attestation
 
-A platform name and measurement in a signed TRACE record are claims. To treat them as hardware evidence, a recipient needs authenticated attestation evidence, accepted reference values, and a binding to the signing key. This guide explains that distinction; it does not provision a TEE.
+This page is for anyone deciding whether a TRACE record really came from protected hardware. A record can name a hardware platform and a measurement (a fingerprint of the software that was loaded), but those are only the producer's claims until someone checks them. You will learn what has to be checked before you can rely on them.
+
+To count as hardware evidence, a recipient needs three things: attestation (a report signed by the processor itself, checked back to the chip maker), the expected measurement values the recipient has approved, and proof that the report is tied to the key that signed the record. This guide explains that difference; it does not set up a TEE (trusted execution environment, a sealed area of the processor that even the machine's operator cannot look into).
 
 ## Start with the right format
 
+TRACE records and cMCP session claims are two different file formats, and each has its own checker.
+
 Standalone TRACE records use the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). cMCP emits a distinct `RuntimeClaim` envelope and uses its own verifier. Do not pass that envelope directly to `agentrust_trace.verify_record`.
+
+The table lists each piece of evidence and what the recipient has to check before relying on it.
 
 | Evidence                 | What the recipient checks                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
@@ -3260,9 +3356,11 @@ Standalone TRACE records use the [canonical schema](https://github.com/agentrust
 
 ## Software-only records
 
-`runtime.platform="software-only"` carries no hardware assurance. Its measurement can be a producer-defined software commitment; all-zero is appropriate only when no commitment is offered. Software-signed records can support uses whose trust policy accepts software key custody. They must not satisfy a requirement for verified hardware evidence.
+`runtime.platform="software-only"` means there is no hardware protection behind the record. Its measurement can be a fingerprint the producer chose to describe its software; all zeros means the producer offers none. A software-signed record is fine where your rules accept a signing key kept in ordinary software. They must not satisfy a requirement for verified hardware evidence.
 
 ## Hardware-specific evidence
+
+Each kind of hardware reports different values, and each page below explains what its values do and do not show.
 
 - [AMD SEV-SNP](https://trace.agentrust-io.com/docs/platforms/amd-sev-snp/index.md): distinguish the launch measurement from guest-supplied report data.
 - [Intel TDX](https://trace.agentrust-io.com/docs/platforms/intel-tdx/index.md): interpret MRTD and RTMRs under the producing profile.
@@ -3271,17 +3369,19 @@ Standalone TRACE records use the [canonical schema](https://github.com/agentrust
 
 ## What the TRACE SDK does
 
-`verify_record` verifies the standalone signed object. It does not collect or appraise hardware quotes, fetch a Reference Integrity Manifest, or independently substantiate `appraisal.status`. There is no `verify-hardware` command in this package.
+`verify_record` checks the signature and contents of a standalone record. It does not collect or appraise hardware quotes, fetch a Reference Integrity Manifest, or independently substantiate `appraisal.status`. There is no `verify-hardware` command in this package.
 
 For cMCP evidence, use its [verification tutorial](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/), approved policy/catalog hashes, and required attestation inputs. For a local software example, use [quick start](https://trace.agentrust-io.com/docs/quickstart/index.md).
 
 ## Report the checks performed
 
-Hardware appraisal corresponds to Level 1; Level 2 adds transparency anchoring. Report unavailable evidence as unavailable, and a contradictory result as a failure. A record that says `affirming` does not authorize an action without the recipient's own acceptance policy. See [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) and [verification outcomes](https://trace.agentrust-io.com/docs/verification-outcome-statements/index.md).
+Checking the hardware evidence is Level 1; Level 2 also publishes the record to a public log (transparency anchoring). Say which checks you ran. If evidence was missing, report it as missing, and if it contradicted the record, report a failure. A record that says `affirming` does not authorize an action without the recipient's own acceptance policy. See [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) and [verification outcomes](https://trace.agentrust-io.com/docs/verification-outcome-statements/index.md).
 
 # Anchoring a Trust Record to the TRACE registry
 
-After signing a Trust Record, you can anchor it to the TRACE transparency registry. An inclusion proof binds the signed record to a batch root. Any claim about when it existed also depends on authenticating and trusting the registry's checkpoint and timestamp.
+This page is for anyone who has signed a TRACE record and wants a public, hard-to-rewrite trace that the record existed. You will add the record to the TRACE registry (a public, append-only log of records), get back a small proof that it is in there, and check that proof yourself.
+
+The proof shows your exact signed record is part of one batch in the registry. Any claim about *when* the record existed also depends on trusting the registry's own published history and its timestamps, which you check separately.
 
 **What you need:** A signed Trust Record (from [Signing your first trust record](https://trace.agentrust-io.com/docs/tutorials/signing-your-first-trust-record/index.md)).
 
@@ -3295,15 +3395,21 @@ ______________________________________________________________________
 
 ## Why transparency anchoring matters
 
-A Trust Record carries a signature from the issuer's key. A verifier holding that key can confirm the record has not been modified, but only if the key is trustworthy. If the issuer is later compromised, an attacker holding the key could forge records backdated to before the compromise.
+A signed record shows it has not changed since the issuer (whoever produced it) signed it, as long as you trust the issuer's key. Keys can be stolen. If that happens, the thief could sign fake records and date them before the theft, and the signature alone could not tell them apart.
 
-Anchoring introduces a separate trust input: the registry entry or checkpoint. A verifier recomputes the Merkle root from the record and proof and compares it to an independently authenticated entry. Accepting a record, proof, and root from the same untrusted sender establishes only internal consistency. Check the registry's append-only history and timestamp policy separately.
+Anchoring adds a second, independent witness: the registry. Once a record is in a published registry batch, a later forger cannot slip a backdated record into that batch. The check only counts if you get the registry entry from the registry itself. A record, proof and registry entry that all arrive from the same untrusted sender only show that the three agree with each other.
+
+Technical detail: Merkle proofs and the two canonical forms
+
+A verifier recomputes the Merkle root from the record and proof and compares it to an independently authenticated entry. Check the registry's append-only history and timestamp policy separately.
 
 The normative format is [TRACE Registry Anchor Format v1](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md). Read §0 of it before you implement anything: TRACE uses **RFC 8785 (JCS)** to canonicalize a record for *signing* and **sorted-key JSON** to canonicalize it for the *anchor leaf*. Assuming JCS at the leaf produces proofs that never verify, and the failure has no useful diagnostic.
 
 ______________________________________________________________________
 
 ## The `transparency` field
+
+The record has one field, `transparency`, that points at its registry entry. It is optional for Levels 0 and 1 and needed from Level 2 up.
 
 In the `TrustRecord` schema, `transparency` is optional below Level 2:
 
@@ -3319,7 +3425,7 @@ ______________________________________________________________________
 
 ## Step 1: Sign the record
 
-Sign the final record. Leave `transparency` absent if the registry entry URI is not known yet; distribute the receipt separately. If the registry supports reserving an entry URI, set that URI before signing and submit those exact signed bytes. Do not invent a placeholder URI.
+Sign the record in its final form first, because the registry stores the exact signed bytes. Leave `transparency` absent if the registry entry URI is not known yet; distribute the receipt separately. If the registry supports reserving an entry URI, set that URI before signing and submit those exact signed bytes. Do not invent a placeholder URI.
 
 ```
 import time
@@ -3350,7 +3456,7 @@ ______________________________________________________________________
 
 ## Step 2: Submit the record
 
-Producers submit signed records to the registry's staging area, one JSON file per record. The anchor pipeline runs on a schedule, groups pending records by producer, builds one Merkle batch per group, and writes both the registry entry and one inclusion proof per record.
+You hand the signed record to the registry's staging area (a waiting area), one JSON file per record. On a schedule, the registry collects waiting records, groups them by who produced them, seals each group into a batch, and writes back the registry entry plus one inclusion proof (the evidence your record is in the batch) for each record.
 
 You do not have to use the reference registry. Anything implementing [Anchor Format v1 §8](https://trace.agentrust-io.com/spec/registry-anchor-v1/index.md) works, and running your own is a reasonable choice for a deployment that cannot publish record bytes to a third party.
 
@@ -3364,13 +3470,13 @@ The pipeline writes one proof per submitted record:
 {"leaf_index": 0, "audit_path": ["sha256:...", "sha256:..."]}
 ```
 
-`leaf_index` is your record's position in the batch. `audit_path` is the sibling hash at each tree level, ordered leaf to root. A batch of one has an empty `audit_path`, which is valid and not an error.
+`leaf_index` is your record's position in the batch. `audit_path` is the list of fingerprints needed to rebuild the batch's top-level fingerprint from your record, ordered from your record upward (technically, the sibling hash at each Merkle tree level, leaf to root). A batch of one has an empty `audit_path`, which is valid and not an error.
 
 ______________________________________________________________________
 
 ## Step 4: Verify the proof yourself
 
-This is the step that matters, and the one most likely to be skipped. A proof you have never checked is a receipt, not evidence.
+This is the step that matters, and the one most likely to be skipped. A proof you have never checked is only a piece of paper. Checking it is what turns it into evidence.
 
 ```
 pip install trace-verify
@@ -3398,13 +3504,13 @@ ______________________________________________________________________
 
 ## Step 5: Preserve the anchored record
 
-Keep the signed object unchanged with its proof and registry entry. Adding `transparency` and re-signing creates a different object; the original proof no longer covers it. Submit that new object for anchoring if you change any signed field. A Level 2 workflow needs a registry arrangement that lets the final record name its entry before its bytes are committed.
+Store the signed record exactly as it is, together with its proof and registry entry. If you later add `transparency` and sign again, you have a different record, and the old proof no longer covers it. Submit that new record for anchoring if you change any signed field. A Level 2 setup needs a registry that can tell you the entry address before you sign, so the final record can name it.
 
 ______________________________________________________________________
 
 ## What this proves, and what it does not
 
-Inclusion verifies the exact signed object against the supplied batch root. Authenticity and timing depend on the separately trusted registry entry or checkpoint.
+A passing check shows this exact signed record is part of the registry batch you checked against. Whether that batch is genuine, and when it was made, depends on how you got the registry entry and whether you trust it.
 
 Signature verification is a separate question from inclusion, and `trace-verify` answers both: it verifies the producer's Ed25519 signature against the registered key unless you pass `--no-verify-signature`, which warns loudly, because inclusion alone does not prove the named producer signed anything. Exit code 0 means both passed.
 
@@ -3430,7 +3536,9 @@ ______________________________________________________________________
 
 # Integration with cMCP
 
-Use cMCP's runtime verifier for its signed session claims. The standalone TRACE SDK and cMCP share evidence concepts, but their record envelopes are different.
+This page is for people running cMCP, a gateway that sits between an AI agent and its tools (MCP is the common protocol agents use to call tools) and checks each call against rules. It points you to the cMCP pages that create and check its signed session records, and explains where TRACE fits.
+
+cMCP and the standalone TRACE library describe the same kinds of evidence but package them in different formats, so use cMCP's own checker for cMCP's records.
 
 ## Walkthrough
 
@@ -3442,17 +3550,21 @@ These pages contain the runtime's maintained commands and complete examples. Do 
 
 ## Trust boundary
 
+The gateway can only vouch for what passes through it.
+
 The gateway checks routed tool calls and records its decisions. It does not observe calls that bypass it, prove an upstream tool's internal behavior, or establish physical task completion. Its [architecture](https://cmcp.agentrust-io.com/concepts/) separates the client, gateway, tools, and evidence consumer.
 
-The signing key's hardware protection must be established by actual provider evidence and key binding. A development-mode claim remains software evidence. A claimed policy hash must be compared with an independently approved artifact, not copied from the incoming claim into the verifier's allowlist.
+The signing key's hardware protection must be established by actual provider evidence and key binding. In plain terms: a key only counts as hardware-protected when a report signed by the hardware says so and is tied to that key. A claim made in development mode is still software evidence. A claimed policy hash must be compared with an independently approved artifact, not copied from the incoming claim into the verifier's allowlist.
 
 ## TRACE levels
 
-Hardware appraisal supports Level 1. Level 2 adds a verified transparency anchor. Neither a TEE platform name nor the presence of a registry URL establishes those checks. See [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) and [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md).
+TRACE grades evidence in levels. Checked hardware evidence supports Level 1. Level 2 adds a checked entry in a public log (a transparency anchor). Neither a TEE platform name nor the presence of a registry URL establishes those checks. See [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) and [verification protocol](https://trace.agentrust-io.com/docs/verification/index.md).
 
 # Integration: AGT
 
-The [Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit) can supply policy and audit evidence to a TRACE producer. `TraceAGTAdapter` maps supplied session inputs into a standalone software-only record; it does not run the agent or independently verify those inputs.
+This page is for teams that already use the Agent Governance Toolkit (AGT) and want a TRACE record for each agent session. It explains what the adapter puts into the record, what it leaves to you, and how much the result proves.
+
+The [Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit) is open-source software that checks what AI agents do against rules while they run, and keeps an audit log. `TraceAGTAdapter` takes a session's policy, audit log and identity, as you supply them, and turns them into a standalone TRACE record signed in software, with no hardware evidence. It does not run the agent or independently verify those inputs.
 
 ## Choose the integration path
 
@@ -3461,6 +3573,8 @@ Use the [adapter tutorial](https://trace.agentrust-io.com/docs/tutorials/agt-ada
 A record under the superseded v0.1 EAT profile is not accepted by the current v0.2 verifier. Reissue through a compatible producer rather than relabeling signed bytes.
 
 ## Field mapping
+
+Most inputs go into the record as a SHA-256 hash, a short fingerprint that changes if a single byte of the input changes. A verifier holding the original policy file or audit log can recompute the hash and compare.
 
 | Input                             | TRACE commitment                                         |
 | --------------------------------- | -------------------------------------------------------- |
@@ -3471,21 +3585,25 @@ A record under the superseded v0.1 EAT profile is not accepted by the current v0
 | UTF-8 chain-tip string            | SHA-256 software commitment in `runtime.measurement`     |
 | Deployment metadata               | Model, classification, and build-provenance declarations |
 
-The adapter uses RFC 8785 for transcript canonicalization. It currently accepts a transparency string but does not submit to a registry. `appraisal.status` defaults to `none`, because the adapter does not evaluate the session and `appraisal.status` is the verifier's field (spec section 3.3.1); pass `appraisal_status` only when an appraisal actually happened. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an anchor for synthetic input.
+Before hashing the audit log, the adapter writes it out in one fixed byte form (RFC 8785 canonicalization), so any implementation gets the same hash. It currently accepts a transparency string but does not submit to a registry. `appraisal.status` defaults to `none`, because the adapter does not evaluate the session and `appraisal.status` is the verifier's field (spec section 3.3.1); pass `appraisal_status` only when an appraisal actually happened. A producer must accurately set those fields before signing; the tutorial shows how to avoid claiming an anchor for synthetic input.
 
 `enforcement_mode` is required and has no default. The adapter observes a session; it does not evaluate the policy, so it cannot know which mode applied. A default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass the mode the deployment actually ran under, or `"declared"` when no policy engine evaluated the policy. This changes the evidence constructor, not the runtime's enforcement default or behavior.
 
 ## Assurance
 
+The record proves who signed it and that it has not changed since. It does not prove the session ran on particular hardware.
+
 Software signing authenticates the producer's statement when the recipient trusts its key. Hardware evidence requires a separately verified runtime and key binding. Level 2 additionally requires transparency anchoring. Placing an AGT application near a cMCP gateway does not automatically create matching or superseding records; use the [cMCP integration guide](https://trace.agentrust-io.com/docs/integration/cmcp/index.md) for that runtime's boundary.
 
 # Integration: NVIDIA OpenShell
 
-[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) is a sandbox runtime that enforces filesystem, process, network, and inference policy. OpenShell emits machine-readable OCSF events for observable sandbox behavior. A TRACE adapter can bind those events to an execution record without treating a control-plane log as hardware attestation.
+This page is for teams that run agents inside NVIDIA OpenShell and want a TRACE record of what happened in each sandbox. It lists the inputs the adapter needs, how the policies and logs are tied into the record, and what the record can and cannot prove.
+
+[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) is a sandbox runtime: it runs an agent in a confined space and enforces rules about which files, processes, network addresses and AI models the agent may use. OpenShell logs what it sees as security events in OCSF, a standard machine-readable event format. A TRACE adapter can tie those events to a record of the run, while keeping clear that a log from the software managing the sandbox is not hardware attestation (a signed report from the processor itself).
 
 ## Assurance boundary
 
-An OpenShell import has the following mandatory TRACE signals:
+Because the evidence comes from OpenShell's own logs and not from hardware, every imported record says so in four fields. An OpenShell import has the following mandatory TRACE signals:
 
 | TRACE field        | Value                        |
 | ------------------ | ---------------------------- |
@@ -3511,7 +3629,7 @@ The adapter requires:
 
 ## Policy binding
 
-OpenShell and ACS enforce different layers. Bind both into one canonical policy bundle:
+Two sets of rules apply: OpenShell's sandbox policy, and the agent's application rules written for AGT's Agent Control Specification (ACS). The adapter puts both into one policy bundle, written in a fixed byte form, so one hash covers both:
 
 ```
 {
@@ -3536,7 +3654,7 @@ OpenShell and ACS enforce different layers. Bind both into one canonical policy 
 
 ## Transcript binding
 
-`tool_transcript.hash` commits to a canonical envelope containing:
+The record's transcript hash covers everything below, so a verifier with the original files can recompute it. `tool_transcript.hash` commits to a canonical envelope containing:
 
 - sandbox identifier;
 - capture start and end;
@@ -3549,13 +3667,15 @@ Reordering an event, changing a policy revision, or changing an ACS decision cha
 
 ## Implementation
 
-The `agentrust-trace-adapters` package exposes `OpenShellEvidence` and `build_openshell_record`. Evidence assembly returns an unsigned Level 0 record; signing remains a separate `agentrust_trace.sign_record` operation so callers cannot accidentally conflate collection with key custody.
+The `agentrust-trace-adapters` package exposes `OpenShellEvidence` and `build_openshell_record`. Assembling the evidence returns an unsigned Level 0 record. Signing is a separate `agentrust_trace.sign_record` call, so collecting evidence and holding the signing key stay separate steps that a caller cannot mix up by accident.
 
 See the runnable integration in [`agentrust-io/integrations`](https://github.com/agentrust-io/integrations/tree/main/integrations/openshell).
 
 # Integration: cMCP
 
-[cMCP](https://cmcp.agentrust-io.com/) is a gateway between an MCP client and its tool servers. It evaluates routed calls against Cedar policy, blocks policy denials in enforcing mode, records decisions, and signs a session claim when the session closes. The client and upstream tools remain outside the gateway's enforcement boundary.
+This page is for anyone who receives TRACE evidence from cMCP and needs to know how to check it. It explains what cMCP covers, which verifier to use, and what a cMCP session does and does not prove.
+
+MCP (Model Context Protocol) is the common way AI agents call outside tools. [cMCP](https://cmcp.agentrust-io.com/) is a gateway that sits between an agent (the MCP client) and the tool servers it calls. It checks each call passing through it against rules written in the Cedar policy language, blocks calls the rules deny when it is set to enforce, records each decision, and signs a session claim when the session closes. The client and upstream tools remain outside the gateway's enforcement boundary.
 
 ## Start with a local call
 
@@ -3565,27 +3685,29 @@ cMCP only governs traffic routed through it. Other tool connections are not cove
 
 ## Verify the correct envelope
 
-cMCP's `RuntimeClaim` contains nested TRACE fields and runtime-specific evidence. It is not the flat standalone object accepted by `agentrust_trace.verify_record`. Use `cmcp_verify.verify_trace_claim` with independently approved policy and catalog hashes and the required evidence inputs.
+cMCP wraps its evidence in its own format, so the standalone TRACE verifier is the wrong tool for it. cMCP's `RuntimeClaim` contains nested TRACE fields and runtime-specific evidence. It is not the flat standalone object accepted by `agentrust_trace.verify_record`. Use `cmcp_verify.verify_trace_claim` with independently approved policy and catalog hashes and the required evidence inputs.
 
 The [verification walkthrough](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/) explains the result states. A software-only or incomplete hardware result must not be promoted to `verified` by the consumer.
 
 ## Hardware and transparency
 
-Hardware assurance depends on the configured provider, actual evidence, key binding, expected measurements, and successful appraisal. Deployment on a confidential VM alone is insufficient; consult [hardware validation](https://cmcp.agentrust-io.com/testing/hardware-validation/).
+Hardware assurance depends on the configured provider, the evidence actually collected, its tie to the signing key, the expected measurements (fingerprints of the loaded code), and a successful check of all of these. Running on a confidential VM (a virtual machine sealed off from the cloud host) is not enough on its own; consult [hardware validation](https://cmcp.agentrust-io.com/testing/hardware-validation/).
 
-Level 2 additionally requires transparency anchoring. A cMCP session is not automatically Level 2 because it ran on hardware. Nor does it automatically supersede an AGT record or guarantee matching transcript hashes: their producing profiles and envelopes must be reconciled explicitly.
+Level 2 also needs transparency anchoring, an entry in a public log that anyone can check. A cMCP session is not automatically Level 2 because it ran on hardware. Nor does it automatically supersede an AGT record or guarantee matching transcript hashes: their producing profiles and envelopes must be reconciled explicitly.
 
 Continue to [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) or [AGT integration](https://trace.agentrust-io.com/docs/integration/agt/index.md).
 
 # Integration: sandboxed agent runtimes
 
-A sandboxed agent runtime confines one agent on one machine. Filesystem, process and network isolation at the kernel, an egress policy, and credentials injected so the agent never holds them. That answers what a single agent may touch.
+This page is for people who build or run a sandbox for AI agents and want each session to produce a signed TRACE record. It shows the few lines of code needed, what goes into the record, and how far the record can be trusted with and without hardware evidence.
+
+A sandboxed agent runtime confines one agent on one machine: the operating system limits which files, processes and network connections it can use, a policy limits where it may send data, and passwords and keys are supplied from outside so the agent never holds them. That answers what a single agent may touch.
 
 It does not answer, on its own, three questions that arrive next:
 
 - **Across the estate.** Which agent, on which of the two hundred machines, took that action, and under whose authority?
 - **From a regulator.** Not what the policy said, but what actually ran, evidenced.
-- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM, or a confidential VM, or no secure hardware at all.
+- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM (a security chip on the motherboard), or a confidential VM (a virtual machine sealed off from the cloud host), or no secure hardware at all.
 
 `TraceSandboxAdapter` answers them from what the runtime already has at session close. It requires no change to the runtime.
 
@@ -3628,6 +3750,8 @@ That record is Level 0: signed, offline-verifiable, and honest that no hardware 
 
 ## Adding a root of trust
 
+A root of trust is hardware that can vouch for what ran, by producing a signed report called an attestation. If your machine has one, you can pass its evidence to the adapter. The adapter only copies that evidence into the record; checking it is your job, and the two warnings after the example explain exactly what is left to you.
+
 Pass a `SandboxAttestation` and the same call emits a Level 1-*shaped* record: `runtime.platform` and `runtime.measurement` carry the supplied evidence verbatim. Nothing else about the call changes. Actual Level 1 assurance requires that evidence to have been independently verified -- by your own attestation verifier, against genuine hardware from the named platform -- *before* you construct the `SandboxAttestation` below. See the boundary spelled out just after the example.
 
 ```
@@ -3647,9 +3771,15 @@ This is the point of the adapter spanning both levels. A sandbox runs wherever t
 
 **The adapter checks the shape of an attestation, not its truth.** `platform` is only ever set from a supplied attestation; an attestation may not name `software-only`; the platform is checked against the enum on `RuntimeInfo` rather than a copy of it; and the measurement must be a `sha256:` or `sha384:` digest. None of that is cryptographic verification: nothing here checks a quote, a signature, or a nonce, so code in your own process can construct a `SandboxAttestation` with an invented platform and an invented digest and the adapter will emit a record that says `tpm2` (or any other platform) anyway. Call this adapter only after your own attestation verifier has checked genuine evidence from the named platform. This is the same boundary [trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) states for every Level 1 producer: `agentrust_trace.verify_record` does not appraise hardware quotes, and this adapter does not either.
 
-**Verified evidence is still not the whole requirement.** [Trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) says Level 1 needs "authenticated evidence binding the record-signing key to the expected environment," and [verification](https://trace.agentrust-io.com/docs/verification/#verifying-hardware-rooted-records) puts the responsibility for that binding on the producing profile -- this adapter, for a sandbox runtime. It does not define one: nothing here ties `measurement` or `nonce` to the key you eventually pass to `sign_record`, and that key is chosen independently of, and after, whatever attestation you verified. Verifying a genuine quote and then signing with an unrelated key is still not Level 1 assurance; this code cannot distinguish that case from a fabricated one. If your platform's quote supports a caller-supplied challenge (TPM qualifying data, SEV-SNP `REPORT_DATA`, TDX `REPORTDATA`), request it with that field set to a value derived from the signing key's RFC 7638 thumbprint, verify the binding yourself, and only then carry the challenge through as `nonce`.
+**Verified evidence is still not the whole requirement.** [Trust levels](https://trace.agentrust-io.com/docs/trust-levels/#level-1-hardware-evidence) says Level 1 needs "authenticated evidence binding the record-signing key to the expected environment," and [verification](https://trace.agentrust-io.com/docs/verification/#verifying-hardware-rooted-records) puts the responsibility for that binding on the producing profile -- this adapter, for a sandbox runtime. It does not define one: nothing here ties `measurement` or `nonce` to the key you eventually pass to `sign_record`, and that key is chosen independently of, and after, whatever attestation you verified. Verifying a genuine quote and then signing with an unrelated key is still not Level 1 assurance; this code cannot distinguish that case from a fabricated one.
+
+Technical detail: binding the quote to your signing key
+
+If your platform's quote supports a caller-supplied challenge (TPM qualifying data, SEV-SNP `REPORT_DATA`, TDX `REPORTDATA`), request it with that field set to a value derived from the signing key's RFC 7638 thumbprint, verify the binding yourself, and only then carry the challenge through as `nonce`.
 
 ## Field mapping
+
+Each record field comes from something the runtime already has. Where a field is a hash, anyone holding the original input can recompute it.
 
 | Record field                 | Source                                                                        |
 | ---------------------------- | ----------------------------------------------------------------------------- |
@@ -3667,11 +3797,13 @@ The hash helpers are public static methods, so a runtime written in another lang
 
 **The policy bundle must be bytes you can reproduce.** The bundle hash is the load bearing field: edit the policy and the record changes. Where a runtime composes policy from several files, concatenate them in a defined order and keep that order stable. A hash both sides derive differently proves nothing.
 
-**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** The two agree on ASCII and diverge on non-ASCII strings and number formatting, and a decision log carries paths and hostnames. Using the same canonicalisation as the signature pre-image keeps the record reproducible across implementations.
+**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** JCS (RFC 8785) is a fixed way of writing JSON as bytes, so every implementation hashes the same thing. The two methods agree on plain ASCII text and differ on other characters and on how numbers are written, and a decision log carries paths and hostnames. Using the same canonicalisation as the signature pre-image keeps the record reproducible across implementations.
 
 **An unappraised record says so.** `appraisal.status` defaults to `"none"`. Building a record does not appraise it, and stamping `affirming` on an unappraised record puts a verdict in the field a consumer reads to find out whether anybody checked. Set it only when an appraisal actually happened.
 
 ## Levels
+
+Level 0 is a record signed in software. Level 1 adds checked hardware evidence, and Level 2 adds an entry in a public log (a SCITT transparency receipt). The table shows what each level asks of you and what it proves by itself.
 
 | Level | What you pass                                    | `runtime.platform`    | Assurance this establishes on its own                                                                                                                                                                                                                                                         |
 | ----- | ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -3695,11 +3827,15 @@ Note: `schema/trace-claim.json` still lists `transparency` in `required`, so an 
 
 # Attestation Platforms
 
-Hardware evidence can support TRACE Level 1. Level 2 additionally requires transparency anchoring; selecting a hardware platform does not establish either level by itself. A recipient must verify the evidence and its binding to the record-signing key.
+This page is for anyone deciding which kind of machine can back a TRACE record with hardware evidence. It lists the processors and GPUs TRACE names, what evidence each one produces, and what you still have to check yourself.
+
+Some processors can run a program in a sealed-off area called a trusted execution environment (TEE) and then produce a signed report, called an attestation, that describes what is running inside. That report is what hardware evidence means here. A record that carries checked hardware evidence can reach TRACE Level 1, and Level 2 adds a public log entry (transparency anchoring) on top.
+
+Choosing a hardware platform does not give a record either level by itself. Whoever receives the record must check the evidence and confirm it is tied to the key that signed the record.
 
 ## Platform names and evidence
 
-Standalone TRACE records use the names in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Runtime configuration names such as cMCP's `sev-snp`, `tdx`, and `opaque` are not interchangeable with these wire values.
+A standalone TRACE record names its platform in the `runtime.platform` field, using the values in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Other tools have their own names: cMCP's configuration names `sev-snp`, `tdx` and `opaque` are not the same values and cannot be swapped in.
 
 | Platform guide                                                                    | Standalone `runtime.platform`                             | Evidence to appraise                                                              |
 | --------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -3709,11 +3845,13 @@ Standalone TRACE records use the names in the [canonical schema](https://github.
 | TPM2                                                                              | `tpm2`                                                    | Quote, selected PCRs, trusted attestation-key provenance, and challenge binding   |
 | Software                                                                          | `software-only`                                           | Software signature and producer-defined commitments; no hardware assurance        |
 
-The schema also registers other platform identifiers. Registration is not a claim that this Python SDK collects or appraises evidence for every platform.
+In the table, a measurement is a fingerprint (a hash) of the code and settings the hardware loaded, and a quote or report is the signed statement that carries it. "Appraise" means checking that evidence against trusted roots and expected values.
+
+The schema also lists other platform names. Listing a name does not mean this Python library (the TRACE SDK) collects or checks evidence for that platform.
 
 ## Vendor annexes
 
-A vendor annex maps one producer onto the Trust Record. Annexes are informative and reviewed by the vendor author and one Maintainer, per GOVERNANCE.
+A vendor annex is a page that shows how one specific product fills in a TRACE record. Annexes are informative (they bind no one) and are reviewed by the vendor author and one Maintainer, per GOVERNANCE.
 
 | Annex                                                                         | `runtime.platform` | What the producer's evidence is                                                                                                                               |
 | ----------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -3723,34 +3861,36 @@ A vendor annex maps one producer onto the Trust Record. Annexes are informative 
 
 `agentrust_trace.verify_record` checks the standalone record's schema, profile, signature against a trusted key, freshness, and configured nonce/revocation inputs. It does not collect a hardware quote or turn a platform string into verified hardware evidence. There is no `agentrust-trace verify-hardware` command in this package.
 
-Use a verifier for the producing runtime and evidence format. For cMCP's distinct `RuntimeClaim` envelope, follow [cMCP verification](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/) and its [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/).
+To check hardware evidence, use a verifier built for the runtime that produced it and for that evidence format. For cMCP's own `RuntimeClaim` envelope, follow [cMCP verification](https://cmcp.agentrust-io.com/tutorials/verifying-a-trace-claim/) and its [hardware-validation record](https://cmcp.agentrust-io.com/testing/hardware-validation/).
 
 Continue to [trust levels](https://trace.agentrust-io.com/docs/trust-levels/index.md) or [interpreting hardware evidence](https://trace.agentrust-io.com/docs/tutorials/hardware-attestation-platforms/index.md).
 # Project
 
 # Known Limitations
 
-This document describes what TRACE does not do, and where layered defenses are needed. Honest scope boundaries prevent misplaced trust.
+This page lists what TRACE does not do, so you know where you still need other safeguards. Read it before you rely on a TRACE record for anything that matters. A TRACE record (also called a Trust Record or claim) is a signed receipt describing one AI agent run; most of what follows is about the gap between "this receipt is genuine" and "what it describes really happened".
 
 ## What a TRACE claim does not prevent
 
-**Operator-forged software-only records** A TRACE claim at Level 0 (software-only signing) is signed by a key held in software. A privileged operator with root access can produce a valid-looking Level 0 record for a run that never happened, or that violated policy. Level 0 is suitable for development and audit-trail tooling only, not for third-party verification.
+**Operator-forged software-only records** Level 0 is the entry level, where a record is signed with an ordinary software key and no hardware evidence. Whoever runs the machine can read that key. A privileged operator with root access can produce a valid-looking Level 0 record for a run that never happened, or that violated policy. Level 0 is suitable for development and audit-trail tooling only, not for third-party verification.
 
-**Replay of a valid past record** A TRACE claim proves a specific run happened; it does not prevent a verifier from being shown a valid record from an earlier run. Verifiers that rely on recency must bound `iat` in both directions (maximum age and allowed future clock skew), check `exp` when present, require nonce binding to a challenge, or anchor records to a public transparency log and check for freshness.
+**Replay of a valid past record** A genuine old record stays genuine, so someone can show you last week's record and pass it off as today's. A TRACE claim proves a specific run happened; it does not prevent a verifier from being shown a valid record from an earlier run. Verifiers that rely on recency must bound `iat` in both directions (maximum age and allowed future clock skew), check `exp` when present, require nonce binding to a challenge, or anchor records to a public transparency log and check for freshness.
 
-**Policy correctness** The `policy.bundle_hash` field attests that a specific policy was in force at runtime. It does not attest that the policy achieves the intended security outcome. Policy review is a separate control.
+**Policy correctness** A record can show which rules the agent ran under, but not whether those rules were any good. The `policy.bundle_hash` field attests that a specific policy was in force at runtime. It does not attest that the policy achieves the intended security outcome. Policy review is a separate control.
 
-**What happened inside the model** The call transcript records tool invocations, arguments, and responses that are observable at the gateway boundary. It does not record the model's internal chain-of-thought, intermediate reasoning, or context window contents. Reasoning that influences behavior without producing a tool call is not captured.
+**What happened inside the model** TRACE sees what the agent did, not what the model thought. The call transcript records tool invocations, arguments, and responses that are observable at the gateway boundary. It does not record the model's internal chain-of-thought, intermediate reasoning, or context window contents. Reasoning that influences behavior without producing a tool call is not captured.
 
-**Cross-boundary data propagation** The call graph summary uses temporal adjacency to approximate data flow between tool calls. It cannot definitively prove which specific data from one tool response influenced which subsequent call. The `provenance_disclaimer` field in every call graph summary is required for this reason.
+**Cross-boundary data propagation** TRACE can show that one tool call came after another, but not prove that data from the first actually fed the second. The call graph summary uses temporal adjacency to approximate data flow between tool calls. It cannot definitively prove which specific data from one tool response influenced which subsequent call. The `provenance_disclaimer` field in every call graph summary is required for this reason.
 
-**TEE side-channel attacks** Hardware attestation proves the TRACE signing key and policy engine were measured in silicon before execution. It does not protect against side-channel attacks (cache timing, power analysis) targeting the TEE itself. TEE-level side-channel defense is the responsibility of the TEE platform vendor.
+**TEE side-channel attacks** A TEE (trusted execution environment) is a sealed area of a processor that even the machine's operator cannot look into. Hardware attestation, the processor's signed report of what is running inside it, proves the TRACE signing key and policy engine were measured in silicon before execution. It does not protect against side-channel attacks (cache timing, power analysis) targeting the TEE itself. TEE-level side-channel defense is the responsibility of the TEE platform vendor.
 
-**Revocation of the signing key after issuance** If the TRACE signing key is compromised after records are issued, existing records remain cryptographically valid. Key monitoring, rapid revocation, and transparency log integration are the required controls: TRACE provides the anchoring mechanism but cannot detect compromise itself.
+**Revocation of the signing key after issuance** If a signing key is stolen later, everything it already signed still checks out. If the TRACE signing key is compromised after records are issued, existing records remain cryptographically valid. Key monitoring, rapid revocation, and transparency log integration are the required controls: TRACE provides the anchoring mechanism but cannot detect compromise itself.
 
-**Pure offline verification cannot prove non-revocation** Signature validity is permanent; trust is not. Nothing inside a record can retract the key that signed it, so a record signed by a since-revoked key verifies offline forever. Spec §3.2.1 accordingly requires verifiers to consult current revocation status at verification time, which is by definition an online step. `verify_record()` takes a `revocation` store, either a container of revoked identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. It rejects a listed key, and fails closed when the store cannot answer. Without that store, verification is offline and its result means "this record was validly signed by this key", not "this key is still trusted".
+**Pure offline verification cannot prove non-revocation** Checking a record with no network connection tells you it was signed by a given key, but not whether that key has since been withdrawn. Signature validity is permanent; trust is not. Nothing inside a record can retract the key that signed it, so a record signed by a since-revoked key verifies offline forever. Spec §3.2.1 accordingly requires verifiers to consult current revocation status at verification time, which is by definition an online step. `verify_record()` takes a `revocation` store, either a container of revoked identifiers or a callable performing a live CRL, status-endpoint, or SCITT lookup. It rejects a listed key, and fails closed when the store cannot answer. Without that store, verification is offline and its result means "this record was validly signed by this key", not "this key is still trusted".
 
 ## Platform state is not appraised
+
+An AMD processor's signed report says which software is running and, separately, how the machine itself is configured. The checks described here cover the first part only, so a report from a machine with weaker security settings passes just as cleanly.
 
 The SEV-SNP path here establishes that a report is authentic and which workload it describes: report signature, the VCEK to ASK to ARK chain with the ARK pinned by the operator, and measurement binding. Those are the right four checks and they are not in dispute.
 
@@ -3764,11 +3904,13 @@ Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues
 
 ## What Level 0 does not provide
 
-Level 0 provides software signatures without hardware-rooted assurance. A privileged operator may extract the signing key; a valid signature does not establish that execution was protected by a TEE.
+Level 0 is useful for development and for keeping an audit trail, but it is not evidence an outside party should accept on its own. Level 0 provides software signatures without hardware-rooted assurance. A privileged operator may extract the signing key; a valid signature does not establish that execution was protected by a TEE.
 
-TRACE verification levels describe technical evidence, not legal compliance. Article 12 of the EU AI Act requires a logging capability; it does not prescribe a TRACE level or tamper-evident format. See the [regulatory context in the specification](https://trace.agentrust-io.com/spec/trace-v0.2/#1-problem). Neither a TRACE level nor transparency-log anchoring alone establishes compliance with the EU AI Act or DORA. Deployment-specific obligations require a separate assessment.
+TRACE levels describe the strength of technical evidence; they say nothing about legal compliance. Article 12 of the EU AI Act requires a logging capability; it does not prescribe a TRACE level or tamper-evident format. See the [regulatory context in the specification](https://trace.agentrust-io.com/spec/trace-v0.2/#1-problem). Neither a TRACE level nor transparency-log anchoring alone establishes compliance with the EU AI Act or DORA. Deployment-specific obligations require a separate assessment.
 
 ## What the SDK does not do
+
+The SDK is the `agentrust-trace` Python library that signs and checks records. These jobs sit outside it:
 
 - **Evaluate Cedar policy**: the SDK includes the Cedar policy field in the claim; evaluation requires the Cedar engine (included in AGT or cMCP)
 - **Store or index records**: the SDK produces and verifies TRACE claim documents; storage, rotation, and retrieval are the caller's responsibility
@@ -3778,7 +3920,7 @@ TRACE verification levels describe technical evidence, not legal compliance. Art
 
 ## Performance
 
-Hardware attestation adds latency at the point of claim generation (not per-tool-call):
+Hardware evidence makes signing a record slower, once per record rather than on every tool call:
 
 | Provider           | Typical claim signing latency |
 | ------------------ | ----------------------------- |
@@ -3791,9 +3933,13 @@ Claim verification (signature check + schema validation) is < 5 ms in all cases.
 
 # Roadmap
 
-Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)); the `agentrust-trace` reference SDK is at **0.11.0** and the conformance suite (`trace-spec/conformance`) at **0.5.1**.
+This page shows what TRACE already does, what comes next, and what it will never try to do. It is for anyone deciding whether TRACE fits their plans, or looking for a place to help.
+
+Status as of October 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](https://trace.agentrust-io.com/spec/trace-v0.2/index.md)); the `agentrust-trace` reference SDK (the Python library) is at **0.11.0** and the conformance suite (`trace-spec/conformance`, the tests that score an implementation) at **0.6.2**.
 
 ## Shipped: v0.2 (July to August 2026)
+
+In short: v0.2 fixed the record's identifier, added links between records when one agent hands work to another, published the format for anchoring records in a public log, and added connectors for AGT, cMCP and sandboxed agent runtimes. The detail follows.
 
 - **EAT profile URI cutover** to `tag:agentrust-io.com,2026:trace-v0.2`. The v0.1 identifier named a domain this project never controlled, which RFC 4151 does not permit, so it was invalid rather than misspelled. A v0.2 verifier requires the new URI and rejects the old one; `verify_record()` enforces the cutover before any cryptographic work. Records issued under v0.1 stay verifiable against `spec/trace-v0.1.md` and the published 0.4.x releases.
 - **`delegation` link block** (`parent_record_hash` + `credential_id`), optional and additive. A chain of records linked this way forms an offline-verifiable delegation DAG. This is the foundation the A2A profile binds to, not the profile itself.
@@ -3810,6 +3956,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](ht
 
 ## Next: v0.3
 
+In short: the next version defines exactly how TRACE records describe tool calls (MCP) and agent-to-agent hand-offs (A2A), and starts on evidence for an agent's memory, encrypted records and vendor-specific hardware notes.
+
 - **MCP profile (normative)**: the [requirements proposal](https://trace.agentrust-io.com/spec/mcp-profile-v0.3-draft/index.md) separates TRACE attempt identity, correlation metadata and signed declaration snapshots. Wire format, implementation and adoption remain pending before upstream contribution to MCP spec governance.
 - **A2A profile (normative)**: binding rules over the `delegation` block now that A2A is stable at v1.x, including the mutual case. cA2A is the reference implementation.
 - **Attested memory and persistent state**: a claim for agent memory integrity at runtime, digesting the whole store rather than a manifest of it. Nothing in the ecosystem measures agent memory today; every runtime treats the agent as stateless between actions.
@@ -3818,6 +3966,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](ht
 - **Disposition on IETF AIIP**: coordinate with `draft-ritz-aiip`: absorb, supersede, or coexist (open question §7 Q7).
 
 ## Later: v1.0 standard (2027)
+
+In short: a stable 1.0 run by its own technical steering committee, with a certification program and verification libraries in more languages.
 
 - TSC governance under "TRACE Specification, a Series of LF Projects, LLC" (formation with LF Projects, LLC complete; the TSC transition under [CHARTER.md](https://trace.agentrust-io.com/CHARTER/index.md) is the remaining step)
 - All §7 open questions resolved
@@ -3829,6 +3979,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](ht
 
 ## What TRACE will not do
 
+TRACE builds on existing standards and leaves several jobs to other tools on purpose:
+
 - Replace RATS, EAT, SLSA, SPIFFE, SCITT, or MCP: TRACE is a profile of these
 - Specify a centralized Trust Record registry: verification is designed to work without one
 - Build a TEE platform: hardware support targets open silicon (TDX, SEV-SNP, NVIDIA CC) and any platform that produces RATS-conformant evidence
@@ -3836,7 +3988,7 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](ht
 
 ## Influencing the roadmap
 
-Open a GitHub issue with the `spec` or `roadmap` label. Items land here when they are implemented and tested, not when they are planned; anything above the "Next" line is exercisable today.
+To suggest a change, open a GitHub issue with the `spec` or `roadmap` label. Items land here when they are implemented and tested, not when they are planned; anything above the "Next" line is exercisable today.
 
 # Governance
 

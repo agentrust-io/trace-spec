@@ -1,5 +1,7 @@
 # RFC Proposal: runtime evidence, and what a verifier may conclude without it
 
+A v0.2 record can name a hardware platform, but that name is only the producer's claim. This proposal lets a record carry the hardware's own signed report (attestation evidence), and sets out what a checker may conclude with and without it, as a small set of grades. It is a draft for v0.3, aimed at verifier authors, and its 14 test vectors are built on a real Intel TDX report.
+
 **Status:** Draft proposal. Binds nothing. **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid. **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3. **Conformance material:** [`examples/runtime-evidence/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/runtime-evidence): 14 vectors, generator, and reference rules, built on a genuine Intel TDX quote rather than a minted one. **Draft schema:** [`schema/trace-claim-v0.3-draft.json`](https://trace.agentrust-io.com/schema/trace-claim-v0.3-draft.json), generated from `schema/trace-claim.json` with two deliberate boundaries: the v0.3 profile URI and the new `runtime.evidence` member.
 
 Requirement keywords are lowercase throughout, deliberately, on the line `CONTRIBUTING.md` draws: normative text lives in `spec/`, informative text binds no implementation. If these rules are adopted they become uppercase there and this file becomes a pointer to where they went. A proposal that writes itself in the imperative is a specification nobody agreed to.

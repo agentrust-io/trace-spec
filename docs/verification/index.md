@@ -1,5 +1,7 @@
 # Verification Protocol
 
+This page explains how to check a TRACE record you have received: that it really came from the issuer you trust, that nobody changed it, and what else you must check before relying on what it says. It is for engineers who build or run a verifier (the program that does these checks). You get the five basic steps first, then the extra checks for revoked keys, hardware evidence, build history, public logs and per-action receipts.
+
 A TRACE verifier authenticates a signed record and evaluates the evidence required by the recipient's policy. Offline verification needs the relevant artifacts and trust inputs already available. It cannot infer missing hardware, revocation, or transparency evidence from the record's assertions.
 
 ## Five-step verification
@@ -8,19 +10,21 @@ This is an implementation guide to [section 3.3 of the specification](https://tr
 
 ### Step 1: Parse the envelope
 
-Validate the complete standalone record against the canonical schema and supported EAT profile. A cMCP `RuntimeClaim` is a different envelope and requires its runtime-specific verifier.
+Check that the record has the expected shape before trusting anything in it. Validate the complete standalone record against the canonical schema and supported EAT profile. A cMCP `RuntimeClaim` is a different envelope and requires its runtime-specific verifier.
 
 ### Step 2: Resolve the public key
 
-Obtain an approved issuer key through the recipient's own trust configuration. The incoming `cnf.jwk` cannot establish its own authority. The trusted key and signed confirmation key must match under the signature profile.
+Decide which public key should have signed this record, using your own list of trusted issuers. Obtain an approved issuer key through the recipient's own trust configuration. The incoming `cnf.jwk` cannot establish its own authority. The trusted key and signed confirmation key must match under the signature profile.
 
 ### Step 3: Verify the signature
 
-Use `agentrust_trace.verify_record(record, public_key_or_jwk=trusted_key)`. It checks the standalone schema, supported profile, key binding, and Ed25519 signature, with configured freshness, nonce, and revocation inputs. It rejects missing trust input by default. The signature covers every field except `signature`, including `cnf` and any `transparency` value, using RFC 8785 canonicalization.
+Confirm the signature matches that key, which shows the record was not changed after signing. Use `agentrust_trace.verify_record(record, public_key_or_jwk=trusted_key)`. It checks the standalone schema, supported profile, key binding, and Ed25519 signature, with configured freshness, nonce, and revocation inputs. It rejects missing trust input by default. The signature covers every field except `signature`, including `cnf` and any `transparency` value, using RFC 8785 canonicalization.
 
 A signature proves a statement came from the trusted key. It does not establish the truth of every claim in that statement.
 
 ### Step 4: Check the EAT profile
+
+The `eat_profile` value names which version of the TRACE format the record follows (EAT, the Entity Attestation Token of RFC 9711, is the IETF format TRACE builds on). Accept only versions your verifier actually understands.
 
 [Section 3.3](https://trace.agentrust-io.com/spec/trace-v0.2/#33-verification) requires a nonempty `accepted_profiles` set containing only profiles whose schemas and verification semantics the verifier implements. Reject an unsupported member anywhere in that declaration, even if the record names a supported profile. Also reject a record whose `eat_profile` is outside the declared set.
 
@@ -30,7 +34,7 @@ The current SDK accepts only `tag:agentrust-io.com,2026:trace-v0.2` and rejects 
 
 ### Step 5: Appraise the claims
 
-Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
+To appraise is to check each claim against outside evidence, instead of taking the record's word for it. Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
 
 | Claimed status    | Interpretation                                                                               |
 | ----------------- | -------------------------------------------------------------------------------------------- |
@@ -43,11 +47,17 @@ The recipient decides whether the checks performed satisfy the operation's requi
 
 ### Resolving cited objects
 
+Some fields in a record are links to documents kept elsewhere, such as the policy, the expected hardware values and the model's bill of materials. `verify_record` can try to fetch each one with a function you supply and report whether it got the bytes, but it never treats a fetched document as proof that the document was in force.
+
+Technical detail: the `citation_resolver` contract
+
 A record cites objects it does not carry: `appraisal.policy_ref`, `runtime.rim_uri` and `model.aibom_uri` are URIs, and the schema checks only that each parses as one. Whether the object behind a URI can still be obtained is a fact about the world at verification time, so `verify_record` records it rather than assuming it. Pass `citation_resolver`, a function from URI to bytes that you supply, and the result's `citations` field reports one row per surface: `resolved`, with the SHA-256 over exactly the bytes the resolver returned and their count; `unresolvable`, with the cause and the exception's class name when the resolver raised or the returned value's type name when it returned something other than bytes; or `not_attempted`, when no resolver was supplied, the record does not carry the field, or the surface is deferred. The resolver is called only after the signature verifies and after every check that can raise, so a record that fails verification drives no resolution. `transparency` is deferred: its resolution is coordinated in [agentrust-io/trace-tests#92](https://github.com/agentrust-io/trace-tests/issues/92) and stays with the open question in section 7 of the specification.
 
 Three things this does not do. It does not read `references[]`: [§3.1.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md) rule 3 says a verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence; the block is a pointer this check does not follow. It does not take the resolver from the record: a record that names its own checker can name one that agrees with it, so the resolver is yours or there is none. And it does not appraise: `resolved` says bytes were produced and hashed, not that the object was in force or that it binds the record, and no row changes the revocation outcome, the thumbprint, or whether verification raises. Which `appraisal.status` an unresolvable citation carries is the question [#190](https://github.com/agentrust-io/trace-spec/issues/190) holds open, alongside the revocation outcomes in the section below. [`examples/citation-resolution/`](https://github.com/agentrust-io/trace-spec/tree/main/examples/citation-resolution/) carries the conformance vectors, with the cited bytes in hand so every vector is offline.
 
 ## Checking revocation status
+
+A key is revoked when its owner declares it can no longer be trusted, for example because it was stolen. A signature check cannot see that by itself, so a verifier also needs a revocation list, a live lookup, or a signed bundle of revocation statements it downloaded earlier.
 
 Signature verification alone cannot discover a later key revocation. Offline appraisal requires cached revocation evidence as well as the record and trusted key. Report which evidence was checked and whether it remains current.
 
@@ -87,6 +97,10 @@ Both failure modes raise `ValueError`, including a store that cannot answer:
 
 The last row is the honest default. Omitting the store is a legitimate mode, since air-gapped audit of archived records has no other option, but the result means "this record was validly signed by this key", not "this key is still trusted", and the result says so rather than leaving it implied.
 
+`verify_record()` can also read a signed revocation bundle, a file of revocation statements you download ahead of time so you can check revocation while offline.
+
+Technical detail: revocation bundles
+
 `verify_record()` also consumes the bundle format §3.2.3 publishes. Pass `revocation_bundle`, a `TraceRevocationBundle/1.0` object, and `trusted_bundle_keys`, the JWKs whose signatures the caller accepts on a bundle:
 
 ```
@@ -106,11 +120,15 @@ What neither path does yet is entry-ID-scoped revocation. Both answer "is this k
 
 ## Verifying hardware-rooted records
 
+A hardware-rooted record carries a signed report from the processor it ran on. Checking it means confirming the report is genuine, recent, describes the software you expected, and is tied to the key that signed the record.
+
 Hardware appraisal supports Level 1; Level 2 adds transparency anchoring. Verify the report or quote signature and accepted trust chain, its freshness and platform policy, the independently approved measurement, and its binding to the record-signing key. The producing profile defines that binding.
 
 `verify_record` does not perform these hardware checks. Comparing a record's digest to an unauthenticated reference or reading `affirming` is not a substitute. See [attestation platforms](https://trace.agentrust-io.com/docs/platforms/index.md) and the producing runtime's verifier.
 
 ## Verifying build provenance depth
+
+Build provenance is the record of how a piece of software was built and from what inputs. Depth says how far back the check went: `surface` checks only the finished file, `builder` also checks the build service's signed statement, and `transitive` also checks every input that went into the build. A verifier writes down the depth it really reached; when evidence is missing it may stop at a lower depth, but when evidence shows the record is wrong, the check fails.
 
 The normative rules are defined by [§3.3.1 of the specification](https://trace.agentrust-io.com/spec/trace-v0.2/index.md). `build_provenance.provenance_depth` declares how far down the supply chain the issuer claims to have walked. A verifier records what it actually checked in `appraisal.provenance_depth_verified`, which is a statement about the verifier, not about the record.
 
@@ -147,6 +165,10 @@ A verifier whose configured floor is not met by `provenance_depth_verified` sets
 
 The floors above name the EU AI Act. This section records what that Regulation actually requires, together with the Cyber Resilience Act, which is the instrument most often reached for in its place. Verification at any depth is not evidence of compliance with either of them, and neither is a floor that is met.
 
+In short, neither the EU AI Act nor the Cyber Resilience Act requires a verification depth, and meeting a floor here is not evidence of compliance with either.
+
+Technical detail: what the two Regulations say, article by article
+
 **Regulation (EU) 2024/1689.** Annex IV is the technical documentation schedule whose elements Article 11(1) requires the technical documentation to contain at a minimum. It is not a classification annex, since high-risk classification runs through Article 6 with Annexes I and III, and neither Article 11 nor Annex IV imposes a verification obligation of the kind `provenance_depth_verified` records. Article 12 does not impose one either, since it requires that a high-risk system technically allow the automatic recording of events over its lifetime, which is a capability requirement about logging rather than a statement about provenance or build inputs. Two adjacent provisions are sometimes read as supplying one, and neither does. Article 25(4), as amended by Regulation (EU) 2026/1744, requires the provider of a high-risk AI system and a third party supplying an AI system, AI model, tools, services, components or processes used or integrated in it to specify by written agreement the information, capabilities, technical access and other assistance the provider needs, and it does not apply to third parties making tools, services, processes or components other than general-purpose AI models publicly available under a free and open-source licence. Article 15(5) requires technical solutions addressing, where appropriate, data poisoning, model poisoning, adversarial examples, confidentiality attacks and model flaws, which is stated as an outcome rather than as a depth of supply-chain verification. Articles 11, 12, 15 and 25 sit in Sections 2 and 3 of Chapter III, whose application Regulation (EU) 2026/1744 moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III, and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I. Article 111(2), as replaced by the same Regulation, applies the AI Act to operators of high-risk systems, other than the systems referred to in Article 111(1), that have been placed on the market or put into service before that date of application, only if, as from that date, those systems are subject to significant changes in their designs, and in any case requires providers and deployers of high-risk systems intended to be used by public authorities to take the necessary steps to comply by 2 August 2030. The reading that one unit lawfully placed on the market or put into service carries the other units of the same type and model is recital 39 of Regulation (EU) 2026/1744 rather than operative text.
 
 **Regulation (EU) 2024/2847.** Annex I Part II point 1 requires manufacturers to identify and document vulnerabilities and components, including by drawing up a software bill of materials in a commonly used and machine-readable format covering at the very least the top-level dependencies of the product. That is a component inventory obligation, so it does not by itself establish `builder` or `transitive` verification, both of which are claims about provenance rather than about composition. Its Annex I obligations apply from 11 December 2027, with the reporting obligations in Article 14 applying from 11 September 2026.
@@ -169,11 +191,15 @@ The reference SDK exposes a Python API; it does not install an `agentrust-trace`
 
 ## SCITT-anchored records
 
+SCITT is an IETF design for append-only transparency logs. A record anchored there has been added to a public list that cannot be quietly edited, and the log returns a receipt proving it.
+
 A `transparency` URI names a claimed log entry. It does not establish inclusion by itself. Retrieve the receipt, verify its binding to the record, and verify the inclusion proof against an independently trusted log or checkpoint. See [anchoring to the registry](https://trace.agentrust-io.com/docs/tutorials/anchoring-to-the-registry/index.md) for the reference format and sequence.
 
 An authenticated inclusion proof establishes inclusion under that checkpoint. It does not establish the truth of the record's claims, complete logging, or future log availability.
 
 ## Action receipts and embodied workflows
+
+An action receipt is a small signed note about one action, such as a robot controller accepting or refusing a command. "Embodied" means an agent that acts in the physical world.
 
 Some deployments attach per-action receipts below the session layer. For example, an embodied-agent controller can sign a receipt that says a specific call was accepted, rejected, aborted, or handed off to another authority. These receipts extend the audit chain; they do not replace Trust Record verification.
 

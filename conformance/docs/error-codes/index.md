@@ -1,8 +1,8 @@
 # Error Codes
 
-All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<NNN>`.
+Look up a code from a failed or unverified check here: what it means and how to fix the record. Every finding the suite reports carries a code of the form `TR-<MODULE>-<NNN>`, where the middle part names the [module](https://trace.agentrust-io.com/conformance/docs/modules/index.md) (the group of checks) and the number names the check.
 
-## TR-ENV — Envelope
+## TR-ENV: Envelope
 
 | Code       | Description                                                                                        | How to fix                                                                                                                                                                                            |
 | ---------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -12,7 +12,7 @@ All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<N
 | TR-ENV-004 | `cnf` is absent or not an object, `cnf.jwk` is absent or not an object, or `cnf.jwk.kty` is absent | Populate `cnf.jwk` with at least `kty`. This checks that one field, not the schema's full required set, which structural validation covers                                                            |
 | TR-ENV-005 | `cnf.jwk` carries private key material (`d`, `p`, `q`, `dp`, `dq`, `qi`, `k`)                      | Publish the public half only. RFC 8747 makes `cnf` a confirmation key, and a record is signed and usually anchored, so a key exposed this way must be treated as compromised and the identity revoked |
 
-## TR-SIG — Signature
+## TR-SIG: Signature
 
 | Code       | Description                                                                                                                                                                                                                                                                                              | How to fix                                                                                                                                                                                                                                                                                  |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -21,7 +21,7 @@ All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<N
 | TR-SIG-004 | `cnf.jwk` carries private key material (a `d` member), or `cnf.jwk.kty` is missing or names an unsupported key type (`OKP` and `EC` are accepted)                                                                                                                                                        | Remove `d` and embed only the public form of the JWK; `key_to_jwk()` returns it. For key type, use `OKP` or `EC`; Ed25519 signature verification additionally requires `kty: "OKP"` with `crv: "Ed25519"`, and a supported key that is not that pair passes this check and fails TR-SIG-005 |
 | TR-SIG-005 | The signature check outcome: the Ed25519 verification result, a signature that cannot be verified, a signature left unchecked because `cnf.jwk` carried private key material, or no signature at all. With no signature it is FAIL at Level 1 and above and `UNVERIFIED` at Level 0, which is not a pass | Sign the record with `sign_record(record, key)` and do not change the signed fields afterwards. An unsigned record is reported as unverified rather than skipped, so it cannot be read as a benign omission                                                                                 |
 
-## TR-RTE — Runtime
+## TR-RTE: Runtime
 
 | Code       | Description                                                                                                                           | How to fix                                                                                                                                                             |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -30,7 +30,7 @@ All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<N
 | TR-RTE-003 | `runtime.rim_uri` is present and is not an `https://` URI                                                                             | Remove `runtime.rim_uri` if not using a RIM, or set it to an `https://` URI. The URI is not resolved and the manifest behind it is not checked; this is a format check |
 | TR-RTE-004 | Level 1+ verification is missing the verifier challenge nonce or the nonce does not match                                             | Supply the verifier's expected nonce and require the attested runtime nonce to match it                                                                                |
 
-## TR-POL — Policy
+## TR-POL: Policy
 
 | Code       | Description                                                                                                                                                                                                                                                                    | How to fix                                                                                                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,7 +38,7 @@ All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<N
 | TR-POL-002 | `policy.enforcement_mode` is not `enforce`, `advisory`, `silent`, or `declared`                                                                                                                                                                                                | Replace `"strict"` or `"monitor"` with one of the four accepted values; `"declared"` is the honest value for a producer that binds a policy without evaluating it          |
 | TR-POL-003 | `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares. Unverified when a resolver was supplied and the bundle could not be read; skipped when no `policy_uri` is present or no resolver was supplied | Point `policy_uri` at the bundle whose bytes hash to `bundle_hash`. A record that cites a bundle it cannot be checked against is reported as unverified rather than passed |
 
-## TR-APR — Appraisal
+## TR-APR: Appraisal
 
 | Code       | Description                                                                                                                                          | How to fix                                                                                                                                                                                                                      |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,23 +48,23 @@ All TRACE test failures emit a structured error code of the form `TR-<MODULE>-<N
 | TR-APR-004 | `appraisal.timestamp` is present and is not an integer of epoch seconds, or is in the future. Skipped when the field is absent, which is permitted   | Set `appraisal.timestamp` to the epoch second the appraisal was produced. An appraisal dated in the future asserts something that has not happened, on the same ground TR-ENV-002 applies to `iat`                              |
 | TR-APR-005 | `appraisal.status` is not `affirming` at Level 1 or above. Skipped at Level 0, where `docs/levels.md`'s own minimum conformant record carries `none` | Re-run the appraisal until it affirms, or check the record at Level 0                                                                                                                                                           |
 
-## TR-TXN — Transcript
+## TR-TXN: Transcript
 
 | Code       | Description                                                | How to fix                                                                                              |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | TR-TXN-001 | `tool_transcript.hash` is not a valid `sha256:` digest     | Set `tool_transcript.hash` to `sha256:` + 64 hex chars of the Merkle root of the tool call log          |
 | TR-TXN-002 | `tool_transcript.call_count` is negative or not an integer | Set `tool_transcript.call_count` to a non-negative integer (0 is valid for sessions with no tool calls) |
 
-## TR-ANC — Transparency
+## TR-ANC: Transparency
 
 | Code       | Description                                                                                                                               | How to fix                                                                                                                                                                                                                                                          |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TR-ANC-001 | `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host                                               | Submit the record to a SCITT transparency log and set `transparency` to the returned receipt URI. The URI is not resolved and the receipt behind it is not fetched; this is a format check on the pointer, and TR-ANC-002 is what checks the anchor                 |
 | TR-ANC-002 | No anchor receipt was supplied, the receipt is malformed, or replaying its inclusion proof does not reproduce the committed `merkle_root` | Pass the receipt with `--receipt`. Without one, nothing proves the record is in the log the URI names, so Level 2 cannot pass. If a receipt is supplied and the proof does not verify, the record is not in that tree or it has been modified since it was anchored |
 
-## TR-SCA — Provenance
+## TR-SCA: Provenance
 
 | Code       | Description                                               | How to fix                                                                                          |
 | ---------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| TR-SCA-001 | `build_provenance.slsa_level` is not 0–3                  | Set `build_provenance.slsa_level` to an integer 0–3 matching your SLSA build level                  |
+| TR-SCA-001 | `build_provenance.slsa_level` is not 0 to 3               | Set `build_provenance.slsa_level` to an integer 0 to 3 matching your SLSA build level               |
 | TR-SCA-002 | `build_provenance.digest` is not a valid `sha256:` digest | Set `build_provenance.digest` to `sha256:` + 64 hex chars of the container image or artifact digest |
