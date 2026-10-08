@@ -1,0 +1,55 @@
+{
+  "name": "result-about-another-measurement",
+  "description": "platform_measurement.measurement differs from runtime.measurement: the result is about other evidence, not this record. Held by the reference model only: the schema cannot compare two members of the record.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "synthetic": true,
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:81f605e80d610a786f4169c593480e077cfab5850eb2332d09c08a1bccac7545"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:57d75a1f518dcb33ce27b84a7b308b10865887e2946ca5852f01aed810fde2b4",
+        "layers": {
+          "pcr:0": {
+            "outcome": "established"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "HOm8kkf6YtycRPNfQTiODH7u8JKh3W_sx791svN3lk-oxQgZbBs6pyoJR_-pF2NnIFqdS7P4PZ5v8P6I-ndCAg"
+  },
+  "expected": {
+    "outcome": "reject",
+    "codes": [
+      "measurement_mismatch"
+    ],
+    "schema_sees": false
+  }
+}
