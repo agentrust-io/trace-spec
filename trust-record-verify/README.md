@@ -1,0 +1,188 @@
+# @agentrust-io/trust-record-verify
+
+A TypeScript verifier for TRACE v0.2 Trust Records.
+
+It is a second implementation, written from [`spec/trace-v0.2.md`](../spec/trace-v0.2.md)
+and the schemas in [`schema/`](../schema), and held against the Python implementation in
+this repository by a differential harness. Two implementations that agree are evidence the
+specification says what it means; where they disagree, the disagreement is written down
+rather than smoothed over.
+
+It runs on WebCrypto alone: no network, no filesystem, no platform module, no runtime
+dependency. That is what a browser, an edge worker or a service mesh sidecar needs to check
+a record without a Python runtime.
+
+## Using it
+
+```ts
+import { verifyRecord } from "@agentrust-io/trust-record-verify";
+
+const result = await verifyRecord(record, {
+  trustedKey: issuerJwk,          // an Ed25519 public JWK the caller already trusts
+  maxAgeSeconds: 86400,           // section 3.2.2 default
+  revocationBundle: bundle,       // optional, section 3.2.3
+  trustedBundleKeys: [logJwk],
+});
+
+result.profile;                   // the record's eat_profile, accepted by this verifier
+result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
+result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
+result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
+```
+
+A rejection is a `TraceVerificationError` carrying a stable `code`. A resolved result still
+has to be read: `revocation.outcome` is the verifier's appraisal input, and section 3.2.3
+states that `unverified_for_revocation` and `no_check_performed` MUST NOT be reported as an
+affirming appraisal.
+
+## What it checks, and where each rule comes from
+
+| Check | Source |
+|---|---|
+| `eat_profile` is `tag:agentrust-io.com,2026:trace-v0.2`, and the v0.1 identifier is rejected rather than accepted | spec section 2, "the cutover is cutover, not coexistence" |
+| The record conforms to `schema/trace-claim.json`, Draft 2020-12, with `pattern` read as ECMA-262 and `format: uri` asserted | schema, and JSON Schema 2020-12 section 7 |
+| The signature is Ed25519 over the RFC 8785 form of the record with `signature` absent | spec section 3.2.2 |
+| The signature is canonical unpadded base64url: no padding, unused trailing bits zero | RFC 4648 sections 5 and 3.5 |
+| An integer outside the JCS safe range MUST be rejected rather than canonicalised | spec section 3.2.2, RFC 8785 Appendix B |
+| `cnf.jwk` is an Ed25519 key whose RFC 7638 thumbprint is the verifying key's | spec section 3.2.2 |
+| Freshness: `iat` is an integer, the record is not past `maxAgeSeconds` and not further ahead than `maxFutureSkewSeconds` | spec section 3.2.2 |
+| Revocation is keyed on the trusted key and never on the record's own `cnf.jwk` | spec section 3.2.3 |
+| A revocation bundle a verifier cannot ground an answer on is reported as `unverified_for_revocation`, which MUST NOT be read as an affirming appraisal | spec section 3.2.3 |
+| A statement naming the key rejects the record whatever the bundle's age; no inclusion entry ID is taken, so this is the section's fallback for a record without a usable receipt | spec section 3.2.3 |
+| `delegation.parent_record_hash` is taken over the complete parent record, signature included | spec section 3.1.3 |
+| A chain digest whose prefix names an unsupported algorithm MUST be rejected rather than computed with another | spec section 3.1.3 |
+
+The check order inside `verifyRecord` is the Python implementation's, so both report the
+same first failure for the same record. It is documented beside the function.
+
+## What it does not do
+
+- No chain walk. The `delegation` block is normative in v0.2 and what a verifier does with a
+  chain of them is not, so this package ships one link (`verifyDelegationLink`) and leaves
+  the policy to its caller. See [`docs/rfcs/a2a-delegation-profile.md`](../docs/rfcs/a2a-delegation-profile.md).
+- No signing. A verifier that can sign is a verifier that can be made to sign.
+- No key or bundle fetching. Both are passed in, which is what keeps the package offline.
+- No ES256 or ES384 bundle signatures. The bundle schema admits them; a signature nobody
+  checked grounds nothing, so they are reported as `bundle_signature_unsupported`.
+- No statement-level signatures. Section 3.2.3 authenticates a revocation statement with
+  the signature of the bundle that carries it, and that is the signature this package
+  checks. A statement's own signature against the section 3.2.1 key hierarchy is not
+  verified, because a verifier does not hold that hierarchy. This is the subset the Python
+  implementation documents in `src/agentrust_trace/revocation.py`.
+- No inclusion-entry ordering. `verifyRecord` takes no SCITT inclusion entry ID, so the
+  `last_valid_entry_id` rule of section 3.2.3 is not applied: a statement naming the trusted
+  key rejects every record that key signed, which is the section's fallback for a record
+  without a usable receipt. The Python implementation applies the same fallback. A verifier
+  that holds a record's entry ID needs the receipt path in both implementations, and it is
+  not in this package.
+
+## Building
+
+```
+npm ci
+npm run build     # generates the validators from ../schema, then compiles
+npm test
+```
+
+`npm run build` compiles the schemas ahead of time with ajv into
+`src/generated/validators.js`, so nothing is evaluated or fetched at run time, and records
+the SHA-256 of each schema file it read. A test compares those digests against `../schema`,
+so the validators in a build are known to come from exactly those bytes: a build made
+against another schema directory (`TRACE_SCHEMA_DIR`) fails that test.
+
+## The differential harness
+
+```
+python differential/generate_cases.py --external <trace-tests>/tests/vectors
+python differential/oracle.py          # the Python implementation's verdicts
+node differential/run.mjs              # this implementation's verdicts
+python differential/compare.py --expect-external 12
+```
+
+`--external` is a checkout of the published conformance vectors; CI pins one and passes
+`--expect-external` with the number of cases it must yield, so a checkout that did not
+happen fails the run rather than shrinking the corpus. Without it the corpus is 1632 cases
+and the published-vector row below is absent. `generate_cases.py` writes the SHA-256 of
+every vector file it read to `build/manifest.json`, and `compare.py` prints the count and
+the manifest digest.
+
+The corpus is one JSON file holding each record as *text*, because several cases exist to
+probe a difference that only survives in text. Both runners parse the same bytes with their
+own JSON parser. A case agrees when both sides reach the same verdict for the same stated
+reason: the same failure code, and for a schema failure the same member, since the check
+order is shared and the first member faulted must be the same one; for a record that
+verifies, the same key thumbprint, the same source of that key (the caller's or the
+record's own `cnf.jwk`, which the thumbprint alone cannot tell apart when they are the same
+key), the same profile and complete accepted set (section 3.3), and the same revocation
+outcome, cause and evidence. Every disagreement is argued in
+[`differential/known-divergences.json`](differential/known-divergences.json), matched on
+both the case and the pair of reported reasons, so a new disagreement in a family already
+listed is reported rather than absorbed. The ledger holds in the other direction too: each
+entry declares how many cases land on it, and an entry, a pair or a count the run does not
+bear out fails it, so a divergence that stops happening on either side has to leave the
+ledger rather than stay as a claim nothing checks.
+
+Latest run, against this repository's implementation at the commit under test (its version string reads 0.11.0):
+
+| Group | Cases | Identical |
+|---|---:|---:|
+| Signed record under 24 verifier configurations, 59 record mutations each | 1416 | 1416 |
+| RFC 8785 canonicalization corpus | 34 | 33 |
+| RFC 7638 thumbprints | 14 | 14 |
+| Chain digests over the delegation corpus | 134 | 134 |
+| This repository's conformance vectors | 34 | 34 |
+| Published conformance vectors | 12 | 12 |
+| **Total** | **1644** | **1643** |
+
+Every published vector agrees. The 1 remaining case is the ledger's 1 entry, pinned to
+the number of cases that land on it: the JSON number model, which the two languages hold
+differently, in a single case in the RFC 8785 corpus.
+
+| Ledger entry | Cases | Where |
+|---|---:|---|
+| `1.0e+21`: a float in Python, an integer past 2^53 here (`jcs-10`) | 1 | RFC 8785 corpus |
+
+Twelve entries have left the ledger, each reported by the harness as an entry no case
+reached, which is how a divergence that stopped is meant to leave. Six went when the
+reference stopped diverging after 0.10.0:
+
+- the lone-surrogate revocation bundle (`c23`; #382, fixed by #386);
+- `subject` with a trailing U+000A, U+000D or U+2028 under ECMA-262 `pattern` semantics
+  (`m27`; #379, fixed by #388);
+- `appraisal.verifier` with a trailing newline under `format: uri` (`m31`; #379, fixed by #388);
+- the IPv4-in-IPv6 literal with a leading zero (`m32`; #380, fixed by #387);
+- the non-ASCII nonce (`m41`; #381, fixed by #383);
+- a `signature` member that is present but `0`, `false`, `[]` or `{}` (`m08`; #390). The
+  TypeScript signature guard now also distinguishes absent members, null values and empty
+  strings in the same order as the Python reference.
+
+Four went with 0.11.0, whose decoder refuses base64url that is not canonical (#418), which
+this implementation had refused from the start:
+
+- a signature re-spelled with non-zero unused trailing bits (`m03`), which the reference
+  used to verify;
+- a signature truncated to a still-valid base64url length (`m04`);
+- the record's `cnf.jwk.x` not canonical base64url (`m46`, `m47`);
+- the caller's trusted key with a non-canonical `x` (`c18`).
+
+The eleventh went when this implementation moved, not the reference: a signature with a
+trailing newline (`m05`). The reference decodes the signature before it consults the
+schema, and this implementation consulted the schema first, so the two rejected that
+signature for different stated reasons. While the reference's decoder was lenient, the
+difference in order showed in that one case. Once it was strict, a padded signature and
+one in the standard alphabet showed it too, and the decoding here moved ahead of the
+schema, to where the reference has it. Both now report `signature_malformed` for all
+three, and the empty string, which decodes to no bytes, is still refused by the schema's
+pattern on both sides.
+
+The twelfth went with #404, which has the reference decide integer-typed members by value:
+`iat` written `1785000000.0` or `1.785e9` (`m20`, `m21`) is an integer after `JSON.parse`
+and a float after `json.loads`, and the reference required an `int`. It now accepts a whole
+number however it is written, as this implementation always had, so the 32 cases that
+landed on that entry agree.
+
+The differential compares verdicts, so it is silent on anything that does not change a
+verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
+and `codePointLength` cannot disagree with `value.length` on anything the current schema
+constrains (no `maxLength`; every `minLength` is 1). Those rest on the unit tests and on
+reading the code, not on the 1644.
