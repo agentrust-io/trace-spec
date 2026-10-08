@@ -22,7 +22,7 @@ TRACE's conformance suite (the public set of tests an implementation runs to sho
 | 1: hardware evidence | Runtime and build-provenance checks | Actual quote appraisal, expected measurements, key binding, provider-specific limits |
 | 2: transparency | Transcript and anchoring checks | Authenticated log/checkpoint, inclusion proof, record binding, completeness of the submitted history |
 
-See the [suite's level definitions](https://tests.agentrust-io.com/docs/levels/) for required modules and its [limitations](https://tests.agentrust-io.com/LIMITATIONS/) for what a pass establishes. Record-format checks must not be described as a fresh hardware appraisal unless that evidence was actually verified.
+See the [suite's level definitions](https://trace.agentrust-io.com/conformance/docs/levels/) for required modules and its [limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/) for what a pass establishes. Record-format checks must not be described as a fresh hardware appraisal unless that evidence was actually verified.
 
 <a id="level-0-software-only"></a>
 
