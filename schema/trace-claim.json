@@ -33,7 +33,7 @@
     }
   },
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record: a signed governance record for an AI agent execution, which can carry hardware attestation evidence.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -74,7 +74,7 @@
       "properties": {
         "provider": {
           "type": "string",
-          "description": "Model provider (e.g. 'anthropic', 'openai', 'meta')."
+          "description": "Model provider (e.g. 'example-provider')."
         },
         "model_id": {
           "type": "string",

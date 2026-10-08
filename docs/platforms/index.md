@@ -8,7 +8,7 @@ Choosing a hardware platform does not give a record either level by itself. Whoe
 
 ## Platform names and evidence
 
-A standalone TRACE record names its platform in the `runtime.platform` field, using the values in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Other tools have their own names: cMCP's configuration names `sev-snp`, `tdx` and `opaque` are not the same values and cannot be swapped in.
+A standalone TRACE record names its platform in the `runtime.platform` field, using the values in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Other tools have their own names: cMCP's configuration names, such as `sev-snp` and `tdx`, are not the same values and cannot be swapped in.
 
 | Platform guide | Standalone `runtime.platform` | Evidence to appraise |
 |---|---|---|

@@ -268,7 +268,7 @@ nav:
           - Intel TDX: docs/platforms/intel-tdx.md
           - NVIDIA H100: docs/platforms/nvidia-h100.md
           - Bernstein (software-only): docs/platforms/bernstein.md
-      - Conformance test suite: https://tests.agentrust-io.com
+      - Conformance test suite: https://trace.agentrust-io.com/conformance/
   - Project:
       - Limitations: LIMITATIONS.md
       - Roadmap: ROADMAP.md

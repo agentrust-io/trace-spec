@@ -239,7 +239,7 @@ def fixture(vector: dict[str, Any]) -> str:
 def main() -> None:
     for vector in VECTORS:
         path = OUT / vector["file"]
-        path.write_text(fixture(vector), encoding="utf-8")
+        path.write_text(fixture(vector), encoding="utf-8", newline="\n")
         print("wrote", path.name)
 
 

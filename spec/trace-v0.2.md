@@ -74,7 +74,7 @@ Records already issued under v0.1 remain verifiable against the v0.1 specificati
 
 ## Abstract
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-attested governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact. The reference SDK does not verify attestation evidence. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
 
 TRACE composes existing standards rather than replacing them. It profiles RATS/EAT (RFC 9711) for the wire envelope, SLSA for build-time provenance, SCITT for transparency anchoring, SPIFFE for workload identity, EAR for evidence appraisal, and MCP / A2A for the agent execution surface. Where gaps exist, notably the AI-agent execution profile, TRACE proposes the minimum new schema to close them.
 
@@ -445,8 +445,8 @@ Example result, for a reference composite in which one layer holds a separator o
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
     "weights_digest": "sha256:a3f8d2c1e9b04756..."
   },
@@ -831,7 +831,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
 <!-- CHANGED: #143 - silent allows deny decisions while retaining audit evidence -->
 
@@ -886,7 +886,7 @@ Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA 
 
 The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
-Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
+NVIDIA, Intel, AMD, Microsoft, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
 ### 6.3 IP and licensing
 
@@ -925,7 +925,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 | SPIFFE | Secure Production Identity Framework For Everyone (CNCF). Workload identity |
 | AIBOM | AI Bill of Materials (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM) |
 | MCP | Model Context Protocol. Agent tool-call surface |
-| A2A | Agent-to-Agent (Google). Inter-agent communication protocol |
+| A2A | Agent2Agent protocol (Linux Foundation). Inter-agent communication protocol |
 | C2PA | Coalition for Content Provenance and Authenticity. Content origin manifests |
 | RIM | Reference Integrity Manifest. Vendor-published reference measurements |
 | Trust Record | TRACE's portable signed artifact: see §3 |
@@ -972,8 +972,8 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Adjacent Work
 
-- Project Oak (Google DeepMind): https://github.com/project-oak/oak
-- Anthropic MCP Specification: https://modelcontextprotocol.io/specification/
-- Google A2A Specification: https://a2a-protocol.org/latest/specification/
+- Project Oak: https://github.com/project-oak/oak
+- Model Context Protocol Specification: https://modelcontextprotocol.io/specification/
+- Agent2Agent (A2A) Protocol Specification: https://a2a-protocol.org/latest/specification/
 - MITRE ATLAS: https://atlas.mitre.org/
 - OWASP Top 10 for Agentic Applications: https://genai.owasp.org/

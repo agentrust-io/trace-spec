@@ -2,13 +2,13 @@
 
 Acta is an IETF draft format for signed receipts that record whether an AI agent's tool call was allowed before it ran. This page shows how such a receipt can travel next to a TRACE record as supporting evidence, and which Acta fields a TRACE verifier checks. It is for teams that already produce Acta receipts; neither format changes.
 
-> **Non-normative.** This document is informative only. Nothing here changes TRACE v0.1 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.1 Trust Record as defined in [`spec/trace-v0.1.md`](../../spec/trace-v0.1.md). References to "Acta" mean the receipt format specified in [draft-farley-acta-signed-receipts](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) (revision 02); section references of the form "Acta s2.1" are to that draft.
+> **Non-normative.** This document is informative only. Nothing here changes TRACE v0.2 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.2 Trust Record as defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md). References to "Acta" mean the receipt format specified in [draft-farley-acta-signed-receipts](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) (revision 02); section references of the form "Acta s2.1" are to that draft.
 
 ---
 
 ## Purpose
 
-[Spec section 3.3.2](../../spec/trace-v0.1.md#332-action-receipts-for-embodied-workflows-informative) describes action receipts as evidence that sits below a Trust Record: a per-action signed statement, bound to a call or session, that a verifier checks independently of the core record. The [embodied-workflow fixtures](https://github.com/agentrust-io/trace-spec/blob/main/examples/action-receipts/README.md) show one profile of that pattern, for a physical controller (a robot arm, a safety monitor) signing an assertion about a physical action.
+[Spec section 3.3.3](../../spec/trace-v0.2.md#333-action-receipts-for-embodied-workflows-informative) describes action receipts as evidence that sits below a Trust Record: a per-action signed statement, bound to a call or session, that a verifier checks independently of the core record. The [embodied-workflow fixtures](https://github.com/agentrust-io/trace-spec/blob/main/examples/action-receipts/README.md) show one profile of that pattern, for a physical controller (a robot arm, a safety monitor) signing an assertion about a physical action.
 
 This cross-walk describes a second profile of the same pattern: an **Acta decision receipt**, evidencing a software decision (an AI agent's tool call, decided by a local policy gate before it runs) rather than a physical one. The verification pattern in 3.3.2 is deliberately domain-agnostic; the intent here is to show it composes with an existing, independently specified receipt format without a wire-format change to either side.
 
@@ -49,12 +49,12 @@ Working fixtures: [`examples/action-receipts/acta/`](https://github.com/agentrus
 
 ## Field mapping
 
-Field names on the left are exact TRACE terms as used in [spec section 3.3.2](../../spec/trace-v0.1.md#332-action-receipts-for-embodied-workflows-informative) and the [embodied fixture shape](https://github.com/agentrust-io/trace-spec/blob/main/examples/action-receipts/README.md#shared-receipt-shape). Field names on the right are exact Acta draft-02 fields.
+Field names on the left are exact TRACE terms as used in [spec section 3.3.3](../../spec/trace-v0.2.md#333-action-receipts-for-embodied-workflows-informative) and the [embodied fixture shape](https://github.com/agentrust-io/trace-spec/blob/main/examples/action-receipts/README.md#shared-receipt-shape). Field names on the right are exact Acta draft-02 fields.
 
 | TRACE action-receipt obligation | Acta field(s) | Notes |
 |---|---|---|
 | `receipt.issuer` | `payload.issuer_id` | REQUIRED common field (Acta s2.2); MUST match `signature.kid`, so issuer identity and key identity cannot silently diverge inside one receipt. |
-| `receipt.issuer_key_id` | `signature.kid` | Resolved the same way 3.3.2 describes: through a pinned, manifest-bound, or otherwise trusted key set, not carried in the receipt as a public key. |
+| `receipt.issuer_key_id` | `signature.kid` | Resolved the same way 3.3.3 describes: through a pinned, manifest-bound, or otherwise trusted key set, not carried in the receipt as a public key. |
 | `receipt.linked_call_id` / `session_id` | `payload.session_id` | Acta s3.1 binds at session level; `session_id` is OPTIONAL, and when present MUST NOT contain PII or be correlatable across sessions unless the operator explicitly configures session binding. Acta has no per-call identifier field; a TRACE-composing deployment gets call-level binding by carrying the tool input's digest in `payload_digest` (below) or by a deployment extension field, and should say which. |
 | `receipt.evidence_type` | `payload.type` | Namespaced receipt type (Acta s2.2), here `protectmcp:decision`. |
 | `receipt.evidence_hash` | `payload.payload_digest` | OPTIONAL common field (Acta s2.2): `{hash, size, preview?}` over associated data (tool input/output) too large to embed. Serves exactly the external-evidence-by-digest role 3.3.2 describes. |
@@ -96,7 +96,7 @@ An Acta decision receipt proves that a specific policy decision, over a specific
 
 - that the decided tool call's real-world side effect was safe, correct, or reversible (out of scope for both Acta and TRACE);
 - that the receipt occupies the chain position it claims, that its policy binding is still current, or that it is being presented under the session it was issued for, if only the signature was checked (fixtures `04`, `05`, `06` respectively; each is validly signed and fails exactly one non-signature check);
-- physical completion or functional-safety certification of any kind, which is the boundary [spec section 2.4](../../spec/trace-v0.1.md#24-permanent-scope-boundaries) and the [external-execution-evidence decision on trace-spec#34](https://github.com/agentrust-io/trace-spec/issues/34) already state for the embodied case, and which applies identically here.
+- physical completion or functional-safety certification of any kind, which is the boundary [spec section 2.4](../../spec/trace-v0.2.md#24-permanent-scope-boundaries) and the [external-execution-evidence decision on trace-spec#34](https://github.com/agentrust-io/trace-spec/issues/34) already state for the embodied case, and which applies identically here.
 
 ## Conformance fixtures
 
@@ -104,8 +104,8 @@ Six real fixtures in [`examples/action-receipts/acta/`](https://github.com/agent
 
 ## References
 
-- TRACE v0.1 specification, section 3.3.2: [`spec/trace-v0.1.md`](../../spec/trace-v0.1.md#332-action-receipts-for-embodied-workflows-informative)
-- TRACE v0.1 specification, section 2.4 (permanent scope boundaries): [`spec/trace-v0.1.md`](../../spec/trace-v0.1.md#24-permanent-scope-boundaries)
+- TRACE v0.2 specification, section 3.3.3: [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md#333-action-receipts-for-embodied-workflows-informative)
+- TRACE v0.2 specification, section 2.4 (permanent scope boundaries): [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md#24-permanent-scope-boundaries)
 - trace-spec#34 (external execution evidence, closed): <https://github.com/agentrust-io/trace-spec/issues/34>
 - trace-spec#66 (verification depth + action_receipts): <https://github.com/agentrust-io/trace-spec/issues/66>
 - trace-spec#95 (action receipt conformance cases): <https://github.com/agentrust-io/trace-spec/issues/95>

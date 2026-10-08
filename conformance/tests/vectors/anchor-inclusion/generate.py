@@ -172,7 +172,7 @@ def vectors() -> list[dict]:
 def main() -> None:
     for i, v in enumerate(vectors(), 1):
         (HERE / f"{i:02}-{v['name']}.json").write_text(
-            json.dumps(v, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+            json.dumps(v, indent=2, ensure_ascii=True) + "\n", encoding="utf-8", newline="\n"
         )
 
 

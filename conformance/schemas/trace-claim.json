@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentrust-io.com/schema/trace-v0.2.json",
   "title": "TRACE Trust Record",
-  "description": "A TRACE v0.2 Trust Record — hardware-attested governance evidence for an AI agent execution.",
+  "description": "A TRACE v0.2 Trust Record: a signed governance record for an AI agent execution, which can carry hardware attestation evidence.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -42,7 +42,7 @@
       "properties": {
         "provider": {
           "type": "string",
-          "description": "Model provider (e.g. 'anthropic', 'openai', 'meta')."
+          "description": "Model provider (e.g. 'example-provider')."
         },
         "model_id": {
           "type": "string",
@@ -329,7 +329,7 @@
     },
     "cnf": {
       "type": "object",
-      "description": "Confirmation key (RFC 8747) — binds the Trust Record to the TEE-held signing key.",
+      "description": "Confirmation key (RFC 8747) that binds the Trust Record to the TEE-held signing key.",
       "required": [
         "jwk"
       ],

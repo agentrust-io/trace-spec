@@ -264,8 +264,8 @@ class TraceSandboxAdapter:
     then call :meth:`build_trust_record` per session::
 
         adapter = TraceSandboxAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             data_class="confidential",
             enforcement_mode="enforce",
         )

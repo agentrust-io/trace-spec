@@ -563,7 +563,10 @@ class ConfirmationKey(_TraceModel):
 
 
 class TrustRecord(_TraceModel):
-    """TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution."""
+    """TRACE v0.2 Trust Record: a signed governance record for an AI agent execution.
+
+    It can carry hardware attestation evidence; the SDK does not verify that evidence.
+    """
 
     model_config = ConfigDict(extra="forbid")
 

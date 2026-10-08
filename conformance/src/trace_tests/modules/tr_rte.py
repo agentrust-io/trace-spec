@@ -62,7 +62,7 @@ def check(
                     Status.FAIL,
                     f"TR-RTE-001: runtime.platform {platform!r} is development-mode "
                     "and not acceptable for "
-                    f"hardware-attested levels (Level {level} requires a hardware TEE platform)",
+                    f"Level {level}, which requires a hardware TEE platform",
                 )
             )
     elif isinstance(platform, str) and platform in _VALID_PLATFORMS:
