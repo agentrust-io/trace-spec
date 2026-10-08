@@ -20,7 +20,7 @@ Source code, SDK code, test code, examples, workflows, and sample or
 reference code are made available under Apache License 2.0 unless a file
 states otherwise. This covers src/, tests/, examples/, and .github/.
 
-Copyright 2026 OPAQUE Systems, Inc. and the TRACE Specification contributors.
+Copyright 2026 The TRACE Specification Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use these files except in compliance with the License.
@@ -63,15 +63,5 @@ CC BY 4.0. Those grants stand:
 Portions of spec/trace-v0.1.md carried forward into later specification
 versions remain available under CC BY 4.0. Where both licenses apply to the
 same text, a recipient may rely on either.
-
-PATENT PROMISE
-==============
-OPAQUE Systems, Inc. grants a royalty-free, worldwide, non-exclusive
-license under any patent claims it controls that are necessarily infringed
-by a conforming implementation of this specification, for the purpose of
-implementing or operating a product that conforms to this specification.
-This promise applies to v0.1 and all subsequent versions of TRACE. It is
-made in addition to, and does not narrow, patent rights granted under the
-Community Specification License or the Apache License, Version 2.0.
 
 For a concise file-by-file license map, see Governance/License.md.

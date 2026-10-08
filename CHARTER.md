@@ -49,7 +49,7 @@ Normative specification text and the normative TRACE JSON Schema are licensed un
 
 ## 5. Trademark Policy
 
-"TRACE" as a specification name and the "TRACE-conformant" conformance mark are currently held by OPAQUE Systems, Inc. Upon host organization acceptance, trademark ownership transfers to the host under their standard trademark policy.
+"TRACE" as a specification name and the "TRACE-conformant" conformance mark are held by LF Projects, LLC, under the trademark policy at https://www.lfprojects.org/policies/.
 
 Use of "TRACE-conformant" to describe an implementation is permitted only when that implementation passes the published conformance test suite for the version being claimed.
 

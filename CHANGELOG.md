@@ -25,6 +25,11 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - **Generators write LF on every platform.** `gen_number_spelling.py` and the
   anchor-inclusion generator opened their output in text mode, so a Windows run wrote
   CRLF and the byte-for-byte regeneration check failed.
+- **License and trademark text names the LF series.** `LICENSE`, `NOTICE` and both site
+  footers read "The TRACE Specification Authors" as the copyright line. The separate
+  patent promise section is removed from `LICENSE`; the patent grants in the Community
+  Specification License 1.0 and Apache License 2.0 are unchanged. `CHARTER.md` section 5
+  now says the TRACE name and the "TRACE-conformant" mark are held by LF Projects, LLC.
 - **BREAKING:** Successful `provenance.verify_record()` calls previously returned
   `None`; they now return `RevocationCheck` (#279). Callers can distinguish
   `no_check_performed` when no revocation store is supplied from `verified` when
