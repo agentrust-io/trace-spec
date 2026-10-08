@@ -3,8 +3,8 @@
   "iat": 1748000000,
   "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-5"
+    "provider": "example-provider",
+    "model_id": "example-model"
   },
   "runtime": {
     "platform": "intel-tdx",

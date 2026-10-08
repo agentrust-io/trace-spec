@@ -3,8 +3,8 @@
   "iat": 1748000001,
   "subject": "spiffe://example.org/agent/payments/01926b4c-1234-7abc-9def-000000000002",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-opus-4-8",
+    "provider": "example-provider",
+    "model_id": "example-model-large",
     "version": "2026-06"
   },
   "runtime": {

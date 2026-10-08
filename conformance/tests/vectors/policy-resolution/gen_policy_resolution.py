@@ -22,8 +22,8 @@ WHAT THIS SET IS FOR
 WHAT EACH VECTOR ASSERTS
     One thing: the status of the TR-POL-003 finding. That is the unit of
     measurement for this set, and it is deliberately narrower than a whole
-    record's verdict. These records carry other findings — they are unsigned,
-    so TR-SIG-005 has an opinion about them — and reading the set at record
+    record's verdict. These records carry other findings (they are unsigned,
+    so TR-SIG-005 has an opinion about them), and reading the set at record
     granularity would blur the check under test with everything around it.
 
 ANCHORS
@@ -152,7 +152,7 @@ def record_with(policy: dict[str, object]) -> dict[str, object]:
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": RECORD_IAT,
         "subject": "spiffe://example.org/agent/credit-risk/01926b4c-1234-7abc-9def-000000000001",
-        "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-5"},
+        "model": {"provider": "example-provider", "model_id": "example-model"},
         "runtime": {
             "platform": "intel-tdx",
             "measurement":
@@ -271,7 +271,7 @@ def main(out_dir: Path | None = None) -> int:
 
     The parameter exists so the byte-reproduction guard can regenerate into a
     temporary directory and compare, rather than overwriting the committed
-    files and comparing them to themselves — which would agree no matter what.
+    files and comparing them to themselves, which would agree no matter what.
     """
     here = Path(out_dir) if out_dir is not None else HERE
     policies = here / "policies"

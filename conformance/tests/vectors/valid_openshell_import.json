@@ -3,8 +3,8 @@
   "iat": 1775014139,
   "subject": "spiffe://example.org/agent/codex",
   "model": {
-    "provider": "openai",
-    "model_id": "gpt-5"
+    "provider": "example-provider",
+    "model_id": "example-model"
   },
   "runtime": {
     "platform": "software-only",
