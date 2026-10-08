@@ -1,5 +1,7 @@
 # Does `trace-tests` notice when its own conformance checks break?
 
+In plain terms: this page asks whether the suite's own tests would notice if one of its checks quietly stopped working. The method is to break each check on purpose, one at a time, and count how many tests fail. The result below: every failure path is now caught by at least one test, and eight checks rely on exactly one.
+
 **Measured** 2026-08-07 against `agentrust-io/trace-tests` @ `7fc189c` (release 0.4.1),
 with the normative schema from `agentrust-io/trace-spec` @ `dc7491c`.
 
@@ -52,7 +54,7 @@ covered, and still count as verified. The sites are where the checks actually li
 
 `TR-TXN-001` carries the most weight. It is the Level 2 requirement that a tool
 transcript exist at all. If it regressed, implementations would continue to be stamped
-Level 2 conformant without that property being checked — and the transcript is the claim
+Level 2 conformant without that property being checked, and the transcript is the claim
 Level 2 is largely about.
 
 `TR-SIG-002` is the gate that rejects a key that is not Ed25519. With it inert, a record
@@ -79,7 +81,7 @@ output is the conformance stamp rather than in the informative fixture set.
 `runtime.platform` enum. It holds nine values; the schema holds ten. `software-only` is
 missing.
 
-The conformance module is correct — `tr_rte.py:_VALID_PLATFORMS` has all ten — so this is
+The conformance module is correct (`tr_rte.py:_VALID_PLATFORMS` has all ten), so this is
 a defect in the self-test, not in what implementers run. Three-way comparison on a Level 0
 record carrying `software-only`:
 
@@ -90,7 +92,7 @@ tests/test_level0.py            FAIL      (contradicts both)
 ```
 
 It is latent: no vector in `tests/vectors/` uses `software-only`, so nothing triggers it
-today. It becomes active the moment one does — and it would then reject behaviour the
+today. It becomes active the moment one does, and it would then reject behaviour the
 project deliberately added, in PR #16/#17, which updated the conformance module and added
 `tests/test_software_only_platform.py` while leaving this copy behind.
 
@@ -140,7 +142,7 @@ is the property. The two are not related closely enough to substitute one for th
 - **An empty path is rejected before it can look valid.** `Path("")` is `.`, which is a
   directory, so the obvious existence check passes and the script measures whichever tree
   it happens to be standing in. The enum comparison had exactly this hole and reported
-  success having compared nothing — the failure it exists to find, in itself. It now
+  success having compared nothing: the failure it exists to find, in itself. It now
   refuses an empty argument, and refuses to report agreement when zero comparisons were
   made.
 

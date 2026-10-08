@@ -1,5 +1,12 @@
 # PIC/TRACE authorization bridge v1
 
+This page is for implementers who use the [PIC Standard](https://github.com/pic-standard/pic-standard)
+to describe an agent's tool call before it runs, and want the approval of that call tied
+to the TRACE evidence of what the agent then did. In plain terms: an authorizer signs
+"this tool call is allowed" before the call, TRACE records the call, and this bridge lets a verifier check that the call that ran
+is the one that was approved. It is a versioned profile, and the sections below state its
+rules exactly.
+
 This informative profile binds a separately authorized pre-execution decision to
 the TRACE evidence for the execution that followed it. It is an optional bridge;
 it does not make PIC a dependency of TRACE and it does not change the TRACE

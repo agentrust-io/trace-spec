@@ -1,6 +1,6 @@
-# TR-TXN — Transcript
+# TR-TXN: Transcript
 
-Tests tool-call transcript binding.
+Checks the record's summary of the tool calls the agent made: a fingerprint of the full call log and the number of calls. These checks apply from Level 2. They check that the fields are well formed; the suite does not have the log itself to compare against.
 
 ## Required at Level 2+
 

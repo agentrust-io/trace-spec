@@ -1,5 +1,7 @@
 # The `references` relation registry
 
+A Trust Record can point at facts kept somewhere else, such as a human approval or a test result. Each pointer carries a label, `rel`, that says what kind of thing it points at. This page lists the agreed labels, what each one points at, and how to propose a new one. It is for people building tools that write or read these pointers.
+
 Informative. The registered values of `references[].rel` (§3.1.2), what each one's
 referenced object is, what a verifier may conclude from a resolved one, and how a name
 is added.
@@ -36,6 +38,8 @@ fails if `rel` is closed again, and if a registered value stops being named in t
 schema description, in `docs/schema.md`, or in this document.
 
 ## Registered values
+
+The five labels agreed so far, what each one points at, and where it is defined:
 
 | `rel` | Referenced object | Defined in | Example |
 |---|---|---|---|

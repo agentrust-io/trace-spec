@@ -1,5 +1,7 @@
 # Contributing to TRACE
 
+This page explains how to propose a change to TRACE and what reviewers will ask for. Small fixes such as typos and broken links can go straight to a pull request; changes to the rules every implementation must follow need more discussion and a named organization behind them, as described below.
+
 TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 
 ## Running the reference-library checks
@@ -30,6 +32,8 @@ rather than as source, and run something that could have caught the new mistake.
 The check you just fixed is not that something.
 
 ## Before a pull request is reviewed
+
+In short: the automated tests must pass, and a bug fix must come with a test that would have caught the bug.
 
 A pull request gets a full review once every `test` job of the `CI` workflow,
 which runs the checks above, succeeds on its head commit. Other checks on the
@@ -86,7 +90,7 @@ This adds `Signed-off-by: Your Name <you@example.com>`. PRs without DCO sign-off
 
 ### Spec changes (normative text)
 
-Changes to `spec/trace-v0.2.md` that affect what implementations must do. Normative text is any statement using an RFC 2119 keyword in uppercase: what a conformant implementation MUST, SHOULD or MAY do. A normative change binds every implementation of TRACE, including implementations whose authors are not in the discussion.
+These are changes to the rules every TRACE implementation has to follow, so they carry the most weight and the most process. Changes to `spec/trace-v0.2.md` that affect what implementations must do. Normative text is any statement using an RFC 2119 keyword in uppercase: what a conformant implementation MUST, SHOULD or MAY do. A normative change binds every implementation of TRACE, including implementations whose authors are not in the discussion.
 
 **Anyone may propose a Normative Change, however only Normative Contributions with an organizational sponsor willing to implement and maintain that element in the specification will be accepted.**
 

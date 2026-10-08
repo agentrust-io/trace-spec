@@ -1,6 +1,6 @@
-# TR-POL — Policy
+# TR-POL: Policy
 
-Tests Cedar policy bundle binding.
+Checks the record's link to the policy bundle, the file of rules the agent ran under (written in Cedar, a policy language). The record carries the bundle's digest (a fingerprint of its bytes) and how strictly the rules were applied; when you supply the bundle, the suite confirms the fingerprint matches.
 
 ## Required at Level 0+
 
@@ -13,7 +13,7 @@ Tests Cedar policy bundle binding.
 ## Resolving the bundle
 
 TR-POL-003 needs somewhere to fetch the bundle from. The resolver is supplied
-by the caller and never derived from the record — a record that named its own
+by the caller and never derived from the record, because a record that named its own
 resolver could name one that agrees with it. From the CLI that is `--policy-dir
 DIR`, where `DIR/resolutions.json` maps each `policy_uri` to a relative path
 inside `DIR`:

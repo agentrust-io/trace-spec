@@ -1,8 +1,12 @@
 # Roadmap
 
-Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](spec/trace-v0.2.md)); the `agentrust-trace` reference SDK is at **0.11.0** and the conformance suite (`trace-spec/conformance`) at **0.5.1**.
+This page shows what TRACE already does, what comes next, and what it will never try to do. It is for anyone deciding whether TRACE fits their plans, or looking for a place to help.
+
+Status as of October 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](spec/trace-v0.2.md)); the `agentrust-trace` reference SDK (the Python library) is at **0.11.0** and the conformance suite (`trace-spec/conformance`, the tests that score an implementation) at **0.6.2**.
 
 ## Shipped: v0.2 (July to August 2026)
+
+In short: v0.2 fixed the record's identifier, added links between records when one agent hands work to another, published the format for anchoring records in a public log, and added connectors for AGT, cMCP and sandboxed agent runtimes. The detail follows.
 
 - **EAT profile URI cutover** to `tag:agentrust-io.com,2026:trace-v0.2`. The v0.1 identifier named a domain this project never controlled, which RFC 4151 does not permit, so it was invalid rather than misspelled. A v0.2 verifier requires the new URI and rejects the old one; `verify_record()` enforces the cutover before any cryptographic work. Records issued under v0.1 stay verifiable against `spec/trace-v0.1.md` and the published 0.4.x releases.
 - **`delegation` link block** (`parent_record_hash` + `credential_id`), optional and additive. A chain of records linked this way forms an offline-verifiable delegation DAG. This is the foundation the A2A profile binds to, not the profile itself.
@@ -19,6 +23,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](sp
 
 ## Next: v0.3
 
+In short: the next version defines exactly how TRACE records describe tool calls (MCP) and agent-to-agent hand-offs (A2A), and starts on evidence for an agent's memory, encrypted records and vendor-specific hardware notes.
+
 - **MCP profile (normative)**: the [requirements proposal](spec/mcp-profile-v0.3-draft.md) separates TRACE attempt identity, correlation metadata and signed declaration snapshots. Wire format, implementation and adoption remain pending before upstream contribution to MCP spec governance.
 - **A2A profile (normative)**: binding rules over the `delegation` block now that A2A is stable at v1.x, including the mutual case. cA2A is the reference implementation.
 - **Attested memory and persistent state**: a claim for agent memory integrity at runtime, digesting the whole store rather than a manifest of it. Nothing in the ecosystem measures agent memory today; every runtime treats the agent as stateless between actions.
@@ -27,6 +33,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](sp
 - **Disposition on IETF AIIP**: coordinate with `draft-ritz-aiip`: absorb, supersede, or coexist (open question §7 Q7).
 
 ## Later: v1.0 standard (2027)
+
+In short: a stable 1.0 run by its own technical steering committee, with a certification program and verification libraries in more languages.
 
 - TSC governance under "TRACE Specification, a Series of LF Projects, LLC" (formation with LF Projects, LLC complete; the TSC transition under [CHARTER.md](CHARTER.md) is the remaining step)
 - All §7 open questions resolved
@@ -38,6 +46,8 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](sp
 
 ## What TRACE will not do
 
+TRACE builds on existing standards and leaves several jobs to other tools on purpose:
+
 - Replace RATS, EAT, SLSA, SPIFFE, SCITT, or MCP: TRACE is a profile of these
 - Specify a centralized Trust Record registry: verification is designed to work without one
 - Build a TEE platform: hardware support targets open silicon (TDX, SEV-SNP, NVIDIA CC) and any platform that produces RATS-conformant evidence
@@ -45,4 +55,4 @@ Status as of September 2026. Spec **v0.2** is current ([`spec/trace-v0.2.md`](sp
 
 ## Influencing the roadmap
 
-Open a GitHub issue with the `spec` or `roadmap` label. Items land here when they are implemented and tested, not when they are planned; anything above the "Next" line is exercisable today.
+To suggest a change, open a GitHub issue with the `spec` or `roadmap` label. Items land here when they are implemented and tested, not when they are planned; anything above the "Next" line is exercisable today.
