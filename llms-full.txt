@@ -46,7 +46,7 @@ With spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trac
 
   ______________________________________________________________________
 
-  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://tests.agentrust-io.com).
+  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://trace.agentrust-io.com/conformance/).
 
   [See the chain](https://agentrust-io.com/#chain)
 
@@ -68,7 +68,7 @@ Every field is the producer's claim. A valid signature alone does not show that 
 ## Where to go next
 
 - [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the specification itself, with the fields, the publishing protocol and the checking rules.
-- [Conformance suite](https://tests.agentrust-io.com): test an implementation, level by level, before saying it complies.
+- [Conformance suite](https://trace.agentrust-io.com/conformance/): test an implementation, level by level, before saying it complies.
 - [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): produce and read Trust Records from AGT, cMCP and sandboxed agent runtimes.
 
 ## What it is built on
@@ -243,7 +243,7 @@ TRACE's conformance suite (the public set of tests an implementation runs to sho
 | 1: hardware evidence | Runtime and build-provenance checks                    | Actual quote appraisal, expected measurements, key binding, provider-specific limits                 |
 | 2: transparency      | Transcript and anchoring checks                        | Authenticated log/checkpoint, inclusion proof, record binding, completeness of the submitted history |
 
-See the [suite's level definitions](https://tests.agentrust-io.com/docs/levels/) for required modules and its [limitations](https://tests.agentrust-io.com/LIMITATIONS/) for what a pass establishes. Record-format checks must not be described as a fresh hardware appraisal unless that evidence was actually verified.
+See the [suite's level definitions](https://trace.agentrust-io.com/conformance/docs/levels/) for required modules and its [limitations](https://trace.agentrust-io.com/conformance/LIMITATIONS/) for what a pass establishes. Record-format checks must not be described as a fresh hardware appraisal unless that evidence was actually verified.
 
 ## Level 0: software-only
 
@@ -649,7 +649,7 @@ ______________________________________________________________________
 
 ## Abstract
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-attested governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact. The reference SDK does not verify attestation evidence. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
 
 TRACE composes existing standards rather than replacing them. It profiles RATS/EAT (RFC 9711) for the wire envelope, SLSA for build-time provenance, SCITT for transparency anchoring, SPIFFE for workload identity, EAR for evidence appraisal, and MCP / A2A for the agent execution surface. Where gaps exist, notably the AI-agent execution profile, TRACE proposes the minimum new schema to close them.
 
@@ -1008,8 +1008,8 @@ Example result, for a reference composite in which one layer holds a separator o
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
     "weights_digest": "sha256:a3f8d2c1e9b04756..."
   },
@@ -1293,7 +1293,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
 - **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, a policy deny MUST NOT block the action. The audit chain MUST still record every would-have-denied decision; only operational log lines are suppressed. Where modes are compared, `enforce` is the strongest and `silent` the weakest: `advisory` is not weaker than `silent`, because both allow a denied action and `silent` also suppresses operational logs.
 
@@ -1347,7 +1347,7 @@ Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA 
 
 The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
-Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
+NVIDIA, Intel, AMD, Microsoft, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
 ### 6.3 IP and licensing
 
@@ -1386,7 +1386,7 @@ ______________________________________________________________________
 | SPIFFE       | Secure Production Identity Framework For Everyone (CNCF). Workload identity                |
 | AIBOM        | AI Bill of Materials (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM)                           |
 | MCP          | Model Context Protocol. Agent tool-call surface                                            |
-| A2A          | Agent-to-Agent (Google). Inter-agent communication protocol                                |
+| A2A          | Agent2Agent protocol (Linux Foundation). Inter-agent communication protocol                |
 | C2PA         | Coalition for Content Provenance and Authenticity. Content origin manifests                |
 | RIM          | Reference Integrity Manifest. Vendor-published reference measurements                      |
 | Trust Record | TRACE's portable signed artifact: see §3                                                   |
@@ -1433,9 +1433,9 @@ ______________________________________________________________________
 
 ### Adjacent Work
 
-- Project Oak (Google DeepMind): https://github.com/project-oak/oak
-- Anthropic MCP Specification: https://modelcontextprotocol.io/specification/
-- Google A2A Specification: https://a2a-protocol.org/latest/specification/
+- Project Oak: https://github.com/project-oak/oak
+- Model Context Protocol Specification: https://modelcontextprotocol.io/specification/
+- Agent2Agent (A2A) Protocol Specification: https://a2a-protocol.org/latest/specification/
 - MITRE ATLAS: https://atlas.mitre.org/
 - OWASP Top 10 for Agentic Applications: https://genai.owasp.org/
 
@@ -3970,7 +3970,7 @@ Choosing a hardware platform does not give a record either level by itself. Whoe
 
 ## Platform names and evidence
 
-A standalone TRACE record names its platform in the `runtime.platform` field, using the values in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Other tools have their own names: cMCP's configuration names `sev-snp`, `tdx` and `opaque` are not the same values and cannot be swapped in.
+A standalone TRACE record names its platform in the `runtime.platform` field, using the values in the [canonical schema](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json). Other tools have their own names: cMCP's configuration names, such as `sev-snp` and `tdx`, are not the same values and cannot be swapped in.
 
 | Platform guide                                                                    | Standalone `runtime.platform`                             | Evidence to appraise                                                              |
 | --------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -4300,6 +4300,9 @@ ______________________________________________________________________
 
 ## [Unreleased]
 
+- **Accuracy pass on non-normative text.** Examples, schema descriptions, adapter docstrings and unsigned test records use vendor-neutral placeholders (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards organizations, and the Appendix B reference titles use each project's own name. The Acta crosswalk now cites v0.2 sections. Platform pages no longer name a cMCP provider value. The package description, spec abstract, charter, schema descriptions and conformance messages no longer say "hardware-attested": a record is a signed governance record that can carry hardware attestation evidence, and `verify_record()` performs no attestation verification. Signed and digest-pinned vectors are unchanged. No normative text changes.
+- **Conformance site links** point at trace.agentrust-io.com/conformance/, where the combined docs build publishes it; the stale `conformance/CNAME` is removed.
+- **Generators write LF on every platform.** `gen_number_spelling.py` and the anchor-inclusion generator opened their output in text mode, so a Windows run wrote CRLF and the byte-for-byte regeneration check failed.
 - **BREAKING:** Successful `provenance.verify_record()` calls previously returned `None`; they now return `RevocationCheck` (#279). Callers can distinguish `no_check_performed` when no revocation store is supplied from `verified` when the supplied store was checked and clean for this call. Revoked-key refusal is unchanged. No new revocation source or bundle support is introduced.
 - **BREAKING: a verifier that reports `affirming` after a section 3.3 step 4 reference match, while its appraisal policy requires a layer, must now establish that layer in `appraisal.platform_measurement` (section 3.1.5, rule 2, #279).** Reporting `affirming` with the block absent, or with a required layer not established or not listed, is no longer conformant. Records do not change: the schema change is one new optional member of `appraisal`, and no existing document changes verdict. v0.2 is a Draft, so the 30-day period in GOVERNANCE does not apply.
 - **`appraisal.platform_measurement`: what a matching measurement covers, layer by layer (section 3.1.5, #279).** A matching composite `runtime.measurement` does not say which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot, and the record could say only `appraisal.status: none` about it. A verifier now writes, per layer, `established` or `not-established` with one of three reasons: `layer-not-measured`, `measured-not-appraised` or `evidence-spans-multiple-boots`. The first two are what a digest comparison reports as a pass; the third is what a replay check reports as tampering. A layer the result does not list is not established, nor is any layer of a record without the block; a replay mismatch the verifier cannot attribute to one boot is not, on that basis alone, `contraindicated`; and a record carrying a result does not report `status: none`. The block is a member of `appraisal` in its own right, not an `appraisal.method` value, so it sits beside a re-execution result; its `measurement` equals `runtime.measurement`, a `reason` is never `null`, and on `tpm2` a layer is named `pcr:<n>` for a register from 0 to 23. Schema, packaged copy, reference model and `docs/schema.md` carry it; the v0.3 draft schema is regenerated. `tests/test_safe_integer_range.py` now admits a map whose every member is one object schema, which it then holds to the same rule. Forty-four signed vectors in `examples/platform-measurement-appraisal/`: five case-and-twin pairs, two records carrying measurements from published quotes on a board with a discrete TPM, at least two rejections per rule, and an accepting twin for every rejection that differs from it only in the rule it tests. Proposed and written by @revenue7-eng in #279; carried by @imran-siddique as sponsoring maintainer.

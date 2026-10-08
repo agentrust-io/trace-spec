@@ -38,7 +38,7 @@ With spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trac
 
   ______________________________________________________________________
 
-  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://tests.agentrust-io.com).
+  TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://trace.agentrust-io.com/conformance/).
 
   [See the chain](https://agentrust-io.com/#chain)
 
@@ -60,7 +60,7 @@ Every field is the producer's claim. A valid signature alone does not show that 
 ## Where to go next
 
 - [TRACE v0.2](https://trace.agentrust-io.com/spec/trace-v0.2/index.md): the specification itself, with the fields, the publishing protocol and the checking rules.
-- [Conformance suite](https://tests.agentrust-io.com): test an implementation, level by level, before saying it complies.
+- [Conformance suite](https://trace.agentrust-io.com/conformance/): test an implementation, level by level, before saying it complies.
 - [Integration guides](https://trace.agentrust-io.com/docs/integration/agt/index.md): produce and read Trust Records from AGT, cMCP and sandboxed agent runtimes.
 
 ## What it is built on
