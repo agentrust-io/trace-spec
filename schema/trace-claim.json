@@ -74,7 +74,7 @@
       "properties": {
         "provider": {
           "type": "string",
-          "description": "Model provider (e.g. 'anthropic', 'openai', 'meta')."
+          "description": "Model provider (e.g. 'example-provider')."
         },
         "model_id": {
           "type": "string",

@@ -15,7 +15,7 @@ def _record() -> dict:
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": int(time.time()),
         "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
-        "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+        "model": {"provider": "example-provider", "model_id": "example-model"},
         "runtime": {
             "platform": "software-only",
             "measurement": "sha256:" + "0" * 64,

@@ -3,11 +3,11 @@
   "iat": 1782212200,
   "subject": "spiffe://trust.example.org/agent/document-processor/staging",
   "model": {
-    "provider": "meta",
-    "model_id": "llama-3.3-70b-instruct",
+    "provider": "example-provider",
+    "model_id": "example-model-open",
     "version": "3.3",
     "weights_digest": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    "aibom_uri": "https://registry.agentrust-io.com/aibom/llama-3.3-70b-20260101"
+    "aibom_uri": "https://registry.agentrust-io.com/aibom/example-model-open-20260101"
   },
   "runtime": {
     "platform": "tpm2",
