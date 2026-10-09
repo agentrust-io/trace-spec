@@ -1,8 +1,0 @@
-# The receipt-signature corpus that tests/test_acta_receipt_vectors.py runs
-# tools/acta_receipt_verifier.py against, for
-# .github/workflows/acta-receipt-vectors.yml. The package needs Python 3.13 or
-# later, so it is not in requirements/dev.txt, which is compiled for 3.11.
-# Installed with --require-hashes after requirements/dev.txt. Compile with:
-#   uv pip compile requirements/acta-receipt-vectors.in --generate-hashes --universal \
-#     --python-version 3.13 -o requirements/acta-receipt-vectors.txt
-agent-evidence-vectors==0.17.4
