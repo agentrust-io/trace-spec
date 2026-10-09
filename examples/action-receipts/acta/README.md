@@ -57,6 +57,11 @@ and 5.6:
    against `current_policy_digest` and `expected_session_id` in
    `expected.json`.
 
+[`tools/acta_receipt_verifier.py`](../../../tools/acta_receipt_verifier.py)
+runs steps 1 to 4 on one receipt, with the issuer key taken from a JWK Set,
+and also applies the revision 03 rules (sections 6.6, 6.7 and 9.2). The
+fixture tests call the same functions.
+
 Expected outcomes per fixture are in `expected.json`; the CI test asserts
 exactly these, so fixture or envelope drift fails the build rather than
 passing silently.
