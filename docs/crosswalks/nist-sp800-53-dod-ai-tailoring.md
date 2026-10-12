@@ -1,0 +1,70 @@
+# NIST SP 800-53 Rev 5 and DoD AI Tailoring Guide Cross-walk
+
+US federal and Department of Defense systems are authorized under the Risk Management Framework (RMF). An assessor preparing an authorization package asks, for each security control, what evidence shows it is in place. This page says, for each claim in a TRACE v0.2 Trust Record, which SP 800-53 Rev 5 controls that claim is evidence for, what the evidence establishes, and what it does not. It is for ISSOs, assessors, and authorizing-official staff. TRACE records what happened; it does not implement a control.
+
+> **Non-normative.** This document is informative only. Nothing here changes TRACE v0.2 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.2 Trust Record as defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md). Control identifiers are from NIST SP 800-53 Revision 5. Tailoring Guide references are to the DoD CIO *AI Cybersecurity Risk Management Tailoring Guide*, version 2, 14 July 2025, which names controls for AI models in its Table 2-2 and Section 3.
+
+---
+
+## Purpose
+
+The Tailoring Guide tells a DoD program which SP 800-53 controls to apply to an AI model: integrity (SI-7 and enhancements), provenance (SR-4, SR-4(3)), audit protection (AU-9(3), AU-12(3)), and the inclusion of model test and evaluation (TEVV) results, acquisition source, and training background in the authorization package (§3.1.3, §3.1.5). It does not say how a signed runtime record satisfies any of them. This page closes that gap for TRACE v0.2 so an assessor can cite a Trust Record against a control without inventing the mapping.
+
+A Trust Record is evidence *for* a control, not an implementation *of* it. The assessor still judges whether the evidence is adequate for the system's impact level. Where a claim's assurance depends on verified attestation, the row says so: naming a TEE in `runtime.platform` does not itself establish hardware backing, and a `software-only` record (§3.1.1) carries software commitments without hardware evidence. See [trust levels](../trust-levels.md).
+
+Field names are exact TRACE v0.2 claim names from §3.1 and the §3.2 wire-format example. Sub-field references such as `model.weights_digest`, `policy.bundle_hash`, `runtime.measurement`, `appraisal.status`, and `references.rel` refer to the nested fields shown there and in `schema/trace-claim.json`.
+
+---
+
+## Mapping table
+
+| TRACE claim | SP 800-53 Rev 5 controls | Evidence TRACE can provide | Limitations / what the assessor still needs | Tailoring Guide reference |
+|---|---|---|---|---|
+| `subject` | IA-2, IA-9, CM-8 | A workload identity (SPIFFE SVID or DID URI) names the agent, tool, or model invocation the record is about; with `cnf` it binds that identity to the record-signing key. Supports non-person-entity identification (IA-9) and a component inventory entry (CM-8). | Identity is asserted by the issuing domain. Which permissions that identity holds in external systems is outside the record. | §3.1.5 component inventory |
+| `model` (`model_id`, `version`, `weights_digest`, `aibom_uri`) | SI-7, SI-7(1), SI-7(15), SR-4, SR-4(3), CM-14 | `model.weights_digest` is a digest of the model artifact that ran, so a later integrity check (SI-7(1)) or an authenticity check against a signed manifest (SI-7(15), CM-14) has a value to compare. `model.aibom_uri` points at a bill of materials for SR-4 provenance. | The record commits to the digest; verifying that the digest matches an approved, signed artifact is the assessor's step. `aibom_uri` is a pointer, not attested content. | Table 2-2 SI-7, SR-4 for AI models; §3.1.3 SBOM (OMB M-22-18) |
+| `runtime` (`platform`, `measurement`, `rim_uri`) | SI-7(9), SI-7(17), SC-39, SA-19 | `runtime.measurement` is the measured-boot or workload composite digest; with verified attestation evidence and `appraisal.platform_measurement` (§3.1.5) it establishes which layers ran what. Supports boot integrity (SI-7(9)), process isolation (SC-39), and component authenticity (SA-19). | Only when attestation evidence is verified. A `software-only` record establishes none of these; a TEE name alone establishes nothing. Layers not listed as `established` in `appraisal.platform_measurement` are not established. | §2 "protect the integrity ... of AI systems" |
+| `policy` (`bundle_hash`, `enforcement_mode`, `version`) | AC-3, AC-6, CM-6, CM-7, SI-10 | `policy.bundle_hash` names the policy set bound to the execution; `policy.enforcement_mode` states whether it was `enforce`d, `advisory`, `silent`, or merely `declared`. Supports configuration-settings evidence (CM-6) and, for `enforce`, access-enforcement evidence (AC-3). | `declared` is not evidence that any rule was checked (schema text). `silent` means denies were allowed. The assessor must read the mode, not just the hash. | §3.1.3 model integrity checks |
+| `data_class` | AC-16, RA-2, MP-2 | The classification label the producer applied to inputs and outputs of the execution. Supports security-attribute (AC-16) and categorization (RA-2) evidence. | States the label applied, not which data was read, written, or egressed. | §3.1.1 data origin and reliability |
+| `tool_transcript` (`hash`, `call_count`, `transcript_uri`) | AU-2, AU-3, AU-12, AC-6(9), SI-4 | `tool_transcript.hash` is a commitment to the instrumented MCP/A2A transcript and `tool_transcript.call_count` bounds observed call volume. Supports audit-event (AU-2, AU-12) and privileged-function logging (AC-6(9)) evidence at protocol boundaries. | A commitment, not a verbatim log. Calls inside the binary that never crossed an instrumented boundary are not captured. | §3.1.3 AU-6 auditing |
+| `origin` (`kind`, `producer`) | AU-3(1), AU-10 | Names who assembled the record when it was not the executing runtime. Lets an assessor distinguish self-produced evidence from a `third-party-control-plane` or `log-import` assembly. | A non-`self` origin MUST carry `runtime.platform: "software-only"` (§3.1.1); the assessor should treat such records as operator-asserted. | — |
+| `references` (`rel`, `id`, `resolver`, `digest`) | CA-2, CA-6, SA-11 (as pointers only) | A `condition-appraisal` reference points at an independent check's finding (a test run); an `authorized-intent` reference points at an authorization decided before execution; an `approval-outcome` reference points at a human approval. These let a record be tied to TEVV results and authorization artifacts the package holds elsewhere. | A reference is a pointer, not evidence (§3.1.2 rule 3). The referenced object must be obtained and verified separately; TRACE v0.2 does not define its format. See "What TRACE does not evidence" below. | §3.1.3, §3.1.5 TEVV results in the package |
+| `reproducibility` (`function`, `code_identity`, `input_closure`, `transcript_digest`) with `appraisal.re_execution` | SA-11(1), CA-2, SI-7(6) | Where present and re-executed by a verifier with outcome `reproduced` (§3.1.4), establishes that the named deterministic coordination function over the pinned closure yields the recorded transcript. Supports independent re-performance evidence. | `not-attempted` is neither pass nor fail. Establishes nothing about model calls, which are inputs, or about side effects. | — |
+| `build_provenance` (`slsa_level`, `builder`, `digest`, `provenance_depth`) | SA-10, SA-11, SA-15, SR-3, SR-4, CM-14 | SLSA provenance for the running code and model: who built it, from what, at what level. `appraisal.provenance_depth_verified` records how deep the verifier checked. Supports configuration-management (SA-10), development-process (SA-15), and supply-chain (SR-3, SR-4) evidence. | Depth claimed is not depth verified; read `appraisal.provenance_depth_verified`. Transitive dependencies are covered only at `transitive` depth. | §3.1.3 SBOM; §3.1.5 acquisition source |
+| `appraisal` (`status`, `verifier`, `method`, `provenance_depth_verified`, `platform_measurement`) | CA-2, CA-7, RA-5 | The verifier's EAR judgment (`affirming`, `warning`, `contraindicated`, `none`) with the named verifier. Supports assessment (CA-2) and continuous-monitoring (CA-7) evidence when the verifier is independent of the operator. | An appraisal by the operator's own verifier is self-assessment. `none` means no appraisal was performed. | §3.1.5 cybersecurity T&E results |
+| `transparency` | AU-9, AU-9(3), AU-11 | A SCITT receipt URI for an append-only log entry. When the verifier obtains and checks the inclusion proof against a log or checkpoint it trusts, supports tamper-evident audit retention (AU-9(3)) and retention evidence (AU-11). | In v0.2 the claim is a URI reference, not proof of inclusion. Without a verified inclusion proof it establishes only that the producer named a log. | Table 2-2 AU-9(3) |
+| `cnf` and the record signature (§3.2.1, §3.2.2) | AU-10, SC-12, SC-13, SC-17 | The record is signed over its RFC 8785 canonical form by the `cnf` key; schema validity alone confers no trust and unbound records are rejected. Supports non-repudiation (AU-10) and cryptographic-protection (SC-13) evidence. Hardware-held keys, when attestation is verified, support SC-12 key-management evidence. | Non-repudiation is as strong as the key's custody and the verifier's trust in it. Operator-held software keys bind the record to the operator, not to hardware. | DoDI 8500.01 cryptographic protections |
+| `iat`, freshness window and clock-skew rules (§3.2.2) | AU-8, AU-8(1) | Issued-at time and the spec's default 24-hour freshness and 5-minute skew tolerance give the assessor a bounded time of issuance. | `iat` is the producer's clock. See [verifying after the freshness window](../verifying-after-the-freshness-window.md). | — |
+| `TraceRevocation/1.0` statements (§3.2.3) | IA-5(1), SC-12(1), SC-17 | Log-ordered revocation of record-signing keys; a verifier reports the revocation-check outcome. Supports key-lifecycle evidence. | A missing revocation bundle is reported as unchecked, not as pass. | — |
+| `delegation` (`parent_record_hash`, `credential_id`) (§3.1.3) | AC-2(7), AC-6, AU-3(1) | Lets a verifier walk an offline-verifiable delegation chain across agents and see which parent record and credential each hop acted under. Supports privileged-account and least-privilege evidence across hops. | Only hops that issued a record carrying `delegation` are in the chain. | — |
+
+---
+
+## What TRACE does not evidence
+
+The table marks per-claim limits. Three apply across the whole record and matter most to an authorization package.
+
+**TRACE does not carry TEVV results.** The Tailoring Guide requires model test and evaluation results, acquisition source, training background, and cybersecurity T&E results in the authorization package (§3.1.3, §3.1.5). A Trust Record proves what model ran, under what policy, in what environment. It does not state whether that model was tested, what the result was, or whether an official accepted the risk. §2.4 of the spec makes output correctness a permanent scope boundary. A v0.2 record can *point* at such results through `references` with `rel` `condition-appraisal` or `authorized-intent`, but the referenced object's format and verification are outside v0.2. An assessor citing a Trust Record for SA-11, CA-2, or CA-6 is citing the pointer, not the result.
+
+**TRACE does not implement a control.** Every row above is evidence that a condition held for one execution. Whether the control is implemented across the system boundary, for every execution, is a CA-7 continuous-monitoring question that one record cannot answer. A complete chain of records, each verified, with a trusted transparency log, is the shape of that answer; a single record is not.
+
+**Operator-held keys bind to the operator.** Where `runtime.platform` is `software-only`, or attestation is not verified, the signature establishes that the operator's key signed the record. For AU-10 non-repudiation against the operator, the assessor needs either verified hardware key custody or an independent transparency log the operator cannot rewrite.
+
+---
+
+## Suggested citation form
+
+For an authorization package or an assessment-results artifact:
+
+> Evidence: TRACE v0.2 Trust Record, `eat_profile` `tag:agentrust-io.com,2026:trace-v0.2`, record digest `sha256:…` (RFC 8785 canonical form, §3.1.3 preimage), `runtime.platform` `<value>`, `appraisal.status` `<value>` by `<appraisal.verifier>`, `transparency` `<URI>` (inclusion proof verified: yes/no). Cited for: SI-7, SR-4, AU-9(3), AU-10, CA-7.
+
+The parenthetical "inclusion proof verified" and the `appraisal.verifier` name are what let a reviewer tell an operator-asserted record from an independently appraised one.
+
+---
+
+## References
+
+- NIST SP 800-53 Rev 5, *Security and Privacy Controls for Information Systems and Organizations*, September 2020 (with updates).
+- DoD CIO, *AI Cybersecurity Risk Management Tailoring Guide*, version 2, 14 July 2025.
+- NIST SP 800-37 Rev 2, *Risk Management Framework for Information Systems and Organizations*.
+- OMB M-22-18, *Enhancing the Security of the Software Supply Chain through Secure Software Development Practices*.
+- TRACE v0.2, `spec/trace-v0.2.md`, §3.1 through §3.3.
