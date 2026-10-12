@@ -1,4 +1,6 @@
-# TR-APR — Appraisal
+# TR-APR: Appraisal
+
+An appraisal is a verifier's verdict on the hardware evidence behind a record. This module checks that the verdict the record carries is well formed and, from Level 1, positive. It reads the verdict as written and fetches nothing.
 
 Tests the evidence appraisal the record carries: the verifier's verdict, who
 issued it, which policy it was issued under, and when.

@@ -1,5 +1,7 @@
 # Verifier-issued, holder-bound TRACE: experimental reference
 
+This page describes trial code for a proposed kind of TRACE result: a short-lived token that a verifier (the service that checks the evidence) issues about an agent, which only the holder of a named key can present (holder-bound). It is for implementers who want to test the idea or build a second, independent version; nothing here changes how today's v0.2 records work.
+
 This prototype implements the proposals in `docs/rfcs/verifier-issued-trace-profile.md`
 and `docs/rfcs/composite-component-appraisal.md`.
 It is a proposal, not an adopted TRACE profile. Existing v0.2 records, signatures,

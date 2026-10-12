@@ -5,7 +5,7 @@ in the parent directory. Where that profile evidences a physical action taken
 by an external controller (a robot arm, a safety monitor), this one evidences
 a **software decision**: an AI agent's tool call, evaluated and decided by a
 local policy gate before it runs. Same verification pattern from
-[spec section 3.3.2](../../../spec/trace-v0.1.md#332-action-receipts-for-embodied-workflows-informative),
+[spec section 3.3.3](../../../spec/trace-v0.2.md#333-action-receipts-for-embodied-workflows-informative),
 different action class, and the two should not be conflated: nothing here
 claims a physical outcome.
 

@@ -39,6 +39,12 @@ checking any archived record, including these.
   result: two vectors per rule and five accepting records. Each file is a test-vector
   envelope; the record is under `record`, and the digests the claim carries recompute
   from the JSON under `context`. See that directory's README.
+- `platform-measurement-appraisal/`: 44 signed Trust Records that pin the shape rules
+  spec section 3.1.5 states for `appraisal.platform_measurement`, two vectors per rule,
+  and what a relying party reads off an accepting record, layer by layer: five
+  case-and-twin pairs, an accepting twin for every rejection, and two records carrying
+  published measurements. Each file is a
+  test-vector envelope; the record is under `record`. See that directory's README.
 - `canonicalization-boundary/`: three signed Trust Records that separate an
   RFC 8785-conformant canonicalizer from `json.dumps(sort_keys=True)`, which
   §3.2.2 requires and names as insufficient. Each file is a test-vector envelope;

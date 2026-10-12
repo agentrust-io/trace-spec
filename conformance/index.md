@@ -10,13 +10,13 @@ description: Run this suite against a TRACE record to see which conformance leve
 
 # Score a TRACE record against the specification
 
-The suite checks one record and the evidence supplied with it, reports the highest conformance level reached, and writes a report anyone can reproduce from the record digest and suite version. A passing report does not establish that an entire implementation meets every requirement of the [TRACE specification](https://trace.agentrust-io.com).
+TRACE is an open format for signed receipts that say what an AI agent ran and what it did ([the terms, in plain English](https://agentrust-io.com/#plain-terms)). This suite takes one of those receipts, called a TRACE record, checks it against the [TRACE specification](https://trace.agentrust-io.com), and tells you the highest conformance level it reaches. It writes a report anyone can reproduce from the record's digest (a fingerprint of its exact bytes) and the suite version. A pass covers that one record; it does not show that a whole product meets every requirement of the specification.
 
 [Score your first record](docs/quickstart.md){ .md-button .md-button--primary }
 [What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
 !!! tip "TL;DR"
-    [agentrust-trace-tests](https://pypi.org/project/agentrust-trace-tests/) 0.6.2 (Apache-2.0) runs eight modules against a record on your machine and writes a report carrying the record digest, the suite version and the command to reproduce it. A pass describes the record and says nothing about the agent, and TR-RTE checks the shape of attestation fields without verifying a quote against AMD or Intel roots.
+    [agentrust-trace-tests](https://pypi.org/project/agentrust-trace-tests/) 0.6.2 (Apache-2.0) runs eight modules, each a group of related checks, against a record on your own machine, and writes a report with the record digest, the suite version and the command to reproduce it. A pass describes the record and says nothing about how the agent behaved, and the runtime module (TR-RTE) only checks that the hardware fields are well formed: it does not verify a hardware attestation report (the processor's signed statement of what code it ran) against AMD or Intel.
 
 <div class="grid cards" markdown>
 
@@ -24,7 +24,7 @@ The suite checks one record and the evidence supplied with it, reports the highe
 
     ---
 
-    Score a record, read the failures, and produce a report from the same run.
+    Install the suite, check a sample record, see what failed and why, and produce a report from the same run.
 
     [Getting Started](docs/quickstart.md)
 
@@ -32,7 +32,7 @@ The suite checks one record and the evidence supplied with it, reports the highe
 
     ---
 
-    The report is not evidence, and it says so on its face. Each result's scope is set out module by module.
+    The report is not proof on its own, and it says so on its face. The limitations page sets out, check by check, what a result does and does not tell you.
 
     [Limitations](LIMITATIONS.md)
 
@@ -40,7 +40,7 @@ The suite checks one record and the evidence supplied with it, reports the highe
 
     ---
 
-    Quote verification happens outside the suite. Check a real Intel TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+    The suite does not check the processor's signed report itself; other tools do that. You can check a real Intel TDX report in your browser at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
 
     [Runtime module](docs/modules/tr-rte.md)
 
@@ -48,13 +48,13 @@ The suite checks one record and the evidence supplied with it, reports the highe
 
     ---
 
-    The suite scores TRACE records, the evidence step. The specification is at [trace.agentrust-io.com](https://trace.agentrust-io.com), and records can be anchored in the [TRACE Registry](https://agentrust-io.com/registry/).
+    AgenTrust covers four steps: the model, the agent, its actions, and the evidence. This suite scores TRACE records, the evidence step. The specification is at [trace.agentrust-io.com](https://trace.agentrust-io.com), and records can be entered in a public, append-only log, the [TRACE Registry](https://agentrust-io.com/registry/).
 
     [See the chain](https://agentrust-io.com/#chain)
 
 </div>
 
-The [eight modules](docs/modules.md) cover envelope, signature, runtime, policy, appraisal, transcript, transparency, and provenance checks. Read the [limitations](LIMITATIONS.md) to interpret what each result establishes.
+The [eight modules](docs/modules.md) each look at one part of a record: the envelope (the outer wrapper and its basic fields), the signature, the runtime (the hardware it says it ran on), the policy (the rules the agent ran under), the appraisal (a verifier's verdict on the hardware evidence), the transcript (the log of tool calls), transparency (proof the record was entered in a public log) and provenance (how the software was built). Read the [limitations](LIMITATIONS.md) to see what each result does and does not tell you.
 
 ```bash
 pip install agentrust-trace-tests
@@ -63,25 +63,29 @@ trace-tests verify --record path/to/trust-record.jwt --level 1
 
 ## A report you can hand to someone else
 
+`verify` prints results for you. `report` writes files you can give to someone who was not there, such as an auditor or a customer.
+
 ```bash
 trace-tests report --record trust-record.json --html report.html --json report.json --badge trace.svg
 ```
 
-- `verify` answers a question for the person running it. `report` produces an artifact for somebody who was not there.
-- `report` runs every level up to `--max-level`, because the useful answer is the highest level a record reaches, not whether it cleared the level someone happened to pick.
-- The HTML report is self-contained: no scripts, no fonts, no external CSS, no badge service, nothing fetched when it is opened.
+- `report` tries every level up to `--max-level`, so the answer is the highest level the record reaches, whichever level you happened to ask about.
+- The HTML report is a single file that loads nothing else: no scripts, no fonts, no outside stylesheets, no badge service, nothing fetched when it is opened.
 
-Use `--fail-under 1` to gate CI on a level. Without it the command always exits `0`, which is what you want when you are producing an artifact rather than enforcing a threshold. `report.json` is stable under `schema: agentrust-io/trace-tests/report/1` for dashboards and CI.
+To make a CI pipeline (the automated checks that run on every code change) fail below a level, add `--fail-under 1`. Without it the command always exits `0`, which is what you want when you only need the report. `report.json` keeps a stable layout, `schema: agentrust-io/trace-tests/report/1`, for dashboards and CI.
 
-CLI reports add an independently versioned `obligation_accounting` member for a
-bounded three-obligation pilot: `TR-APR-001`, `TR-POL-003`, and `TR-SCA-002`.
-The rows and findings come from one execution snapshot, and the report refuses
-an incomplete pilot matrix. This does not claim complete TRACE accounting.
-The extension treats `report/1` as additively extensible; compatibility with
-consumers requiring the exact historical top-level key set is not established.
-See [Known limitations](LIMITATIONS.md) for the trust and replay boundary.
+CLI reports also carry a small pilot section that accounts for three specific checks one by one. It covers those three only, not all of TRACE.
 
-A conformance report that looks authoritative and cannot be checked is the same shape of thing as a control plane writing its own log. So the report tells a reader who does not trust the sender to go and check the record instead, and gives them what they need to do it.
+??? info "Technical detail: the obligation_accounting pilot"
+    CLI reports add an independently versioned `obligation_accounting` member for a
+    bounded three-obligation pilot: `TR-APR-001`, `TR-POL-003`, and `TR-SCA-002`.
+    The rows and findings come from one execution snapshot, and the report refuses
+    an incomplete pilot matrix. This does not claim complete TRACE accounting.
+    The extension treats `report/1` as additively extensible; compatibility with
+    consumers requiring the exact historical top-level key set is not established.
+    See [Known limitations](LIMITATIONS.md) for the trust and replay boundary.
+
+Anyone can edit a report, so a report that looks official but cannot be checked is no better than a system vouching for itself. The report therefore tells a reader who does not trust the sender to check the record directly, and gives them what they need to do it.
 
 ## Where to go next
 
@@ -90,6 +94,8 @@ A conformance report that looks authoritative and cannot be checked is the same 
 - [CI integration](docs/tutorials/ci-integration.md): gate a pipeline on a level, and write your own conformance tests against the suite.
 
 ## Test modules
+
+The table uses the specification's own terms. Each module's page explains them.
 
 | Module | ID | Tests |
 |---|---|---|

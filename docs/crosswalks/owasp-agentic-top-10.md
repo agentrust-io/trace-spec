@@ -1,5 +1,7 @@
 # OWASP Agentic AI Top 10 Evidence Cross-walk
 
+OWASP's Agentic AI Top 10 lists ten main security risks for AI agents. This page takes each risk and says which parts of a TRACE record give useful evidence, what that evidence shows, and where it falls short. It is for security and audit teams. TRACE records what happened; it does not prevent these risks.
+
 > **Non-normative.** This document is informative only. Nothing here changes TRACE v0.2 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.2 Trust Record as defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md).
 
 ---

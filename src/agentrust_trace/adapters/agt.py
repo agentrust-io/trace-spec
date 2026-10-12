@@ -96,8 +96,8 @@ class TraceAGTAdapter:
     once per AGT session::
 
         adapter = TraceAGTAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             model_version="20251001",
             build_provenance_digest="sha256:e5f6a7b8...",
             transparency="https://registry.agentrust-io.com/claim/...",

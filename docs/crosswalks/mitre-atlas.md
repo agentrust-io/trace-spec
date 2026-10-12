@@ -1,5 +1,7 @@
 # MITRE ATLAS Evidence Cross-walk
 
+MITRE ATLAS is a public catalogue of the ways attackers target AI systems. This page goes through its 16 tactics and, for each, says which parts of a TRACE record help an investigator, what that evidence shows, and what it leaves out. It is for security and audit teams. TRACE records what happened; it does not block attacks.
+
 > **Non-normative.** This document is informative only. Nothing here changes TRACE v0.2 schema fields, wire formats, required claims, or conformance requirements. References to "TRACE" mean the TRACE v0.2 Trust Record as defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md).
 
 ---

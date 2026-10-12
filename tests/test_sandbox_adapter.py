@@ -50,8 +50,8 @@ TRANSPARENCY = "https://registry.agentrust-io.com/claim/sandbox-abc123"
 
 def _make_adapter(**overrides: Any) -> TraceSandboxAdapter:
     defaults: dict[str, Any] = {
-        "model_provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
+        "model_provider": "example-provider",
+        "model_id": "example-model",
         "model_version": "20251001",
         "data_class": "confidential",
         "enforcement_mode": "enforce",
@@ -512,7 +512,7 @@ def test_enforcement_mode_has_no_default() -> None:
     # Spec section 4.3: `declared` MUST NOT be a default, and an `enforce` default
     # would claim an evaluation the adapter never observed (#416, #417).
     with pytest.raises(TypeError, match="enforcement_mode"):
-        TraceSandboxAdapter(model_provider="anthropic", model_id="claude-sonnet-4-6")
+        TraceSandboxAdapter(model_provider="example-provider", model_id="example-model")
 
 
 @pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])

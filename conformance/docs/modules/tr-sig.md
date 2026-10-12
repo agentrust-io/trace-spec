@@ -1,6 +1,6 @@
-# TR-SIG — Signature
+# TR-SIG: Signature
 
-Tests Ed25519 signature binding on the TRACE Trust Record.
+Checks that the record is signed and that the signature matches the public key carried in the record, so any change after signing shows up. It also checks that the record does not accidentally publish its private key. Signatures use Ed25519, a widely used signing algorithm.
 
 ## Required at Level 0+
 

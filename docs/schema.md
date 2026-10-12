@@ -2,18 +2,23 @@
 
 # Schema Reference {#trace-schema}
 
-JSON Schema for the TRACE v0.2 Trust Record. Source: [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
+This page lists every field a TRACE v0.2 Trust Record can contain, its type, and whether it is required. A Trust Record is the signed receipt TRACE produces for one AI agent run. Use this page when you write code that produces or reads records; if you only want to see one working, start with the [quickstart](quickstart.md).
 
-Every field typed `integer` here is bounded to -9007199254740991 through 9007199254740991, and no field is
-typed `number`. That is not a size limit on the data; it is what spec section 3.2.2 can canonicalize
-unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and two integers outside that range
-can share one. A value that needs to be larger is carried as a string. The same bound applies to members a
-`cnf.jwk` carries that this schema does not name.
+The machine-readable version is a JSON Schema (a file that software uses to check a record has the right shape): [`schema/trace-claim.json`](https://github.com/agentrust-io/trace-spec/blob/main/schema/trace-claim.json).
 
-Whether a number is an integer is decided by its value, not by how it is written (spec section 3.2.2, "What
-counts as an integer"). `1785000000.0` and `1.785e9` are the integer 1785000000; `1785000000.5` is not an
-integer. JSON Schema defines `integer` the same way, so validating against this schema already gives that
-answer.
+In short: whole numbers in a record have a size limit, and anything larger is written as a string. The detail is below.
+
+??? info "Technical detail: the integer range and what counts as an integer"
+    Every field typed `integer` here is bounded to -9007199254740991 through 9007199254740991, and no field is
+    typed `number`. That is not a size limit on the data; it is what spec section 3.2.2 can canonicalize
+    unambiguously, since RFC 8785 serializes numbers through an IEEE 754 double and two integers outside that range
+    can share one. A value that needs to be larger is carried as a string. The same bound applies to members a
+    `cnf.jwk` carries that this schema does not name.
+
+    Whether a number is an integer is decided by its value, not by how it is written (spec section 3.2.2, "What
+    counts as an integer"). `1785000000.0` and `1.785e9` are the integer 1785000000; `1785000000.5` is not an
+    integer. JSON Schema defines `integer` the same way, so validating against this schema already gives that
+    answer.
 
 <a id="top-level-fields"></a>
 
@@ -43,7 +48,7 @@ answer.
 
 ## `model` {#trace-field-model}
 
-Binds the model artifact used in this session.
+Which AI model the run used. These fields tie the record to one exact model artifact (the model file and version).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -57,7 +62,7 @@ Binds the model artifact used in this session.
 
 ## `runtime` {#trace-field-runtime}
 
-Binds the execution environment. Platform-specific fields vary by TEE type.
+Where the run happened: the machine or protected environment it ran in. Some fields depend on the platform, for example which kind of TEE (trusted execution environment, a hardware-isolated area of a processor) was used.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -71,7 +76,7 @@ Binds the execution environment. Platform-specific fields vary by TEE type.
 
 ## `policy` {#trace-field-policy}
 
-Binds the governance policy in force during this session.
+Which rule set (the governance policy) was in force during the run, pinned by its hash.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -94,7 +99,7 @@ Custom values are allowed and should follow your organization's data classificat
 
 ## `tool_transcript` {#trace-field-tool-transcript}
 
-Audit summary of tool invocations during the session.
+A summary of the tool calls the agent made during the run, with a hash that commits to the full list.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -106,7 +111,7 @@ Audit summary of tool invocations during the session.
 
 ## `delegation` {#trace-field-delegation}
 
-A2A profile. Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
+Used when another agent handed this agent the authority to act (delegation, defined by the A2A profile). Present when this execution acted on authority delegated by another agent; absent on a root (non-delegated) execution. A chain of records linked this way forms an offline-verifiable delegation DAG: a verifier walks `parent_record_hash` from a leaf record back to the root and confirms each hop acted under a credential in the delegation chain.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -117,7 +122,7 @@ A2A profile. Present when this execution acted on authority delegated by another
 
 ## `origin` {#trace-field-origin}
 
-Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
+Says who assembled the record. Absent means the runtime produced its own record, which is what every hardware profile is and what a consumer assumes. Present means something else assembled the record from evidence it did not itself measure.
 
 It exists because `runtime.platform: "software-only"` is ambiguous on its own: it is the honest value for a dev-mode record, where nothing attested the execution, and for a record transcribed from another vendor's control plane, where the party asserting the evidence also wrote the log.
 
@@ -154,6 +159,8 @@ Spec section 3.1.2 also binds verifiers: one **must not** reject a record becaus
 
 ## `reproducibility` {#trace-field-reproducibility}
 
+In plain terms: a claim that someone can re-run the part of the run that decided what happened, and get the same transcript. The precise boundary follows.
+
 The claim that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals `transcript_digest`. Spec section 3.1.4. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and not the model calls, which are not deterministic; the boundary is drawn around every non-deterministic interaction, and each one enters the closure as a recorded, content-addressed input.
 
 The block is the claim, not its result. The result is an appraisal attributed to the party that re-ran the function (in a record signed only by its producer, the producer's report of that party's result, not authenticated by it), carried under [`appraisal.method`](#trace-field-appraisal) and `appraisal.re_execution`. A record earns no assurance from the claim: `runtime.platform` is untouched by it, as it is by `references`, and the record signature covers it.
@@ -182,7 +189,7 @@ Signed vectors that exercise the claim and its result, two per rule the schema e
 
 ## `build_provenance` {#trace-field-build-provenance}
 
-Build-time provenance binding the deployed artifact.
+Where the deployed software came from: which build system produced it and the digest (fingerprint) of what it built, following SLSA, a common format for signed build records.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -196,7 +203,7 @@ Build-time provenance binding the deployed artifact.
 
 ## `appraisal` {#trace-field-appraisal}
 
-Verifier judgment on the evidence in this record.
+A verifier's judgment on the evidence in this record, and who made it.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -207,6 +214,7 @@ Verifier judgment on the evidence in this record.
 | `provenance_depth_verified` | string | no | Depth this verifier actually ran: `surface`, `builder` or `transitive` |
 | `method` | string | no | The method this appraisal used. A closed set, because a verifier keys on it; this version defines `re-execution`, the result of re-running the record's `reproducibility` claim. `status` is untouched by it: the outcome is not folded into the EAR set |
 | `re_execution` | object | when `method` is `re-execution` | The re-execution result, described below. Present exactly when `method` is `re-execution`, and absent otherwise |
+| `platform_measurement` | object | no | Per-layer appraisal of `runtime.measurement`, described below. A member of `appraisal` in its own right, not a `method` value, so it can sit next to a re-execution result |
 
 ### `appraisal.re_execution` members {#trace-field-appraisal-re-execution}
 
@@ -219,6 +227,22 @@ The result of re-running a `reproducibility` claim, attributed to the party name
 | `reason` | string | when `outcome` is `not-attempted` | Why no outcome could be reported. A named absence and a generic one are different findings |
 | `verifier_code_identity` | string | no | Digest of the verifier's own implementation. Self-asserted and of no weight singly; a correlation key across results, since two verifiers at different implementations disagreeing over one closure is verifier drift |
 
+### `appraisal.platform_measurement` members {#trace-field-appraisal-platform-measurement}
+
+What a matching `runtime.measurement` covers, layer by layer, attributed to the party named as `verifier`. A composite that matches its reference does not say which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot; this block says it. `status` is untouched by it, except that a verifier does not report `affirming` while a layer its policy requires is not established or not listed, and a record carrying this block does not report `none`. Spec section 3.1.5.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `measurement` | string | **yes** | The digest this appraisal is about. Must equal `runtime.measurement`: a result about another measurement is not about this record |
+| `layers` | object | **yes** | At least one member, keyed by the platform's name for the layer. On `tpm2` the key is `pcr:` and a register number from 0 to 23 in decimal without leading zeros (`pcr:0`, `pcr:23`). Each member carries `outcome` and, when not established, `reason`. A layer not listed is not established, and a record without this block establishes no layer |
+
+Each member of `layers`:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `outcome` | string | **yes** | `established`, or `not-established`, which is never reported as `established` |
+| `reason` | string | when `outcome` is `not-established` | `layer-not-measured`: the layer holds no measurement (its initial value, or on a TPM a separator and nothing else). `measured-not-appraised`: the measurements replay to the quoted value and nothing in the evidence shows they were appraised before they ran. `evidence-spans-multiple-boots`: the evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value; not reported as tampering on that basis alone |
+
 <a id="transparency"></a>
 
 ## `transparency` {#trace-field-transparency}
@@ -229,7 +253,7 @@ String. URI of the SCITT transparency log entry anchoring this record. Omitted, 
 
 ## `cnf` {#trace-field-cnf}
 
-Confirmation method. Contains the signing key bound to this record.
+Confirmation method: the public key bound to this record, which a verifier uses to check the record's signature.
 
 | Field | Type | Description |
 |---|---|---|

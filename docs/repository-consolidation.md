@@ -1,5 +1,7 @@
 # Conformance repository consolidation
 
+The TRACE test suite (the conformance tests that check whether an implementation follows the specification) used to live in its own repository, trace-tests. It now lives in this repository, in the `conformance/` folder. This page records how it was moved, what was kept byte for byte, and the steps left before the old repository is archived. It is for maintainers; if you only want to run the tests, see the commands under [Validation and maintenance](#validation-and-maintenance).
+
 The conformance suite is maintained in `trace-spec/conformance/`. It remains a separate Apache-2.0 Python distribution named `agentrust-trace-tests`, with the `trace_tests` import and `trace-tests` CLI. The normative specification's licensing and the root `agentrust-trace` package remain as described in their existing files.
 
 ## Imported source

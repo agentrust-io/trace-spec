@@ -1,5 +1,7 @@
 # RFC Proposal: runtime evidence, and what a verifier may conclude without it
 
+A v0.2 record can name a hardware platform, but that name is only the producer's claim. This proposal lets a record carry the hardware's own signed report (attestation evidence), and sets out what a checker may conclude with and without it, as a small set of grades. It is a draft for v0.3, aimed at verifier authors, and its 14 test vectors are built on a real Intel TDX report.
+
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.

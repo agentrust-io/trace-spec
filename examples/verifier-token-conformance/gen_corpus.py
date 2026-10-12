@@ -16,6 +16,7 @@ import base64
 import copy
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -275,21 +276,58 @@ def recompose(token: dict, requirements: dict, delegated: frozenset[str] = froze
     )
 
 
+# Tool-catalog observed digest, recomputed here from the pinned tools/list files
+# under catalog/ (docs/rfcs/tool-catalog-observed-digest.md). The label is part of
+# every per-tool preimage; it names the derivation that document defines and is
+# carried literally. tests/test_tool_catalog_digest.py recomputes the same values
+# from the same bytes without this code.
+CATALOG = HERE / "catalog"
+TOOL_LABEL = "trace.mcp-tool-definition.v1"
+TOOL_FIELDS = ("name", "title", "description", "inputSchema", "outputSchema", "annotations")
+TOOL_KEY_UNSAFE = re.compile(r"[^\x21-\x7e]|[%=]")
+
+
+def tool_definition_digest(definition: dict) -> str:
+    body = {f: definition[f] for f in TOOL_FIELDS if definition.get(f) is not None}
+    return canonical_digest({"profile": TOOL_LABEL, "tool": body})
+
+
+def tool_key(name: str) -> str:
+    encoded = TOOL_KEY_UNSAFE.sub(
+        lambda m: "".join(f"%{b:02X}" for b in m.group().encode("utf-8", "surrogatepass")), name
+    )
+    if len(encoded) > 128:
+        tail = hashlib.sha256(name.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+        encoded = encoded[:96] + "~" + tail
+    return "tool:" + encoded
+
+
+def catalog_manifest_digest(filename: str) -> str:
+    tools = json.loads((CATALOG / filename).read_text(encoding="utf-8"))["tools"]
+    per_tool = {tool_key(str(t.get("name", "") or "unnamed")): tool_definition_digest(t) for t in tools}
+    assert len(per_tool) == len(tools), "the pinned catalogs carry no duplicate names"
+    lines = "\n".join(f"{key}={per_tool[key]}" for key in sorted(per_tool))
+    return digest(lines.encode("utf-8"))
+
+
 def base(variant: str = "pair") -> tuple[dict, dict]:
-    if variant == "mcp":
+    if variant in ("mcp", "mcp-catalog"):
+        pinned = (
+            catalog_manifest_digest("deepwiki-tools-list.json")
+            if variant == "mcp-catalog"
+            else "sha256:" + "1" * 64
+        )
         reqs = {
             "components": [
                 requirement("mcp.server", "mcp-server"),
-                requirement(
-                    "tools.catalog", "tool-catalog", expected_observed_digest="sha256:" + "1" * 64
-                ),
+                requirement("tools.catalog", "tool-catalog", expected_observed_digest=pinned),
             ],
             "bindings": [],
             "allow_warnings": False,
         }
         comps = [
             component("mcp.server", "mcp-server", observed="2"),
-            component("tools.catalog", "tool-catalog", observed="1"),
+            component("tools.catalog", "tool-catalog", observed="1", observed_digest=pinned),
         ]
     else:
         reqs = {
@@ -2085,6 +2123,39 @@ def build() -> None:
         untrusted_server,
         variant_kind="mcp",
         code="composite_inconsistent",
+    )
+
+    # The catalog pin recomputed from pinned tools/list bytes (catalog/, #443).
+    # The pin is the deepwiki catalog in all three; what the token presents differs.
+    def present_catalog(filename):
+        return lambda tok: tok["components"][1].update(
+            observed_digest=catalog_manifest_digest(filename)
+        )
+
+    comp_vector(
+        "COMP-MCP-004",
+        M,
+        "positive",
+        "Catalog pinned to the digest recomputed from a served tools/list (catalog/deepwiki-tools-list.json); the token carries the same digest.",
+        variant_kind="mcp-catalog",
+    )
+    comp_vector(
+        "COMP-MCP-005",
+        M,
+        "counterexample",
+        "Digest mismatch: the token carries the digest of catalog/deepwiki-tools-list-drifted.json, one description changed after appraisal, against the pin from the served catalog.",
+        present_catalog("deepwiki-tools-list-drifted.json"),
+        variant_kind="mcp-catalog",
+        code="component_observation_mismatch",
+    )
+    comp_vector(
+        "COMP-MCP-006",
+        M,
+        "counterexample",
+        "Wrong subject: the token carries the digest of catalog/cloudflare-docs-tools-list.json, a catalog another server served, against the pin for the deepwiki catalog.",
+        present_catalog("cloudflare-docs-tools-list.json"),
+        variant_kind="mcp-catalog",
+        code="component_observation_mismatch",
     )
 
     # RFC-0002 stage 4: authenticated appraiser delegation (TR-COMP-AUTH-001).

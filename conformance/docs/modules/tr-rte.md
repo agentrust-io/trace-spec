@@ -1,5 +1,7 @@
 # TR-RTE: Runtime
 
+This module looks at what the record says about the hardware the agent ran on: which kind of TEE (trusted execution environment, a processor mode that keeps a program's memory sealed off) and the measurement (a fingerprint of the code loaded into it). It checks that those claims are well formed. It does not prove them; that takes checking the hardware's own signed report, which happens outside this suite.
+
 Checks runtime claim fields and, at Level 1 or above, the verifier's nonce. This module does not fetch reference manifests, verify hardware quotes, authenticate platform certificates, or compare measurements against an approved image.
 
 ## Checks

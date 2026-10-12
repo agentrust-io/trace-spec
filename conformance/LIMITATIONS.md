@@ -1,7 +1,9 @@
 # Known Limitations
 
 What this suite does **not** establish. A conformance report is only useful if the reader knows
-what it was never checking, so this is the companion to the report rather than a footnote to it.
+what it was never checking, so read this page alongside any report. In short: a pass means the
+record is well formed and complete for its level; it does not mean the agent behaved well, that
+the hardware claims are true, or that anyone independent checked the result.
 
 ## What a pass means
 
@@ -19,6 +21,8 @@ the disagreement is a bug worth reporting here.
 ## Where the checks stop
 
 **`TR-RTE` checks the shape of the attestation fields, not the attestation.**
+Attestation is the processor's signed statement of what code it is running. The suite checks that
+the record's fields describing it are well formed; it does not check the statement itself.
 It validates that `runtime.platform` is a recognised value, that `runtime.measurement` is a well
 formed digest, and that the RIM URI parses. It does not obtain a quote, and it does not verify one
 against AMD, Intel or a TPM manufacturer root. A record can satisfy `TR-RTE` at Level 1 carrying a
@@ -26,6 +30,8 @@ syntactically perfect measurement that no hardware ever produced. Verifying the 
 silicon vendor is the relying party's job, and `cmcp_verify` is where that happens.
 
 **`TR-ANC-002` proves inclusion relative to the receipt you hand it.**
+In plain terms: it proves the record is in the log the receipt describes, not that the log is a
+real public one.
 It replays the audit path against the Merkle root carried in that receipt. It does not fetch the
 `transparency` URI, and it does not establish that the root is one a public log actually
 published. A self-consistent receipt over a tree the submitter built themselves will pass. What
@@ -73,31 +79,34 @@ The accounting extension covers only `TR-APR-001`, `TR-POL-003`, and `TR-SCA-002
 Complete means that every attempted level has exactly one reconciled row for each of those three
 obligations. It does not mean every TRACE obligation was accounted for, every obligation was
 evaluated, or that the report independently proves which code ran or which fields it accessed.
-An obligation absent from both the bounded registry and its rows is outside this completeness
-claim and cannot be discovered by registry-to-row reconciliation alone.
+Like the rest of the report, this section is unsigned and anyone can edit it.
 
-The pilot records `TR-SCA-002` at Level 0 as applicable but not attempted: the pinned schema
-requires `build_provenance.digest`, while the scheduler first runs `TR-SCA` at Level 1. The row
-carries that scheduler reason rather than silently presenting the state without an explanation.
+??? info "Technical detail: locators, snapshots, the resolver and branch labels"
+    An obligation absent from both the bounded registry and its rows is outside this completeness
+    claim and cannot be discovered by registry-to-row reconciliation alone.
 
-Each source locator includes a digest of the exact value resolved at its pinned trace-spec
-revision. JSON sources use RFC 6901 pointers and RFC 8785-canonical value bytes. The operational
-TR-POL-003 rule uses the unique exact text of verification item 5 in the pinned specification;
-its schema fragments are listed separately as structural support. A reader who holds those
-pinned bytes can resolve and compare the values. The suite does not fetch or authenticate
-trace-spec at report time, and a matching value does not prove that a locator is sufficient or
-that its checker is correct.
+    The pilot records `TR-SCA-002` at Level 0 as applicable but not attempted: the pinned schema
+    requires `build_provenance.digest`, while the scheduler first runs `TR-SCA` at Level 1. The row
+    carries that scheduler reason rather than silently presenting the state without an explanation.
 
-Findings and accounting share one validated execution snapshot during supported report
-construction. The emitted report remains editable and unsigned. Its registry hash identifies
-registry content; it does not authenticate the rows, the report, or its producer.
+    Each source locator includes a digest of the exact value resolved at its pinned trace-spec
+    revision. JSON sources use RFC 6901 pointers and RFC 8785-canonical value bytes. The operational
+    TR-POL-003 rule uses the unique exact text of verification item 5 in the pinned specification;
+    its schema fragments are listed separately as structural support. A reader who holds those
+    pinned bytes can resolve and compare the values. The suite does not fetch or authenticate
+    trace-spec at report time, and a matching value does not prove that a locator is sufficient or
+    that its checker is correct.
 
-The optional policy resolver is trusted in-process Python code supplied by the caller. The
-accounted path isolates nested public runs and freezes ordinary decision inputs, but it is not a
-sandbox against a callback that rewrites interpreter globals, functions, classes, or source files.
+    Findings and accounting share one validated execution snapshot during supported report
+    construction. The emitted report remains editable and unsigned. Its registry hash identifies
+    registry content; it does not authenticate the rows, the report, or its producer.
 
-`producer_branch` is a checker-owned same-execution diagnostic. Some branches with the same
-accounting meaning return indistinguishable findings, so the emitted report alone cannot
-independently reconstruct every branch label. Applicability, evaluation state, prerequisite,
-contribution, findings, and report tallies are revalidated at emission; the label is not
-presented as independent proof of checker control flow.
+    The optional policy resolver is trusted in-process Python code supplied by the caller. The
+    accounted path isolates nested public runs and freezes ordinary decision inputs, but it is not a
+    sandbox against a callback that rewrites interpreter globals, functions, classes, or source files.
+
+    `producer_branch` is a checker-owned same-execution diagnostic. Some branches with the same
+    accounting meaning return indistinguishable findings, so the emitted report alone cannot
+    independently reconstruct every branch label. Applicability, evaluation state, prerequisite,
+    contribution, findings, and report tallies are revalidated at emission; the label is not
+    presented as independent proof of checker control flow.

@@ -29,9 +29,9 @@ Community updates and contributor highlights: [AgenTrust on LinkedIn](https://ww
 
 > Tracks [TRACE Spec v0.2](https://github.com/agentrust-io/trace-spec).
 
-Check a TRACE record, inspect the findings, and produce a reproducible conformance report. The suite checks the record and supplied evidence; a passing report does not establish that an entire implementation meets every specification requirement.
+TRACE is an open format for signed receipts that say what an AI agent ran and what it did ([the terms, in plain English](https://agentrust-io.com/#plain-terms)). This suite checks one of those receipts, a TRACE record, against the specification, tells you the highest conformance level it reaches, and writes a report anyone can reproduce. A pass covers that one record and the evidence supplied with it; it does not show that a whole product meets every requirement of the specification.
 
-Eight modules cover envelope, signature, runtime, policy, appraisal, transcript, transparency, and provenance checks. Read the [limitations](LIMITATIONS.md) to interpret their results.
+Eight modules, each a group of related checks, look at the envelope (the outer wrapper and its basic fields), signature, runtime (the hardware it says it ran on), policy (the rules the agent ran under), appraisal (a verifier's verdict on the hardware evidence), transcript (the log of tool calls), transparency (proof of entry in a public log) and provenance (how the software was built). Read the [limitations](LIMITATIONS.md) to see what each result does and does not tell you.
 
 ## Quick start
 
@@ -43,8 +43,8 @@ trace-tests verify --record path/to/trust-record.jwt --level 1 \
 
 ## A report you can hand to someone else
 
-`verify` answers a question for the person running it. `report` produces an artifact for
-somebody who was not there: an auditor, a counterparty, an acquirer.
+`verify` prints results for the person running it. `report` writes files for somebody who
+was not there: an auditor, a counterparty, an acquirer.
 
 ```bash
 trace-tests report --record trust-record.json   --html report.html --json report.json --badge trace.svg
@@ -66,7 +66,13 @@ conformance report that looks authoritative and cannot be checked is the same sh
 thing as a control plane writing its own log.
 
 `report.json` is stable under `schema: agentrust-io/trace-tests/report/1` for dashboards
-and CI. Reports produced by the CLI include an additive, version-tagged
+and CI. CLI reports also carry a small pilot section that accounts for three specific checks
+one by one; it covers those three only, not all of TRACE.
+
+<details>
+<summary>Technical detail: the obligation_accounting pilot</summary>
+
+Reports produced by the CLI include an additive, version-tagged
 `obligation_accounting` object for the bounded `TR-APR-001`, `TR-POL-003`, and
 `TR-SCA-002` pilot. During supported report construction, its rows are reconciled
 against the executable registry identified by `registry_id` and `registry_sha256`.
@@ -86,6 +92,8 @@ and `obligation_accounting` is the sole new top-level member. Compatibility with
 consumers that require the exact historical key set is not established. The report
 remains an unsigned self-report; see [Known Limitations](LIMITATIONS.md).
 
+</details>
+
 ## Test modules
 
 | Module | ID | Tests |
@@ -94,6 +102,7 @@ remains an unsigned self-report; see [Known Limitations](LIMITATIONS.md).
 | Signature | `TR-SIG` | ES256/ES384/EdDSA, key binding, chain |
 | Runtime | `TR-RTE` | TEE platform, measurement format, RIM URI |
 | Policy | `TR-POL` | Bundle hash, enforcement mode, TEE binding |
+| Appraisal | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp |
 | Transcript | `TR-TXN` | Tool-call transcript hash binding (Phase 2+) |
 | Transparency | `TR-ANC` | SCITT receipt URI, inclusion proof |
 | Provenance | `TR-SCA` | SLSA level, builder URI, digest format |

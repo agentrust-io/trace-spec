@@ -4,13 +4,17 @@ description: What each build_provenance verification depth does not assure, and 
 
 # Build provenance verification depth
 
+A Trust Record can say which build system produced the software that ran (its build provenance). A verifier can check that claim at three depths, from a quick name check to following every ingredient of the build. This page is for whoever chooses the depth for a deployment: it says what each depth leaves unchecked, so the choice is made knowingly.
+
 > **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. The depth question itself was decided on [trace-spec#50](https://github.com/agentrust-io/trace-spec/issues/50). The names *Surface*, *Builder-chain* and *Dependency-chain* used on this page are the descriptive ones; they map one to one onto the `build_provenance.provenance_depth` values `surface`, `builder` and `transitive`. [Section 3.3.1 of the specification](../spec/trace-v0.2.md#331-build-provenance-verification-depth) carries the normative rules.
 
-[Spec section 3.3](../spec/trace-v0.2.md) step 7 is one sentence: *"SLSA provenance resolves to a trusted builder."* It does not say how far the verifier walks, and three stopping points satisfy it. They are not equally strong, and the weakest is the cheapest to implement.
+[Spec section 3.3](../spec/trace-v0.2.md) step 7 is one sentence: *"SLSA provenance resolves to a trusted builder."* It does not say how far the verifier walks, and three stopping points satisfy it. They are not equally strong, and the weakest is the cheapest to build.
 
 So this page states what each depth does **not** assure. A deployment picking a depth is choosing which unknowns it accepts, and that choice is invisible if the depths are described only by what they check.
 
 ## The three stopping points
+
+In plain terms: Surface compares names and fingerprints already in the record. Builder-chain also fetches the build system's signed statement and checks it matches. Dependency-chain also checks a signed statement for each input the build used.
 
 | Depth | Additionally checks | Reads |
 |---|---|---|

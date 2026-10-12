@@ -3,10 +3,10 @@
   "iat": 1782212142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
-    "aibom_uri": "https://registry.agentrust-io.com/aibom/claude-sonnet-4-6-20251001"
+    "aibom_uri": "https://registry.agentrust-io.com/aibom/example-model-20251001"
   },
   "runtime": {
     "platform": "amd-sev-snp",

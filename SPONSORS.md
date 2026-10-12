@@ -1,6 +1,6 @@
 # Sponsors
 
-The TRACE project recognizes organizations that provide financial, engineering, infrastructure, or other material support.
+This page lists the organizations that pay for or otherwise support the work on TRACE, and how another organization can join them. The TRACE project recognizes organizations that provide financial, engineering, infrastructure, or other material support.
 
 TRACE is sponsored by OPAQUE Systems, which funds the engineering, infrastructure and confidential-computing work behind it. Project decisions follow [GOVERNANCE.md](GOVERNANCE.md).
 
@@ -12,4 +12,4 @@ TRACE is sponsored by OPAQUE Systems, which funds the engineering, infrastructur
 
 ## Adding or updating a sponsor
 
-Sponsor recognition must describe the support factually and must not imply certification or endorsement. Open a pull request updating this file with the organization name and a concise description of its support.
+More sponsors are welcome. Sponsor recognition must describe the support factually and must not imply certification or endorsement. Open a pull request updating this file with the organization name and a concise description of its support.

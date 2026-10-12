@@ -36,8 +36,8 @@ TRANSPARENCY = "https://registry.agentrust-io.com/claim/test-abc123"
 
 def _make_adapter(**overrides) -> TraceAGTAdapter:
     defaults = {
-        "model_provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
+        "model_provider": "example-provider",
+        "model_id": "example-model",
         "model_version": "20251001",
         "data_class": "confidential",
         "build_provenance_slsa_level": 2,
@@ -199,8 +199,8 @@ def test_enforcement_mode_has_no_default() -> None:
     # Spec section 4.3: `declared` MUST NOT be a default, and an `enforce` default
     # would claim an evaluation the adapter never observed (#416, #417).
     kwargs = {
-        "model_provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
+        "model_provider": "example-provider",
+        "model_id": "example-model",
         "build_provenance_digest": "sha256:" + "a" * 64,
         "transparency": TRANSPARENCY,
     }

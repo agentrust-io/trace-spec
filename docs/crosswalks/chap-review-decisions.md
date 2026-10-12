@@ -1,5 +1,7 @@
 # CHAP Review Decisions Cross-walk
 
+CHAP is a protocol for people reviewing an AI agent's work before it acts. This page shows how a CHAP approval links to the TRACE record of what the agent then did, so a reader can find the approval and check it. It is for teams that need to show a named person approved an action; neither specification changes.
+
 > **Non-normative.** This document is informative only. Nothing here changes TRACE v0.2 schema fields, wire formats, required claims, or conformance requirements. "TRACE" means the Trust Record defined in [`spec/trace-v0.2.md`](../../spec/trace-v0.2.md). "CHAP" means the [Collaborative Human-Agent Protocol](https://github.com/BrightbeamAI/chap) at version 0.2.13, with its `review/1.0` and `audit-scitt/1.0` profiles.
 
 ---

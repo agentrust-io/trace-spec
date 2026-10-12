@@ -125,6 +125,8 @@ def test_shipped_pattern_results_match_javascript():
         # The signature pattern constrains the final character at 86 characters only:
         # 85, a canonical 86, a non-canonical 86, and with the "x" suffix below, 86 and 87.
         "A" * 85, "A" * 85 + "Q", "A" * 85 + "B",
+        # Section 3.1.5 layer keys: canonical, leading zero, bare prefix, other spelling.
+        "pcr:0", "pcr:10", "pcr:23", "pcr:24", "pcr:01", "pcr:", "PCR0",
     ]
     cases = [[pattern, value + tail + suffix]
              for pattern in sorted(set(_patterns(SCHEMA)))

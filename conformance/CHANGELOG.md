@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+- Vendor-neutral placeholders (`example-provider`, `example-model`) in the unsigned
+  vectors and the policy-resolution generator; the policy-resolution set is regenerated
+  and every verdict is unchanged. Signed vectors are untouched.
+- The anchor-inclusion generator writes LF on every platform.
+- Documentation links and robots.txt name trace.agentrust-io.com/conformance/; the stale
+  CNAME file is removed.
+
 ## v0.6.2 - 2026-10-02
 
 ### Added

@@ -11,13 +11,59 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
-- **A second, independent verifier: `@agentrust-io/trust-record-verify`, TypeScript on WebCrypto alone.** `ROADMAP.md` lists multi-language verification libraries, and the reason is not coverage for its own sake: a specification with one implementation says whatever that implementation does. `trust-record-verify/` is a verifier for section 3.2.2 records written from the specification text and `schema/`, with no network, no filesystem, no platform module and no runtime dependency, so a browser, an edge worker or a sidecar can check a record where there is no Python runtime. It implements the profile cutover of section 2 (the v0.1 identifier is rejected with its own code rather than falling through to `profile_unsupported`), RFC 8785 canonicalization including the safe-integer MUST of section 3.2.2 and the I-JSON rule that a lone surrogate has no canonical form, Ed25519 over the pre-image with `signature` absent, canonical unpadded base64url (RFC 4648 sections 5 and 3.5), RFC 7638 thumbprints, the confirmation-key binding, freshness and nonce, the three-state revocation outcome of section 3.2.3 against a passed-in bundle, and the chain digest of section 3.1.3 over the complete parent record. The schemas are compiled ahead of time with ajv (Draft 2020-12), so `pattern` is read as ECMA-262 as the dialect requires and `format: uri` is asserted rather than annotated; a test pins the SHA-256 of every schema file the validators were built from against `schema/`. The check order is the Python implementation's, so both report the same first failure for the same record, and the differential compares the location of a schema failure, the source of the verifying key, and the profile and complete accepted set the result reports (section 3.3) as part of the verdict. **A differential harness scores the two against each other**: 1644 cases over a signed record under 24 verifier configurations with 59 mutations each, an RFC 8785 corpus, RFC 7638 thumbprints, chain digests over the whole delegation-link corpus, this repository's own vectors and the published conformance vectors. 1643 agree exactly, every published vector among them, and the remaining 1 is a divergence class argued in `differential/known-divergences.json`, matched on both the case and the pair of reported reasons so a new disagreement inside a listed family is reported rather than absorbed, and pinned in the other direction too: each entry declares how many cases land on it, and an entry, a pair or a count the run does not bear out fails it, so a divergence that stops happening on either side has to leave the ledger. CI reads the published conformance vectors from a pinned checkout and asserts their case count. The first run scored 1280 identical and 13 classes, and twelve of those have left the ledger, each as an entry no case reached. Six were defects the harness surfaced in the reference, fixed before this landed (#379 by #388, #380 by #387, #381 by #383, #382 by #386, and a present but falsy `signature` by #390). Four were base64url that is not canonical, which this implementation refused from the start and the reference's decoder refuses since 0.11.0 (#418): non-zero unused bits in a signature, which the reference used to verify and which section 3.1.3 makes visible in the chain digest, a signature truncated to a still-valid length, and a non-canonical `x` in the caller's key or in `cnf.jwk`. The eleventh, a signature with a trailing newline, was a difference in order: the reference decodes the signature before it consults the schema, and this implementation now does the same, so both report `signature_malformed` for it, for a padded signature and for one in the standard alphabet. The twelfth, `iat` written `1785000000.0`, an integer after `JSON.parse` and a float after `json.loads`, left when the reference began to decide integer-typed members by value (#404). The 1 that remains is the JSON number model: `1.0e+21` has an RFC 8785 form on one side and none on the other. That move in the order of two checks is the one adjustment made to meet the other side; no verdict was changed to match. Contributed by @chernistry.
-
+- **Accuracy pass on non-normative text.** Examples, schema descriptions, adapter
+  docstrings and unsigned test records use vendor-neutral placeholders
+  (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards
+  organizations, and the Appendix B reference titles use each project's own name. The Acta crosswalk now cites v0.2 sections. Platform pages no
+  longer name a cMCP provider value. The package description, spec abstract, charter,
+  schema descriptions and conformance messages no longer say "hardware-attested": a
+  record is a signed governance record that can carry hardware attestation evidence, and
+  `verify_record()` performs no attestation verification.
+  Signed and digest-pinned vectors are unchanged. No normative text changes.
+- **Conformance site links** point at trace.agentrust-io.com/conformance/, where the
+  combined docs build publishes it; the stale `conformance/CNAME` is removed.
+- **Generators write LF on every platform.** `gen_number_spelling.py` and the
+  anchor-inclusion generator opened their output in text mode, so a Windows run wrote
+  CRLF and the byte-for-byte regeneration check failed.
+- **License and trademark text names the LF series.** `LICENSE`, `NOTICE` and both site
+  footers read "The TRACE Specification Authors" as the copyright line. The separate
+  patent promise section is removed from `LICENSE`; the patent grants in the Community
+  Specification License 1.0 and Apache License 2.0 are unchanged. `CHARTER.md` section 5
+  now says the TRACE name and the "TRACE-conformant" mark are held by LF Projects, LLC.
 - **BREAKING:** Successful `provenance.verify_record()` calls previously returned
   `None`; they now return `RevocationCheck` (#279). Callers can distinguish
   `no_check_performed` when no revocation store is supplied from `verified` when
   the supplied store was checked and clean for this call. Revoked-key refusal is
   unchanged. No new revocation source or bundle support is introduced.
+- **BREAKING: a verifier that reports `affirming` after a section 3.3 step 4 reference
+  match, while its appraisal policy requires a layer, must now establish that layer in
+  `appraisal.platform_measurement` (section 3.1.5, rule 2, #279).** Reporting `affirming`
+  with the block absent, or with a required layer not established or not listed, is no
+  longer conformant. Records do not change: the schema change is one new optional member
+  of `appraisal`, and no existing document changes verdict. v0.2 is a Draft, so the
+  30-day period in GOVERNANCE does not apply.
+- **`appraisal.platform_measurement`: what a matching measurement covers, layer by layer
+  (section 3.1.5, #279).** A matching composite `runtime.measurement` does not say which
+  layers recorded anything, which were appraised before they ran, or whether the evidence
+  describes one boot, and the record could say only `appraisal.status: none` about it. A
+  verifier now writes, per layer, `established` or `not-established` with one of three
+  reasons: `layer-not-measured`, `measured-not-appraised` or `evidence-spans-multiple-boots`.
+  The first two are what a digest comparison reports as a pass; the third is what a replay
+  check reports as tampering. A layer the result does not list is not established, nor is
+  any layer of a record without the block; a replay mismatch the verifier cannot attribute
+  to one boot is not, on that basis alone, `contraindicated`; and a record carrying a result
+  does not report `status: none`. The block is a member of `appraisal` in its own right,
+  not an `appraisal.method` value, so it sits beside a re-execution result; its `measurement`
+  equals `runtime.measurement`, a `reason` is never `null`, and on `tpm2` a layer is named
+  `pcr:<n>` for a register from 0 to 23. Schema, packaged copy, reference model and
+  `docs/schema.md` carry it; the v0.3 draft schema is regenerated.
+  `tests/test_safe_integer_range.py` now admits a map whose every member is one object
+  schema, which it then holds to the same rule. Forty-four signed vectors in
+  `examples/platform-measurement-appraisal/`: five case-and-twin pairs, two records carrying
+  measurements from published quotes on a board with a discrete TPM, at least two
+  rejections per rule, and an accepting twin for every rejection that differs from it only
+  in the rule it tests. Proposed and written by @revenue7-eng in #279; carried by
+  @imran-siddique as sponsoring maintainer.
 
 - **`verify_record` reports what a caller-supplied appraiser found about `runtime.measurement`,
   per layer (#279 platform-measurement row, #431).** A matching composite measurement says
@@ -34,6 +80,24 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   each cause with a twin that differs only in the condition producing it, and two carrying
   measurements from published quotes on a board with a discrete TPM. No schema or wire-format
   change.
+
+- **A recomputable `observed_digest` for `tool-catalog` components, with the pinned `tools/list`
+  bytes it recomputes from (#443).** `docs/rfcs/tool-catalog-observed-digest.md` states one
+  derivation from the `tools` member of a `tools/list` result to a digest per tool (six-member
+  allowlist, RFC 8785, SHA-256, under a literal profile label), a printable-ASCII key per tool,
+  and a catalog digest folded over the sorted `key=digest` lines, so a relying party can set
+  `expected_observed_digest` from bytes it holds and a second implementation can recompute it.
+  `examples/verifier-token-conformance/catalog/` pins two served catalogs (`mcp.deepwiki.com`,
+  three tools; `docs.mcp.cloudflare.com`, two tools), one constructed drift of the first, and
+  the digests recorded for each. Three vectors under `TR-COMP-MCP-001`: `COMP-MCP-004` pins and
+  presents the served catalog's digest; `COMP-MCP-005` (digest-mismatch) presents the drifted
+  catalog's digest; `COMP-MCP-006` (wrong-subject) presents the other server's digest. Both
+  counterexamples are `component_observation_mismatch`, because the token has no member naming
+  the server a catalog came from; separating them is the relationship method `TR-COMP-MCP-002`
+  leaves open, which this change does not propose. `gen_corpus.py` recomputes the digests from
+  the pinned files on every run, and `tests/test_tool_catalog_digest.py` recomputes them again
+  without the generator's code. Informative; endpoint identity and transport key binding stay
+  open. No schema or wire-format change.
 
 - **A surrogate code point in an object key is refused as `rfc8785.CanonicalizationError`
   (found by fuzzing #452).** `rfc8785` refuses one in a value itself, but in an object key the

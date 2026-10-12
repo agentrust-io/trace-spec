@@ -5,6 +5,8 @@ This document does not change TRACE v0.2 verifier acceptance. Field names below
 describe logical requirements; serialization and a profile identifier remain
 subject to normative review before implementations claim conformance.
 
+**In plain terms.** This is a proposal for how a TRACE record should describe each tool call an agent makes through MCP (the common protocol agents use to call tools), including which tool list the agent was offered. It is for implementers and reviewers of the next TRACE version. Nothing here is adopted yet, and it does not change what a v0.2 verifier accepts.
+
 <!-- CHANGED: #324 - stateless MCP correlation and declaration binding proposal -->
 
 ## 1. Scope

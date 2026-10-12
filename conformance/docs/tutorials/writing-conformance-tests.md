@@ -1,6 +1,6 @@
 # Writing Custom TRACE Conformance Tests
 
-Write a custom pytest test that verifies a specific field in a TRACE Trust Record using the `trace_tests` library.
+This guide is for developers who produce TRACE records and want their own automated tests for them. It shows how to call the suite's checks from pytest (a common Python test runner) and test one field of a record at a time, using the `trace_tests` library.
 
 ## What you'll learn
 
@@ -22,11 +22,11 @@ TRACE defines three levels. Each level activates a cumulative set of modules:
 
 | Level | Required modules | Typical use |
 |-------|-----------------|-------------|
-| 0 | TR-ENV, TR-SIG, TR-POL | Software-only development and staging |
+| 0 | TR-ENV, TR-SIG, TR-POL, TR-APR | Development and staging, no secure hardware |
 | 1 | Level 0 + TR-RTE, TR-SCA | Records that declare a TEE platform and measurement |
 | 2 | Level 1 + TR-TXN, TR-ANC | Full records with SCITT transparency anchoring |
 
-At Level 0 you can set `runtime.platform` to `"software-only"` and skip hardware attestation entirely. At Level 1 you must supply a real TEE measurement from AMD SEV-SNP, Intel TDX, NVIDIA H100, or similar. Level 2 adds a SCITT receipt URI and a bound tool-call transcript hash.
+At Level 0 you can set `runtime.platform` to `"software-only"` and skip hardware attestation entirely. At Level 1 you must supply a TEE measurement (a fingerprint of the code loaded into a trusted execution environment) from AMD SEV-SNP, Intel TDX, NVIDIA H100, or similar. Level 2 adds a SCITT receipt URI and a bound tool-call transcript hash.
 
 The `runner.run()` function respects this table. Modules not required at the requested level are never invoked.
 
@@ -97,7 +97,7 @@ finding.skipped()     # True when status == SKIP
 finding.unverified()  # True when status == UNVERIFIED
 ```
 
-`UNVERIFIED` is distinct from `SKIP`. It means the record carries no signature that can be verified. At Level 0 this is allowed; at Level 1 and above it counts as a failure so a caller cannot mistake an unverified record for a passing one.
+`UNVERIFIED` is distinct from `SKIP`. It means the check could not reach the evidence it needed: for TR-SIG-005, a signature that can be verified; for TR-POL-003, a policy bundle that could be read. Each code has a level from which it counts as a failure (TR-SIG-005 from Level 1, TR-POL-003 from Level 2; see [Unverified findings](../levels.md#unverified-findings)), so a caller cannot mistake an unverified record for a passing one.
 
 ---
 
@@ -236,7 +236,7 @@ Common codes you will encounter:
 | TR-POL-002 | `policy.enforcement_mode` | Must be `enforce`, `advisory`, `silent`, or `declared` |
 | TR-RTE-001 | `runtime.platform` | Must be a registered TEE platform enum |
 
-When a finding carries `status == Status.UNVERIFIED`, the record has no signature. This is not a benign skip at Level 1 or above.
+When a finding carries `status == Status.UNVERIFIED`, the check could not reach its evidence, for example because the record has no signature. It is never a benign skip, and from the level its code names it fails the run.
 
 ---
 

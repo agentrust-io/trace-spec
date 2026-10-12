@@ -1,4 +1,4 @@
-# tests.agentrust-io.com: search and answer-engine crawlers are welcome.
+# trace.agentrust-io.com/conformance/: search and answer-engine crawlers are welcome.
 
 User-agent: *
 Allow: /
@@ -35,4 +35,4 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-Sitemap: https://tests.agentrust-io.com/sitemap.xml
+Sitemap: https://trace.agentrust-io.com/conformance/sitemap.xml

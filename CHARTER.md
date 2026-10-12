@@ -10,7 +10,7 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 
@@ -49,7 +49,7 @@ Normative specification text and the normative TRACE JSON Schema are licensed un
 
 ## 5. Trademark Policy
 
-"TRACE" as a specification name and the "TRACE-conformant" conformance mark are currently held by OPAQUE Systems, Inc. Upon host organization acceptance, trademark ownership transfers to the host under their standard trademark policy.
+"TRACE" as a specification name and the "TRACE-conformant" conformance mark are held by LF Projects, LLC, under the trademark policy at https://www.lfprojects.org/policies/.
 
 Use of "TRACE-conformant" to describe an implementation is permitted only when that implementation passes the published conformance test suite for the version being claimed.
 

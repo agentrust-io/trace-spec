@@ -4,11 +4,13 @@ description: "How a relying party turns a TRACE verifier outcome into a bounded 
 
 # Verification outcome statements
 
+When software checks a TRACE record, it reports a result. This page is for auditors, assessors, customers and anyone else who has to turn that result into a written conclusion: for each kind of result it gives the strongest sentence the evidence supports, the claim to leave out, and what to keep on file.
+
 > **Non-normative.** This page is informative. It changes no schema field, wire format, required claim or conformance requirement, and carries no uppercase RFC 2119 keyword. [Section 3.3 of the specification](../spec/trace-v0.2.md) and the [verification protocol](verification.md) carry the normative rules; where those documents already speak, this page repeats their wording rather than adding to it.
 
 ## Purpose
 
-A TRACE verifier produces an outcome: an `appraisal.status`, a recorded provenance depth, a set of checks it ran and did not run. The people who consume that outcome are often not verifiers. Auditors, assessors, customers and regulators read verifier output and have to turn it into a written conclusion. The failure mode this page exists to prevent is assurance overclaim - a conclusion written slightly stronger than the evidence behind it, so that a valid signature quietly becomes "the agent complied", or a signed acceptance receipt becomes "the action succeeded".
+A TRACE verifier (the software that checks a record) produces an outcome: an `appraisal.status`, a recorded provenance depth, a set of checks it ran and did not run. The people who use that outcome are often not the ones who ran the check. Auditors, assessors, customers and regulators read verifier output and have to turn it into a written conclusion. The mistake this page exists to prevent is overclaiming: writing a conclusion slightly stronger than the evidence behind it, so that a valid signature quietly becomes "the agent complied", or a signed acceptance receipt becomes "the action succeeded".
 
 Two pages already tell a reader what not to conclude, each cut a different way: [Trust Levels](trust-levels.md) carries a *What it does not prove* line under each level, and the [OWASP Agentic Top 10 crosswalk](crosswalks/owasp-agentic-top-10.md) carries a *Limitations / out of scope* column and a closing *What TRACE does not do* list. This page is the third view of the same discipline, indexed by verifier outcome rather than by trust level or risk category. Where wording overlaps, those two pages carry the meaning and this page follows them.
 
@@ -20,7 +22,7 @@ Machine-checkable verifier-output/statement pairs are out of scope for this page
 
 ## Interpretation matrix
 
-The rows are representative, not exhaustive. Each row reads: the outcome a verifier records, the strongest statement the evidence supports, the claim that has to stay out of the same sentence, the evidence worth retaining alongside the record, and a sensible follow-up.
+The rows are typical cases; the list is not complete. Each row reads: the outcome a verifier records, the strongest statement the evidence supports, the claim that has to stay out of the same sentence, the evidence worth retaining alongside the record, and a sensible follow-up.
 
 | Verification outcome | Supported bounded statement | Required non-claim | Evidence to retain | Follow-up |
 |---|---|---|---|---|
@@ -96,4 +98,5 @@ Moving these into the record would be a schema change, which is out of scope for
 - [Verification protocol](verification.md) - the rules these outcomes come from.
 - [Build provenance verification depth](build-provenance-depth.md) - what each stopping point leaves unknown.
 - [Known limitations](../LIMITATIONS.md) - what a TRACE claim does not prevent, at record level.
+- [Verifying a record after the freshness window](verifying-after-the-freshness-window.md) - a separate, historical replay of the freshness comparison at a time bounded by a registry anchor, for a record older than the freshness window.
 - [trace-spec#66](https://github.com/agentrust-io/trace-spec/issues/66) - the discussion this page grew out of.
