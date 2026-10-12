@@ -37,7 +37,7 @@ def _minimal_record() -> dict:
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1750000000,
         "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
-        "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+        "model": {"provider": "example-provider", "model_id": "example-model"},
         "runtime": {
             "platform": "software-only",
             "measurement": "sha256:" + "0" * 64,
@@ -876,6 +876,20 @@ def test_jcs_distinguishes_unicode_key_order_from_json_dumps():
     # json.dumps (code point): 0x1F600 > 0x007A as a scalar, so order matches here,
     # but the emoji is escaped as a surrogate pair, diverging in bytes regardless.
     assert jcs != jdump
+
+
+@pytest.mark.parametrize(
+    "value",
+    [{"a\udeff": 1, "b": 2}, {"outer": {"x\ud800": 1, "y": 2}}, {"\ud83d\ude00": 1, "b": 2}],
+    ids=["lone", "nested", "pair-as-two-code-points"],
+)
+def test_a_surrogate_in_an_object_key_is_refused_as_canonicalization_error(value):
+    """A surrogate code point in a value is refused by rfc8785 itself. In a key, the UTF-16
+    key sort reaches it first and raised UnicodeEncodeError, which the callers that catch
+    `rfc8785.CanonicalizationError` to raise their own error let through. The fuzz target
+    for the intent bridge found it through `sign_bridge`."""
+    with pytest.raises(rfc8785.CanonicalizationError, match="surrogate code point"):
+        _canonical_bytes(value)
 
 
 def test_round_trip_with_non_ascii_payload():

@@ -1,0 +1,13 @@
+{
+  "policy_id": "retention/pii-90d",
+  "version": "1.4.2",
+  "rules": [
+    {
+      "claim": "data_class",
+      "must_be_one_of": [
+        "public",
+        "internal"
+      ]
+    }
+  ]
+}

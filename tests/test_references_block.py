@@ -81,6 +81,7 @@ CASES: list[tuple[str, object, bool]] = [
     ("rel approval-outcome", [_entry(rel="approval-outcome")], True),
     ("rel behavior-trace", [_entry(rel="behavior-trace")], True),
     ("rel condition-appraisal", [_entry(rel="condition-appraisal")], True),
+    ("rel observed-effect", [_entry(rel="observed-effect")], True),
     ("sha384 digest", [_entry(digest="sha384:" + "b" * 96)], True),
     # rel is a registry rather than a closed set (spec 3.1.2, unlike 3.1.1 on kind),
     # so a value this schema has never heard of is accepted rather than rejected.
@@ -271,7 +272,10 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
     """
     from agentrust_trace import SCHEMA
 
-    registered = ("authorized-intent", "approval-outcome", "behavior-trace", "condition-appraisal")
+    registered = (
+        "authorized-intent", "approval-outcome", "behavior-trace", "condition-appraisal",
+        "observed-effect",
+    )
     rel = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]
     assert "enum" not in rel, (
         "rel is a registry; closing it makes every new relation a schema change too"

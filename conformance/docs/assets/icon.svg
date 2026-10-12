@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="TRACE Tests">
+  <title>TRACE Tests</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F2F4F7"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#15294B"/>
+      <stop offset="100%" stop-color="#1B5EA0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <path d="M200,58 L326,112 L326,224 C326,298 268,340 200,360 C132,340 74,298 74,224 L74,112 Z"
+        fill="url(#brand)" opacity="0.10" stroke="url(#brand)" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- Glyph: a conformance seal. The suite either passes an implementation or it does not. -->
+  <circle cx="200" cy="212" r="64" fill="url(#brand)" opacity="0.12"/>
+  <circle cx="200" cy="212" r="64" fill="none" stroke="url(#brand)" stroke-width="4"/>
+  <!-- Exactly one red element: the verdict. -->
+  <path d="M170,212 L192,236 L232,188" fill="none" stroke="#B91C1C" stroke-width="17"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

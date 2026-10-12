@@ -691,7 +691,7 @@ def main() -> None:
 
     for name, doc in sorted(out):
         (OUT / name).write_text(
-            json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
         )
         print("wrote", name)
 

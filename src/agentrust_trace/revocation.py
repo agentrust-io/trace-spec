@@ -65,6 +65,7 @@ import referencing.jsonschema
 
 from agentrust_trace.sign import TRACE_PROFILE_V0_2
 from agentrust_trace.citation import CitationCheck
+from agentrust_trace.platform_measurement import NOT_ATTEMPTED, PlatformMeasurementCheck
 from agentrust_trace.sign import (
     _b64url_decode,
     _canonical_bytes,
@@ -120,11 +121,17 @@ class VerificationResult:
     ``citations`` carries, for each surface in ``agentrust_trace.citation.SURFACES``,
     what the caller's resolver did with the URI the record cites, and asserts nothing
     about what the cited object binds.
+
+    ``platform_measurement`` carries what a caller-supplied appraiser reported about
+    ``runtime.measurement``, per layer, as ``agentrust_trace.platform_measurement``
+    describes. It is ``not_attempted`` when no appraiser was supplied, and it never
+    moves ``revocation``, the thumbprint or ``appraisal.status``.
     """
 
     revocation: RevocationCheck
     trusted_key_thumbprint: str
     citations: dict[str, CitationCheck] = field(default_factory=dict)
+    platform_measurement: PlatformMeasurementCheck = NOT_ATTEMPTED
 
     profile: str = TRACE_PROFILE_V0_2
     """The ``eat_profile`` the record was verified under. Always a member of

@@ -1,5 +1,7 @@
 # How the conformance vectors are built, and how the set is checked for holes
 
+Conformance vectors are the shared test cases any TRACE implementation can run to show it follows the specification: each one is an input plus the result a correct verifier has to give. This page explains how those test cases are written, and how we check that every rule is actually tested. It is for people who maintain the suite or want to judge how much a passing score is worth.
+
 *Informative. This page describes method, not requirements, and carries no RFC 2119
 keywords.*
 
@@ -56,7 +58,7 @@ and the vector was left behind.
 **Is every rule exercised?** For each code the verifier can emit, is there a vector that
 expects it? A rule with no vector is a check an implementation can omit while passing.
 
-**Is every rule load-bearing: twice?** The strongest form: *delete the rule and count
+**Is every rule load-bearing: twice?** A rule is load-bearing when at least one test case would change result if the rule were removed. The strongest form: *delete the rule and count
 the vectors that notice.* A rule can be named by a vector and still not be load-bearing:
 if another rule fires on the same input, removing it changes no outcome and nothing
 distinguishes an implementation that performs the check from one that skips it. And one

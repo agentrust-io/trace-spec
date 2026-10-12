@@ -146,7 +146,7 @@ def build() -> dict[str, Any]:
 
     cite = lambda id_: reference(id_, jcs_sha256(store["appraisals"][id_]))  # noqa: E731
     records = {
-        "01-appraisal-confirmed.json": record(producer, cite("appraisal/1")),
+        "01-appraisal-verified.json": record(producer, cite("appraisal/1")),
         "02-appraisal-altered-after-issue.json": record(producer, cite("appraisal/2")),
         "03-outcome-is-a-fail.json": record(producer, cite("appraisal/2")),
         "04-reference-unresolvable.json": record(
@@ -164,25 +164,25 @@ def build() -> dict[str, Any]:
         # verifier is unverified, not invalid.
         "issuer_keys": {thumbprint(issuer_jwk): issuer_jwk},
         "cases": {
-            "01-appraisal-confirmed.json": {
+            "01-appraisal-verified.json": {
                 "store": "appraisal-store.json", "trace_record_verifies": True,
                 "reference_resolves": True, "digest_matches": True, "issuer_key_configured": True,
-                "appraisal_verifies": True, "outcome": "pass", "verdict": "appraisal-confirmed",
+                "appraisal_verifies": True, "outcome": "pass", "verdict": "appraisal-verified",
             },
             "02-appraisal-altered-after-issue.json": {
                 "store": "appraisal-store-altered.json", "trace_record_verifies": True,
                 "reference_resolves": True, "digest_matches": False, "issuer_key_configured": True,
-                "appraisal_verifies": False, "outcome": "pass", "verdict": "appraisal-contradicted",
+                "appraisal_verifies": False, "outcome": "pass", "verdict": "appraisal-digest-mismatch",
             },
             "03-outcome-is-a-fail.json": {
                 "store": "appraisal-store.json", "trace_record_verifies": True,
                 "reference_resolves": True, "digest_matches": True, "issuer_key_configured": True,
-                "appraisal_verifies": True, "outcome": "fail", "verdict": "appraisal-confirmed",
+                "appraisal_verifies": True, "outcome": "fail", "verdict": "appraisal-verified",
             },
             "04-reference-unresolvable.json": {
                 "store": "appraisal-store.json", "trace_record_verifies": True,
                 "reference_resolves": False, "digest_matches": None, "issuer_key_configured": None,
-                "appraisal_verifies": None, "outcome": None, "verdict": "appraisal-unconfirmed",
+                "appraisal_verifies": None, "outcome": None, "verdict": "appraisal-unresolved",
             },
             "05-issuer-key-not-configured.json": {
                 "store": "appraisal-store.json", "trace_record_verifies": True,

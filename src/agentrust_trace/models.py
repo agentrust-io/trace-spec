@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 from functools import partial
 
-from agentrust_trace._patterns import _require_pattern
+from agentrust_trace._patterns import _PYTHON_PATTERNS, _require_pattern
 
 from pydantic import (
     BaseModel,
@@ -17,6 +17,10 @@ from pydantic import (
 )
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+
+# Section 3.1.5: a TPM layer key. Mirrored in schema/trace-claim.json and its copy,
+# and run through the same adapted pattern the schema validator uses.
+_TPM_LAYER_RE = r"^pcr:([0-9]|1[0-9]|2[0-3])$"
 
 # A workload identity, not a namespace. A SPIFFE ID names a trust domain *and* a
 # workload path within it, and a DID names a method and an identifier within that
@@ -37,6 +41,15 @@ _SUBJECT_RE = r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
 _DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
 _DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
 _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
+# Base64url without padding, in its canonical spelling where the length leaves
+# unused bits. An 86-character value is a 64-byte signature (Ed25519 or ES256):
+# its final character carries 2 signed bits and 4 unused ones, which RFC 4648
+# section 3.5 requires to be zero, so that character is one of A, Q, g, w. Other
+# lengths are matched as before. The same string as `schema/trace-claim.json` and
+# `_patterns._ECMA_PATTERNS`, held there by
+# `tests/test_the_schema_and_the_models_agree.py` and
+# `tests/test_schema_regex_semantics.py`.
+_SIGNATURE_RE = r"^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, raised to a MUST by spec
 # section 3.2.2. Mirrored here because these models are the other artifact a producer
@@ -45,8 +58,8 @@ _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME}
 JCS_SAFE_INTEGER = 9007199254740991
 
 
-def _not_a_boolean(value: Any) -> Any:
-    """Reject ``True`` and ``False`` where JSON says integer.
+def _json_integer(value: Any) -> Any:
+    """Decide an integer as JSON does: by its value, not by Python's type or its spelling.
 
     ``isinstance(True, int)`` is a Python fact and not a JSON one. JSON Schema's
     ``"type": "integer"`` does not match a boolean, so ``schema/trace-claim.json``
@@ -58,6 +71,18 @@ def _not_a_boolean(value: Any) -> Any:
     were safe by accident rather than by design: their lower bound is above 1, so
     the coerced value failed the range check afterwards. ``appraisal.timestamp``
     allows 1 and turned ``true`` into 1 January 1970.
+
+    A string had the same hole: pydantic's lax mode read ``"1785000000"`` as the
+    integer 1785000000, which the schema rejects as a string. It is refused here.
+
+    A number is the other direction (spec section 3.2.2). ``1785000000.0`` and
+    ``1.785e9`` parse to a Python ``float`` and are the integer 1785000000: JSON
+    has one number type, JSON Schema 2020-12 matches ``integer`` to any number with
+    a zero fractional part, and RFC 8785 writes the value back out as
+    ``1785000000``, so the signature cannot tell the spellings apart. Such a float
+    is converted to the ``int`` it stands for, so each member's bounds judge the
+    value, and a record dumped from the model carries the plain integer. A float
+    that is not a whole number is not an integer.
     """
     if isinstance(value, bool):
         raise ValueError(
@@ -65,11 +90,23 @@ def _not_a_boolean(value: Any) -> Any:
             "not match true or false, so a record carrying one is rejected by "
             "schema/trace-claim.json and by any implementation validating against it."
         )
+    if isinstance(value, (str, bytes, bytearray)):
+        raise ValueError(
+            f"expected an integer, got a {type(value).__name__}. JSON Schema type "
+            "'integer' does not match a string, even one that spells a number, so a "
+            "record carrying one is rejected by schema/trace-claim.json."
+        )
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(
+                f"expected an integer value, got {value!r}, which is not a whole number"
+            )
+        return int(value)
     return value
 
 
 #: An integer as JSON means it, rather than as Python's type hierarchy means it.
-JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
+JsonInt = Annotated[int, BeforeValidator(_json_integer)]
 
 DigestStr = Annotated[
     str, Field(pattern=_DIGEST_RE),
@@ -353,7 +390,8 @@ class BuildProvenance(_TraceModel):
 class ReExecution(_TraceModel):
     """The result of re-running a record's reproducibility claim. Spec section 3.1.4.
 
-    Made by the party that re-ran the function, named as ``Appraisal.verifier``.
+    Attributed to the party that re-ran the function, named as ``Appraisal.verifier``.
+    In a record signed only by its producer, that attribution is the producer's report.
     ``outcome`` is the one of three that occurred, and two of them carry what
     makes them readable: ``diverged`` carries ``observed_digest``, because
     divergence localises nothing by itself and the two transcripts have to be
@@ -390,6 +428,50 @@ class ReExecution(_TraceModel):
         return self
 
 
+class PlatformMeasurementLayer(_TraceModel):
+    """One layer's outcome in a platform-measurement appraisal. Spec section 3.1.5.
+
+    ``not-established`` carries ``reason``, because the three reasons are
+    different findings: a layer that holds nothing, a layer measured and never
+    shown to be appraised, and evidence that does not describe one boot. An
+    ``established`` layer carries no reason.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["established", "not-established"]
+    reason: Literal[
+        "layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"
+    ] | None = None
+
+    @model_validator(mode="after")
+    def _not_established_names_its_reason(self) -> PlatformMeasurementLayer:
+        if "reason" in self.model_fields_set and self.reason is None:
+            # The schema refuses an explicit null; so does the model, so the two agree.
+            raise ValueError("reason is absent or one of the three reasons; null is neither")
+        if (self.outcome == "not-established") != (self.reason is not None):
+            raise ValueError(
+                "a layer carries reason exactly when its outcome is 'not-established'; "
+                f"got outcome={self.outcome!r} and reason={self.reason!r}"
+            )
+        return self
+
+
+class PlatformMeasurement(_TraceModel):
+    """Per-layer appraisal of ``runtime.measurement``. Spec section 3.1.5.
+
+    A member of ``Appraisal`` in its own right, not an ``Appraisal.method``
+    value, so it can sit next to a re-execution result. ``measurement`` must
+    equal ``runtime.measurement``; ``TrustRecord`` holds that, since it spans
+    two members of the record. A result naming no layer establishes nothing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    measurement: DigestStr
+    layers: Annotated[dict[str, PlatformMeasurementLayer], Field(min_length=1)]
+
+
 class Appraisal(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -403,6 +485,19 @@ class Appraisal(_TraceModel):
     # untouched by it; the re-execution outcome is not folded into the EAR set.
     method: Literal["re-execution"] | None = None
     re_execution: ReExecution | None = None
+    # Not a method value: it can sit next to a re-execution result. Section 3.1.5.
+    platform_measurement: PlatformMeasurement | None = None
+
+    @model_validator(mode="after")
+    def _a_written_result_is_an_appraisal(self) -> Appraisal:
+        """Section 3.1.5, rule 5: a verifier that writes a per-layer result has
+        performed an appraisal, so ``status`` is not ``none``."""
+        if self.platform_measurement is not None and self.status == "none":
+            raise ValueError(
+                "appraisal.status is 'none' while appraisal.platform_measurement is "
+                "present: a written result is an appraisal"
+            )
+        return self
 
     @model_validator(mode="after")
     def _re_execution_present_exactly_when_the_method_says_so(self) -> Appraisal:
@@ -468,7 +563,10 @@ class ConfirmationKey(_TraceModel):
 
 
 class TrustRecord(_TraceModel):
-    """TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution."""
+    """TRACE v0.2 Trust Record: a signed governance record for an AI agent execution.
+
+    It can carry hardware attestation evidence; the SDK does not verify that evidence.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -505,13 +603,17 @@ class TrustRecord(_TraceModel):
     """
     cnf: ConfirmationKey
     signature: Annotated[
-        str, Field(pattern=r"^[A-Za-z0-9_-]+$"),
-        AfterValidator(partial(_require_pattern, pattern=r"^[A-Za-z0-9_-]+$")),
+        str, Field(pattern=_SIGNATURE_RE),
+        AfterValidator(partial(_require_pattern, pattern=_SIGNATURE_RE)),
     ] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
-    outside the record instead of in this field."""
+    outside the record instead of in this field.
+
+    An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or
+    ES256) and must be canonically encoded per RFC 4648 section 3.5: the final
+    character's unused bits must be zero, so it must end in A, Q, g, or w."""
 
     @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:
@@ -532,4 +634,30 @@ class TrustRecord(_TraceModel):
                 "another party's output has no hardware root, so the platform must be "
                 "'software-only'"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _platform_measurement_is_about_this_record(self) -> TrustRecord:
+        """Section 3.1.5: the per-layer result is about ``runtime.measurement``.
+
+        A result about another measurement is not about this record. On a TPM a
+        layer is named ``pcr:`` and the register number in decimal without
+        leading zeros, so two verifiers name the same register the same way.
+        """
+        pm = self.appraisal.platform_measurement
+        if pm is None:
+            return self
+        if pm.measurement != self.runtime.measurement:
+            raise ValueError(
+                "appraisal.platform_measurement.measurement must equal "
+                "runtime.measurement: a result about another measurement is not "
+                "about this record"
+            )
+        if self.runtime.platform == "tpm2":
+            bad = sorted(k for k in pm.layers if not _PYTHON_PATTERNS[_TPM_LAYER_RE].search(k))
+            if bad:
+                raise ValueError(
+                    "on tpm2 a layer is named pcr: and a register number from 0 to "
+                    f"23 in decimal without leading zeros; got {bad}"
+                )
         return self

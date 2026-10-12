@@ -3,6 +3,7 @@ name: ClusterFuzzLite PR
 on:
   pull_request:
     paths:
+      - "conformance/**"
       - "src/agentrust_trace/**"
       - "requirements/dev.txt"
       - ".clusterfuzzlite/**"

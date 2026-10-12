@@ -1,0 +1,85 @@
+{
+  "name": "layer-not-measured-twin",
+  "description": "Twin of 01: the same record with a measured layer at pcr:2, so the layer is established. The only difference is that one condition.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "synthetic": true,
+  "twin_of": "01",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:e09f00095803b62c87420c503a6eed83f30be752bfc3b34cb48dde3d92e33d2a"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "warning",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:e09f00095803b62c87420c503a6eed83f30be752bfc3b34cb48dde3d92e33d2a",
+        "layers": {
+          "pcr:0": {
+            "outcome": "established"
+          },
+          "pcr:1": {
+            "outcome": "established"
+          },
+          "pcr:2": {
+            "outcome": "established"
+          },
+          "pcr:3": {
+            "outcome": "established"
+          },
+          "pcr:4": {
+            "outcome": "established"
+          },
+          "pcr:5": {
+            "outcome": "established"
+          },
+          "pcr:6": {
+            "outcome": "established"
+          },
+          "pcr:7": {
+            "outcome": "established"
+          },
+          "pcr:8": {
+            "outcome": "established"
+          },
+          "pcr:9": {
+            "outcome": "established"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "5IcGR5xaMxWsj9WhK4Na-MsXY7VI-NfzfB27TJU_RgruvBAn0e43M8C1xLtVRDT47oa_BSgLAEtTnmync0dvDg"
+  },
+  "expected": {
+    "outcome": "accept",
+    "codes": [],
+    "reading": {
+      "pcr:2": {
+        "outcome": "established"
+      }
+    }
+  }
+}

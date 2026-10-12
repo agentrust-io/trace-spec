@@ -1,0 +1,18 @@
+{
+  "policy_id": "appraisal/baseline",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "claim": "runtime.platform",
+      "must_be_one_of": [
+        "intel-tdx",
+        "amd-sev-snp",
+        "tpm2"
+      ]
+    },
+    {
+      "claim": "build_provenance.slsa_level",
+      "minimum": 3
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "missing-receipt",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-3",
+    "iat": 1003,
+    "signature": "fixture-signature-3"
+  },
+  "receipt": null,
+  "expected": {
+    "tr_anc_002": "fail"
+  },
+  "positive_twin": "tree-5-index-3",
+  "reason": "A URI alone does not prove inclusion."
+}

@@ -55,7 +55,12 @@ SAFE_INTEGER = 2**53 - 1
 # defined over an RFC 8785 canonical form must bound its integer fields to the
 # safe-integer domain; the rest carry the reason they do not.
 BOUNDED_SCHEMAS = (
+    "schema/trace-token-experimental-v1.json",
+    "schema/trace-requirements-experimental-v1.json",
+    "schema/trace-holder-proof-experimental-v1.json",
+    "schema/trace-decision-receipt-experimental-v1.json",
     "schema/pic-trace-bridge-v1.json",
+    "schema/pic-trace-successor-v1.json",
     "schema/trace-claim.json",
     # Draft, and bounded for the same reason the file it was generated from is: it is
     # `schema/trace-claim.json` plus one member, and `runtime.evidence` adds no integer
@@ -295,6 +300,14 @@ def _object_nodes(node: Any, path: str = "") -> list[tuple[str, dict[str, Any]]]
     return found
 
 
+def _is_object_map(node: dict[str, Any]) -> bool:
+    """A map whose members are all one object schema. That schema declares
+    ``"type": "object"``, so `_object_nodes` reaches it and the test below holds
+    it to the same rule: the map is bounded exactly as far as its member is."""
+    member = node.get("additionalProperties")
+    return isinstance(member, dict) and member.get("type") == "object"
+
+
 @pytest.mark.parametrize("relative", BOUNDED_SCHEMAS)
 def test_no_object_leaves_an_additional_member_unconstrained(relative: str) -> None:
     """Bounding the declared fields is not bounding the record.
@@ -306,9 +319,11 @@ def test_no_object_leaves_an_additional_member_unconstrained(relative: str) -> N
     identical except for `cnf.jwk` carrying 9007199254740992 and 9007199254740993
     produced one canonical form, with every declared field inside its bound.
 
-    An object either closes to `additionalProperties: false` or holds its
-    undeclared members to `#/$defs/canonicalizableValue`. Absent is neither, and
-    absent means true.
+    An object either closes to `additionalProperties: false`, holds its
+    undeclared members to `#/$defs/canonicalizableValue`, or is a map whose every
+    member is itself an object schema, which this test then holds to the same
+    rule (`appraisal.platform_measurement.layers`, section 3.1.5). Absent is none
+    of these, and absent means true.
     """
     schema = json.loads((REPO_ROOT / relative).read_text(encoding="utf-8"))
     objects = _object_nodes(schema)
@@ -319,6 +334,7 @@ def test_no_object_leaves_an_additional_member_unconstrained(relative: str) -> N
         f"{path or '/'}: additionalProperties={node.get('additionalProperties', 'absent')}"
         for path, node in objects
         if node.get("additionalProperties", "absent") not in permitted
+        and not _is_object_map(node)
     ]
     assert not loose, (
         f"{relative}: objects accepting an unconstrained member: {loose}. A member "
@@ -488,9 +504,17 @@ OTHER_ARTIFACTS: dict[str, dict[str, Any]] = {
             },
             "declaration_digest": "sha256:" + "c" * 64,
             "tool_call_digest": "sha256:" + "d" * 64,
-            "successor_observation_digest": "sha256:" + "e" * 64,
             "transcript_required": True,
         },
+        "signature": "x" * 86,
+    },
+    "schema/pic-trace-successor-v1.json": {
+        "profile": "tag:agentrust-io.com,2026:pic-trace-successor-v1",
+        "authorization_id": "auth-1",
+        "observer": "observer-1",
+        "observer_key_id": "observer-key-1",
+        "observed_at": 1785000000,
+        "successor_observation_digest": "sha256:" + "e" * 64,
         "signature": "x" * 86,
     },
 }

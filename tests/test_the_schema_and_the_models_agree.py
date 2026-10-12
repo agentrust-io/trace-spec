@@ -75,7 +75,7 @@ BASE: dict[str, Any] = {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": 1750000000,
     "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+    "model": {"provider": "example-provider", "model_id": "example-model"},
     "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
     "policy": {"bundle_hash": "sha256:" + "a" * 64, "enforcement_mode": "enforce"},
     "data_class": "confidential",
@@ -254,7 +254,7 @@ CANONICAL_SCHEMA: dict[str, Any] = json.loads(
 #: be mutated into a disagreement. Section 3.1.4 added five more, all optional.
 FULL: dict[str, Any] = {
     **copy.deepcopy(BASE),
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6",
+    "model": {"provider": "example-provider", "model_id": "example-model",
               "weights_digest": "sha256:" + "d" * 64},
     "delegation": {"parent_record_hash": "sha256:" + "e" * 64,
                    "credential_id": "trace-spec-delegation-credential"},
@@ -274,7 +274,15 @@ FULL: dict[str, Any] = {
                   "method": "re-execution",
                   "re_execution": {"outcome": "diverged",
                                    "observed_digest": "sha256:" + "4" * 64,
-                                   "verifier_code_identity": "sha256:" + "5" * 64}},
+                                   "verifier_code_identity": "sha256:" + "5" * 64},
+                  # Section 3.1.5: a member of appraisal in its own right, so it
+                  # sits next to the re-execution result. Its measurement is the
+                  # record's runtime.measurement, which the model requires.
+                  "platform_measurement": {
+                      "measurement": BASE["runtime"]["measurement"],
+                      "layers": {"pcr:0": {"outcome": "established"},
+                                 "pcr:2": {"outcome": "not-established",
+                                           "reason": "layer-not-measured"}}}},
     "signature": "abcDEF-_123",
 }
 

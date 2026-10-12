@@ -1,0 +1,33 @@
+{
+  "name": "utf16-key-order",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-\u00e9-\ud83d\ude00",
+    "iat": 1000,
+    "signature": "fixture-signature-0",
+    "metadata": {
+      "\ud83d\ude00": [
+        true,
+        null,
+        "\u00e9"
+      ],
+      "\ue000": {
+        "z": 1,
+        "a": -1
+      }
+    }
+  },
+  "receipt": {
+    "leaf_index": 0,
+    "leaf_count": 2,
+    "audit_path": [
+      "sha256:5765cb6e7bda5084c8b898cb8383e822d5cbc11a652fe10a270f5be3f5a85bff"
+    ],
+    "merkle_root": "sha256:9178471f91774d525d6eecc1190d88170c8e96e3720fd07e6979c29a8d29e2bc"
+  },
+  "expected": {
+    "tr_anc_002": "fail"
+  },
+  "positive_twin": "unicode-codepoint-order",
+  "reason": "Anchor keys sort by code point, not UTF-16."
+}

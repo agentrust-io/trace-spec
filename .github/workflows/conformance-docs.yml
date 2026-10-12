@@ -1,0 +1,71 @@
+name: Conformance docs
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - 'conformance/**'
+      - '.github/workflows/conformance-docs.yml'
+  pull_request:
+    paths:
+      - 'conformance/**'
+      - '.github/workflows/conformance-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conformance-docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build conformance docs
+    defaults:
+      run:
+        working-directory: conformance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install docs dependencies
+        run: |
+          pip install --require-hashes -r requirements/docs.txt
+          pip install --no-deps -e .
+
+      - name: Assemble docs build directory
+        run: |
+          BUILD=.docs_build
+          mkdir -p $BUILD
+
+          if [ -d docs ]; then cp -r docs $BUILD/docs; fi
+          # measurement/REPORT.md is in the nav as Self-verification.
+          if [ -d measurement ]; then cp -r measurement $BUILD/measurement; fi
+
+          for fname in index.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md LIMITATIONS.md SPONSORS.md PRIVACY.md CNAME robots.txt; do
+            if [ -f "$fname" ]; then cp "$fname" "$BUILD/$fname"; fi
+          done
+
+          echo "Build dir contains $(find $BUILD -type f | wc -l) files"
+
+      - name: Generate build config
+        run: |
+          sed 's|^docs_dir: \.$|docs_dir: .docs_build|' mkdocs.yml > .mkdocs_build.yml
+
+      - name: Build documentation
+        run: mkdocs build --clean --config-file .mkdocs_build.yml
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: conformance-docs
+          path: conformance/site/

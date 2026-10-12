@@ -11,6 +11,8 @@
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
 
+**In plain terms.** This is the rulebook for TRACE: it defines the Trust Record (a signed receipt describing one AI agent run), how records are anchored in a public log, and the exact checks a verifier runs. You need it if you are writing software that produces or checks records; to try TRACE first, start with the [quickstart](../docs/quickstart.md). It is a draft (v0.2, Developer Preview), so details can still change before v1.0.
+
 ## Authority and conformance claims
 
 <!-- CHANGED: #247 - define specification precedence and identify conformance artifacts -->
@@ -72,7 +74,7 @@ Records already issued under v0.1 remain verifiable against the v0.1 specificati
 
 ## Abstract
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-attested governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact. The reference SDK does not verify attestation evidence. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
 
 TRACE composes existing standards rather than replacing them. It profiles RATS/EAT (RFC 9711) for the wire envelope, SLSA for build-time provenance, SCITT for transparency anchoring, SPIFFE for workload identity, EAR for evidence appraisal, and MCP / A2A for the agent execution surface. Where gaps exist, notably the AI-agent execution profile, TRACE proposes the minimum new schema to close them.
 
@@ -226,6 +228,7 @@ Registered `rel` values:
 - **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
+- **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
@@ -320,7 +323,7 @@ One optional member of the result, carried on any outcome, lets results that dis
 
 The second row is the only one that accuses, and it accuses on absence. The record cannot distinguish a tampering producer from a cause nobody has thought of yet, so the row states what was not found rather than what was done.
 
-**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal made by the party that re-ran the function, with that party as `appraisal.verifier`. It is carried under an appraisal method discriminator, with the outcome scoped under the method:
+**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal attributed to the party that re-ran the function, with that party as `appraisal.verifier`. In a record signed only by its producer, that attribution is the producer's report: the signature establishes that the producer states the named verifier reached the result, not that the verifier did. A result meant to carry independent-verifier weight needs evidence the verifier signed itself (#446). The re-execution result is carried under an appraisal method discriminator, with the outcome scoped under the method:
 
 | Field | Required | Meaning |
 |---|---|---|
@@ -365,6 +368,69 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 
 **Out of scope.** This section names no journal format, no transcript shape, and no way of storing or resolving a closure; those belong to the profile or annex that describes the function.
 
+#### 3.1.5 `appraisal.platform_measurement`: what a matching measurement covers
+
+<!-- CHANGED: #279 - platform-measurement appraisal: per-layer outcome with a named reason -->
+
+On a measured-boot platform `runtime.measurement` is a composite digest over many layers. A verifier that compares it against a reference learns that the composite is the one the reference names. It does not learn which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot. Three conditions are routinely collapsed into an outcome a completed check would have produced. The last column is that collapse, the error this section removes, not what this section prescribes:
+
+| Reason | Condition | Collapsed, without this section, into |
+|---|---|---|
+| `layer-not-measured` | The layer holds no measurement: its value is the initial value, or on a TPM a separator and nothing else. A match confirms only that nothing was recorded. | pass |
+| `measured-not-appraised` | The layer's measurements replay exactly to the quoted value, so the evidence establishes what ran. Nothing in the evidence establishes that what ran was appraised before it ran. | pass |
+| `evidence-spans-multiple-boots` | The evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value. A platform whose measurement registers survive a warm reboot produces this, and so do a quote and a log taken from different boots, and a truncated log. | a failure, read as tampering |
+
+The first two collapse into a pass. The third collapses the other way, into a failure. Under this section all three are `not-established`, which is neither: it never passes, and it is not a finding of tampering. All three are decided against evidence the record does not carry (a quote, an event log, a reference), so they are appraisal outcomes and not properties of `runtime`.
+
+A layer is `established` when the evidence establishes what ran in it: the layer holds measurements, its event log replays from the initial value to the quoted value, and nothing else the verifier's policy requires of that layer is missing. Where the policy requires that what ran was appraised and the evidence does not show it, the layer is `measured-not-appraised`. A log that replays from the initial value to the quoted value accounts for every extension since the register was last reset, so for that layer the number of boots does not change what the evidence establishes; `evidence-spans-multiple-boots` arises only when the log does not replay. The reason is named for its most common cause, a platform whose registers survive a warm reboot, and covers the other causes its definition lists.
+
+**Placement.** The result is carried as `appraisal.platform_measurement`, a member of `appraisal` in its own right, as `appraisal.provenance_depth_verified` is. It is not an `appraisal.method` value, so a record can carry it next to a re-execution result (§3.1.4). It is attributed to `appraisal.verifier`; in a record signed only by its producer that attribution is the producer's report, as §3.1.4 states.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `appraisal.platform_measurement` | no | The result block: `measurement`, the digest the appraisal is about; and `layers`, an object with at least one member, each member carrying `outcome`, one of `established` or `not-established`, and `reason`, required when `outcome` is `not-established` and absent otherwise, one of the three reasons above; a `null` reason is neither present nor absent and is refused. |
+
+`appraisal.platform_measurement.measurement` MUST equal `runtime.measurement`: a result about another measurement is not about this record, and a verifier MUST NOT treat it as one. Layers are keyed by the platform's name for them. On a TPM the key MUST be `pcr:` followed by a register number from 0 to 23, the registers a TPM 2.0 PC Client platform defines, in decimal without leading zeros (`pcr:0`, `pcr:10`, `pcr:23`); other platforms name their layers in their profile or annex.
+
+**Rules.**
+
+1. `not-established` MUST NOT be reported as `established`. A layer the result does not list is not established either, and a record that carries no `appraisal.platform_measurement` establishes no layer: a relying party MUST NOT treat an unlisted layer, or any layer of a record without the block, as `established`.
+2. A verifier MUST NOT set `appraisal.status` to `affirming` while any layer its appraisal policy requires is `not-established` or is not listed, and that includes a record in which it writes no `appraisal.platform_measurement` at all.
+3. A verifier that finds the event log does not replay to the quoted value, and cannot establish that the evidence describes a single boot, MUST report the affected layers `not-established` with `evidence-spans-multiple-boots`, and MUST NOT on that basis alone set `appraisal.status` to `contraindicated`. Where the verifier does establish that the evidence describes a single boot, the mismatch is evidence that resolves and contradicts the record, and §3.3.1's rule for that case applies. How a verifier establishes that evidence describes a single boot is platform-specific and out of scope here; a platform profile that wants a replay mismatch read as a contradiction names how its verifiers establish a single boot, and without such a means rule 3 applies. The reason is available only when the log does not replay to the quoted value, and a verifier that reaches for it more often than it should loses a diagnosis, not a rejection: the layer is `not-established` either way.
+4. `measured-not-appraised` is reported when the evidence does not show that the layer was appraised. It is not a finding that appraisal was off: evidence that is silent about appraisal does not establish either.
+5. A verifier that writes `appraisal.platform_measurement` has performed an appraisal and MUST NOT set `appraisal.status` to `none`.
+
+**What the record can and cannot show.** Rules 1, 4 and 5 are about the record and can be checked from it. Rules 2 and 3 bind what a verifier writes: the record carries the verifier's per-layer findings but not its policy, so a reader cannot tell from the record alone which layers the policy required, and cannot check either rule. A relying party that needs that assurance reads the layers it requires itself, under rule 1, and does not rely on `appraisal.status` for them.
+
+**Why rule 2 touches `appraisal.status` when §3.1.4 does not.** A re-execution outcome is about one claim the record makes, reproducibility, which a relying party reads in its own block. A required layer that is not established means the appraisal did not establish what its own policy asked of it, and that is what `affirming` reports; leaving `status` free here would let it say the opposite of the layers beneath it.
+
+**What rule 3 costs.** On a platform whose quote does not show that the measurement registers were reset since the event log began, a verifier cannot establish a single boot, and under rule 3 a replay mismatch on that platform is never `contraindicated` on its own. A TPM's reset counter is an example: on a platform whose TPM is not reset by a warm reboot the counter does not move across one, so it cannot separate the two cases rule 3 is about. This is intended. The alternative reports every unreset platform as tampered, which is the collapse this section exists to remove.
+
+**Why rule 3 does not open a downgrade.** An adversary who can make a tampered boot look like a two-boot mix moves the affected layers from a failure to `not-established`. Rules 1 and 2 make that worthless: `not-established` is never a pass, and a verifier whose policy requires the layer cannot report `affirming`, so a relying party that reads only `appraisal.status` and one that reads the layers both decline the record. The difference between the two readings matters to diagnosis, not to acceptance. What rule 3 prevents is the opposite error, a benign unreset platform reported as tampered.
+
+**Why this is not `appraisal.status: none`.** `none` says no appraisal was performed. Here one was, and its finding is per layer. A record that can only say `none` cannot tell a layer that was never measured from a log that failed to replay across two boots, and the reason that distinguishes them is the finding.
+
+Example result, for a reference composite in which one layer holds a separator only. `warning` here is the verifier's policy choice for a layer it does not require; rule 2 fixes only that `affirming` is unavailable when a required layer is not established.
+
+```json
+"appraisal": {
+  "status": "warning",
+  "verifier": "https://verifier.example.org",
+  "platform_measurement": {
+    "measurement": "sha256:1f3e5d7c...",
+    "layers": {
+      "pcr:0": {"outcome": "established"},
+      "pcr:2": {"outcome": "not-established", "reason": "layer-not-measured"},
+      "pcr:4": {"outcome": "established"}
+    }
+  }
+}
+```
+
+**Relation to the reference library.** `verify_record` already reports a caller-supplied appraiser's per-layer report as its `platform_measurement` field (#457), with the same three causes written `layer_not_measured`, `measured_not_appraised` and `evidence_spans_multiple_boots`. That field is library output and binds no record. This section names the outcomes a record carries.
+
+**Out of scope.** This section does not say how a verifier decides each outcome, and fixes no quote or event-log format; those belong to the platform's profile or annex.
+
 ### 3.2 Wire format
 
 **Envelope: ** EAT (RFC 9711): JWT (JSON, human-readable contexts) or CWT/CBOR-COSE (constrained and high-throughput contexts).
@@ -379,8 +445,8 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
     "weights_digest": "sha256:a3f8d2c1e9b04756..."
   },
@@ -434,7 +500,7 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 
 **Signature binding.** Every TRACE Trust Record MUST be cryptographically bound by a signature over its canonical JSON form, made by the key in `cnf`. Canonicalization is RFC 8785 (JCS) unless the profile declares a different canonicalization. The signature MAY be either:
 
-- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
+- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent. The value MUST be the canonical base64url encoding (RFC 4648 section 3.5: unused trailing bits in the final character MUST be zero), and a verifier MUST reject a record whose `signature` is not canonically encoded. <!-- CHANGED: #247 - embedded signature MUST be canonical base64url -->
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
@@ -452,6 +518,7 @@ Implementations MUST use an RFC 8785-conformant library. Using `json.dumps(sort_
 
 **What the rule covers.** It is on the object, not only on its declared fields: the pre-image covers every member, including the members RFC 7517 permits a `cnf.jwk` to carry that this schema does not name, and the schema holds those to the same range. It is also not only about a Trust Record. It covers the revocation statements and bundles of section 3.2.3, and it covers any object whose digest is taken over its canonical form, such as a bridge profile's declaration and tool-call digests, where no schema constrains the input and this rule is the only thing standing between two different objects and one digest.
 
+**What counts as an integer.** JSON has one kind of number. RFC 8259 §6 gives it a single grammar in which a fraction and an exponent are optional parts, so `1785000000`, `1785000000.0` and `1.785e9` are three ways of writing one value. Whether a number is an integer, for a member typed `integer` and for the range above, is decided by that value and not by how it is written: `1785000000.0` and `1.785e9` are the integer 1785000000, `1785000000.5` is not an integer, and `1e21` is an integer outside the range. The value is the IEEE 754 double the number parses to, which is what RFC 8785 serializes and so what a signature covers; a spelling with more digits than a double carries, such as `1785000000.0000000001`, is the integer 1785000000. A verifier MUST make both decisions on that value. JSON Schema 2020-12, in which the schemas of this specification are written, defines `integer` the same way (Validation §6.1.1: any number with a zero fractional part). RFC 8785 writes the value and not the text it was read from, so the three spellings above have one pre-image and one signature, and the spelling is not something a signature can vouch for. A verifier whose parser returns only the value, as `JSON.parse` does, has no spelling to decide by; a verifier that decided by spelling would reject records that such a verifier accepts, over the same signed bytes. This paragraph governs every object the rule above covers. For the range, that includes two objects that are canonicalized under this section and whose members this specification does not type: the MCP Server Provenance Record of `spec/server-provenance-v1.md` and `spec/server-provenance-v2.md`, which is signed under section 3.2, and the transcript over whose canonical bytes section 3.1.4's `transcript_digest` is taken. A whole number outside the range in either is rejected however it is written. Which members of such an object are typed `integer` is for the document that defines the object to say, and this paragraph retypes none of them: whether the provenance record's `issued_at` and `tool_catalog.tool_count` are decided by value or by spelling is a separate question, which this paragraph does not settle. <!-- CHANGED: #247 - integer-valued members are decided by value, not by spelling; governs every object the range rule covers -->
 
 Each profile MUST declare which binding form it uses. A record with no verifiable signature binding is not a Trust Record: verifiers MUST reject it. Schema validity alone confers no trust.
 
@@ -764,7 +831,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
 <!-- CHANGED: #143 - silent allows deny decisions while retaining audit evidence -->
 
@@ -819,7 +886,7 @@ Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA 
 
 The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
-Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
+NVIDIA, Intel, AMD, Microsoft, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
 ### 6.3 IP and licensing
 
@@ -858,7 +925,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 | SPIFFE | Secure Production Identity Framework For Everyone (CNCF). Workload identity |
 | AIBOM | AI Bill of Materials (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM) |
 | MCP | Model Context Protocol. Agent tool-call surface |
-| A2A | Agent-to-Agent (Google). Inter-agent communication protocol |
+| A2A | Agent2Agent protocol (Linux Foundation). Inter-agent communication protocol |
 | C2PA | Coalition for Content Provenance and Authenticity. Content origin manifests |
 | RIM | Reference Integrity Manifest. Vendor-published reference measurements |
 | Trust Record | TRACE's portable signed artifact: see §3 |
@@ -886,7 +953,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 ### Foundation Specifications
 
 - SLSA Specification v1.0 (OpenSSF): https://slsa.dev/spec/v1.0/
-- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/
+- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/overview/
 - SPDX 3.0 AI Profile: https://spdx.dev/use/specifications/
 - CycloneDX 1.7 ML-BOM: https://cyclonedx.org/specification/overview/
 - C2PA Technical Specification v2: https://c2pa.org/specifications/specifications/2.0/
@@ -894,7 +961,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Vendor Hardware Attestation
 
-- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/api-docs-nras/
+- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/index.html
 - Intel Trust Authority: https://www.intel.com/content/www/us/en/security/trust-authority.html
 - Intel TDX: https://www.intel.com/content/www/us/en/developer/tools/trust-domain-extensions/overview.html
 - AMD SEV-SNP: https://www.amd.com/en/developer/sev.html
@@ -905,8 +972,8 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Adjacent Work
 
-- Project Oak (Google DeepMind): https://github.com/project-oak/oak
-- Anthropic MCP Specification: https://modelcontextprotocol.io/specification/
-- Google A2A Specification: https://a2a-protocol.org/latest/specification/
+- Project Oak: https://github.com/project-oak/oak
+- Model Context Protocol Specification: https://modelcontextprotocol.io/specification/
+- Agent2Agent (A2A) Protocol Specification: https://a2a-protocol.org/latest/specification/
 - MITRE ATLAS: https://atlas.mitre.org/
 - OWASP Top 10 for Agentic Applications: https://genai.owasp.org/

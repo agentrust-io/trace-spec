@@ -452,7 +452,7 @@ def main() -> None:
         bad("disclosure_type_unsupported"), base_context())))
 
     for name, doc in out:
-        (OUT / name).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        (OUT / name).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
         print("wrote", name)
 
 

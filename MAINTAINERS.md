@@ -1,5 +1,7 @@
 # Maintainers
 
+This page lists who reviews and decides changes to TRACE, and how a regular contributor can take on one of those roles.
+
 ## Project Lead
 
 | Name | Affiliation | GitHub | Contact |

@@ -78,8 +78,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Literal, get_args
 
-import rfc8785
-
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
     Appraisal,
@@ -89,6 +87,7 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
 )
+from agentrust_trace.sign import _canonical_bytes
 # TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
 # schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
 # failure this check exists to stop -- so the floor is the contract's, not zero.
@@ -265,8 +264,8 @@ class TraceSandboxAdapter:
     then call :meth:`build_trust_record` per session::
 
         adapter = TraceSandboxAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             data_class="confidential",
             enforcement_mode="enforce",
         )
@@ -417,7 +416,7 @@ class TraceSandboxAdapter:
         pre-image (see :func:`~agentrust_trace.sign.sign_record`) keeps a record
         reproducible by an implementation in another language.
         """
-        return "sha256:" + hashlib.sha256(rfc8785.dumps(decisions)).hexdigest()
+        return "sha256:" + hashlib.sha256(_canonical_bytes(decisions)).hexdigest()
 
     @staticmethod
     def software_measurement(image_digest: str, bundle_hash: str) -> str:

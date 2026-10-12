@@ -11,7 +11,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-import rfc8785
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
     Appraisal,
@@ -21,6 +20,7 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
 )
+from agentrust_trace.sign import _canonical_bytes
 
 # TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
 # schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
@@ -96,8 +96,8 @@ class TraceAGTAdapter:
     once per AGT session::
 
         adapter = TraceAGTAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             model_version="20251001",
             build_provenance_digest="sha256:e5f6a7b8...",
             transparency="https://registry.agentrust-io.com/claim/...",
@@ -238,7 +238,7 @@ class TraceAGTAdapter:
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
         # RFC 8785 (JCS): same canonicalization TraceSandboxAdapter already uses
         # for the same field, and what docs/schema.md calls "canonical JSON".
-        return "sha256:" + hashlib.sha256(rfc8785.dumps(audit_entries)).hexdigest()
+        return "sha256:" + hashlib.sha256(_canonical_bytes(audit_entries)).hexdigest()
 
     @staticmethod
     def _measurement(merkle_chain_tip: str) -> str:

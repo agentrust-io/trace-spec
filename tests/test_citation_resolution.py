@@ -468,6 +468,29 @@ def test_I11_a_record_that_fails_verification_drives_no_resolution() -> None:
     assert calls == expected_calls
 
 
+# ---- the package surface -------------------------------------------------------------
+
+
+def test_the_citation_surface_is_exported_beside_the_revocation_surface() -> None:
+    """One `VerificationResult` carries a `RevocationCheck` and a mapping of
+    `CitationCheck`, so a caller who can name one at the package root and has to reach
+    the other by module path is told the two are different kinds of thing. They are not.
+
+    The revocation names are asserted here beside the citation ones on purpose: this
+    fails if either side moves, rather than pinning the citation half alone.
+    """
+    import agentrust_trace
+    from agentrust_trace import citation, revocation
+
+    for module, names in (
+        (citation, ("CitationCheck", "check_citations")),
+        (revocation, ("RevocationCheck", "check_bundle")),
+    ):
+        for name in names:
+            assert name in agentrust_trace.__all__, f"{name} is not in __all__"
+            assert getattr(agentrust_trace, name) is getattr(module, name), name
+
+
 # ---- the generator -------------------------------------------------------------------
 
 

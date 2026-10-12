@@ -6,6 +6,8 @@
 | Status | Draft proposal, companion to TRACE v0.2 |
 | License | CC BY 4.0 |
 
+**In plain terms.** Version 2 of the MCP server provenance format adds four of a tool's self-declared behaviours (for example, whether it only reads data) to what gets signed, so a later change to them is detectable. It is for people who publish or check MCP server provenance records, and it is a draft proposal.
+
 <!-- CHANGED: #406 - versioned binding of behavioral tool annotations -->
 
 ## 1. Scope and inherited requirements

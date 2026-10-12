@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+*.egg-info/
+.coverage
+
+# Local virtual environments
+.venv/
+venv/

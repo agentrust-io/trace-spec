@@ -1,5 +1,7 @@
 # RFC Proposal: runtime evidence, and what a verifier may conclude without it
 
+A v0.2 record can name a hardware platform, but that name is only the producer's claim. This proposal lets a record carry the hardware's own signed report (attestation evidence), and sets out what a checker may conclude with and without it, as a small set of grades. It is a draft for v0.3, aimed at verifier authors, and its 14 test vectors are built on a real Intel TDX report.
+
 **Status:** Draft proposal. Binds nothing.
 **Scope:** A `runtime.evidence` member, the rules for checking it, and the grades a verifier may report. Additive; every v0.2 record stays valid.
 **Target:** `spec/trace-v0.2.md` §3.1 and §5, for v0.3.
@@ -43,6 +45,8 @@ The record is signed, and the signature is sound. It attests authorship. Every h
 This is not a new idea being introduced. `docs/trust-levels.md` line 50 already states the property:
 
 > Level 1 requires that the signing key be generated inside a verified TEE (AMD SEV-SNP, Intel TDX, NVIDIA H100, or TPM2).
+
+*Note, 2026-10-01:* `docs/trust-levels.md` has since been narrowed to authenticated evidence binding the record-signing key to the expected environment. The `attested` grade below establishes that public-key binding, not where the private key was generated or whether it stays in the TEE (#433).
 
 Nothing in the schema represents that binding and nothing in the SDK checks it. `spec/trace-v0.2.md` §5 maps `runtime` to "RATS Evidence + vendor RIM" in the claim table, and the record carries no RATS evidence. The requirement, the mapping, and the schema disagree, and the schema is what runs.
 

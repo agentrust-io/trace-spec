@@ -10,7 +10,7 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 
@@ -18,7 +18,7 @@ The project includes:
 
 - **The TRACE Specification**: normative text defining the Trust Record schema, wire format, signing and key management protocol, verification rules, hardware root profiles, and conformance requirements.
 - **JSON Schema**: machine-readable schema for Trust Record validation.
-- **Conformance test suite**: the canonical tests validating compliance (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+- **Conformance test suite**: the canonical tests validating compliance (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 - **Vendor platform annexes**: informative, vendor-co-authored claim-mapping documents for each silicon and cloud attestation surface.
 - **Reference examples**: example Trust Records for each supported hardware platform.
 
@@ -49,13 +49,13 @@ Normative specification text and the normative TRACE JSON Schema are licensed un
 
 ## 5. Trademark Policy
 
-"TRACE" as a specification name and the "TRACE-conformant" conformance mark are currently held by OPAQUE Systems, Inc. Upon host organization acceptance, trademark ownership transfers to the host under their standard trademark policy.
+"TRACE" as a specification name and the "TRACE-conformant" conformance mark are held by LF Projects, LLC, under the trademark policy at https://www.lfprojects.org/policies/.
 
 Use of "TRACE-conformant" to describe an implementation is permitted only when that implementation passes the published conformance test suite for the version being claimed.
 
 ## 6. Conformance
 
-An implementation may claim TRACE conformance only by passing the conformance test suite in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
+An implementation may claim TRACE conformance only by passing the conformance test suite in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
 
 Test suite changes that would invalidate previously conformant implementations require a spec version increment.
 

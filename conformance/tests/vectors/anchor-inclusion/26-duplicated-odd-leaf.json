@@ -1,0 +1,22 @@
+{
+  "name": "duplicated-odd-leaf",
+  "claim": {
+    "transparency": "https://log.example.org/batches/anchor-vectors",
+    "subject": "agent-4",
+    "iat": 1004,
+    "signature": "fixture-signature-4"
+  },
+  "receipt": {
+    "leaf_index": 4,
+    "leaf_count": 5,
+    "audit_path": [
+      "sha256:663899406b6ff2b3e39e4f05c821037ba519a9d837e07a967efb686219c96626"
+    ],
+    "merkle_root": "sha256:f2539974206445735537691c9049e586ee458b702e45ff245968c971a9d88c7d"
+  },
+  "expected": {
+    "tr_anc_002": "fail"
+  },
+  "positive_twin": "tree-5-index-4",
+  "reason": "Odd leaves are promoted, not duplicated."
+}

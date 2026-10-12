@@ -1,0 +1,65 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "const": "urn:agentrust:trace:holder-proof:experimental-v1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "nonce": {
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "title": "Nonce",
+      "type": "string"
+    },
+    "token_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Token Digest",
+      "type": "string"
+    },
+    "token_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Token Id",
+      "type": "string"
+    },
+    "audience": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Audience",
+      "type": "string"
+    },
+    "session_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "action_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Action Digest",
+      "type": "string"
+    },
+    "issued_at": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Issued At",
+      "type": "integer"
+    },
+    "expires_at": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Expires At",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "profile",
+    "nonce",
+    "token_digest",
+    "token_id",
+    "audience",
+    "session_id",
+    "action_digest",
+    "issued_at",
+    "expires_at"
+  ],
+  "title": "Proof",
+  "type": "object"
+}
