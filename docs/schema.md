@@ -233,7 +233,7 @@ What a matching `runtime.measurement` covers, layer by layer, attributed to the 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `measurement` | string | **yes** | The digest this appraisal is about. Must equal `runtime.measurement`: a result about another measurement is not about this record |
+| `measurement` | string | **yes** | `sha256:` or `sha384:` digest this appraisal is about. Must equal `runtime.measurement`: a result about another measurement is not about this record |
 | `layers` | object | **yes** | At least one member, keyed by the platform's name for the layer. On `tpm2` the key is `pcr:` and a register number from 0 to 23 in decimal without leading zeros (`pcr:0`, `pcr:23`). Each member carries `outcome` and, when not established, `reason`. A layer not listed is not established, and a record without this block establishes no layer |
 
 Each member of `layers`:
