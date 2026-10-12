@@ -27,6 +27,11 @@ const digests = Object.fromEntries(
 const ajv = new Ajv2020.default({
   schemas: files.map((name) => schemas[name]),
   allErrors: true,
+  // The signature pre-image is built from a record's own members, so the
+  // schema must judge the same members: `required` and `properties` test own
+  // properties and every object walk uses Object.keys, never for-in. An
+  // inherited member, cross-realm or not, is absent to both.
+  ownProperties: true,
   // The schemas use if/then without a sibling "type" and union types in
   // canonicalizableValue; both are ordinary Draft 2020-12 and not errors.
   strict: true,

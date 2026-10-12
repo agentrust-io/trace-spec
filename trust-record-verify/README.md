@@ -90,6 +90,11 @@ the SHA-256 of each schema file it read. A test compares those digests against `
 so the validators in a build are known to come from exactly those bytes: a build made
 against another schema directory (`TRACE_SCHEMA_DIR`) fails that test.
 
+The validators are compiled with `ownProperties`, so the schema judges a record's own
+members, the same members the signature pre-image is built from. A member a record only
+inherits, from any realm's prototype, is absent to both: a required one fails the schema,
+an optional one is outside what was signed.
+
 ## The differential harness
 
 ```

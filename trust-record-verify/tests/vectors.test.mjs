@@ -232,31 +232,43 @@ test("a verified result reports the profile and the complete accepted set (secti
   assert.ok(Object.isFrozen(ACCEPTED_PROFILES));
 });
 
-test("an inherited cnf or iat does not stand in for an absent one", async (t) => {
+test("an inherited member does not stand in for an absent one, at any depth", async (t) => {
   // A record from another realm is a plain object; that realm's Object.prototype
-  // is polluted with the member, so a prototype-chain read finds it and an own
-  // read does not. The schema reads through the chain; verification must not.
+  // carries the member, so a prototype-chain read finds it and an own read does
+  // not. The signature pre-image takes own members only, and so does the schema
+  // (ownProperties), so every member the schema requires must be the record's own.
   const vector = verifying();
-  // Non-enumerable, so the pollution is invisible to for-in and the schema's
-  // additionalProperties check on nested objects; only a chain read finds it.
-  const inherit = vm.runInNewContext(
-    "(json, member) => { const r = JSON.parse(json); " +
-      "Object.defineProperty(Object.prototype, member, { value: r[member], configurable: true }); " +
-      "delete r[member]; return r; }",
-  );
   const options = { trustedKey: vector.trusted_key, now: vector.record.iat, maxAgeSeconds: null };
-  for (const [member, code] of [["iat", "iat_invalid"], ["cnf", "schema_invalid"]]) {
-    await t.test(member, async () => {
-      const record = inherit(JSON.stringify(vector.record), member);
-      assert.equal(record[member] !== undefined, true, "the member is reachable through the chain");
-      assert.equal(Object.hasOwn(record, member), false, "and is not own");
-      await assert.rejects(
-        verifyRecord(record, options),
-        (error) =>
-          error instanceof TraceVerificationError &&
-          error.code === code &&
-          (code !== "schema_invalid" || error.path === member),
+  const inherit = (path, enumerable) =>
+    vm.runInNewContext(
+      "(json, path, enumerable) => { const r = JSON.parse(json); const keys = path.split('.'); " +
+        "const name = keys.pop(); const holder = keys.reduce((o, k) => o[k], r); " +
+        "Object.defineProperty(Object.prototype, name, { value: holder[name], enumerable, configurable: true }); " +
+        "delete holder[name]; return r; }",
+    )(JSON.stringify(vector.record), path, enumerable);
+  const rejected = async (record, accept) =>
+    assert.rejects(verifyRecord(record, options), (e) => e instanceof TraceVerificationError && accept(e));
+  // A required member is missing to the schema; eat_profile is read by own()
+  // before the schema and has its own code. An optional member is absent from
+  // the pre-image, so the signature no longer covers the record as signed.
+  const schema = JSON.parse(readFileSync(join(dirname(EXAMPLES), "schema", "trace-claim.json"), "utf8"));
+  const expected = (name) =>
+    name === "eat_profile" ? "profile_missing" : schema.required.includes(name) ? "schema_invalid" : "signature_invalid";
+  const members = Object.keys(vector.record).filter((name) => name !== "signature");
+  assert.ok(schema.required.every((name) => members.includes(name)), "the vector carries every required member");
+  for (const name of members) {
+    for (const enumerable of [false, true]) {
+      await t.test(`${name}${enumerable ? " (enumerable)" : ""}`, () =>
+        rejected(inherit(name, enumerable), (e) => e.code === expected(name)),
       );
-    });
+    }
   }
+  await t.test("cnf.jwk, one level down", () =>
+    rejected(inherit("cnf.jwk", false), (e) => e.code === "schema_invalid" && e.path === "cnf"),
+  );
+  await t.test("the same record with every member its own still verifies", async () => {
+    const own = vm.runInNewContext("(json) => JSON.parse(json)")(JSON.stringify(vector.record));
+    const result = await verifyRecord(own, options);
+    assert.equal(result.profile, TRACE_PROFILE_V0_2);
+  });
 });
