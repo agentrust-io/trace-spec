@@ -364,6 +364,7 @@ def verify_record_report(
     max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
+    verification_time: int | None = None,
 ) -> dict[str, Any]:
     """Verify *record* and return a bounded machine-readable verification statement.
 
@@ -387,6 +388,7 @@ def verify_record_report(
         max_future_skew_seconds=max_future_skew_seconds,
         expected_nonce=expected_nonce,
         revocation=revocation,
+        verification_time=verification_time,
     )
 
     if public_key_or_jwk is None:
@@ -447,7 +449,7 @@ def verify_record_report(
     return {
         "verification_statement": "trace-verification-result-v1",
         "status": "VERIFIED",
-        "verified_at_unix": int(_time.time()),
+        "verified_at_unix": verification_time if verification_time is not None else int(_time.time()),
         "profile": TRACE_PROFILE_V0_2,
         "verifier": {
             "package": "agentrust-trace",
@@ -544,6 +546,7 @@ def verify_record(
     max_future_skew_seconds: int = 300,
     expected_nonce: str | None = None,
     revocation: RevocationStore | None = None,
+    verification_time: int | None = None,
 ) -> None:
     """Verify an Ed25519 signature on a signed TRACE Trust Record.
 
@@ -629,6 +632,9 @@ def verify_record(
             "max_future_skew_seconds must be non-negative, got "
             f"{max_future_skew_seconds}"
         )
+
+    if verification_time is not None and (type(verification_time) is not int or not 0 <= verification_time <= 253402300799):
+        raise ValueError("verification_time must be a non-negative integer Unix timestamp in seconds")
 
     if expected_nonce is not None and not isinstance(expected_nonce, str):
         raise ValueError(
@@ -743,7 +749,7 @@ def verify_record(
     iat = record.get("iat")
     if not isinstance(iat, int) or isinstance(iat, bool):
         raise ValueError("record has no valid integer 'iat' for freshness check")
-    age = time.time() - iat
+    age = (verification_time if verification_time is not None else time.time()) - iat
     if age < -max_future_skew_seconds:
         raise ValueError(
             f"record is dated {int(-age)}s in the future, exceeds "
