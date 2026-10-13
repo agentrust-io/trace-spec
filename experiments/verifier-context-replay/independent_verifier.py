@@ -47,6 +47,8 @@ def verify(record, trusted_jwk, *, verification_time, max_age_seconds, max_futur
             return Verdict("not-established", "invalid-future-bound")
         if not isinstance(record, dict) or record.get("eat_profile") != PROFILE:
             return Verdict("rejected", "profile")
+        if "uri" not in jsonschema.FormatChecker().checkers:
+            return Verdict("not-established", "uri-checker-unavailable")
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         if not jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).is_valid(record):
             return Verdict("rejected", "schema")
