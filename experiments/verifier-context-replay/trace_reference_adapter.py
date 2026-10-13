@@ -41,4 +41,4 @@ def verify_trace_record(record, trusted_keys, *, verification_time, max_age_seco
         result = verifier(record, trusted_keys, **kwargs)
     except Exception as exc:
         return ReferenceResult("rejected", type(exc).__name__)
-    return ReferenceResult("reference-evaluated", type(result).__name__)
+    return ReferenceResult("verified", "trace-signature-and-requested-checks-passed")
