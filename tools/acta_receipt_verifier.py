@@ -22,8 +22,10 @@ single receipt run the same code. A receipt is checked in this order:
    prefix naming another algorithm is refused (code
    ``unsupported_chain_hash_algorithm``). The bare hex digest that revision 02
    used, and that fixtures 02 and 04 carry, is accepted, as Section 6.7 allows.
-   When the predecessor is known, a link that does not name it, or a missing
-   link, is refused (code ``chain_link_mismatch``).
+   Any other link, such as a ``sha256:`` prefix over something that is not 64
+   lowercase hex characters, is refused whether or not the predecessor is known
+   (code ``malformed_chain_link``). When the predecessor is known, a link that
+   does not name it, or a missing link, is refused (code ``chain_link_mismatch``).
 
 Only the envelope shape of Section 6.6 is supported; a flat-shape receipt is
 reported as undecidable. Key revocation (``revoked_at``) is not read: no
@@ -52,6 +54,7 @@ import binascii
 import hashlib
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -64,6 +67,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 EXIT_STATUS = {"valid": 0, "invalid": 1, "undecidable": 2}
 CHAIN_HASH_PREFIX = "sha256:"
+SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 
 Verdict = tuple[str, str | None]
 
@@ -124,6 +128,14 @@ def _link_names_unknown_algorithm(link: Any) -> bool:
     return isinstance(link, str) and ":" in link and not link.startswith(CHAIN_HASH_PREFIX)
 
 
+def _link_is_well_formed(link: Any) -> bool:
+    """Whether ``link`` is ``sha256:`` and 64 lowercase hex, or the bare digest of revision 02."""
+    if not isinstance(link, str):
+        return False
+    digest = link[len(CHAIN_HASH_PREFIX) :] if link.startswith(CHAIN_HASH_PREFIX) else link
+    return SHA256_HEX.fullmatch(digest) is not None
+
+
 def _envelope_parts(envelope: Any) -> tuple[dict[str, Any], str]:
     """Return ``payload`` and ``kid``, or raise Undecidable if this is no Acta envelope."""
     if not isinstance(envelope, dict) or set(envelope) != {"payload", "signature"}:
@@ -159,6 +171,8 @@ def verify_envelope(envelope: Any, key: IssuerKey, predecessor: Any = None) -> V
     link = payload.get("previousReceiptHash")
     if _link_names_unknown_algorithm(link):
         return "invalid", "unsupported_chain_hash_algorithm"
+    if link is not None and not _link_is_well_formed(link):
+        return "invalid", "malformed_chain_link"
     if predecessor is not None and not chain_link_matches(link, predecessor):
         return "invalid", "chain_link_mismatch"
     return "valid", None

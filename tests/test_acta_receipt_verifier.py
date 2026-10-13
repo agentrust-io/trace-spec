@@ -189,6 +189,33 @@ def test_a_link_naming_another_algorithm_is_refused() -> None:
     assert verify_envelope(second, KEY) == ("invalid", "unsupported_chain_hash_algorithm")
 
 
+@pytest.mark.parametrize(
+    "link",
+    [
+        "sha256:not-a-digest",
+        "sha256:" + "A" * 64,
+        "sha256:" + "a" * 63,
+        "sha256:",
+        "a" * 65,
+        7,
+    ],
+)
+def test_a_malformed_link_is_refused_without_a_predecessor(link: Any) -> None:
+    second = _sign(_payload(previousReceiptHash=link))
+    assert verify_envelope(second, KEY) == ("invalid", "malformed_chain_link")
+
+
+def test_a_malformed_link_is_refused_before_the_predecessor_is_compared() -> None:
+    first = _sign(_payload())
+    second = _sign(_payload(previousReceiptHash="sha256:not-a-digest"))
+    assert verify_envelope(second, KEY, first) == ("invalid", "malformed_chain_link")
+
+
+def test_a_well_formed_link_with_no_predecessor_is_accepted() -> None:
+    second = _sign(_payload(previousReceiptHash="sha256:" + "0" * 64))
+    assert verify_envelope(second, KEY) == ("valid", None)
+
+
 # --- what cannot be decided -----------------------------------------------
 
 
