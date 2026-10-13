@@ -885,3 +885,42 @@ def test_verify_record_rejects_malformed_verifier_policy_inputs(kwargs, match):
 
     with pytest.raises(ValueError, match=match):
         verify_record(record, key_to_jwk(key), **kwargs)
+
+
+@pytest.mark.parametrize("now,expect", [
+    (1750000300, "accepted"),
+    (1750000301, "stale"),
+    (1749999989, "future"),
+    (1749999990, "accepted"),
+])
+def test_pinned_verification_time_boundaries(now, expect):
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    kwargs = dict(verification_time=now, max_age_seconds=300,
+                  max_future_skew_seconds=10)
+    if expect == "accepted":
+        verify_record(record, key_to_jwk(key), **kwargs)
+    else:
+        with pytest.raises(ValueError, match=expect):
+            verify_record(record, key_to_jwk(key), **kwargs)
+
+
+@pytest.mark.parametrize("bad", [True, 1.5, "1750000000", -1, None])
+def test_pinned_verification_time_malformed_input(bad):
+    if bad is None:
+        return  # None preserves legacy ambient-time semantics
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    with pytest.raises(ValueError, match="verification_time"):
+        verify_record(record, key_to_jwk(key), verification_time=bad)
+
+
+def test_pinned_verification_report_records_effective_time():
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    report = verify_record_report(
+        record, key_to_jwk(key), verification_time=1750000300,
+        max_age_seconds=300,
+    )
+    assert report["verified_at_unix"] == 1750000300
+    assert report["status"] == "VERIFIED"
