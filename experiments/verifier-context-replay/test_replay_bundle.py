@@ -19,7 +19,7 @@ CONTEXT = {"verification_time":1750000300,"max_age_seconds":300,
            "max_future_skew_seconds":10,"expected_nonce":None,
            "verifier_version":"pinned-test"}
 
-def build(path, policy=POLICY, trusted_key=None, revoked=None, when=1750000300):
+def build(path, policy=POLICY, trusted_key=None, revoked=None, when=1750000300, semantic_contract=None):
     record = _minimal_record()
     record["policy"]["bundle_hash"] = sha256(POLICY)
     signed = sign_record(record, KEY)
@@ -29,7 +29,7 @@ def build(path, policy=POLICY, trusted_key=None, revoked=None, when=1750000300):
            policy=policy,
            revocation=json.dumps(revoked if revoked is not None else []).encode(),
            resolver=RESOLVER,
-           context={**CONTEXT,"verification_time":when})
+           context={**CONTEXT,"verification_time":when, **({"semantic_contract":semantic_contract} if semantic_contract is not None else {})})
     return sha256((Path(path)/"MANIFEST.json").read_bytes())
 
 class BundleReplayTests(unittest.TestCase):
@@ -78,6 +78,41 @@ class BundleReplayTests(unittest.TestCase):
             pin=build(path)
             (Path(path)/"policy.bin").write_bytes(b"changed")
             self.assertEqual(run(path,pin)["status"],"rejected")
+
+    def test_semantic_snapshots_match(self):
+        with tempfile.TemporaryDirectory() as path:
+            contract={"version":1,"enforcement_mode":"enforce",
+                      "policy":json.loads(POLICY),"resolver":json.loads(RESOLVER)}
+            pin=build(path,semantic_contract=contract)
+            output=run(path,pin)
+            self.assertEqual(output["status"],"crypto-and-context-verified")
+            self.assertEqual(output["semantic_status"],"exact-snapshot-matched")
+
+    def test_semantic_resolver_drift(self):
+        with tempfile.TemporaryDirectory() as path:
+            contract={"version":1,"enforcement_mode":"enforce",
+                      "policy":json.loads(POLICY),"resolver":{"manifest":"different"}}
+            pin=build(path,semantic_contract=contract)
+            self.assertEqual(run(path,pin)["reason"],"resolver-semantic-drift")
+
+    def test_semantic_policy_drift(self):
+        with tempfile.TemporaryDirectory() as path:
+            contract={"version":1,"enforcement_mode":"enforce",
+                      "policy":{"enforcement_mode":"monitor"},"resolver":json.loads(RESOLVER)}
+            pin=build(path,semantic_contract=contract)
+            self.assertEqual(run(path,pin)["reason"],"policy-semantic-drift")
+
+    def test_semantic_non_enforcing(self):
+        with tempfile.TemporaryDirectory() as path:
+            contract={"version":1,"enforcement_mode":"monitor",
+                      "policy":json.loads(POLICY),"resolver":json.loads(RESOLVER)}
+            pin=build(path,semantic_contract=contract)
+            self.assertEqual(run(path,pin)["status"],"not-established")
+
+    def test_semantic_contract_incomplete(self):
+        with tempfile.TemporaryDirectory() as path:
+            pin=build(path,semantic_contract={"version":1})
+            self.assertEqual(run(path,pin)["reason"],"incomplete-semantic-contract")
 
     def test_absent_root(self):
         with tempfile.TemporaryDirectory() as path:
