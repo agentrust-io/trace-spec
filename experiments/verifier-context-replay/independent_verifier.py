@@ -1,18 +1,21 @@
 """Independent TRACE v0.2 cryptographic verifier for a deliberately bounded profile.
 
 Does not import agentrust_trace code. Covers JCS Ed25519, pinned JWK, key
-confirmation, freshness, nonce and frozen revocation identifiers. Does NOT
-claim full TRACE schema validation or external policy/manifest resolution.
+confirmation, freshness, nonce and frozen revocation identifiers. Validates against the published TRACE JSON Schema as data; does not import the
+reference schema validator. Does not interpret external policy/manifest resolution.
 """
 import base64
 import hashlib
 import hmac
 import json
+from pathlib import Path
+import jsonschema
 from dataclasses import dataclass
 import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json"
 
 @dataclass(frozen=True)
 class Verdict:
@@ -44,6 +47,9 @@ def verify(record, trusted_jwk, *, verification_time, max_age_seconds, max_futur
             return Verdict("not-established", "invalid-future-bound")
         if not isinstance(record, dict) or record.get("eat_profile") != PROFILE:
             return Verdict("rejected", "profile")
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        if not jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).is_valid(record):
+            return Verdict("rejected", "schema")
         if not isinstance(trusted_jwk, dict):
             return Verdict("not-established", "trusted-root-missing")
         if _thumbprint(record.get("cnf", {}).get("jwk")) != _thumbprint(trusted_jwk):
