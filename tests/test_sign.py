@@ -924,3 +924,12 @@ def test_pinned_verification_report_records_effective_time():
     )
     assert report["verified_at_unix"] == 1750000300
     assert report["status"] == "VERIFIED"
+
+
+def test_verification_fails_closed_when_uri_format_checker_unavailable(monkeypatch):
+    from jsonschema import FormatChecker
+    key = generate_key()
+    record = sign_record(_minimal_record(), key)
+    monkeypatch.delitem(FormatChecker.checkers, "uri", raising=False)
+    with pytest.raises(ValueError, match="URI format checker unavailable"):
+        verify_record(record, key_to_jwk(key), verification_time=1750000000)
