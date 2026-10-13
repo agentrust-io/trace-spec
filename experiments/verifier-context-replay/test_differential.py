@@ -108,6 +108,20 @@ class DifferentialReplay(unittest.TestCase):
     def test_invalid_record_future_time(self):
         self.assert_agreement("rejected", when=1749999900)
 
+    def test_signed_record_with_schema_violation(self):
+        record, jwk, key = fixture()
+        record = copy.deepcopy(record)
+        record["unexpected_extension"] = {"status": "not-authorized"}
+        record = sign_record(record, key)
+        self.assert_agreement("rejected", record, jwk)
+
+    def test_signed_record_with_bad_uri_format(self):
+        record, jwk, key = fixture()
+        record = copy.deepcopy(record)
+        record["transparency"] = "not a uri"
+        record = sign_record(record, key)
+        self.assert_agreement("rejected", record, jwk)
+
     def test_missing_nonce(self):
         record, jwk, _ = fixture()
         self.assert_agreement("rejected", record, jwk, nonce="required")
