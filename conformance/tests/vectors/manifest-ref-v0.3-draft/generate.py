@@ -145,5 +145,5 @@ def vectors() -> list[dict]:
 if __name__ == "__main__":
     for v in vectors():
         (HERE / f"{v['name']}.json").write_text(
-            json.dumps(v, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            json.dumps(v, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline=""
         )
