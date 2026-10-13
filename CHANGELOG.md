@@ -11,6 +11,15 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **A second verifier, in TypeScript.** `trust-record-verify/` verifies TRACE v0.2 records
+  independently of the Python implementation, and a differential harness scores the two
+  against each other on 1644 cases: 1643 agree, and the remaining one is listed in the
+  harness's divergence ledger (#376, by @chernistry).
+- **v0.3 draft fixtures for the manifest reference.** Six conformance fixtures under
+  `conformance/tests/vectors/manifest-ref-v0.3-draft/` exercise the `manifest` object
+  proposed in #483: a digest match, a mismatch, a mismatch beside an asserted `verified`,
+  an unresolvable manifest, a `manifest` added after signing, and a control without one.
+  Draft only; no spec text or schema changes (#487, by @babyblueviper1).
 - **Accuracy pass on non-normative text.** Examples, schema descriptions, adapter
   docstrings and unsigned test records use vendor-neutral placeholders
   (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards
