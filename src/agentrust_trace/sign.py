@@ -681,6 +681,15 @@ def verify_record(
     # verified TRACE Trust Record. Signature presence and encoding are checked
     # first so the public API preserves its specific envelope errors.
     from agentrust_trace.validate import validate_json
+    from jsonschema import FormatChecker
+
+    # jsonschema silently skips format validation when the optional URI parser
+    # dependency is absent. Fail closed instead of granting host-dependent trust.
+    if "uri" not in FormatChecker().checkers:
+        raise ValueError(
+            "TRACE URI format checker unavailable; install jsonschema[format] "
+            "before verification"
+        )
 
     try:
         validate_json(record)
