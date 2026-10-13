@@ -107,7 +107,7 @@ class BundleReplayTests(unittest.TestCase):
             contract={"version":1,"enforcement_mode":"monitor",
                       "policy":json.loads(POLICY),"resolver":json.loads(RESOLVER)}
             pin=build(path,semantic_contract=contract)
-            self.assertEqual(run(path,pin)["status"],"not-established")
+            self.assertEqual(run(path,pin)["reason"],"enforcement-mode-mismatch")
 
     def test_semantic_contract_incomplete(self):
         with tempfile.TemporaryDirectory() as path:
