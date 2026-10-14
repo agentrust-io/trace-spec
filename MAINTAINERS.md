@@ -10,13 +10,6 @@ This page lists who reviews and decides changes to TRACE, and how a regular cont
 
 The Project Lead has final decision authority on specification changes, submission of TRACE deliverables to other organizations, conformance requirements, and Maintainer appointments.
 
-## Spec Editors
-
-| Name | Affiliation | Area |
-|---|---|---|
-| Rishabh Poddar | OPAQUE Systems | Specification, TEE profiles |
-| Aaron Fulkerson | OPAQUE Systems | Specification, governance |
-
 ## Repository Maintainers
 
 | Name | GitHub | Scope |
@@ -40,4 +33,7 @@ Affiliations identify each maintainer's professional context. They do not give a
 
 Maintainers who step back from active review are listed here with thanks.
 
-_(none yet)_
+| Name | Former role |
+|---|---|
+| Rishabh Poddar | Spec Editor: specification, TEE profiles |
+| Aaron Fulkerson | Spec Editor: specification, governance |
