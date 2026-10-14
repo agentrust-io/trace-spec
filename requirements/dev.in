@@ -4,7 +4,7 @@
 # invocation. Compile with:
 #   uv pip compile requirements/dev.in --generate-hashes --universal \
 #     --python-version 3.11 -o requirements/dev.txt
-pydantic>=2.13.5
+pydantic>=2.14.0
 jsonschema>=4.26.0
 rfc3986-validator>=0.1.1
 cryptography>=42.0
