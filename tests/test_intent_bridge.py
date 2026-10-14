@@ -644,3 +644,117 @@ def test_uncanonicalizable_transcript_call_is_intentbridgeerror_not_mismatch(
             now=150,
         )
     assert not isinstance(excinfo.value, AuthorizationMismatch)
+
+
+def test_bridge_naming_another_authorizer_key_id_is_rejected() -> None:
+    """An authorization signed with `authorizer_key_id="key-7"` and verified against
+    a trusted JWK whose `kid` is `"key-other"` (or absent) must report the key-id
+    mismatch before attempting Ed25519 signature verification. The control is the
+    same untrusted key with `kid="key-7"`, which reaches `pub.verify` and is refused
+    as an invalid signature.
+    """
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    other_key = Ed25519PrivateKey.generate()
+    with pytest.raises(IntentBridgeError, match="authorization signature is invalid"):
+        verify_bridge(
+            bridge,
+            {**key_to_jwk(other_key), "kid": "key-7"},
+            declaration=declaration,
+            pic_intent_digest=intent,
+            pic_args_digest=args,
+            tool_call=tool_call,
+            transcript=transcript,
+            now=150,
+        )
+    for mismatched_jwk in (
+        {**key_to_jwk(other_key), "kid": "key-other"},
+        {**key_to_jwk(key), "kid": "key-other"},
+        key_to_jwk(key),
+    ):
+        with pytest.raises(IntentBridgeError, match="does not identify the trusted key"):
+            verify_bridge(
+                bridge,
+                mismatched_jwk,
+                declaration=declaration,
+                pic_intent_digest=intent,
+                pic_args_digest=args,
+                tool_call=tool_call,
+                transcript=transcript,
+                now=150,
+            )
+
+
+@pytest.mark.parametrize("bad_jwk", [None, "not-a-jwk", 123, ["kid"]])
+def test_verify_bridge_rejects_non_object_trusted_authorizer_jwk(bad_jwk: object) -> None:
+    bridge, _, declaration, intent, args, tool_call, transcript = _fixture()
+    with pytest.raises(IntentBridgeError, match="trusted_authorizer_jwk must be an object"):
+        verify_bridge(
+            bridge,
+            bad_jwk,  # type: ignore[arg-type]
+            declaration=declaration,
+            pic_intent_digest=intent,
+            pic_args_digest=args,
+            tool_call=tool_call,
+            transcript=transcript,
+            now=150,
+        )
+
+
+@pytest.mark.parametrize(
+    "bad_jwk",
+    [
+        {"kty": "RSA", "kid": "key-7"},
+        {"kty": "OKP", "crv": "X25519", "kid": "key-7"},
+        {"kty": "OKP", "crv": "Ed25519", "kid": "key-7"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "!!!", "kid": "key-7"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "kid": "key-7"},
+    ],
+)
+def test_verify_bridge_reports_unusable_trusted_authorizer_jwk_instead_of_invalid_signature(
+    bad_jwk: dict,
+) -> None:
+    bridge, _, declaration, intent, args, tool_call, transcript = _fixture()
+    with pytest.raises(IntentBridgeError, match="trusted_authorizer_jwk is unusable"):
+        verify_bridge(
+            bridge,
+            bad_jwk,
+            declaration=declaration,
+            pic_intent_digest=intent,
+            pic_args_digest=args,
+            tool_call=tool_call,
+            transcript=transcript,
+            now=150,
+        )
+
+
+@pytest.mark.parametrize(
+    "bad_jwk",
+    [
+        {"kty": "RSA", "kid": "observer-key-1"},
+        {"kty": "OKP", "crv": "X25519", "kid": "observer-key-1"},
+        {"kty": "OKP", "crv": "Ed25519", "kid": "observer-key-1"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "!!!", "kid": "observer-key-1"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "kid": "observer-key-1"},
+    ],
+)
+def test_verify_successor_artifact_reports_unusable_trusted_observer_jwk(
+    bad_jwk: dict,
+) -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-7", after, "observer-key-1", observer_key)
+    with pytest.raises(IntentBridgeError, match="trusted_observer_jwk is unusable"):
+        verify_successor_artifact(
+            successor,
+            bad_jwk,
+            trusted_observer="observer-1",
+            authorization_id="auth-7",
+            after=after,
+        )
+
+
+@pytest.mark.parametrize("bad_auth", [None, "a-string", 123, [1, 2], True, 1.5])
+def test_sign_bridge_requires_authorization_to_be_a_json_object(bad_auth: object) -> None:
+    with pytest.raises(IntentBridgeError, match="authorization must be a JSON object"):
+        sign_bridge(bad_auth, Ed25519PrivateKey.generate())  # type: ignore[arg-type]
+

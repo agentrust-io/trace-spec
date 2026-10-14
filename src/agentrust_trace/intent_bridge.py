@@ -74,10 +74,15 @@ def digest_jcs(value: dict[str, Any]) -> str:
 def sign_bridge(authorization: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
     """Sign the complete authorization; key material is deliberately not embedded.
 
-    Raises ``IntentBridgeError`` for a *key* that is not an ``Ed25519PrivateKey``: the
-    bridge profile fixes the algorithm, and the package's two other signers hold their
-    key to the same type through ``key_to_jwk``.
+    Raises ``IntentBridgeError`` for an *authorization* that is not a JSON object, or
+    for a *key* that is not an ``Ed25519PrivateKey``: the bridge profile fixes the
+    algorithm, and the package's two other signers hold their key to the same type
+    through ``key_to_jwk``.
     """
+    if not isinstance(authorization, dict):
+        raise IntentBridgeError(
+            f"authorization must be a JSON object, got {type(authorization).__name__}"
+        )
     if not isinstance(key, Ed25519PrivateKey):
         raise IntentBridgeError(
             f"key must be an Ed25519PrivateKey, got {type(key).__name__}. The bridge "
@@ -197,6 +202,10 @@ def verify_successor_artifact(
         signature = _b64url_decode(signature_value, field="successor.signature")
     except ValueError as exc:
         raise IntentBridgeError(str(exc)) from exc
+    try:
+        pub = _pubkey_from_jwk(trusted_observer_jwk)
+    except ValueError as exc:
+        raise IntentBridgeError(f"trusted_observer_jwk is unusable: {exc}") from exc
     signed = {
         "profile": SUCCESSOR_PROFILE,
         "authorization_id": actual_authorization_id,
@@ -207,7 +216,7 @@ def verify_successor_artifact(
     }
     body = _jcs(signed, "the successor artifact")
     try:
-        _pubkey_from_jwk(trusted_observer_jwk).verify(signature, body)
+        pub.verify(signature, body)
     except Exception as exc:
         raise IntentBridgeError("successor signature is invalid") from exc
     bound = _bind_successor_observation(after, expected_successor_digest)
@@ -358,6 +367,15 @@ def verify_bridge(
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
         _nonempty_string(authorization[field], f"authorization.{field}")
     _decision(authorization["decision"])
+    if not isinstance(trusted_authorizer_jwk, dict):
+        raise IntentBridgeError("trusted_authorizer_jwk must be an object")
+    trusted_kid = trusted_authorizer_jwk.get("kid")
+    if not isinstance(trusted_kid, str) or trusted_kid != authorization["authorizer_key_id"]:
+        raise IntentBridgeError("authorizer_key_id does not identify the trusted key")
+    try:
+        pub = _pubkey_from_jwk(trusted_authorizer_jwk)
+    except ValueError as exc:
+        raise IntentBridgeError(f"trusted_authorizer_jwk is unusable: {exc}") from exc
 
     # Hoisted out of the try below. Inside it, an authorization JCS cannot serialize
     # was reported as "the signature is invalid", which is a different fact and sends
@@ -366,12 +384,9 @@ def verify_bridge(
     body = _jcs({"profile": BRIDGE_PROFILE, "authorization": authorization},
                 "the authorization")
     try:
-        _pubkey_from_jwk(trusted_authorizer_jwk).verify(signature, body)
+        pub.verify(signature, body)
     except Exception as exc:
         raise IntentBridgeError("authorization signature is invalid") from exc
-    trusted_kid = trusted_authorizer_jwk.get("kid")
-    if not isinstance(trusted_kid, str) or trusted_kid != authorization["authorizer_key_id"]:
-        raise IntentBridgeError("authorizer_key_id does not identify the trusted key")
     if authorization["decision"] != "allow":
         raise AuthorizationDenied("the signed decision is not allow")
     # By value, not by spelling (spec section 3.2.2): `100.0` is the timestamp 100, which
