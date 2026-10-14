@@ -26,7 +26,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 | Code | Description | How to fix |
 |------|-------------|------------|
 | TR-RTE-001 | `runtime` is missing or not an object, or `runtime.platform` is not in the registered set, or is `software-only` at Level 1 and above | Use a value from the `runtime.platform` enum in `schemas/trace-claim.json`. `software-only` carries no hardware attestation evidence and is accepted only at Level 0 |
-| TR-RTE-002 | `runtime.measurement` is not a valid `sha256:` digest | Provide a 64-character hex digest prefixed with `sha256:`; for Level 0 all-zeros is conventional |
+| TR-RTE-002 | `runtime.measurement` is not a valid `sha256:` or `sha384:` digest | Provide `sha256:` + 64 hex chars or `sha384:` + 96 hex chars; format only, all-zero values also match this check |
 | TR-RTE-003 | `runtime.rim_uri` is present and is not an `https://` URI | Remove `runtime.rim_uri` if not using a RIM, or set it to an `https://` URI. The URI is not resolved and the manifest behind it is not checked; this is a format check |
 | TR-RTE-004 | Level 1+ verification is missing the verifier challenge nonce or the nonce does not match | Supply the verifier's expected nonce and require the attested runtime nonce to match it |
 
@@ -52,7 +52,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 
 | Code | Description | How to fix |
 |------|-------------|------------|
-| TR-TXN-001 | `tool_transcript.hash` is not a valid `sha256:` digest | Set `tool_transcript.hash` to `sha256:` + 64 hex chars of the Merkle root of the tool call log |
+| TR-TXN-001 | `tool_transcript.hash` is not a valid `sha256:` or `sha384:` digest | Set `tool_transcript.hash` to `sha256:` + 64 hex chars or `sha384:` + 96 hex chars of the Merkle root of the tool call log |
 | TR-TXN-002 | `tool_transcript.call_count` is negative or not an integer | Set `tool_transcript.call_count` to a non-negative integer (0 is valid for sessions with no tool calls) |
 
 ## TR-ANC: Transparency
@@ -67,4 +67,4 @@ Look up a code from a failed or unverified check here: what it means and how to 
 | Code | Description | How to fix |
 |------|-------------|------------|
 | TR-SCA-001 | `build_provenance.slsa_level` is not 0 to 3 | Set `build_provenance.slsa_level` to an integer 0 to 3 matching your SLSA build level |
-| TR-SCA-002 | `build_provenance.digest` is not a valid `sha256:` digest | Set `build_provenance.digest` to `sha256:` + 64 hex chars of the container image or artifact digest |
+| TR-SCA-002 | `build_provenance.digest` is not a valid `sha256:` or `sha384:` digest | Set `build_provenance.digest` to `sha256:` + 64 hex chars or `sha384:` + 96 hex chars of the container image or artifact digest |

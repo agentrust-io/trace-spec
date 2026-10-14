@@ -76,7 +76,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 
 Level 1 adds hardware attestation: the record names the TEE (trusted execution environment, a processor mode that keeps a program's memory sealed off) it ran in and the measurement (a fingerprint of the code loaded into it). The suite checks that these fields are well formed; it does not verify the hardware's signed report, which is a separate step (see [Known limitations](../LIMITATIONS.md)).
 
-`runtime.platform` must be a value from the `runtime.platform` enum in `schemas/trace-claim.json` other than `software-only`, which carries no hardware attestation evidence. The measurement must be non-zero. `appraisal.status` must be `"affirming"` (TR-APR-005).
+`runtime.platform` must be a value from the `runtime.platform` enum in `schemas/trace-claim.json` other than `software-only`, which carries no hardware attestation evidence. `runtime.measurement` must be a valid `sha256:` or `sha384:` digest (TR-RTE-002 checks format only; all-zero values also match this check). `appraisal.status` must be `"affirming"` (TR-APR-005).
 
 **Minimum conformant Level 1 record** (changes from Level 0 in bold context):
 
@@ -124,7 +124,7 @@ Level 1 adds hardware attestation: the record names the TEE (trusted execution e
 **What causes a Level 1 failure over Level 0:**
 
 - `runtime.platform` is `"software-only"`: TR-RTE-001
-- `runtime.measurement` is all zeros: TR-RTE-002 (all-zero is invalid at Level 1)
+- `runtime.measurement` is missing or not a valid `sha256:` or `sha384:` digest: TR-RTE-002 (format only; all-zero values also match this check)
 - `build_provenance` missing entirely: TR-SCA-001, TR-SCA-002
 - `appraisal.status` is `"none"`: while not a hard schema violation, a conformant Level 1 record should carry `"affirming"`; TR-APR-005 reports this from Level 1 and skips it at Level 0
 
@@ -152,7 +152,7 @@ The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT r
 
 **What causes a Level 2 failure over Level 1:**
 
-- `tool_transcript.hash` missing or not a valid `sha256:` digest: TR-TXN-001
+- `tool_transcript.hash` missing or not a valid `sha256:` or `sha384:` digest: TR-TXN-001
 - `tool_transcript.call_count` negative or not an integer: TR-TXN-002
 - `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host: TR-ANC-001
 - no anchor receipt was supplied, the receipt is malformed, or its inclusion proof does not reproduce the committed `merkle_root`: TR-ANC-002. A record cannot reach Level 2 on a URI alone: pass the receipt with `--receipt`

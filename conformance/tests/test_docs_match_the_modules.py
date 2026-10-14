@@ -299,3 +299,41 @@ def test_the_registration_table_and_the_published_table_agree() -> None:
         "no unverified-level row was parsed, so this check would pass over no "
         "work; the table in docs/levels.md is gone or its shape changed"
     )
+
+
+def test_digest_docs_name_both_sha256_and_sha384() -> None:
+    """Every digest check accepts both sha256: and sha384:; the docs must say so (#448 item 5)."""
+    error_codes_text = ERROR_CODES.read_text(encoding="utf-8")
+    for code in ("TR-RTE-002", "TR-POL-001", "TR-TXN-001", "TR-SCA-002"):
+        row = next(
+            (line for line in error_codes_text.splitlines() if line.startswith(f"| {code} ")),
+            None,
+        )
+        assert row is not None, f"missing row for {code} in {ERROR_CODES.relative_to(REPO)}"
+        assert "sha256:" in row and "sha384:" in row, (
+            f"{code} row in {ERROR_CODES.relative_to(REPO)} must name both sha256: and sha384:"
+        )
+
+    for page_name, code in (
+        ("tr-rte.md", "TR-RTE-002"),
+        ("tr-pol.md", "TR-POL-001"),
+        ("tr-txn.md", "TR-TXN-001"),
+        ("tr-sca.md", "TR-SCA-002"),
+    ):
+        page_text = (DOCS / "modules" / page_name).read_text(encoding="utf-8")
+        row = next(
+            (line for line in page_text.splitlines() if line.startswith(f"| {code} ")),
+            None,
+        )
+        assert row is not None, f"missing row for {code} in docs/modules/{page_name}"
+        assert "sha256:" in row and "sha384:" in row, (
+            f"{code} row in docs/modules/{page_name} must name both sha256: and sha384:"
+        )
+
+
+def test_levels_doc_agrees_with_tr_rte_on_all_zero_measurements() -> None:
+    """TR-RTE-002 is format-only; docs/levels.md must not claim it rejects all-zero (#448)."""
+    levels_text = LEVELS.read_text(encoding="utf-8")
+    assert "measurement must be non-zero" not in levels_text.lower()
+    assert "all-zero is invalid at level 1" not in levels_text.lower()
+
