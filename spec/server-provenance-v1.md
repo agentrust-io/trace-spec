@@ -99,11 +99,11 @@ claim about the deployment rather than about the code, and is only as good as th
 |---|---|---|
 | `format` | yes | This document's identifier and version |
 | `kind` | yes | §1 |
-| `issued_at` | yes | Unix seconds when this record was signed |
+| `issued_at` | yes | Non-negative integer: Unix seconds when this record was signed <!-- CHANGED: #485 - type issued_at as integer --> |
 | `identity` | yes | §2; `artifact`, `endpoint`, or both |
 | `publisher` | yes | DID or SPIFFE URI of the signer. Not a display name: a name is not resolvable and a verifier cannot check one |
 | `tool_catalog.hash` | yes | Digest over the canonical tool list (§4) |
-| `tool_catalog.tool_count` | yes | Number of tools. Redundant with the hash by design: a consumer that sees a plausible count and an unexpected hash learns more than one that sees only a mismatch |
+| `tool_catalog.tool_count` | yes | Non-negative integer: number of tools. Redundant with the hash by design: a consumer that sees a plausible count and an unexpected hash learns more than one that sees only a mismatch <!-- CHANGED: #485 - type tool_catalog.tool_count as integer --> |
 | `attestation` | when `kind` is `tee-attested` | The evidence, in the shape TRACE v0.2 §3.1 `runtime` uses. `null` otherwise |
 | `cnf.jwk` | yes | Public key the signature verifies under |
 | `signature` | yes | Over the RFC 8785 (JCS) canonical form with `signature` absent |

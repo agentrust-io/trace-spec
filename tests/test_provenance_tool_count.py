@@ -10,7 +10,7 @@ from agentrust_trace.provenance import (
     sign_record,
     verify_record,
 )
-from agentrust_trace.sign import generate_key, key_to_jwk
+from agentrust_trace.sign import JCS_SAFE_INTEGER, generate_key, key_to_jwk
 
 TOOLS = [
     {
@@ -46,18 +46,57 @@ def _signed_with_count(count: object = _MISSING):
     return sign_record(record, key), key_to_jwk(key)
 
 
-@pytest.mark.parametrize("bad_count", [_MISSING, -1, True, "2", None])
+@pytest.mark.parametrize("bad_count", [_MISSING, -1, -1.0, 2.5, 25e-1, True, False, "2", None])
 def test_verify_record_refuses_malformed_or_missing_tool_count(bad_count) -> None:
     record, trusted = _signed_with_count(bad_count)
     with pytest.raises(ProvenanceError, match="tool_catalog.tool_count must be"):
         verify_record(record, trusted)
 
 
-@pytest.mark.parametrize("bad_count", [2.0, "2", True, -1, None])
+@pytest.mark.parametrize("bad_count", [JCS_SAFE_INTEGER + 1, float(JCS_SAFE_INTEGER + 1), 1e21])
+def test_verify_record_refuses_out_of_range_tool_count_in_both_spellings(bad_count) -> None:
+    record, trusted = _signed_with_count(len(TOOLS))
+    record["tool_catalog"]["tool_count"] = bad_count
+    with pytest.raises(
+        ProvenanceError,
+        match=r"tool_catalog\.tool_count must be.*outside the safe-integer range",
+    ):
+        verify_record(record, trusted)
+
+
+@pytest.mark.parametrize(
+    "bad_count",
+    [
+        2.5,
+        25e-1,
+        "2",
+        True,
+        False,
+        -1,
+        -1.0,
+        None,
+        JCS_SAFE_INTEGER + 1,
+        float(JCS_SAFE_INTEGER + 1),
+        1e21,
+    ],
+)
 def test_check_tool_catalog_alone_refuses_malformed_count(bad_count) -> None:
-    record, _ = _signed_with_count(bad_count)
+    record, _ = _signed_with_count(len(TOOLS))
+    record["tool_catalog"]["tool_count"] = bad_count
     with pytest.raises(ProvenanceError, match="tool_catalog.tool_count must be"):
         check_tool_catalog(record, TOOLS)
+
+
+@pytest.mark.parametrize("whole_float", [2.0, 2e0])
+def test_whole_float_tool_count_verifies_and_matches_live_catalog(whole_float: float) -> None:
+    baseline, trusted = _signed_with_count(len(TOOLS))
+    respelled = {
+        **baseline,
+        "tool_catalog": {**baseline["tool_catalog"], "tool_count": whole_float},
+    }
+    assert type(respelled["tool_catalog"]["tool_count"]) is float
+    verify_record(respelled, trusted)
+    check_tool_catalog(respelled, TOOLS)
 
 
 def test_wrong_positive_count_is_detected_when_live_catalog_is_checked() -> None:

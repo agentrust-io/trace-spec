@@ -26,13 +26,13 @@ from pydantic import ValidationError
 from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.revocation import NO_CHECK, RevocationCheck
 from agentrust_trace.sign import (
-    JCS_SAFE_INTEGER,
     RevocationStore,
     UnanchorableValue,
     _b64url_decode,
     _canonical_bytes,
     _check_not_revoked,
     _check_seconds,
+    _integer_value,
     _pubkey_from_jwk,
     anchor_bytes,
     jwk_thumbprint,
@@ -85,10 +85,19 @@ def _nonempty_string(value: Any, field: str) -> str:
 
 
 def _tool_count(catalog: dict[str, Any]) -> int:
-    """Return the required catalog count as a JSON integer."""
-    value = catalog.get("tool_count")
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise ProvenanceError("tool_catalog.tool_count must be a non-negative integer")
+    """Return the required catalog count as a JSON integer, decided by value."""
+    try:
+        value = _integer_value(catalog.get("tool_count"), "tool_catalog.tool_count")
+    except ValueError as exc:
+        raise ProvenanceError(
+            "tool_catalog.tool_count must be a non-negative integer within the JCS "
+            f"safe-integer range: {exc}"
+        ) from exc
+    if value < 0:
+        raise ProvenanceError(
+            "tool_catalog.tool_count must be a non-negative integer within the JCS "
+            f"safe-integer range: it is {value}"
+        )
     return value
 
 
@@ -223,7 +232,7 @@ def _check_structure(
     endpoint: dict[str, Any] | None,
     attestation: dict[str, Any] | None,
     issued_at: Any,
-) -> None:
+) -> int:
     """The structural rules both the producer and the consumer must apply.
 
     Shared rather than duplicated because these rules were enforced only in
@@ -300,31 +309,27 @@ def _check_structure(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
         )
-    # Type-based on purpose. Section 3.2.2's "What counts as an integer" does two
-    # things. It decides by value which numbers are integers for the range, and that
-    # half reaches this record through `_canonical_bytes`: a whole number past the
-    # safe-integer range is refused at signing and at verification wherever it sits
-    # and however it is written. It does not say which members of this record are
-    # typed `integer`; that is for spec/server-provenance-v1.md and -v2.md. Whether
-    # ``issued_at`` and ``tool_count`` take a whole number written as a float is a
-    # separate question from #247, and until it is settled a float is refused here
-    # as it always was.
-    # bool is an int subclass, and True would otherwise pass as a timestamp. The upper
-    # bound is the same JCS safe-integer limit #219 applies to every other signed integer
-    # in this package: above it there is no portable canonical form, so the producer would
-    # accept a timestamp it cannot sign and the caller would meet `rfc8785`'s
-    # `IntegerDomainError` instead of the class this module documents.
-    if (
-        not isinstance(issued_at, int)
-        or isinstance(issued_at, bool)
-        or issued_at < 0
-        or issued_at > JCS_SAFE_INTEGER
-    ):
+    # Decided by value (spec/trace-v0.2.md §3.2.2, spec/server-provenance-v1.md §3, #485):
+    # RFC 8785 writes 1760000000, 1760000000.0 and 1.76e9 as the same canonical bytes, so a
+    # verifier deciding by Python type refuses a spelling the signature covers.
+    # `_integer_value` keeps the bool exclusion (bool is an int subclass in Python, so True
+    # would otherwise pass as a timestamp) and the JCS safe-integer bound (#219, #320),
+    # above which there is no portable canonical form.
+    try:
+        timestamp = _integer_value(issued_at, "issued_at")
+    except ValueError as exc:
         raise ProvenanceError(
             "issued_at must be a non-negative integer Unix timestamp within the JCS "
-            "safe-integer range. A record with no usable issue time cannot be aged, so "
-            "a consumer has no way to reject a stale one."
+            f"safe-integer range: {exc}. A record with no usable issue time cannot be "
+            "aged, so a consumer has no way to reject a stale one."
+        ) from exc
+    if timestamp < 0:
+        raise ProvenanceError(
+            "issued_at must be a non-negative integer Unix timestamp within the JCS "
+            f"safe-integer range: it is {timestamp}. A record with no usable issue time "
+            "cannot be aged, so a consumer has no way to reject a stale one."
         )
+    return timestamp
 
 
 def build_record(
@@ -359,16 +364,15 @@ def build_record(
         )
     # An explicitly supplied value reaches _check_structure untouched: coercing first
     # defeats the guard there, whose whole subject is what the caller actually passed
-    # (#320). int() on a bool, a float, or a numeric string yields something the
-    # isinstance test then accepts, and int() on anything else raises a class this
+    # (#320). int() on a bool, a non-whole float, or a numeric string yields something
+    # an integer test then accepts, and int() on anything else raises a class this
     # module does not document.
-    stamped_at = issued_at if issued_at is not None else int(time.time())
-    _check_structure(
+    stamped_at = _check_structure(
         kind=kind,
         artifact=artifact,
         endpoint=endpoint,
         attestation=attestation,
-        issued_at=stamped_at,
+        issued_at=issued_at if issued_at is not None else int(time.time()),
     )
 
     identity: dict[str, Any] = {}
@@ -491,7 +495,7 @@ def verify_record(
     identity = _as_object(record.get("identity"), "identity")
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
-    _check_structure(
+    issued_at = _check_structure(
         kind=str(record.get("kind")),
         artifact=identity.get("artifact"),
         endpoint=identity.get("endpoint"),
@@ -503,17 +507,17 @@ def verify_record(
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     _tool_count(catalog)
 
-    # Freshness. `issued_at` has been required and type-checked since the format
+    # Freshness. `issued_at` has been required and checked since the format
     # existed, with an error message explaining that a record with no issue time
     # cannot be aged; this is the step that reads it. `_check_structure` above has
-    # already established it is a non-negative int.
+    # already established it is a non-negative integer value.
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds, exc=ProvenanceError)
     _check_seconds(
         "max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError
     )
     _check_seconds("now", now, optional=True, exc=ProvenanceError)
     verification_time = time.time() if now is None else now
-    age = verification_time - int(record["issued_at"])
+    age = verification_time - issued_at
     if age < -max_future_skew_seconds:
         raise ProvenanceError(
             f"record is dated {int(-age)}s in the future, exceeds "

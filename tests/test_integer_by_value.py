@@ -51,7 +51,13 @@ from agentrust_trace.intent_bridge import (
     verify_successor_artifact,
 )
 from agentrust_trace.models import TrustRecord
-from agentrust_trace.provenance import FORMAT, FORMAT_V2, ProvenanceError, build_record
+from agentrust_trace.provenance import (
+    FORMAT,
+    FORMAT_V2,
+    ProvenanceError,
+    build_record,
+    check_tool_catalog,
+)
 from agentrust_trace.provenance import sign_record as sign_provenance_record
 from agentrust_trace.provenance import verify_record as verify_provenance_record
 from agentrust_trace.revocation import bundle_digest
@@ -400,9 +406,10 @@ def test_each_signing_function_refuses_a_whole_float_past_the_range_in_its_own_e
 # ---- the provenance record ------------------------------------------------------
 #
 # spec/server-provenance-v1.md signs "following TRACE v0.2 section 3.2 exactly,
-# including the canonicalization", and -v2.md keeps v1's signatures. The range of
-# section 3.2.2 therefore reaches the record; which of its members are integers is
-# its own specification's to say.
+# including the canonicalization", types `issued_at` and `tool_catalog.tool_count`
+# as non-negative integers (#485), and -v2.md inherits both. Section 3.2.2's range
+# and integer-by-value rules therefore govern the record and both of its integer
+# members.
 
 
 def _provenance_record(fmt: str, **over: Any) -> dict[str, Any]:
@@ -454,22 +461,126 @@ def test_a_provenance_record_with_a_whole_float_inside_the_range_signs_and_verif
     verify_provenance_record(signed, key_to_jwk(key))
 
 
-def test_the_provenance_record_keeps_its_own_typing_of_its_integer_members() -> None:
-    """Section 3.2.2 carries the range to this record and retypes none of its members.
-    Whether `issued_at` and `tool_catalog.tool_count` written as whole floats are the
-    integers they denote is for the provenance specification to say; until it does,
-    the reference refuses the float as it always did."""
-    with pytest.raises(ProvenanceError, match="issued_at must be a non-negative integer"):
-        _provenance_record(FORMAT, issued_at=1760000000.0)
-    assert _provenance_record(FORMAT, issued_at=1760000000)["issued_at"] == 1760000000
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+@pytest.mark.parametrize(
+    ("issued_at_spelling", "count_spelling"),
+    [("1760000000.0", "1.0"), ("1.76e9", "1e0")],
+)
+def test_provenance_integer_members_written_as_whole_floats_are_the_values_signed(
+    fmt: str, issued_at_spelling: str, count_spelling: str
+) -> None:
+    """Both `issued_at` and `tool_catalog.tool_count` are typed integer in
+    `spec/server-provenance-v1.md` (and inherited by v2), so section 3.2.2 decides
+    them by value (#485)."""
+    tools = [{"name": "search", "description": "search the docs",
+              "input_schema": {"type": "object"}}]
+    issued_at_float = json.loads(issued_at_spelling)
+    count_float = json.loads(count_spelling)
+    assert type(issued_at_float) is float and type(count_float) is float
+
+    built = _provenance_record(fmt, issued_at=issued_at_float)
+    assert built["issued_at"] == 1760000000
+    assert type(built["issued_at"]) is int
+
     key = Ed25519PrivateKey.generate()
-    record = _provenance_record(FORMAT)
-    count = record["tool_catalog"]["tool_count"]
-    assert type(count) is int
-    respelled = {**record, "tool_catalog": {**record["tool_catalog"], "tool_count": float(count)}}
-    with pytest.raises(ProvenanceError, match="tool_count"):
-        verify_provenance_record(sign_provenance_record(respelled, key), key_to_jwk(key))
-    verify_provenance_record(sign_provenance_record(record, key), key_to_jwk(key))
+    baseline = sign_provenance_record(_provenance_record(fmt, issued_at=1760000000), key)
+    respelled_unsigned = {
+        **_provenance_record(fmt, issued_at=1760000000),
+        "issued_at": issued_at_float,
+        "tool_catalog": {
+            **baseline["tool_catalog"],
+            "tool_count": count_float,
+        },
+    }
+    respelled_signed = sign_provenance_record(respelled_unsigned, key)
+    assert respelled_signed["signature"] == baseline["signature"]
+
+    verify_provenance_record(
+        respelled_signed,
+        key_to_jwk(key),
+        now=1760000100,
+        max_age_seconds=300,
+        required_format=fmt,
+    )
+    check_tool_catalog(respelled_signed, tools, required_format=fmt)
+
+
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        (1760000000.5, "issued_at is not an integer value: 1760000000.5 is not a whole number"),
+        (17600000005e-1, "issued_at is not an integer value: 1760000000.5 is not a whole number"),
+        ("1760000000", "issued_at is not an integer value: it is a str, not a JSON number"),
+        (True, "issued_at is not an integer value: it is a bool, not a JSON number"),
+        (False, "issued_at is not an integer value: it is a bool, not a JSON number"),
+        (-1, "it is -1"),
+        (-1.0, "it is -1"),
+        (9007199254740992, "issued_at is 9007199254740992, outside the safe-integer range"),
+        (9007199254740992.0, "issued_at is 9007199254740992, outside the safe-integer range"),
+        (1e21, "issued_at is 1000000000000000000000, outside the safe-integer range"),
+    ],
+)
+def test_a_provenance_issued_at_that_is_not_a_non_negative_integer_is_refused_with_its_reason(
+    fmt: str, value: Any, reason: str
+) -> None:
+    pattern = re.escape(
+        f"issued_at must be a non-negative integer Unix timestamp within the JCS "
+        f"safe-integer range: {reason}"
+    )
+    with pytest.raises(ProvenanceError, match=pattern):
+        _provenance_record(fmt, issued_at=value)
+
+    key = Ed25519PrivateKey.generate()
+    signed = sign_provenance_record(_provenance_record(fmt, issued_at=1760000000), key)
+    with pytest.raises(ProvenanceError, match=pattern):
+        verify_provenance_record({**signed, "issued_at": value}, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        (1.5, "tool_catalog.tool_count is not an integer value: 1.5 is not a whole number"),
+        (15e-1, "tool_catalog.tool_count is not an integer value: 1.5 is not a whole number"),
+        ("1", "tool_catalog.tool_count is not an integer value: it is a str, not a JSON number"),
+        (True, "tool_catalog.tool_count is not an integer value: it is a bool, not a JSON number"),
+        (False, "tool_catalog.tool_count is not an integer value: it is a bool, not a JSON number"),
+        (-1, "it is -1"),
+        (-1.0, "it is -1"),
+        (
+            9007199254740992,
+            "tool_catalog.tool_count is 9007199254740992, outside the safe-integer range",
+        ),
+        (
+            9007199254740992.0,
+            "tool_catalog.tool_count is 9007199254740992, outside the safe-integer range",
+        ),
+        (
+            1e21,
+            "tool_catalog.tool_count is 1000000000000000000000, outside the safe-integer range",
+        ),
+    ],
+)
+def test_a_provenance_tool_count_that_is_not_a_non_negative_integer_is_refused_with_its_reason(
+    fmt: str, value: Any, reason: str
+) -> None:
+    tools = [{"name": "search", "description": "search the docs",
+              "input_schema": {"type": "object"}}]
+    pattern = re.escape(
+        f"tool_catalog.tool_count must be a non-negative integer within the JCS "
+        f"safe-integer range: {reason}"
+    )
+    key = Ed25519PrivateKey.generate()
+    signed = sign_provenance_record(_provenance_record(fmt, issued_at=1760000000), key)
+    tampered = {
+        **signed,
+        "tool_catalog": {**signed["tool_catalog"], "tool_count": value},
+    }
+    with pytest.raises(ProvenanceError, match=pattern):
+        verify_provenance_record(tampered, key_to_jwk(key))
+    with pytest.raises(ProvenanceError, match=pattern):
+        check_tool_catalog(tampered, tools, required_format=fmt)
 
 
 # ---- the bridge -----------------------------------------------------------------

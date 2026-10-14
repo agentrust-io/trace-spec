@@ -864,6 +864,45 @@ def test_a_valid_issued_at_is_still_carried_through_unchanged() -> None:
     assert _record(issued_at=1_754_000_000)["issued_at"] == 1_754_000_000
 
 
+@pytest.mark.parametrize(
+    ("accepted_spelling", "refused_spelling"),
+    [
+        (1760000000.0, 1760000000.5),
+        (1.76e9, 17600000005e-1),
+        (float(JCS_SAFE_INTEGER), float(JCS_SAFE_INTEGER + 1)),
+    ],
+)
+def test_issued_at_is_decided_by_value_in_pairs(
+    accepted_spelling: float, refused_spelling: float
+) -> None:
+    """#485: `issued_at` is typed integer in server-provenance-v1 and decided by value
+    per TRACE v0.2 §3.2.2, keeping the bool and range guards."""
+    key = generate_key()
+    built = _record(issued_at=accepted_spelling)
+    assert built["issued_at"] == int(accepted_spelling)
+    assert type(built["issued_at"]) is int
+
+    signed = sign_record(built, key)
+    respelled = {**signed, "issued_at": accepted_spelling}
+    assert type(respelled["issued_at"]) is float
+    verify_record(
+        respelled,
+        key_to_jwk(key),
+        now=int(accepted_spelling),
+        max_age_seconds=300,
+    )
+
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=refused_spelling)
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        verify_record(
+            {**signed, "issued_at": refused_spelling},
+            key_to_jwk(key),
+            now=1760000000,
+            max_future_skew_seconds=10**19,
+        )
+
+
 def test_an_omitted_issued_at_is_still_stamped_with_the_current_time() -> None:
     before = int(time.time())
     stamped = _record()["issued_at"]
