@@ -413,9 +413,9 @@ mkdocs-minify-plugin==0.8.0 \
     --hash=sha256:5fba1a3f7bd9a2142c9954a6559a57e946587b21f133165ece30ea145c66aee6 \
     --hash=sha256:bc11b78b8120d79e817308e2b11539d790d21445eb63df831e393f76e52e753d
     # via -r requirements-docs.txt
-mkdocstrings==1.0.6 \
-    --hash=sha256:2703708697487d1b6d6d7b412e176fa436edf120c1bf81dc9e126b12d00893c7 \
-    --hash=sha256:a0b8c2bdd29a6416c80d717aa369bbf7831946bd9f23c2a66db1b1dbe7693dbd
+mkdocstrings==1.0.7 \
+    --hash=sha256:0951b147f352118a45a3db85f0f3b660833d34cb5120a2751315b8d08dafd159 \
+    --hash=sha256:9563828667eeb35256f87a6b61fe857676ac628ec1abbce9aea9839a502c9cb1
     # via
     #   -r requirements-docs.txt
     #   mkdocstrings-python
