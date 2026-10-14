@@ -1,6 +1,6 @@
 # Platform-measurement appraisal vectors
 
-Forty-four signed Trust Records for `appraisal.platform_measurement`, spec section 3.1.5,
+Forty-five signed Trust Records for `appraisal.platform_measurement`, spec section 3.1.5,
 raised in [#279](https://github.com/agentrust-io/trace-spec/issues/279). Each file is a
 test-vector envelope: the record is under `record`, the verdict under `expected`.
 
@@ -49,15 +49,27 @@ rule binds `tpm2` only.
 
 ## Where the real measurements come from
 
-`09` and `10` carry the `pcrDigest` of published quotes on a physical board with a
+`09`, `10` and `45` carry the `pcrDigest` of published quotes on a physical board with a
 discrete TPM (TactiQ OS on Rock 5A, Infineon SLB9670), with the evidence and an offline
-checker at the URL in `source`: the v2.1.0-rc13 release reference, in which PCR 2, 3, 5
-and 7 hold a single separator only, and a development-image cold-start quote, in which
-IMA measurements in PCR 11 and 12 replay and nothing shows they were appraised. That
-quote was taken by hand with `tpm2_quote` under the board's registered attestation key;
-the image's attestation agent quotes PCR 0 to 9 only, so PCR 10 to 12 are not in its
-envelope. Neither
-has a twin, because a twin would state something untrue about that evidence. The two-boot
+checker at the URL in `source`:
+
+- `09`, the v2.1.0-rc13 release reference, in which PCR 2, 3, 5 and 7 hold a single
+  separator only.
+- `10`, a development-image cold-start quote, in which IMA measurements in PCR 11 and 12
+  replay and nothing shows they were appraised. That quote was taken by hand with
+  `tpm2_quote` under the board's registered attestation key; the image's attestation agent
+  quotes PCR 0 to 9 only, so PCR 10 to 12 are not in its envelope.
+- `45`, the v2.1.0-rc14 release: the attestation agent's quotes over PCR 0 to 9, appraised
+  against the signed release reference with no event log. PCR 0, 1, 4, 6, 8 and 9 are
+  established by the reference-value route of section 3.1.5. PCR 2, 3, 5 and 7 equal the
+  value a separator alone produces; the reference matches them, and they are
+  `layer-not-measured`. Every layer the verifier's policy requires is established, so the
+  status is `affirming`. The record does not say which route established a layer; the
+  per-layer reference values are in the release's `rim-rock5a.json`, and
+  `tests/test_platform_measurement_appraisal_vectors.py` holds the vector to them.
+
+None of the three has a twin, because a twin would state something untrue about that
+evidence. The two-boot
 case exists only in the synthetic pair: the development loader on that board resets the
 TPM before measuring, so the board did not produce the case.
 

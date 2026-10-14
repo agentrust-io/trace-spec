@@ -1,0 +1,95 @@
+{
+  "name": "rc14-established-by-reference",
+  "description": "Real measurement: the attestation agent's quotes over PCR 0 to 9 from the v2.1.0-rc14 release image on slot B, appraised against the signed release reference. The evidence carries no event log. PCR 0, 1, 4, 6, 8 and 9 equal their reference values and hold measurements, so they are established by the reference-value route. PCR 2, 3, 5 and 7 equal the value a separator alone produces: the reference matches them and they are layer-not-measured. The verifier's policy requires PCR 0, 1, 4, 6, 8 and 9, all established, so the status is affirming; the record does not carry that policy.",
+  "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
+  "source": "https://github.com/revenue7-eng/tactiq-os/releases/tag/v2.1.0-rc14 (l3-evidence-rc14.tar.gz, rim-rock5a.json and rim-rock5a.json.p7s; checker scripts/appraise-layers.py in the same repository)",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://edge.example/device/bench-001",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6"
+    },
+    "runtime": {
+      "platform": "tpm2",
+      "measurement": "sha256:dc7051b201f970dbf438f9561975bb8801eb394170294417b05c4449e1283438"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "internal",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:00ea48600a3a4fcd35a35cea2296fcbe18cb2c92243ece1a5d1992d0dae41202"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/platform-measurement",
+      "platform_measurement": {
+        "measurement": "sha256:dc7051b201f970dbf438f9561975bb8801eb394170294417b05c4449e1283438",
+        "layers": {
+          "pcr:0": {
+            "outcome": "established"
+          },
+          "pcr:1": {
+            "outcome": "established"
+          },
+          "pcr:2": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:3": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:4": {
+            "outcome": "established"
+          },
+          "pcr:5": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:6": {
+            "outcome": "established"
+          },
+          "pcr:7": {
+            "outcome": "not-established",
+            "reason": "layer-not-measured"
+          },
+          "pcr:8": {
+            "outcome": "established"
+          },
+          "pcr:9": {
+            "outcome": "established"
+          }
+        }
+      }
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8"
+      }
+    },
+    "signature": "eyhpnPFEEnAoO2PITJDzwxtIucsp1X4bOXsl-xiDbU-EPR6HBn5u_hAXy_pp6b5gubYdNDd4df35-Ffg508DAQ"
+  },
+  "expected": {
+    "outcome": "accept",
+    "codes": [],
+    "reading": {
+      "pcr:0": {
+        "outcome": "established"
+      },
+      "pcr:2": {
+        "outcome": "not-established",
+        "reason": "layer-not-measured"
+      },
+      "pcr:9": {
+        "outcome": "established"
+      }
+    }
+  }
+}

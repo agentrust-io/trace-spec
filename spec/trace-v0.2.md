@@ -371,18 +371,26 @@ Example result, in the appraisal of a verifier that re-ran the function and obta
 #### 3.1.5 `appraisal.platform_measurement`: what a matching measurement covers
 
 <!-- CHANGED: #279 - platform-measurement appraisal: per-layer outcome with a named reason -->
+<!-- CHANGED: #279 - a layer is established by its event log or by a reference value, and holds measurements either way -->
 
 On a measured-boot platform `runtime.measurement` is a composite digest over many layers. A verifier that compares it against a reference learns that the composite is the one the reference names. It does not learn which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot. Three conditions are routinely collapsed into an outcome a completed check would have produced. The last column is that collapse, the error this section removes, not what this section prescribes:
 
 | Reason | Condition | Collapsed, without this section, into |
 |---|---|---|
 | `layer-not-measured` | The layer holds no measurement: its value is the initial value, or on a TPM a separator and nothing else. A match confirms only that nothing was recorded. | pass |
-| `measured-not-appraised` | The layer's measurements replay exactly to the quoted value, so the evidence establishes what ran. Nothing in the evidence establishes that what ran was appraised before it ran. | pass |
+| `measured-not-appraised` | The layer holds measurements and the evidence establishes what ran in it, by its event log or by a reference value. Nothing in the evidence establishes that what ran was appraised before it ran. | pass |
 | `evidence-spans-multiple-boots` | The evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value. A platform whose measurement registers survive a warm reboot produces this, and so do a quote and a log taken from different boots, and a truncated log. | a failure, read as tampering |
 
 The first two collapse into a pass. The third collapses the other way, into a failure. Under this section all three are `not-established`, which is neither: it never passes, and it is not a finding of tampering. All three are decided against evidence the record does not carry (a quote, an event log, a reference), so they are appraisal outcomes and not properties of `runtime`.
 
-A layer is `established` when the evidence establishes what ran in it: the layer holds measurements, its event log replays from the initial value to the quoted value, and nothing else the verifier's policy requires of that layer is missing. Where the policy requires that what ran was appraised and the evidence does not show it, the layer is `measured-not-appraised`. A log that replays from the initial value to the quoted value accounts for every extension since the register was last reset, so for that layer the number of boots does not change what the evidence establishes; `evidence-spans-multiple-boots` arises only when the log does not replay. The reason is named for its most common cause, a platform whose registers survive a warm reboot, and covers the other causes its definition lists.
+A layer is `established` when the evidence establishes what ran in it and nothing else the verifier's policy requires of that layer is missing. For a layer that holds measurements, the evidence establishes what ran by either of two routes:
+
+- **Event log.** The layer's event log replays from the initial value to the quoted value.
+- **Reference value.** The quoted value equals a reference value for that layer, from a source the verifier's policy trusts and not taken from the evidence under appraisal. This is appraisal against reference values as RFC 9334 describes it. A reference value is per layer: a quoted composite that equals the composite of a reference's per-layer values over the same selection establishes each of those values, and a reference that gives only a composite establishes no layer, because it does not show which layers hold measurements.
+
+A presented event log that does not replay to the quoted value is decided under rule 3 first, and a matching reference value does not then establish the layer. Otherwise, either route requires that the layer holds measurements. A layer whose quoted value is the initial value, or on a TPM the value a separator alone produces, is `layer-not-measured` whichever route matched: a reference value equal to it, like a log that holds a separator and nothing else, confirms only that nothing was recorded. Neither route shows that what ran was appraised before it ran.
+
+Where the policy requires that what ran was appraised and the evidence does not show it, the layer is `measured-not-appraised`. A log that replays from the initial value to the quoted value accounts for every extension since the register was last reset, so for that layer the number of boots does not change what the evidence establishes; `evidence-spans-multiple-boots` arises only when the log does not replay. The reason is named for its most common cause, a platform whose registers survive a warm reboot, and covers the other causes its definition lists.
 
 **Placement.** The result is carried as `appraisal.platform_measurement`, a member of `appraisal` in its own right, as `appraisal.provenance_depth_verified` is. It is not an `appraisal.method` value, so a record can carry it next to a re-execution result (§3.1.4). It is attributed to `appraisal.verifier`; in a record signed only by its producer that attribution is the producer's report, as §3.1.4 states.
 
@@ -429,7 +437,7 @@ Example result, for a reference composite in which one layer holds a separator o
 
 **Relation to the reference library.** `verify_record` already reports a caller-supplied appraiser's per-layer report as its `platform_measurement` field (#457), with the same three causes written `layer_not_measured`, `measured_not_appraised` and `evidence_spans_multiple_boots`. That field is library output and binds no record. This section names the outcomes a record carries.
 
-**Out of scope.** This section does not say how a verifier decides each outcome, and fixes no quote or event-log format; those belong to the platform's profile or annex.
+**Out of scope.** This section does not say how a verifier decides each outcome, and fixes no quote, event-log or reference-value format; those belong to the platform's profile or annex.
 
 ### 3.2 Wire format
 

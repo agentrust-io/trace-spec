@@ -11,6 +11,23 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Section 3.1.5: a layer is established by its event log or by a reference value
+  (#279).** As merged, a layer was `established` only when its event log replayed to the
+  quoted value, so a quote that equals signed reference values with no log could not be
+  `affirming` under rule 2, although appraisal against reference values is ordinary
+  appraisal in RFC 9334. A layer that holds measurements is now established by either
+  route. The condition that it holds measurements binds both: a layer whose quoted value is
+  the initial value, or on a TPM the value of a separator alone, is `layer-not-measured`
+  even when a reference value matches it; a reference that gives only a composite
+  establishes no layer; and a presented log that does not replay is decided under rule 3
+  first, whatever the reference says. This narrows the BREAKING entry of #477: a verifier
+  that reports `affirming` after a reference match is conformant when each layer its policy
+  requires holds measurements and equals its reference value. Vector `45` in
+  `examples/platform-measurement-appraisal/` carries the published v2.1.0-rc14 release
+  measurement: six layers established by reference with no log, four separator-only layers
+  `layer-not-measured`, status `affirming`. Records do not change. Proposed and written by
+  @revenue7-eng; carried by @imran-siddique as sponsoring maintainer.
+
 - **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
   a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
   key verified, and a string was searched by substring. Both now raise

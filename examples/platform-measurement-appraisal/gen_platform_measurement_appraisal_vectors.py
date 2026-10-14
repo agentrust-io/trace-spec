@@ -24,7 +24,7 @@ reads `not-established` everywhere and fails every twin; a reader that takes
 the cases. Every pair is synthetic, `"synthetic": true`: its measurement and its
 per-layer result are made up to exercise one case, not taken from a platform.
 
-**Where real measurements come from.** Two accepting vectors carry the `pcrDigest` of
+**Where real measurements come from.** Three accepting vectors carry the `pcrDigest` of
 published quotes on a physical board with a discrete TPM (TactiQ OS on Rock 5A, Infineon
 SLB9670), and say so in `source`; neither has a twin, because a twin would have to state
 something untrue about that evidence:
@@ -36,6 +36,11 @@ something untrue about that evidence:
   unappraised is not in the log: `measured-not-appraised`. The quote was taken by hand
   with `tpm2_quote` under the board's registered attestation key; the image's attestation
   agent quotes PCR 0 to 9 only.
+- `45` is the v2.1.0-rc14 release: the attestation agent's quotes over PCR 0 to 9 on slot
+  B, appraised against the signed release reference with no event log. PCR 0, 1, 4, 6, 8
+  and 9 are established by the reference-value route; PCR 2, 3, 5 and 7 equal the value a
+  separator alone produces and are `layer-not-measured` although the reference matches
+  them. With every layer the policy requires established, the status is `affirming`.
 
 The two-boot case exists only in the synthetic pair: the development loader on that board
 resets the TPM before measuring, so the board did not produce the case. These are the
@@ -74,6 +79,7 @@ VERIFIER = "https://verifier.example/platform-measurement"
 #: The two real measurements: `pcrDigest` of published quotes.
 RC13 = "sha256:2ee6f2d22d3b8e704d1ee8119220aed62a5caff4624c5804b8185debdff1f745"
 DEV_COLD = "sha256:266c3432e78cde16a9e9e63c479c4d07aad80ac049b25d655bfd897fb3b19746"
+RC14_B = "sha256:dc7051b201f970dbf438f9561975bb8801eb394170294417b05c4449e1283438"
 SOURCE_RC13 = (
     "https://github.com/revenue7-eng/tactiq-os/releases/tag/v2.1.0-rc13 "
     "(VERIFY-L3-rc13.md and l3-evidence-rc13.tar.gz)"
@@ -81,6 +87,11 @@ SOURCE_RC13 = (
 SOURCE_DEV = (
     "https://github.com/revenue7-eng/tactiq-os/blob/main/measurements/"
     "tpm-quotes-dev-20261002.md (cold.* files and check.py beside it)"
+)
+SOURCE_RC14 = (
+    "https://github.com/revenue7-eng/tactiq-os/releases/tag/v2.1.0-rc14 "
+    "(l3-evidence-rc14.tar.gz, rim-rock5a.json and rim-rock5a.json.p7s; checker "
+    "scripts/appraise-layers.py in the same repository)"
 )
 
 PCRS_0_9 = [f"pcr:{i}" for i in range(10)]
@@ -407,6 +418,26 @@ def main() -> None:
             f"Twin of {n:02d}: the same record with the member that breaks {code} put "
             "right. The only difference is that member.",
             rec=record(**twin), reading=twin_reading, twin_of=n))
+
+    # Real measurement, unpaired: layers established by a reference value, no event log.
+    rc14 = {p: (not_established("layer-not-measured")
+                if p in ("pcr:2", "pcr:3", "pcr:5", "pcr:7") else established())
+            for p in PCRS_0_9}
+    out.append(vector(45, "rc14-established-by-reference",
+        "Real measurement: the attestation agent's quotes over PCR 0 to 9 from the "
+        "v2.1.0-rc14 release image on slot B, appraised against the signed release "
+        "reference. The evidence carries no event log. PCR 0, 1, 4, 6, 8 and 9 equal "
+        "their reference values and hold measurements, so they are established by the "
+        "reference-value route. PCR 2, 3, 5 and 7 equal the value a separator alone "
+        "produces: the reference matches them and they are layer-not-measured. The "
+        "verifier's policy requires PCR 0, 1, 4, 6, 8 and 9, all established, so the "
+        "status is affirming; the record does not carry that policy.",
+        rec=record(measurement=RC14_B, status="affirming", layers=rc14),
+        reading={"pcr:0": read("established"),
+                 "pcr:2": read("not-established", "layer-not-measured"),
+                 "pcr:9": read("established")},
+        source=SOURCE_RC14))
+
     OUT.mkdir(parents=True, exist_ok=True)
     for name, doc in out:
         (OUT / name).write_bytes((json.dumps(doc, indent=2) + "\n").encode())

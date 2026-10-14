@@ -16,6 +16,7 @@ established each fail at least one vector, and the tests at the bottom say which
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import pathlib
 from collections.abc import Callable
@@ -86,7 +87,7 @@ def _reading_failures(reader: Reader) -> list[str]:
 
 def test_the_corpus_did_not_shrink() -> None:
     """Pinned, so deleting an awkward vector is a visible act rather than a quiet one."""
-    assert len(VECTORS) == 44
+    assert len(VECTORS) == 45
 
 
 def test_every_code_is_carried_by_two_vectors() -> None:
@@ -200,10 +201,54 @@ def test_the_real_measurements_are_the_published_ones() -> None:
     assert measurement("platform-measurement-appraisal", "10-dev-measured-not-appraised") == (
         measurement("platform-measurement", "16-dev-measured-not-appraised"))
     sourced = [p.stem for p in VECTORS if "source" in _load(p)]
-    assert sourced == ["09-rc13-layer-not-measured", "10-dev-measured-not-appraised"]
+    assert sourced == ["09-rc13-layer-not-measured", "10-dev-measured-not-appraised",
+                       "45-rc14-established-by-reference"]
     for path in VECTORS:
         doc = _load(path)
         assert ("source" in doc) != bool(doc.get("synthetic")), path.stem
+
+
+#: The slot B values of the signed v2.1.0-rc14 release reference (rim-rock5a.json in the
+#: release cited by vector 45), PCR 0 to 9 of the SHA-256 bank.
+RC14_B_REFERENCE = [
+    "9bd4ab6216b55c5bbe172f31737ed87c8a585faa3b45c4caf225b0778ac3aafe",
+    "5cfee5d43ded096884b9b418f1b98bfbf3ff62c127b089d41b41dd21b084c5df",
+    "e21b703ee69c77476bccb43ec0336a9a1b2914b378944f7b00a10214ca8fea93",
+    "e21b703ee69c77476bccb43ec0336a9a1b2914b378944f7b00a10214ca8fea93",
+    "a6278b42d6d50ec180f4ae9377338d7e8f699e030f6c010736e9c06238d12983",
+    "e21b703ee69c77476bccb43ec0336a9a1b2914b378944f7b00a10214ca8fea93",
+    "0c4e26e8c610a7225e3f1c2af066007d94b21d45f59d62ebb1f5a22833125552",
+    "e21b703ee69c77476bccb43ec0336a9a1b2914b378944f7b00a10214ca8fea93",
+    "deaeb4564c4eb51d7cb2d3ebe9d052187b36cb1dd54a1885c5ebd508838109fe",
+    "cfc7d8042593e188c59d2fd523f07a95d06dd3160f0955d8c34b0eb067f517b6",
+]
+
+
+def test_a_reference_equal_to_a_separator_alone_is_not_measured() -> None:
+    """Vector 45, the reference-value route. Its measurement is the composite of the
+    reference values, so a quote equal to it equals the reference in every layer. The
+    layers whose reference value is what a separator alone produces from the initial
+    value are exactly the layer-not-measured ones; every other layer is established,
+    and with all of them established the status may be affirming (rule 2). The
+    separator event data checked are the two values TCG defines for EV_SEPARATOR,
+    0x00000000 and 0xFFFFFFFF."""
+    initial = bytes(32)
+    separator_alone = {
+        hashlib.sha256(initial + hashlib.sha256(data).digest()).hexdigest()
+        for data in (b"\x00" * 4, b"\xff" * 4)}
+    doc = _load(VECTOR_DIR / "45-rc14-established-by-reference.json")
+    record = doc["record"]
+    composite = hashlib.sha256(b"".join(bytes.fromhex(v) for v in RC14_B_REFERENCE))
+    assert record["runtime"]["measurement"] == "sha256:" + composite.hexdigest()
+    layers = record["appraisal"]["platform_measurement"]["layers"]
+    assert set(layers) == {f"pcr:{i}" for i in range(10)}
+    for i, value in enumerate(RC14_B_REFERENCE):
+        if value in separator_alone or value == initial.hex():
+            want = {"outcome": "not-established", "reason": "layer-not-measured"}
+        else:
+            want = {"outcome": "established"}
+        assert layers[f"pcr:{i}"] == want, i
+    assert record["appraisal"]["status"] == "affirming"
 
 
 def test_the_reference_reader_reads_every_vector() -> None:
