@@ -26,3 +26,13 @@ A hash alone does not supply missing evidence. Offline replay is NOT ESTABLISHED
 Pin upstream commit SHA, both verifier commits, fixtures and toolchains. Run reference and independent implementations without shared verifier libraries or ambient network. Capture input/evidence hashes, both outputs, mismatches, error classification and independent observation. Never report PASS based solely on fixture self-consistency.
 
 Related upstream issues: #342, #407, #446, #483; PRs #376 and #487 require pinned diff review before relying on their precise implementation details.
+
+## Development process capture (non-attested)
+
+The captured_observer.capture helper launches an exact allowlisted argv without
+a shell, checks the checked-out repository commit, observes child exit status,
+and hashes stdout/stderr. A caller cannot supply the observed exit status.
+The signing key and host label are provided by the caller. This does NOT
+establish independently enrolled authority, hardware-verified process identity,
+authenticated host identity, immutable environment or network isolation.
+External trusted enrollment and measured capture remain release blockers.
