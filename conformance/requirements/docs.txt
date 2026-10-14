@@ -214,9 +214,9 @@ ghp-import==2.1.0 \
     --hash=sha256:8337dd7b50877f163d4c0289bc1f1c7f127550241988d568c1db512c4324a619 \
     --hash=sha256:9c535c4c61193c2df8871222567d7fd7e5014d835f97dc7b7439069e2413d343
     # via mkdocs
-griffe==2.3.0 \
-    --hash=sha256:92a41ff72eb1eb316cdcb7248a608f1313f9fbc6e35d5cffa5cf7c813b7db70b \
-    --hash=sha256:aa5634c0d7802583ecd29a7fe335c02d462ffdf5ce8f51426a3d326f374e6d93
+griffe==2.3.2 \
+    --hash=sha256:31f5217d19c7e732893260d558f92298c4c9c9d2b50f930a1e6dec3f6feb63cb \
+    --hash=sha256:8625bf98dbb02edb291aef77f2f1a17ae6c62d32a764f5bfed009e6010b2d538
     # via -r requirements-docs.txt
 griffecli==2.3.0 \
     --hash=sha256:916fdc851cf51d38e9b5ab82550305df45e5981d5dfe65d346544464abedb3ec \
