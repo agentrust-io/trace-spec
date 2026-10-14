@@ -77,6 +77,12 @@ checking any archived record, including these.
   binding two synthetic MCP attempts and full paginated declaration snapshots. A lost response stays
   unknown after retry success; an uncalled tool changes between captures.
   Informative local format, not an implementation of the proposed v0.3 profile.
+- [`signature-execution-boundary/`](signature-execution-boundary/README.md): executable example
+  demonstrating the boundary between a valid Ed25519 signature and verified execution:
+  verifying against a separately retained trusted key, rejecting a modified signed field,
+  rejecting a wrong issuer key (and `cnf.jwk` substitution), and showing that a trusted
+  issuer can sign invented execution claims that pass `verify_record()` until external
+  evidence is appraised.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.
