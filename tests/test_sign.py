@@ -896,8 +896,11 @@ def test_verify_record_rejects_malformed_verifier_policy_inputs(kwargs, match):
 def test_pinned_verification_time_boundaries(now, expect):
     key = generate_key()
     record = sign_record(_minimal_record(), key)
-    kwargs = dict(verification_time=now, max_age_seconds=300,
-                  max_future_skew_seconds=10)
+    kwargs = {
+        "verification_time": now,
+        "max_age_seconds": 300,
+        "max_future_skew_seconds": 10,
+    }
     if expect == "accepted":
         verify_record(record, key_to_jwk(key), **kwargs)
     else:

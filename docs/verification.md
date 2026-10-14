@@ -155,7 +155,7 @@ The record hash is deliberately named `canonical_sha256`: it identifies the cano
 The statement also carries explicit scope boundaries:
 
 - a caller-supplied trusted key supports issuer-key authentication; an embedded record key supports internal consistency only;
-- `revocation: NOT_CHECKED` means exactly that — offline signature validity is not current trust;
+- `revocation: NOT_CHECKED` means exactly that: offline signature validity is not current trust;
 - a verified signature authenticates the signed assertions but does not independently prove policy correctness, model reasoning, physical/business outcome, or claims outside the record;
 - `policy.bundle_hash` binds the policy identity asserted by the record. Whether policy evaluation or enforcement is evidenced depends on `policy.enforcement_mode`, runtime trust level, and separate attestation/appraisal evidence.
 

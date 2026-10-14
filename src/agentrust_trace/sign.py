@@ -449,7 +449,9 @@ def verify_record_report(
     return {
         "verification_statement": "trace-verification-result-v1",
         "status": "VERIFIED",
-        "verified_at_unix": verification_time if verification_time is not None else int(_time.time()),
+        "verified_at_unix": (
+            verification_time if verification_time is not None else int(_time.time())
+        ),
         "profile": TRACE_PROFILE_V0_2,
         "verifier": {
             "package": "agentrust-trace",
@@ -633,8 +635,12 @@ def verify_record(
             f"{max_future_skew_seconds}"
         )
 
-    if verification_time is not None and (type(verification_time) is not int or not 0 <= verification_time <= 253402300799):
-        raise ValueError("verification_time must be a non-negative integer Unix timestamp in seconds")
+    if verification_time is not None and (
+        type(verification_time) is not int or not 0 <= verification_time <= 253402300799
+    ):
+        raise ValueError(
+            "verification_time must be a non-negative integer Unix timestamp in seconds"
+        )
 
     if expected_nonce is not None and not isinstance(expected_nonce, str):
         raise ValueError(

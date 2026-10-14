@@ -33,7 +33,7 @@
 
 An open specification for verifiable AI-agent governance evidence. TRACE defines the record format, anchoring protocol, and verification rules that bind runtime, policy, data-class, tool, and provenance assertions into a signed artifact. Hardware-rooted deployments can add attestation that materially strengthens those assertions; software-only Level 0 records do not independently prove that the claimed execution occurred.
 
-A TRACE Trust Record answers: _what does this signed record assert about what ran, where, under which policy, touching which data, and calling which tools — and which of those assertions did this verifier actually establish?_
+A TRACE Trust Record answers: _what does this signed record assert about what ran, where, under which policy, touching which data, and calling which tools: and which of those assertions did this verifier actually establish?_
 
 ## What a Trust Record binds
 

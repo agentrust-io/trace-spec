@@ -1,4 +1,4 @@
-# EDRG two-host replay checkpoint — 2026-10-13
+# EDRG two-host replay checkpoint: 2026-10-13
 
 ## Source and tests
 
