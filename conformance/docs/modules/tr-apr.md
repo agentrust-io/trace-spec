@@ -12,7 +12,7 @@ issued it, which policy it was issued under, and when.
 | TR-APR-001 | `appraisal.status` is one of the four values `schemas/trace-claim.json` enumerates | `affirming`, `warning`, `contraindicated`, `none` | `"verified"`, `"AFFIRMING"`, `7`, absent; also an absent or non-object `appraisal` |
 | TR-APR-002 | `appraisal.verifier` is an absolute URI | `https://verifier.example.org` | `nvidia-openshell/0.3.0` (no scheme), a URI carrying whitespace or a control character, absent |
 | TR-APR-003 | `appraisal.policy_ref`, when present, is an absolute URI | `https://policies.example.org/appraisal/v3`; absent (optional, skipped) | `./policies/v1`, `ht tp://x` |
-| TR-APR-004 | `appraisal.timestamp`, when present, is an integer of epoch seconds and is not in the future | a past epoch second; absent (optional, skipped) | `"1748000042"` (string), a float, a boolean, an epoch second in the future |
+| TR-APR-004 | `appraisal.timestamp`, when present, is an integer of epoch seconds (decided by mathematical value within the RFC 8785 safe-integer range per §3.2.2) and is not in the future | a past epoch second (`1748000042` or `1748000042.0`); absent (optional, skipped) | `"1748000042"` (string), a fractional number (`1748000042.5`), a number outside `[-9007199254740991, 9007199254740991]`, a boolean, an epoch second in the future |
 
 ## Required at Level 1+
 

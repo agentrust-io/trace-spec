@@ -140,11 +140,60 @@ def test_a_timestamp_inside_the_skew_window_passes():
     assert _by_code(check(trace, 0))["TR-APR-004"].status is Status.PASS
 
 
-@pytest.mark.parametrize("timestamp", ["1748000042", 1748000042.0, None, True, False, []])
+@pytest.mark.parametrize(
+    "timestamp",
+    [1748000042.0, 1.748e9, -9007199254740991, -9007199254740991.0],
+)
+def test_a_whole_float_or_in_range_timestamp_passes(timestamp):
+    """Integer-typed fields are decided by mathematical value within the safe range (§3.2.2)."""
+    trace = {"appraisal": {**_VALID["appraisal"], "timestamp": timestamp}}
+    assert _by_code(check(trace, 0))["TR-APR-004"].status is Status.PASS
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "1748000042",
+        1748000042.5,
+        None,
+        True,
+        False,
+        [],
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
 def test_a_non_integer_timestamp_fails(timestamp):
     """`bool` is an `int` subclass in Python; a JSON `true` is not epoch seconds."""
     trace = {"appraisal": {**_VALID["appraisal"], "timestamp": timestamp}}
     assert _by_code(check(trace, 0))["TR-APR-004"].status is Status.FAIL
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        9007199254740992,
+        -9007199254740992,
+        9007199254740992.0,
+        -9007199254740992.0,
+        1.0e21,
+        -1.0e21,
+    ],
+)
+def test_a_timestamp_outside_the_safe_integer_range_fails(timestamp):
+    trace = {"appraisal": {**_VALID["appraisal"], "timestamp": timestamp}}
+    finding = _by_code(check(trace, 0))["TR-APR-004"]
+    assert finding.status is Status.FAIL
+    assert "9007199254740991" in finding.message
+
+
+@pytest.mark.parametrize("timestamp", [9007199254740991, 9007199254740991.0])
+def test_a_timestamp_at_safe_integer_upper_bound_reaches_future_check(timestamp):
+    trace = {"appraisal": {**_VALID["appraisal"], "timestamp": timestamp}}
+    finding = _by_code(check(trace, 0))["TR-APR-004"]
+    assert finding.status is Status.FAIL
+    assert "is in the future" in finding.message
 
 
 def test_the_skew_matches_the_one_tr_env_applies_to_a_future_iat():
@@ -218,7 +267,7 @@ def test_the_duplicated_uri_predicate_agrees_with_the_one_in_tr_pol(value):
     rather than imported: no module in this tree imports another, and a
     cross-module import would be a structural change this module has no mandate
     to make. Duplication without a guard is how two copies of one rule drift, so
-    this is the guard — the same shape `test_enum_parity` uses for the enums.
+    this is the guard: the same shape `test_enum_parity` uses for the enums.
     """
     assert _not_absolute_uri(value) == _tr_pol_not_absolute_uri(value)
 

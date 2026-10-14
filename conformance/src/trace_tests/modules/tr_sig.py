@@ -30,9 +30,28 @@ from trace_tests.result import Finding, Status
 
 _SUPPORTED_KTY = {"OKP", "EC"}
 _ED25519_CRV = "Ed25519"
+_JCS_SAFE_INTEGER = 9007199254740991
 
 
 _B64URL_RE = re.compile(r"[A-Za-z0-9_-]*\Z")
+
+
+def _refuse_whole_floats_out_of_range(value: Any) -> None:
+    """Raise ``rfc8785.IntegerDomainError`` for a whole-valued float outside the range.
+
+    Walks the containers ``rfc8785`` serializes. Every finite double of magnitude
+    2^53 or more is a whole number, so this is every such float in *value*; a
+    non-finite one is left to ``rfc8785``, which refuses it as a float.
+    """
+    if isinstance(value, float):
+        if value.is_integer() and not -_JCS_SAFE_INTEGER <= value <= _JCS_SAFE_INTEGER:
+            raise rfc8785.IntegerDomainError(int(value))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _refuse_whole_floats_out_of_range(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _refuse_whole_floats_out_of_range(item)
 
 
 def _b64url_decode(s: str) -> bytes:
@@ -61,7 +80,14 @@ def _canonical_json(d: dict[str, Any]) -> bytes:
     a verifier that gets either wrong computes different bytes and rejects a valid
     record. ``tests/test_canonicalization_boundary.py`` holds this to records where
     the difference is observable.
+
+    Refuses whole-valued floats outside ``[-9007199254740991, 9007199254740991]``
+    before calling ``rfc8785.dumps``, matching ``agentrust_trace.sign._canonical_bytes``:
+    ``json.loads`` parses ``1.0e+21`` and ``9.007199254740993e15`` as ``float``, which
+    ``rfc8785.dumps`` serializes without error even though §3.2.2 decides integers by
+    mathematical value.
     """
+    _refuse_whole_floats_out_of_range(d)
     return rfc8785.dumps(d)
 
 
@@ -89,6 +115,8 @@ def _canonical_body(d: dict[str, Any]) -> tuple[bytes | None, str]:
         return _canonical_json(d), ""
     except rfc8785.CanonicalizationError as exc:
         return None, str(exc)
+    except RecursionError:
+        return None, "record nests too deeply to canonicalize"
     except UnicodeError as exc:
         # A lone surrogate in an object *key* fails inside rfc8785's UTF-16 key
         # sort with UnicodeEncodeError, outside its own hierarchy. The same

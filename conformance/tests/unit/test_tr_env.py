@@ -36,6 +36,50 @@ def test_iat_too_small_fails():
     assert "TR-ENV-002" in codes
 
 
+@pytest.mark.parametrize("iat_Fn", [
+    lambda now: float(now - 600),
+    lambda _now: 1.785e9,
+    lambda _now: 1_700_000_000,
+    lambda _now: 1_700_000_000.0,
+])
+def test_iat_whole_float_passes(iat_Fn):
+    now = int(time.time())
+    iat = iat_Fn(now)
+    trace = {**_VALID, "iat": iat}
+    findings = check(trace, max_age_seconds=max(86400, abs(now - int(iat)) + 3600))
+    assert all(f.passed() for f in findings), [f for f in findings if not f.passed()]
+
+
+@pytest.mark.parametrize("iat", [9007199254740991, 9007199254740991.0])
+def test_iat_at_safe_integer_upper_bound_reaches_future_check(iat):
+    trace = {**_VALID, "iat": iat}
+    failed = [f for f in check(trace) if f.code == "TR-ENV-002" and f.failed()]
+    assert len(failed) == 1
+    assert "is in the future" in failed[0].message
+
+
+@pytest.mark.parametrize("bad_iat", [
+    1_699_999_999,
+    1_699_999_999.0,
+    1785000000.5,
+    True,
+    False,
+    "1785000000",
+    9007199254740992,
+    9007199254740992.0,
+    1.0e21,
+    -9007199254740992,
+    float("nan"),
+    float("inf"),
+    float("-inf"),
+])
+def test_iat_non_integer_or_outside_safe_integer_range_fails(bad_iat):
+    trace = {**_VALID, "iat": bad_iat}
+    failed = [f for f in check(trace) if f.code == "TR-ENV-002" and f.failed()]
+    assert len(failed) == 1
+    assert "Unix timestamp integer" in failed[0].message
+
+
 def test_iat_in_future_fails():
     trace = {**_VALID, "iat": int(time.time()) + 3600}
     codes = {f.code for f in check(trace) if f.failed()}

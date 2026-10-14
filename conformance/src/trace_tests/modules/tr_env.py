@@ -16,6 +16,7 @@ _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
 # Applied with fullmatch: $ alone also matches before a trailing newline.
 _SUBJECT_RE = re.compile(r'^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$')
 _IAT_MIN = 1_700_000_000
+_JCS_SAFE_INTEGER = 9007199254740991
 
 #: Default maximum record age (seconds). Records older than this fail freshness.
 DEFAULT_MAX_AGE_SECONDS = 24 * 60 * 60
@@ -36,7 +37,16 @@ def check(trace: dict[str, Any], max_age_seconds: int = DEFAULT_MAX_AGE_SECONDS)
         findings.append(Finding("TR-ENV-001", Status.FAIL, f"eat_profile must be {_PROFILE!r}, got {profile!r}"))
 
     iat = trace.get("iat")
-    if isinstance(iat, int) and iat >= _IAT_MIN:
+    # Integer-typed members are decided by mathematical value within the RFC 8785
+    # safe-integer range (spec §3.2.2); bool is an int subclass in Python and is
+    # excluded explicitly.
+    if (
+        isinstance(iat, (int, float))
+        and not isinstance(iat, bool)
+        and (isinstance(iat, int) or iat.is_integer())
+        and _IAT_MIN <= int(iat) <= _JCS_SAFE_INTEGER
+    ):
+        iat = int(iat)
         now = int(time.time())
         if iat > now + 60:
             findings.append(Finding("TR-ENV-002", Status.FAIL, f"iat {iat} is in the future (now={now})"))
@@ -49,7 +59,11 @@ def check(trace: dict[str, Any], max_age_seconds: int = DEFAULT_MAX_AGE_SECONDS)
         else:
             findings.append(Finding("TR-ENV-002", Status.PASS, f"iat is valid and fresh ({iat})"))
     else:
-        findings.append(Finding("TR-ENV-002", Status.FAIL, f"iat must be a Unix timestamp >= {_IAT_MIN}, got {iat!r}"))
+        findings.append(Finding(
+            "TR-ENV-002", Status.FAIL,
+            f"iat must be a Unix timestamp integer in "
+            f"[{_IAT_MIN}, {_JCS_SAFE_INTEGER}], got {iat!r}",
+        ))
 
     subject = trace.get("subject", "")
     if isinstance(subject, str) and _SUBJECT_RE.fullmatch(subject):

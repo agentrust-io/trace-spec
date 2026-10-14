@@ -200,3 +200,89 @@ def test_signature_present_with_wrong_key_type_fails():
     assert sig_findings, "TR-SIG-005 must be reported when a signature is present"
     assert any(f.failed() for f in sig_findings), sig_findings
     assert not any(f.status == Status.UNVERIFIED for f in sig_findings)
+
+
+@pytest.mark.parametrize("value", [9007199254740992.0, -9007199254740992.0, 1.0e21, -1.0e21])
+def test_whole_float_past_safe_integer_range_is_refused_in_canonicalization(value):
+    import rfc8785
+
+    from trace_tests.modules.tr_sig import _canonical_json
+
+    for container in ({"n": value}, {"a": [{"n": value}]}, {"a": ({"n": value},)}):
+        with pytest.raises(rfc8785.IntegerDomainError):
+            _canonical_json(container)
+
+    record = _make_signed_record()
+    record["trace"]["extra"] = value
+    cmcp_findings = [
+        f for f in check(record["trace"], record, "cmcp-runtime") if f.code == "TR-SIG-001"
+    ]
+    assert len(cmcp_findings) == 1
+    assert cmcp_findings[0].failed()
+    assert "no RFC 8785 canonical form" in cmcp_findings[0].message
+
+    trace = dict(record["trace"])
+    trace["signature"] = record["signature"]
+    plain_findings = [f for f in check(trace, trace, "trace") if f.code == "TR-SIG-005"]
+    assert len(plain_findings) == 1
+    assert plain_findings[0].failed()
+    assert "no RFC 8785 canonical form" in plain_findings[0].message
+
+
+def test_whole_float_inside_safe_integer_range_canonicalizes_by_value():
+    from trace_tests.modules.tr_sig import _canonical_json
+
+    assert _canonical_json({"n": 9007199254740991.0}) == b'{"n":9007199254740991}'
+    assert _canonical_json({"n": -9007199254740991.0}) == b'{"n":-9007199254740991}'
+    assert _canonical_json({"n": 1785000000.0}) == b'{"n":1785000000}'
+    assert _canonical_json({"n": 1.785e9}) == b'{"n":1785000000}'
+
+
+def test_deeply_nested_record_fails_closed_without_raising():
+    nested: dict = {}
+    cursor = nested
+    for _ in range(1500):
+        cursor["a"] = {}
+        cursor = cursor["a"]
+
+    record = _make_signed_record()
+    record["trace"]["nested"] = nested
+    cmcp_findings = [
+        f for f in check(record["trace"], record, "cmcp-runtime") if f.code == "TR-SIG-001"
+    ]
+    assert len(cmcp_findings) == 1
+    assert cmcp_findings[0].failed()
+    assert "nests too deeply" in cmcp_findings[0].message
+
+    trace = dict(record["trace"])
+    trace["signature"] = record["signature"]
+    plain_findings = [f for f in check(trace, trace, "trace") if f.code == "TR-SIG-005"]
+    assert len(plain_findings) == 1
+    assert plain_findings[0].failed()
+    assert "nests too deeply" in plain_findings[0].message
+
+
+def test_number_spelling_vectors_match_expected_conformance_verdicts():
+    import pathlib
+
+    from trace_tests.runner import run
+
+    vectors_dir = pathlib.Path(__file__).resolve().parents[3] / "examples" / "number-spelling"
+    expected_by_name = {
+        "01-integer-spelling-verified.json": ("pass", "skip", "pass"),
+        "02-fraction-spelling-verified.json": ("pass", "skip", "pass"),
+        "03-exponent-spelling-verified.json": ("pass", "skip", "pass"),
+        "04-fractional-value-rejected.json": ("fail", "skip", "pass"),
+        "05-fractional-value-exponent-spelling-rejected.json": ("fail", "skip", "pass"),
+        "06-above-range-integer-spelling-rejected.json": ("pass", "fail", "fail"),
+        "07-above-range-exponent-spelling-rejected.json": ("pass", "fail", "fail"),
+    }
+    paths = sorted(vectors_dir.glob("*.json"))
+    assert [p.name for p in paths] == list(expected_by_name)
+    for path in paths:
+        vec = json.loads(path.read_text(encoding="utf-8"))
+        res = run(dict(vec["record"]), "trace", level=0, max_age_seconds=10**12)
+        env_iat = next(f for f in res["TR-ENV"] if f.code == "TR-ENV-002").status.value
+        apr_ts = next(f for f in res["TR-APR"] if f.code == "TR-APR-004").status.value
+        sig = next(f for f in res["TR-SIG"] if f.code == "TR-SIG-005").status.value
+        assert (env_iat, apr_ts, sig) == expected_by_name[path.name], path.name

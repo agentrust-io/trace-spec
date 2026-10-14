@@ -42,6 +42,8 @@ _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*$")
 #: `tr_env.py:36`, which is likewise an inline literal rather than a named
 #: constant; `test_tr_apr` asserts the two stay equal.
 _MAX_FUTURE_SKEW_SECONDS = 60
+#: RFC 8785 safe-integer bound (spec §3.2.2).
+_JCS_SAFE_INTEGER = 9007199254740991
 
 _ACCOUNTING_SPEC = ObligationSpec(
     "TR-APR-001",
@@ -123,13 +125,21 @@ def _timestamp_finding(appraisal: dict[str, Any]) -> Finding:
 
     timestamp = appraisal.get("timestamp")
     # bool is a subclass of int; a JSON `true` is not an epoch second.
-    if not isinstance(timestamp, int) or isinstance(timestamp, bool):
+    # Integer-typed members are decided by mathematical value within the RFC 8785
+    # safe-integer range (spec §3.2.2).
+    if (
+        isinstance(timestamp, bool)
+        or not isinstance(timestamp, (int, float))
+        or (isinstance(timestamp, float) and not timestamp.is_integer())
+        or not (-_JCS_SAFE_INTEGER <= int(timestamp) <= _JCS_SAFE_INTEGER)
+    ):
         return Finding(
             "TR-APR-004", Status.FAIL,
-            f"TR-APR-004: appraisal.timestamp must be an integer of epoch seconds, "
-            f"got {type(timestamp).__name__}",
+            f"TR-APR-004: appraisal.timestamp must be an integer of epoch seconds in "
+            f"[{-_JCS_SAFE_INTEGER}, {_JCS_SAFE_INTEGER}], got {timestamp!r}",
         )
 
+    timestamp = int(timestamp)
     now = int(time.time())
     if timestamp > now + _MAX_FUTURE_SKEW_SECONDS:
         return Finding(

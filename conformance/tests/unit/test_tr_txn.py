@@ -100,3 +100,27 @@ def test_zero_call_count_is_valid():
     """A transcript with no calls is a real outcome, not an error."""
     failed = [f for f in check(_txn(call_count=0)) if f.failed()]
     assert not failed, failed
+
+
+def test_whole_float_and_safe_bound_call_counts_are_valid():
+    """Integer-typed fields are decided by value within [0, 9007199254740991] (§3.2.2)."""
+    for count in (0.0, -0.0, 3.0, 9007199254740991, 9007199254740991.0):
+        failed = [f for f in check(_txn(call_count=count)) if f.failed()]
+        assert not failed, (count, failed)
+
+
+def test_fractional_or_out_of_safe_range_call_count_fails():
+    for count in (
+        0.5,
+        3.5,
+        -1.0,
+        9007199254740992,
+        9007199254740992.0,
+        1.0e21,
+        -9007199254740992,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ):
+        failed = [f for f in check(_txn(call_count=count)) if f.failed()]
+        assert any(f.code == "TR-TXN-002" for f in failed), count
