@@ -6,7 +6,7 @@ An executable, synthetic example building on the [quickstart](../../docs/quickst
 cryptographic signature validity and verified execution in TRACE v0.2 without changing
 the specification, schema, or SDK behavior.
 
-## Reproduce at pinned commit `c08974c3c0b33d9bd77bc1778b238a86f770b788`
+## Reproduce at pinned commit `66665745bb7d334d9805abefad77ed35898fad55`
 
 Install the repository's development dependencies and run from the repository root:
 

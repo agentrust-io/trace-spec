@@ -11,6 +11,17 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
+  a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
+  key verified, and a string was searched by substring. Both now raise
+  `ValueError`, as does a non-bool `allow_embedded_key`, which was read for truthiness (#511,
+  by @drk-ram).
+- **`verify_bridge` reports the real reason.** A key-id mismatch or an unusable trusted JWK
+  is now reported as itself rather than as an invalid signature; `verify_successor_artifact`
+  gets the same JWK check. Nothing that was rejected now passes (#510, by @drk-ram).
+- **Example: a valid signature is not verified execution.**
+  `examples/signature-execution-boundary/` shows a record of invented execution claims,
+  signed by the trusted issuer, passing `verify_record`, with 49 tests (#509, by @drk-ram).
 - **A second verifier, in TypeScript.** `trust-record-verify/` verifies TRACE v0.2 records
   independently of the Python implementation, and a differential harness scores the two
   against each other on 1644 cases: 1643 agree, and the remaining one is listed in the
