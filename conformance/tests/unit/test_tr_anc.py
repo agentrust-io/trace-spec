@@ -16,7 +16,7 @@ _RECEIPT: dict[str, Any] = {
 }
 
 
-def _nested(depth: int = 2000) -> list[Any]:
+def _nested(depth: int = 100_000) -> list[Any]:
     value: list[Any] = []
     for _ in range(depth):
         value = [value]
@@ -83,7 +83,7 @@ def test_deeply_nested_claim_raises_inclusion_error_and_fails_tr_anc_002():
                 "kty": "OKP",
                 "crv": "Ed25519",
                 "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
-                "ext": _nested(2000),
+                "ext": _nested(100_000),
             }
         },
     }

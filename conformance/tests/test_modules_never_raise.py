@@ -317,7 +317,7 @@ _RECEIPT: dict[str, Any] = {
 }
 
 
-def _nested(depth: int = 2000) -> list[Any]:
+def _nested(depth: int = 100_000) -> list[Any]:
     value: list[Any] = []
     for _ in range(depth):
         value = [value]
@@ -343,7 +343,7 @@ def test_tr_anc_with_receipt_never_raises_on_malformed_or_deep_records() -> None
             raised.append(f"{label} -> returned no findings at all")
 
     for label, extra in (
-        ("deeply-nested", _nested(2000)),
+        ("deeply-nested", _nested(100_000)),
         ("non-json-object", object()),
         ("tuple-float", (1.5,)),
         ("tuple-unsafe-int", (2**53,)),
