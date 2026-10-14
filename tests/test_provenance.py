@@ -1090,3 +1090,63 @@ def test_a_surrogate_in_a_record_key_is_refused_by_the_verifier_not_a_crash() ->
     record, jwk = _signed(_record())
     with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form"):
         verify_record({**record, "x\udeff": 1}, jwk)
+
+
+@pytest.mark.parametrize(
+    "bad_store",
+    [
+        "",
+        "revoked-key-k10",
+        b"revoked",
+        bytearray(b"revoked"),
+        {},
+        {"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},
+        {"type": "TraceRevocationBundle/1.0"},
+        123,
+        True,
+    ],
+    ids=[
+        "empty-str",
+        "str-substring",
+        "bytes",
+        "bytearray",
+        "empty-dict",
+        "jwk-dict",
+        "bundle-dict",
+        "int",
+        "bool",
+    ],
+)
+def test_provenance_verify_record_rejects_non_container_or_bare_revocation_store(
+    bad_store: object,
+) -> None:
+    """`provenance.verify_record` shares `_check_not_revoked` and refuses bare
+    strings, bytes, dicts, and non-containers with `ProvenanceError`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(
+        ProvenanceError,
+        match="^revocation must be a container of key identifier strings or a callable",
+    ):
+        verify_record(record, {**jwk, "kid": "k1"}, revocation=bad_store)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "bad_elements",
+    [
+        [1, 2],
+        [None],
+        [{"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}],
+        ("ok-id", 123),
+        {b"bytes-id"},
+    ],
+    ids=["ints", "none", "jwk-dict-in-list", "mixed-tuple", "bytes-set"],
+)
+def test_provenance_verify_record_rejects_revocation_store_with_non_string_elements(
+    bad_elements: object,
+) -> None:
+    """`provenance.verify_record` refuses an iterable `revocation` store whose
+    items are not strings rather than reporting `outcome='verified'`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(ProvenanceError, match="^revocation must contain only str values"):
+        verify_record(record, jwk, revocation=bad_elements)  # type: ignore[arg-type]
+

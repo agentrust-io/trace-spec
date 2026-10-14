@@ -14,7 +14,7 @@ import hashlib
 import json
 import os
 import warnings
-from collections.abc import Callable, Container, Iterable, Sequence
+from collections.abc import Callable, Container, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 if TYPE_CHECKING:
@@ -49,7 +49,8 @@ RevocationStore: TypeAlias = Container[str] | Callable[[str], bool]
 Either form is accepted:
 
 - a container of revoked key identifiers (``set``, ``frozenset``, ``list``, or any
-  object supporting ``in``), for a revocation list the caller already holds; or
+  non-string, non-mapping object supporting ``in``; iterable containers must hold
+  only ``str`` elements), for a revocation list the caller already holds; or
 - a callable taking one key identifier and returning ``True`` when that key is
   revoked, for a live CRL, OCSP-style status endpoint, or SCITT log lookup.
 
@@ -233,7 +234,38 @@ def _check_not_revoked(jwk: dict[str, Any], revocation: RevocationStore) -> None
     check here that exists to catch a compromised key, on a value whose truthiness
     means nothing about revocation. The membership branch needs no such guard:
     ``in`` yields a real bool whatever ``__contains__`` returns.
+
+    A non-callable store must be a container of strings, and a bare ``str``,
+    ``bytes``, ``bytearray``, ``memoryview``, ``range`` or ``Mapping`` is refused
+    before membership is tested: ``in`` on a string tests substring presence and
+    ``in`` on a mapping tests top-level field names, so passing a single JWK or a
+    bundle dict matched nothing and reported ``verified``. An iterable container is
+    materialised once into a tuple and checked to hold only ``str`` values, so a
+    single-pass iterable is not exhausted before membership is tested.
     """
+    if not callable(revocation):
+        if isinstance(
+            revocation, (str, bytes, bytearray, memoryview, range, Mapping)
+        ) or not isinstance(revocation, Container):
+            raise ValueError(
+                "revocation must be a container of key identifier strings or a "
+                f"callable, got {type(revocation).__name__}"
+            )
+        if isinstance(revocation, Iterable):
+            try:
+                items = tuple(revocation)
+            except Exception as exc:
+                raise ValueError(
+                    f"revocation status could not be determined: {exc}. "
+                    "Verification fails closed: an unavailable revocation source is not "
+                    "evidence that the key is unrevoked."
+                ) from exc
+            bad = sorted({type(v).__name__ for v in items if not isinstance(v, str)})
+            if bad:
+                raise ValueError(
+                    f"revocation must contain only str values, found {bad}"
+                )
+            revocation = items
     for identifier in _key_identifiers(jwk):
         try:
             if callable(revocation):
@@ -636,7 +668,8 @@ def verify_record(
         Without a trusted key, the record cannot vouch for itself, so verification
         is refused. Set ``allow_embedded_key=True`` to opt in to verifying against
         ``record["cnf"]["jwk"]``: this only proves internal consistency, not
-        authenticity, and emits a loud ``UserWarning``.
+        authenticity, and emits a loud ``UserWarning``. ``allow_embedded_key`` must
+        be a ``bool``; any non-boolean value raises ``ValueError`` at entry.
 
     Freshness (fail closed):
         ``max_age_seconds`` (default 86400 = 24h) bounds how old ``record["iat"]``
@@ -680,7 +713,9 @@ def verify_record(
         and every record the key signed is rejected.
 
         ``revocation`` is the older store interface and still works: a container
-        of revoked key identifiers or a callable performing a live lookup. The
+        of revoked key identifiers or a callable performing a live lookup. A bare
+        string, bytes, mapping, non-container, or iterable containing non-``str``
+        elements raises ``ValueError``. The
         trusted key is rejected if it is listed, or if the store cannot answer.
         A store that answers "not listed" is a check performed; the result reports
         ``verified`` with ``source: "store"`` and no horizon, because a store has
@@ -745,6 +780,10 @@ def verify_record(
         raise ValueError("now must be an integer Unix timestamp in seconds, or None")
     else:
         verification_time = now
+    if not isinstance(allow_embedded_key, bool):
+        raise ValueError(
+            f"allow_embedded_key must be a bool, got {type(allow_embedded_key).__name__}"
+        )
     _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
     if citation_resolver is not None and not callable(citation_resolver):

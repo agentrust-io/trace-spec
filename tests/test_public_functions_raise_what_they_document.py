@@ -601,6 +601,14 @@ def test_a_bare_value_where_an_iterable_is_expected_is_refused(bare: Any) -> Non
     kwargs["trusted_bundle_keys"] = bare
     with pytest.raises(ValueError, match="trusted_bundle_keys"):
         sign.verify_record(**kwargs)
+    kwargs = KEYWORD_CALLS["sign.verify_record"][0]()
+    kwargs["revocation"] = bare
+    with pytest.raises(ValueError, match="revocation"):
+        sign.verify_record(**kwargs)
+    kwargs = KEYWORD_CALLS["provenance.verify_record"][0]()
+    kwargs["revocation"] = bare
+    with pytest.raises(provenance.ProvenanceError, match="revocation"):
+        provenance.verify_record(**kwargs)
 
 
 @pytest.mark.parametrize("falsy", ["", {}, False, 0], ids=["str", "dict", "False", "0"])

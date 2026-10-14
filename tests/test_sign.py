@@ -4,6 +4,7 @@ import base64
 import hmac
 import json
 import time
+import types
 
 import pytest
 import rfc8785
@@ -1276,3 +1277,99 @@ def test_nonce_verdict_uses_compare_digest_result(monkeypatch):
     with pytest.raises(ValueError, match="record runtime.nonce does not match expected_nonce"):
         verify_record(signed, key_to_jwk(key), expected_nonce="n\u00f8nce")
     assert seen == [("n\u00f8nce".encode("utf-8"), "n\u00f8nce".encode("utf-8"))]
+
+
+@pytest.mark.parametrize(
+    "bad_flag",
+    ["false", "0", "true", "", 0, 1, None, [True], {"allow": True}],
+    ids=["str-false", "str-0", "str-true", "empty-str", "int-0", "int-1", "None", "list", "dict"],
+)
+def test_verify_record_rejects_non_boolean_allow_embedded_key(bad_flag):
+    """`allow_embedded_key` must be a boolean, not evaluated by Python truthiness.
+
+    Without an explicit bool check at entry, `allow_embedded_key="false"` with no
+    trusted key evaluated as truthy and verified the record against its own
+    embedded `cnf.jwk`, while any non-bool passed alongside a pinned key was
+    silently ignored.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    jwk = key_to_jwk(key)
+    with pytest.raises(ValueError, match="^allow_embedded_key must be a bool"):
+        verify_record(record, None, allow_embedded_key=bad_flag, now=record["iat"])
+    with pytest.raises(ValueError, match="^allow_embedded_key must be a bool"):
+        verify_record(record, jwk, allow_embedded_key=bad_flag, now=record["iat"])
+
+
+@pytest.mark.parametrize(
+    "bad_store",
+    [
+        "",
+        "revoked-key-k10",
+        b"revoked",
+        bytearray(b"revoked"),
+        {},
+        {"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},
+        {"type": "TraceRevocationBundle/1.0"},
+        types.MappingProxyType({"kty": "OKP"}),
+        range(0),
+        123,
+        True,
+    ],
+    ids=[
+        "empty-str",
+        "str-substring",
+        "bytes",
+        "bytearray",
+        "empty-dict",
+        "jwk-dict",
+        "bundle-dict",
+        "mapping-proxy",
+        "range",
+        "int",
+        "bool",
+    ],
+)
+def test_verify_record_rejects_non_container_or_bare_revocation_store(bad_store):
+    """A bare string, bytes or dict is not a revocation store of key identifiers.
+
+    `in` on a `dict` checks top-level key names (`"kty"`, `"crv"`, `"x"`), so a
+    single JWK dict or a revocation bundle dict passed to `revocation=` matched
+    nothing and reported `outcome="verified"`. `in` on a `str` checks substring
+    containment, so `""` reported `verified` and `"revoked-key-k10"` falsely
+    matched a key with `kid="k1"`.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    jwk = {**key_to_jwk(key), "kid": "k1"}
+    with pytest.raises(
+        ValueError,
+        match="^revocation must be a container of key identifier strings or a callable",
+    ):
+        verify_record(record, jwk, revocation=bad_store, now=record["iat"])
+
+
+@pytest.mark.parametrize(
+    "bad_elements",
+    [
+        [1, 2],
+        [None],
+        [{"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}],
+        ("ok-id", 123),
+        {b"bytes-id"},
+    ],
+    ids=["ints", "none", "jwk-dict-in-list", "mixed-tuple", "bytes-set"],
+)
+def test_verify_record_rejects_revocation_store_with_non_string_elements(bad_elements):
+    """An iterable revocation store containing non-string elements is refused.
+
+    Passing `[compromised_jwk]` (a list of JWK dicts instead of thumbprint
+    strings) compared `str == dict`, matched nothing, and reported
+    `outcome="verified"` for the compromised key.
+    """
+    key = generate_key()
+    record = sign_record(_fresh_record(), key)
+    jwk = key_to_jwk(key)
+    with pytest.raises(ValueError, match="^revocation must contain only str values"):
+        verify_record(record, jwk, revocation=bad_elements, now=record["iat"])
+
