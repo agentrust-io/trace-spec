@@ -33,6 +33,34 @@ class CapturedObserverTests(unittest.TestCase):
         receipt["observation"]["exit_code"] = 0
         self.assertFalse(verify(receipt, self.public))
 
+    def test_untracked_source_blocks_execution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "?? injected.py\n", ""),
+                ]
+                with self.assertRaisesRegex(ValueError, "dirty working tree"):
+                    capture(argv=[sys.executable, "-c", "pass"],
+                            allowed_argv=[sys.executable, "-c", "pass"],
+                            repository=directory, expected_commit="abc123",
+                            private_key=self.key, host_label="development-host")
+                self.assertEqual(run.call_count, 2)
+
+    def test_child_timeout_cannot_yield_success_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.TimeoutExpired("child", 3),
+                ]
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    capture(argv=[sys.executable, "-c", "pass"],
+                            allowed_argv=[sys.executable, "-c", "pass"],
+                            repository=directory, expected_commit="abc123",
+                            private_key=self.key, host_label="development-host")
+
     def test_mismatched_commit_fails_before_execution(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch("captured_observer.subprocess.run") as run:

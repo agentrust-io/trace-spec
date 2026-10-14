@@ -34,8 +34,11 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
     ).stdout.strip()
     if rev != expected_commit:
         raise ValueError("source commit mismatch")
-    if subprocess.run(["git", "-C", str(root), "diff", "--quiet", "HEAD"],
-                      timeout=10).returncode != 0:
+    status = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"],
+        capture_output=True, text=True, check=True, timeout=10,
+    )
+    if status.stdout:
         raise ValueError("dirty working tree")
     # Capture observed process status, rather than accepting a supplied result.
     result = subprocess.run(
