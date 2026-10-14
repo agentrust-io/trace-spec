@@ -1,5 +1,6 @@
 """Bounded process observation tests; no external trust claim."""
 import subprocess
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -29,6 +30,14 @@ class CapturedObserverTests(unittest.TestCase):
                                   repository=directory, expected_commit="abc123",
                                   private_key=self.key, host_label="development-host")
         self.assertEqual(receipt["observation"]["exit_code"], 7)
+        self.assertEqual(
+            receipt["observation"]["stdout_sha256"],
+            hashlib.sha256(b"out").hexdigest(),
+        )
+        self.assertEqual(
+            receipt["observation"]["stderr_sha256"],
+            hashlib.sha256(b"err").hexdigest(),
+        )
         self.assertTrue(verify(receipt, self.public))
         receipt["observation"]["exit_code"] = 0
         self.assertFalse(verify(receipt, self.public))
