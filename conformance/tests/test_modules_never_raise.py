@@ -29,15 +29,15 @@ from typing import Any
 
 import pytest
 
-from trace_tests.modules import tr_anc, tr_env, tr_pol, tr_rte, tr_sca, tr_sig, tr_txn
+from trace_tests.modules import tr_anc, tr_apr, tr_env, tr_pol, tr_rte, tr_sca, tr_sig, tr_txn
 from trace_tests.result import Finding, Status
 from trace_tests.runner import run
 
 VECTORS = pathlib.Path(__file__).resolve().parent / "vectors"
 
 MODULES = {
-    "tr_env": tr_env, "tr_sig": tr_sig, "tr_pol": tr_pol, "tr_rte": tr_rte,
-    "tr_txn": tr_txn, "tr_anc": tr_anc, "tr_sca": tr_sca,
+    "tr_env": tr_env, "tr_sig": tr_sig, "tr_pol": tr_pol, "tr_apr": tr_apr,
+    "tr_rte": tr_rte, "tr_txn": tr_txn, "tr_anc": tr_anc, "tr_sca": tr_sca,
 }
 
 #: Values a record can carry where an object or a string is expected. `True` is here
@@ -65,6 +65,7 @@ NESTED_DISCRIMINANTS = (
     (("runtime", "platform"), "TR-RTE-001"),
     (("build_provenance", "slsa_level"), "TR-SCA-001"),
     (("cnf", "jwk", "kty"), "TR-SIG-004"),
+    (("appraisal", "status"), "TR-APR-001"),
 )
 
 
@@ -151,7 +152,7 @@ def test_no_module_raises_on_a_record_whose_fields_are_malformed(name: str) -> N
 @pytest.mark.parametrize(
     ("path", "expected_code"),
     NESTED_DISCRIMINANTS,
-    ids=["policy", "runtime", "provenance", "signing-key"],
+    ids=["policy", "runtime", "provenance", "signing-key", "appraisal"],
 )
 @pytest.mark.parametrize("junk", (["unexpected"], {"unexpected": True}), ids=("array", "object"))
 def test_runner_fails_nested_discriminators_instead_of_raising(
@@ -306,3 +307,68 @@ def test_the_cmcp_path_does_not_raise_on_a_malformed_envelope() -> None:
     assert not raised, (
         "tr_sig.check on a cmcp envelope raised or returned nothing:\n  " + "\n  ".join(raised)
     )
+
+
+_RECEIPT: dict[str, Any] = {
+    "leaf_index": 0,
+    "audit_path": [],
+    "leaf_count": 1,
+    "merkle_root": "sha256:" + "0" * 64,
+}
+
+
+def _nested(depth: int = 2000) -> list[Any]:
+    value: list[Any] = []
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+def test_tr_anc_with_receipt_never_raises_on_malformed_or_deep_records() -> None:
+    """``_call`` above invokes ``tr_anc.check`` with ``receipt=None``, which returns
+    before ``verify_inclusion`` / ``canonical_claim_bytes`` runs. Exercise the receipt
+    path across every field mutation and on deep, non-JSON, and tuple-wrapped claims.
+    """
+    raised: list[str] = []
+    for label, record in _mutations():
+        candidate = copy.deepcopy(record)
+        if not label.startswith("transparency"):
+            candidate["transparency"] = "https://registry.example.org/claim/1"
+        try:
+            findings = tr_anc.check(candidate, receipt=dict(_RECEIPT))
+        except Exception as exc:  # noqa: BLE001 - the point is that nothing escapes
+            raised.append(f"{label} -> {type(exc).__name__}: {exc}")
+            continue
+        if not findings:
+            raised.append(f"{label} -> returned no findings at all")
+
+    for label, extra in (
+        ("deeply-nested", _nested(2000)),
+        ("non-json-object", object()),
+        ("tuple-float", (1.5,)),
+        ("tuple-unsafe-int", (2**53,)),
+    ):
+        trace: dict[str, Any] = {
+            "transparency": "https://registry.example.org/claim/1",
+            "cnf": {
+                "jwk": {
+                    "kty": "OKP",
+                    "crv": "Ed25519",
+                    "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+                    "ext": extra,
+                }
+            },
+        }
+        try:
+            findings = tr_anc.check(trace, receipt=dict(_RECEIPT))
+        except Exception as exc:  # noqa: BLE001 - the point is that nothing escapes
+            raised.append(f"{label} -> {type(exc).__name__}: {exc}")
+            continue
+        if not any(f.code == "TR-ANC-002" and f.status is Status.FAIL for f in findings):
+            raised.append(f"{label} -> expected TR-ANC-002 FAIL, got {findings!r}")
+
+    assert not raised, (
+        "tr_anc.check with a receipt raised or missed TR-ANC-002 FAIL:\n  "
+        + "\n  ".join(raised)
+    )
+

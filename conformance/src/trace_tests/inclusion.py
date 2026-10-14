@@ -55,7 +55,7 @@ def _outside_profile(value: Any) -> str | None:
             return f"non-integer number {v!r}"
         elif isinstance(v, dict):
             stack.extend(v.values())
-        elif isinstance(v, list):
+        elif isinstance(v, (list, tuple)):
             stack.extend(v)
     return None
 
@@ -69,7 +69,16 @@ def canonical_claim_bytes(claim: dict[str, Any]) -> bytes:
         raise InclusionError(
             f"claim is outside the anchor-leaf profile (registry-anchor-v1 section 1): {excluded}"
         )
-    return json.dumps(claim, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+    try:
+        return json.dumps(
+            claim, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("ascii")
+    except RecursionError:
+        raise InclusionError("claim nests too deeply to serialize") from None
+    except TypeError as exc:
+        raise InclusionError(
+            f"claim contains a value that is not JSON serializable: {exc}"
+        ) from exc
 
 
 def decode_hash(value: object) -> bytes:
@@ -128,7 +137,9 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     if not isinstance(receipt, dict):
         raise InclusionError(f"receipt must be a JSON object, got {type(receipt).__name__}")
 
-    missing = [k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root") if k not in receipt]
+    missing = [
+        k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root") if k not in receipt
+    ]
     if missing:
         raise InclusionError(f"receipt is missing required field(s): {', '.join(missing)}")
 
