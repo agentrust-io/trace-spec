@@ -20,7 +20,7 @@ pytest tests/test_signature_execution_boundary.py
 Actual output from `python examples/signature-execution-boundary/signature_execution_boundary.py --out "$example_out"`:
 
 ```text
-PASS [1/4]: baseline record validates and verifies against separately retained trusted key (thumbprint=8WEkIEIu0xGWVjA1V8weTlFmpl0D7N3EHC0yfRjfnQQ, revocation=no_check_performed)
+PASS [1/4]: baseline record validates and verifies against separately retained trusted key (revocation=no_check_performed)
 PASS [2/4]: tampered signed field (data_class changed after signing) rejected with InvalidSignature
 PASS [3/4]: wrong issuer key rejected with ValueError (cnf.jwk thumbprint mismatch); substituting cnf.jwk without re-signing rejected with InvalidSignature; allow_embedded_key=True warns and checks self-consistency only
 PASS [4/4]: invented execution claims signed by the trusted issuer also pass verify_record; external transcript commitment comparison separates baseline=matched, invented=mismatch, unretained=unavailable

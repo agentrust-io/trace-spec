@@ -231,10 +231,10 @@ def run_checks(bundle: dict[str, dict[str, Any]]) -> list[str]:
         max_age_seconds=inputs["max_age_seconds"],
         max_future_skew_seconds=inputs["max_future_skew_seconds"],
     )
+    assert baseline_result.trusted_key_thumbprint == jwk_thumbprint(trusted_key)
     lines.append(
         "PASS [1/4]: baseline record validates and verifies against separately retained "
-        f"trusted key (thumbprint={baseline_result.trusted_key_thumbprint}, "
-        f"revocation={baseline_result.revocation.outcome})"
+        f"trusted key (revocation={baseline_result.revocation.outcome})"
     )
 
     # 2. Changing a signed field after signing causes signature verification to fail.
