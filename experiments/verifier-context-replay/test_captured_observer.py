@@ -24,6 +24,7 @@ class CapturedObserverTests(unittest.TestCase):
                     subprocess.CompletedProcess([], 0, "abc123\n", ""),
                     subprocess.CompletedProcess([], 0, "", ""),
                     subprocess.CompletedProcess([], 7, b"out", b"err"),
+                    subprocess.CompletedProcess([], 0, "", ""),
                 ]
                 receipt = capture(argv=[sys.executable, "-c", "pass"],
                                   allowed_argv=[sys.executable, "-c", "pass"],
@@ -41,6 +42,21 @@ class CapturedObserverTests(unittest.TestCase):
         self.assertTrue(verify(receipt, self.public))
         receipt["observation"]["exit_code"] = 0
         self.assertFalse(verify(receipt, self.public))
+
+    def test_source_changed_during_execution_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess([], 0, b"result", b""),
+                    subprocess.CompletedProcess([], 0, " M source.py\n", ""),
+                ]
+                with self.assertRaisesRegex(ValueError, "source changed"):
+                    capture(argv=[sys.executable, "-c", "pass"],
+                            allowed_argv=[sys.executable, "-c", "pass"],
+                            repository=directory, expected_commit="abc123",
+                            private_key=self.key, host_label="development-host")
 
     def test_untracked_source_blocks_execution(self):
         with tempfile.TemporaryDirectory() as directory:

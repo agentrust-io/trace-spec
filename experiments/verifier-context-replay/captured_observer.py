@@ -25,6 +25,7 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
     actual = Path(argv[0]).resolve(strict=True)
     if not actual.is_file():
         raise ValueError("invalid executable")
+    executable_sha256 = hashlib.sha256(actual.read_bytes()).hexdigest()
     if not isinstance(host_label, str) or not host_label:
         raise ValueError("host label required")
     root = Path(repository).resolve(strict=True)
@@ -46,7 +47,17 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         shell=False, env={"PATH": os.defpath, "HOME": "/nonexistent",
                           "PYTHONNOUSERSITE": "1"},
     )
+    # Reject observed results if tracked/untracked source changed during execution.
+    after = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"],
+        capture_output=True, text=True, check=True, timeout=10,
+    )
+    if after.stdout:
+        raise ValueError("source changed during execution")
+    if hashlib.sha256(actual.read_bytes()).hexdigest() != executable_sha256:
+        raise ValueError("executable changed during execution")
     observation = {
+        "executable_sha256": executable_sha256,
         "commit": rev, "host": host_label,
         "command": list(argv),
         "exit_code": result.returncode,
