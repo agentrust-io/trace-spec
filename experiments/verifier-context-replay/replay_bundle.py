@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from retained_evidence import inspect
 from independent_verifier import verify as independent_verify
+from measurement_appraisal import appraise as appraise_measurement
 from agentrust_trace.sign import verify_record
 from cryptography.exceptions import InvalidSignature
 
@@ -74,11 +75,45 @@ def run(directory, expected_manifest_digest):
         if reference != independent:
             return {"status":"not-established", "reason":"verifier-disagreement",
                     "reference":reference, "independent":independent}
+        measurement_result = {"status":"not-established","reason":"no-retained-measurement-appraisal"}
+        measurement_contract = context.get("measurement_contract")
+        if measurement_contract is not None:
+            if not isinstance(measurement_contract, dict) or set(measurement_contract) != {
+                "policy", "reference_public_key_hex", "quote_public_key_hex", "reference_digest"
+            }:
+                return {"status":"not-established","reason":"incomplete-measurement-context"}
+            try:
+                reference_bytes = (directory / "measurement_reference.bin").read_bytes()
+                quote_bytes = (directory / "measurement_quote.bin").read_bytes()
+                measurement_result = appraise_measurement(
+                    record, reference=json.loads(reference_bytes), quote=json.loads(quote_bytes),
+                    policy=measurement_contract["policy"],
+                    reference_public_key=bytes.fromhex(measurement_contract["reference_public_key_hex"]),
+                    quote_public_key=bytes.fromhex(measurement_contract["quote_public_key_hex"]),
+                    expected_reference_digest=measurement_contract["reference_digest"])
+            except (ValueError, TypeError, KeyError, OSError):
+                return {"status":"not-established","reason":"invalid-retained-measurement-context"}
+            if measurement_result["status"] != "affirming":
+                return {"status":"not-established" if measurement_result["status"] == "not-established" else "rejected",
+                        "reason":"measurement-appraisal-"+measurement_result["reason"],
+                        "measurement_appraisal":measurement_result}
+            claimed = record.get("appraisal", {}).get("platform_measurement")
+            if claimed is not None:
+                if not isinstance(claimed, dict) or claimed.get("measurement") != record.get("runtime", {}).get("measurement"):
+                    return {"status":"rejected","reason":"producer-appraisal-measurement-mismatch"}
+                layers = claimed.get("layers")
+                if not isinstance(layers, dict):
+                    return {"status":"not-established","reason":"missing-producer-layer-claims"}
+                for name in measurement_contract["policy"]["required_layers"]:
+                    if layers.get(name, {}).get("outcome") != measurement_result["layers"][name]["outcome"]:
+                        return {"status":"rejected","reason":"producer-layer-appraisal-disagreement",
+                                "layer":name}
         return {"status":"crypto-and-context-verified" if reference == "verified" else "rejected",
                 "reason":"matched-bounded-verifiers",
                 "reference":reference, "independent":independent,
                 "manifest_digest":expected_manifest_digest,
                 "scope":"exact-snapshot-equality-only-not-external-authority",
-                "semantic_status":semantic_status}
+                "semantic_status":semantic_status,
+                "measurement_appraisal":measurement_result}
     except (OSError, KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
         return {"status":"not-established", "reason":"bundle-unreadable:" + type(exc).__name__}
