@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 REQUIRED = ("record", "trusted_root", "policy", "revocation", "resolver")
+MEASUREMENT = ("measurement_reference", "measurement_quote")
 
 def _sha(data):
     return "sha256:" + hashlib.sha256(data).hexdigest()
@@ -26,11 +27,19 @@ def _write_exclusive(path, data):
         os.unlink(temporary)
 
 
-def freeze(directory, *, record, root, policy, revocation, resolver, context):
+def freeze(directory, *, record, root, policy, revocation, resolver, context,\n           measurement_reference=None, measurement_quote=None):
     destination = Path(directory)
     destination.mkdir(parents=True, exist_ok=True)
     artifacts = dict(record=record, trusted_root=root, policy=policy,
                      revocation=revocation, resolver=resolver)
+    supplied = (measurement_reference is not None, measurement_quote is not None)
+    if supplied[0] != supplied[1]:
+        raise ValueError("measurement reference and quote must be retained together")
+    if supplied[0]:
+        artifacts.update(measurement_reference=measurement_reference,
+                         measurement_quote=measurement_quote)
+    if context.get("measurement_contract") is not None and not supplied[0]:
+        raise ValueError("measurement appraisal contract requires retained evidence")
     if not isinstance(context, dict) or type(context.get("verification_time")) is not int:
         raise ValueError("explicit verification time required")
     manifest = {"format": "trace-replay-bundle-v1", "context": context, "artifacts": {}}
@@ -59,9 +68,10 @@ def inspect(directory, *, expected_context=None):
             return False, "implicit-time"
         if expected_context is not None and context != expected_context:
             return False, "context-drift"
-        if set(manifest["artifacts"]) != set(REQUIRED):
+        expected = set(REQUIRED) | (set(MEASUREMENT) if context.get("measurement_contract") is not None else set())
+        if set(manifest["artifacts"]) != expected:
             return False, "missing-evidence"
-        for name in REQUIRED:
+        for name in expected:
             entry = manifest["artifacts"][name]
             if entry.get("file") != name + ".bin":
                 return False, "path"
