@@ -24,7 +24,13 @@ LEAF_PREFIX = b"\x00"
 NODE_PREFIX = b"\x01"
 _HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")  # fullmatch: $ admits a trailing newline
 
-__all__ = ["InclusionError", "canonical_claim_bytes", "decode_hash", "verify_inclusion"]
+__all__ = [
+    "InclusionError",
+    "canonical_claim_bytes",
+    "decode_hash",
+    "parse_entry",
+    "verify_inclusion",
+]
 
 
 class InclusionError(ValueError):
@@ -153,3 +159,35 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
         receipt["leaf_count"],
         decode_hash(receipt["merkle_root"]),
     )
+
+
+_ENTRY_STRINGS = ("ts", "producer", "batch_id")
+
+
+def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
+    """Validate a registry entry and return (merkle_root, leaf_count, producer, batch_id).
+
+    The entry is the registry-anchor-v1 section 4 line the receipt claims to
+    commit to. Fields beyond section 4 are ignored rather than rejected, because
+    the reference registry already writes some (trace-spec#448 item 20).
+    """
+    if not isinstance(entry, dict):
+        raise InclusionError(f"registry entry must be a JSON object, got {type(entry).__name__}")
+
+    missing = [
+        k for k in ("ts", "merkle_root", "leaf_count", "producer", "batch_id") if k not in entry
+    ]
+    if missing:
+        raise InclusionError(f"registry entry is missing required field(s): {', '.join(missing)}")
+
+    for key in _ENTRY_STRINGS:
+        if not isinstance(entry[key], str) or not entry[key]:
+            raise InclusionError(f"registry entry {key} must be a non-empty string")
+
+    leaf_count = entry["leaf_count"]
+    if not isinstance(leaf_count, int) or isinstance(leaf_count, bool) or leaf_count < 1:
+        raise InclusionError(
+            f"registry entry leaf_count must be an integer >= 1, got {leaf_count!r}"
+        )
+
+    return decode_hash(entry["merkle_root"]), leaf_count, entry["producer"], entry["batch_id"]

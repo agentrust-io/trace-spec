@@ -315,6 +315,13 @@ _RECEIPT: dict[str, Any] = {
     "leaf_count": 1,
     "merkle_root": "sha256:" + "0" * 64,
 }
+_ENTRY: dict[str, Any] = {
+    "ts": "2026-10-15T00:00:00Z",
+    "merkle_root": "sha256:" + "0" * 64,
+    "leaf_count": 1,
+    "producer": "never-raise/1.0.0",
+    "batch_id": "never-raise-1",
+}
 
 
 def _nested(depth: int = 100_000) -> list[Any]:
@@ -335,7 +342,7 @@ def test_tr_anc_with_receipt_never_raises_on_malformed_or_deep_records() -> None
         if not label.startswith("transparency"):
             candidate["transparency"] = "https://registry.example.org/claim/1"
         try:
-            findings = tr_anc.check(candidate, receipt=dict(_RECEIPT))
+            findings = tr_anc.check(candidate, receipt=dict(_RECEIPT), entry=dict(_ENTRY))
         except Exception as exc:  # noqa: BLE001 - the point is that nothing escapes
             raised.append(f"{label} -> {type(exc).__name__}: {exc}")
             continue
@@ -360,7 +367,7 @@ def test_tr_anc_with_receipt_never_raises_on_malformed_or_deep_records() -> None
             },
         }
         try:
-            findings = tr_anc.check(trace, receipt=dict(_RECEIPT))
+            findings = tr_anc.check(trace, receipt=dict(_RECEIPT), entry=dict(_ENTRY))
         except Exception as exc:  # noqa: BLE001 - the point is that nothing escapes
             raised.append(f"{label} -> {type(exc).__name__}: {exc}")
             continue

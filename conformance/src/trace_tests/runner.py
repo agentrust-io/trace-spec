@@ -62,6 +62,7 @@ def _run_core(
     max_age_seconds: int,
     expected_nonce: str | None,
     receipt: dict[str, Any] | None,
+    entry: dict[str, Any] | None,
     policy_resolver: Callable[[str], bytes] | None,
 ) -> dict[str, list[Finding]]:
     """Run one predecoded level through the shared public/accounting path."""
@@ -100,7 +101,7 @@ def _run_core(
 
     if "TR-ANC" in active:
         results["TR-ANC"] = invoke(
-            "TR-ANC", lambda: anc(trace, receipt=receipt)
+            "TR-ANC", lambda: anc(trace, receipt=receipt, entry=entry)
         )
 
     return results
@@ -113,6 +114,7 @@ def run(
     max_age_seconds: int = tr_env.DEFAULT_MAX_AGE_SECONDS,
     expected_nonce: str | None = None,
     receipt: dict[str, Any] | None = None,
+    entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
 ) -> dict[str, list[Finding]]:
     """Run all modules required for *level* and return findings keyed by module ID."""
@@ -131,6 +133,7 @@ def run(
             max_age_seconds=max_age_seconds,
             expected_nonce=expected_nonce,
             receipt=receipt,
+            entry=entry,
             policy_resolver=policy_resolver,
         )
 
@@ -142,6 +145,7 @@ def _run_levels(
     max_age_seconds: int = tr_env.DEFAULT_MAX_AGE_SECONDS,
     expected_nonce: str | None = None,
     receipt: dict[str, Any] | None = None,
+    entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
 ) -> accounting._Execution:
     """Run one exact contiguous level set and return its atomic accounting value."""
@@ -188,6 +192,7 @@ def _run_levels(
                 max_age_seconds=max_age_seconds,
                 expected_nonce=expected_nonce,
                 receipt=receipt,
+                entry=entry,
                 policy_resolver=policy_resolver,
             )
             end(level)

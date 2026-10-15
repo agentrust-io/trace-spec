@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Breaking: TR-ANC-002 requires the registry entry (trace-spec#464).** `--entry`
+  takes one Anchor Format §4 line, and `run()` and `tr_anc.check()` take `entry`.
+  The receipt's `merkle_root` and `leaf_count` must equal the entry's; with no entry,
+  TR-ANC-002 fails as it does with no receipt. The pass message names the entry and
+  says the link from the `transparency` URI to it is not checked (trace-spec#448
+  finding 21). Tests cover the four worlds from trace-tests#92 and the absent entry.
 - Vendor-neutral placeholders (`example-provider`, `example-model`) in the unsigned
   vectors and the policy-resolution generator; the policy-resolution set is regenerated
   and every verdict is unchanged. Signed vectors are untouched.

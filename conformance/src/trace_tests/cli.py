@@ -82,26 +82,36 @@ def _print_report(path: str, fmt: str, level: int, results: dict[str, list[Any]]
 
 
 
-def _load_receipt(path: str | None) -> dict | None:
-    """Load and shape-check an anchor receipt, or return None when not supplied."""
+def _load_json_object(path: str | None, label: str) -> dict | None:
+    """Load and shape-check a JSON object input, or return None when not supplied."""
     if path is None:
         return None
     try:
         with open(path, "rb") as fh:
             data = loads_strict(fh.read())
     except OSError as exc:
-        click.echo(f"Error: cannot read receipt {path}: {exc}", err=True)
+        click.echo(f"Error: cannot read {label} {path}: {exc}", err=True)
         sys.exit(2)
     except LoadError as exc:
-        click.echo(f"Error: receipt {path} is not valid JSON: {exc}", err=True)
+        click.echo(f"Error: {label} {path} is not valid JSON: {exc}", err=True)
         sys.exit(2)
     if not isinstance(data, dict):
         click.echo(
-            f"Error: receipt {path} must be a JSON object, got {type(data).__name__}",
+            f"Error: {label} {path} must be a JSON object, got {type(data).__name__}",
             err=True,
         )
         sys.exit(2)
     return data
+
+
+def _load_receipt(path: str | None) -> dict | None:
+    """Load and shape-check an anchor receipt, or return None when not supplied."""
+    return _load_json_object(path, "receipt")
+
+
+def _load_entry(path: str | None) -> dict | None:
+    """Load and shape-check a registry entry, or return None when not supplied."""
+    return _load_json_object(path, "entry")
 
 
 def _load_policy_resolver(policy_dir: str | None) -> Callable[[str], bytes] | None:
@@ -207,6 +217,17 @@ def main() -> None:
     ),
 )
 @click.option(
+    "--entry",
+    default=None,
+    type=click.Path(),
+    help=(
+        "Path to the registry entry (JSON, one registry-anchor-v1 section 4 line) the "
+        "receipt commits to. Required for TR-ANC-002 at Level 2: the receipt's "
+        "merkle_root and leaf_count must equal the entry's. The link from the "
+        "transparency URI to this entry is not checked."
+    ),
+)
+@click.option(
     "--policy-dir",
     "policy_dir",
     default=None,
@@ -223,6 +244,7 @@ def verify(
     max_age: int,
     expected_nonce: str | None,
     receipt: str | None,
+    entry: str | None,
     policy_dir: str | None,
 ) -> None:
     """Verify a TRACE trust record against the conformance suite."""
@@ -233,6 +255,7 @@ def verify(
         sys.exit(2)
 
     receipt_data = _load_receipt(receipt)
+    entry_data = _load_entry(entry)
     policy_resolver = _load_policy_resolver(policy_dir)
 
     results = run(
@@ -242,6 +265,7 @@ def verify(
         max_age_seconds=max_age,
         expected_nonce=expected_nonce,
         receipt=receipt_data,
+        entry=entry_data,
         policy_resolver=policy_resolver,
     )
     exit_code = _print_report(record, fmt, level, results)
@@ -290,6 +314,13 @@ def verify(
     help="Path to the anchor receipt (JSON). Required for TR-ANC-002 at Level 2.",
 )
 @click.option(
+    "--entry",
+    default=None,
+    type=click.Path(),
+    help="Path to the registry entry (JSON) the receipt commits to. Required for "
+    "TR-ANC-002 at Level 2.",
+)
+@click.option(
     "--policy-dir",
     "policy_dir",
     default=None,
@@ -308,6 +339,7 @@ def report(
     fail_under: int | None,
     expected_nonce: str | None,
     receipt: str | None,
+    entry: str | None,
     policy_dir: str | None,
 ) -> None:
     """Produce a conformance report you can hand to someone else.
@@ -323,6 +355,7 @@ def report(
         sys.exit(2)
 
     receipt_data = _load_receipt(receipt)
+    entry_data = _load_entry(entry)
     policy_resolver = _load_policy_resolver(policy_dir)
 
     execution = _run_levels(
@@ -332,6 +365,7 @@ def report(
         max_age_seconds=max_age,
         expected_nonce=expected_nonce,
         receipt=receipt_data,
+        entry=entry_data,
         policy_resolver=policy_resolver,
     )
 
