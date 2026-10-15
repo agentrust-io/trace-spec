@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
 
 from agentrust_trace.sign import anchor_bytes
-from trace_tests.inclusion import canonical_claim_bytes
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+_INCLUSION_SPEC = importlib.util.spec_from_file_location(
+    "inclusion", REPO_ROOT / "conformance" / "src" / "trace_tests" / "inclusion.py"
+)
+assert _INCLUSION_SPEC is not None and _INCLUSION_SPEC.loader is not None
+_INCLUSION_MODULE = importlib.util.module_from_spec(_INCLUSION_SPEC)
+_INCLUSION_SPEC.loader.exec_module(_INCLUSION_MODULE)
+canonical_claim_bytes = _INCLUSION_MODULE.canonical_claim_bytes
+
 SERIALIZERS = (anchor_bytes, canonical_claim_bytes)
 
 
