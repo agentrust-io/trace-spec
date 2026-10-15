@@ -19,6 +19,13 @@ The Project Lead has final decision authority on specification changes, submissi
 
 Louie's appointment was [announced by the Project Lead](https://github.com/orgs/agentrust-io/discussions/33). Rajnish's was [announced here](https://github.com/orgs/agentrust-io/discussions/40).
 
+## Reviewers
+
+| Name | GitHub | Since |
+|---|---|---|
+| Alex Chernysh | [@chernistry](https://github.com/chernistry) | 2026-10-15, [accepted](https://github.com/agentrust-io/.github/issues/60#issuecomment-6186352539) |
+| Val Rukhaylo | [@altrudev](https://github.com/altrudev) | 2026-10-15, [accepted](https://github.com/agentrust-io/.github/issues/60#issuecomment-6188941788) |
+
 ## How to become a maintainer
 
 **Reviewer**: 3+ merged PRs with substantive contributions. Nominated by a Maintainer, confirmed by Project Lead.
