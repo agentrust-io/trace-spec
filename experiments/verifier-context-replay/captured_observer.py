@@ -51,17 +51,20 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         bubblewrap = shutil.which("bwrap")
         if bubblewrap is None:
             raise RuntimeError("bubblewrap unavailable: isolated run refused")
+        # No blanket host-root bind: mount only executable runtime trees and
+        # the pinned checkout. Missing dependencies cause a failed launch.
         sandbox = [
             bubblewrap, "--unshare-net", "--unshare-pid", "--unshare-ipc",
             "--unshare-uts", "--new-session", "--cap-drop", "ALL",
-            "--die-with-parent",
-            "--ro-bind", "/", "/", "--proc", "/proc",
-            "--dev", "/dev", "--tmpfs", "/tmp",
+            "--die-with-parent", "--tmpfs", "/", "--proc", "/proc",
+            "--dev", "/dev", "--dir", "/tmp",
         ]
-        # A tmpfs on /tmp would otherwise hide a checkout located below /tmp.
-        # Rebind only the verified checkout, read-only, after creating the tmpfs.
-        if root == Path("/tmp") or Path("/tmp") in root.parents:
-            sandbox.extend(["--ro-bind", str(root), str(root)])
+        for runtime_path in ("/usr", "/bin", "/lib", "/lib64"):
+            if Path(runtime_path).exists():
+                sandbox.extend(["--ro-bind", runtime_path, runtime_path])
+        if root == Path("/") or str(root) in ("/usr", "/bin", "/lib", "/lib64"):
+            raise ValueError("checkout cannot be host root or runtime root")
+        sandbox.extend(["--ro-bind", str(root), str(root)])
         command = [*sandbox, "--chdir", str(root), "--", *command]
     # Capture observed process status, rather than accepting a supplied result.
     result = subprocess.run(
