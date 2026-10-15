@@ -47,6 +47,7 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
     "types-jsonschema",
+    "PyYAML>=6.0.3",
 ]
 
 [project.urls]
