@@ -52,7 +52,9 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         if bubblewrap is None:
             raise RuntimeError("bubblewrap unavailable: isolated run refused")
         sandbox = [
-            bubblewrap, "--unshare-net", "--die-with-parent",
+            bubblewrap, "--unshare-net", "--unshare-pid", "--unshare-ipc",
+            "--unshare-uts", "--new-session", "--cap-drop", "ALL",
+            "--die-with-parent",
             "--ro-bind", "/", "/", "--proc", "/proc",
             "--dev", "/dev", "--tmpfs", "/tmp",
         ]
