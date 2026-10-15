@@ -16,6 +16,18 @@ Baseline commit: fc05160469b6dd4f1846c48e2afe8f5d107e33da.
 | T08 | Fork PR #2 remains draft | External upstream review, license/attribution/About/glossary and release documentation assessment needed | OPEN |
 | T09 | Production approval | No independent external trust authority designated or enrolled | EXTERNALLY-BLOCKED |
 
+## Live smoke observation: Prometheus, 2026-10-15
+
+A restricted Bubblewrap command was executed on Prometheus, using an empty
+sandbox root, runtime-only /usr, /bin, /lib, /lib64 binds and a read-only
+Frequency checkout bind. The observed Python process reported that
+/etc/passwd was absent and the checkout README was present. A second
+runtime-only launch also succeeded. These are operator-origin smoke
+observations, not signed, independently captured evidence. They do not
+verify the TRACE observer's full execution path, hostile workloads, races,
+signer custody, external trust, or the VPS. T02 remains OPEN pending
+end-to-end sandbox and negative tests on the exact release artifact.
+
 ## Mandatory negative acceptance
 
 Wrong public key, wrong fingerprint, wrong commit/host, modified receipt,
