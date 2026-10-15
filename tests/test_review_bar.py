@@ -9,6 +9,7 @@ one that needs a git checkout, and one that fails on the head itself.
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
@@ -125,7 +126,7 @@ def _commit(repo: Path, files: dict[str, str], message: str) -> str:
     for path, text in files.items():
         target = repo / path
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text)
+        target.write_text(text, encoding="utf-8")
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
     subprocess.run(
         ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com",
@@ -192,6 +193,10 @@ def test_changed_files_are_the_added_and_modified_tests_support_and_src(repo):
 
 
 def test_a_test_path_git_would_quote_is_still_found(tmp_path):
+    try:
+        os.fsencode("test_été.py")
+    except UnicodeEncodeError:
+        pytest.skip("POSIX C locale with PYTHONUTF8=0 cannot encode non-ASCII filenames")
     _init(tmp_path)
     base = _commit(tmp_path, {"README": "x\n"}, "base")
     head = _commit(tmp_path, {"tests/test_été.py": "def test_x():\n    pass\n"}, "head")
@@ -322,7 +327,7 @@ def test_the_command_line_writes_the_summary_and_never_fails_the_build(repo, tmp
     )
     assert code == 0
     heading = "### Changed tests that pass on the head, run against the merge base"
-    assert heading in summary.read_text()
+    assert heading in summary.read_text(encoding="utf-8")
 
 
 def test_an_error_inside_the_tool_still_writes_a_report_and_exits_zero(tmp_path):
@@ -332,7 +337,7 @@ def test_an_error_inside_the_tool_still_writes_a_report_and_exits_zero(tmp_path)
          "--summary", str(summary)]
     )
     assert code == 0
-    assert "The review bar could not finish" in summary.read_text()
+    assert "The review bar could not finish" in summary.read_text(encoding="utf-8")
 
 
 def test_child_test_runs_do_not_inherit_the_workflow_file_variables(tmp_path, monkeypatch):
@@ -343,7 +348,8 @@ def test_child_test_runs_do_not_inherit_the_workflow_file_variables(tmp_path, mo
     (tree / "tests" / "test_w.py").write_text(
         "import os\n\n\ndef test_w():\n"
         "    assert not {'GITHUB_STEP_SUMMARY', 'GITHUB_OUTPUT', 'GITHUB_ENV', 'GITHUB_PATH'}"
-        " & set(os.environ)\n"
+        " & set(os.environ)\n",
+        encoding="utf-8",
     )
     code, outcomes = review_bar.run_tests(tree, ["tests/test_w.py"], 60)
     assert [o.result for o in outcomes] == ["passed"]
@@ -353,7 +359,8 @@ def test_a_test_run_over_its_time_limit_reports_a_timeout(tmp_path):
     tree = tmp_path / "tree"
     (tree / "tests").mkdir(parents=True)
     (tree / "tests" / "test_slow.py").write_text(
-        "import time\n\n\ndef test_slow():\n    time.sleep(30)\n"
+        "import time\n\n\ndef test_slow():\n    time.sleep(30)\n",
+        encoding="utf-8",
     )
     assert review_bar.run_tests(tree, ["tests/test_slow.py"], 2) == (-1, [])
 
@@ -546,7 +553,8 @@ def test_a_collection_error_is_read_whatever_traceback_style_is_configured(tmp_p
     tree = tmp_path / "tree"
     (tree / "tests").mkdir(parents=True)
     (tree / "tests" / "test_attr.py").write_text(
-        "import os\n\nos.not_there\n\n\ndef test_x():\n    pass\n"
+        "import os\n\nos.not_there\n\n\ndef test_x():\n    pass\n",
+        encoding="utf-8",
     )
     code, outcomes = review_bar.run_tests(tree, ["tests/test_attr.py"], 60)
     assert [(o.result, o.detail) for o in outcomes] == [
@@ -557,7 +565,7 @@ def test_a_test_file_is_explained_only_by_its_own_error(tmp_path):
     # tests/test_mod.py fails while loading. tests/test_mod/test_x.py is a different
     # file, so a test it did not generate on the base is not explained by that error.
     (tmp_path / "tests" / "test_mod").mkdir(parents=True)
-    (tmp_path / "tests" / "test_mod" / "test_x.py").write_text("")
+    (tmp_path / "tests" / "test_mod" / "test_x.py").write_text("", encoding="utf-8")
     Outcome = review_bar.Outcome
     files = {"tests.test_mod": Outcome("tests.test_mod", "behaviour", "assert False")}
     explain = review_bar._not_collected
@@ -573,7 +581,8 @@ def test_colour_forced_in_the_environment_does_not_hide_the_cause(tmp_path, monk
     tree = tmp_path / "tree"
     (tree / "tests").mkdir(parents=True)
     (tree / "tests" / "test_new.py").write_text(
-        "import not_there_at_all\n\n\ndef test_x():\n    pass\n"
+        "import not_there_at_all\n\n\ndef test_x():\n    pass\n",
+        encoding="utf-8",
     )
     code, outcomes = review_bar.run_tests(tree, ["tests/test_new.py"], 60)
     assert [(o.result, o.detail) for o in outcomes] == [
@@ -584,7 +593,8 @@ def test_a_collection_error_with_no_error_lines_keeps_pytests_message(tmp_path):
     tree = tmp_path / "tree"
     (tree / "tests").mkdir(parents=True)
     (tree / "tests" / "test_fail.py").write_text(
-        "import pytest\n\npytest.fail('stop', pytrace=False)\n\n\ndef test_x():\n    pass\n"
+        "import pytest\n\npytest.fail('stop', pytrace=False)\n\n\ndef test_x():\n    pass\n",
+        encoding="utf-8",
     )
     code, outcomes = review_bar.run_tests(tree, ["tests/test_fail.py"], 60)
     assert [(o.result, o.detail) for o in outcomes] == [("behaviour", "collection failure")]

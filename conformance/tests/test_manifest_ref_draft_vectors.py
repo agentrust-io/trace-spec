@@ -19,7 +19,9 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 VECTOR_DIR = Path(__file__).parent / "vectors" / "manifest-ref-v0.3-draft"
-VECTORS = [json.loads(p.read_text()) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))]
+VECTORS = [
+    json.loads(p.read_text(encoding="utf-8")) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))
+]
 MUTANTS = (
     "trusts_asserted_result",
     "unresolved_is_pass",

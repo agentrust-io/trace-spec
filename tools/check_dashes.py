@@ -89,7 +89,9 @@ def findings(root: pathlib.Path):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=(__doc__ or "").splitlines()[0] if __doc__ else ""
+    )
     parser.add_argument("--root", default=".")
     args = parser.parse_args()
 

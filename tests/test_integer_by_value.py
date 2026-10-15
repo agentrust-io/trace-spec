@@ -152,7 +152,9 @@ def test_a_boolean_is_refused_although_python_calls_it_an_int() -> None:
 
 def _base() -> dict[str, Any]:
     """Vector 01's record, unsigned, carrying all five integer members of the schema."""
-    record = json.loads((VECTORS / "01-integer-spelling-verified.json").read_text())["record"]
+    record = json.loads(
+        (VECTORS / "01-integer-spelling-verified.json").read_text(encoding="utf-8")
+    )["record"]
     record.pop("signature")
     record["tool_transcript"] = {"hash": "sha256:" + "c" * 64, "call_count": 7}
     record["origin"] = {"kind": "self", "producer": "producer.example",
@@ -243,7 +245,7 @@ def test_the_schema_and_the_model_draw_each_boundary_in_the_same_place(
     decided by Python type, and read a numeric string as the number it spells."""
     record = _set(_base(), member, json.loads(text))
     errors = list(jsonschema.Draft202012Validator(
-        json.loads((ROOT / "schema" / "trace-claim.json").read_text())
+        json.loads((ROOT / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
     ).iter_errors(record))
     if keyword is None:
         assert errors == []
@@ -694,7 +696,7 @@ def test_a_successor_artifact_time_that_is_not_an_integer_is_refused(
 def test_a_revocation_bundle_decides_its_times_by_value() -> None:
     doc = json.loads(
         (ROOT / "examples" / "revocation-bundle" / "01-fresh-well-inside-both-bounds.json")
-        .read_text()
+        .read_text(encoding="utf-8")
     )
     ctx = doc["context"]
 

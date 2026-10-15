@@ -23,7 +23,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 ACTA_DIR = Path(__file__).resolve().parents[1] / "examples" / "action-receipts" / "acta"
-EXPECTED = json.loads((ACTA_DIR / "expected.json").read_text())
+EXPECTED = json.loads((ACTA_DIR / "expected.json").read_text(encoding="utf-8"))
 FIXTURES = sorted(p.name for p in ACTA_DIR.glob("0*.json"))
 
 SIGNER_KEY = Ed25519PublicKey.from_public_bytes(
@@ -37,7 +37,7 @@ def _jcs(obj) -> bytes:
 
 
 def _load(name: str) -> dict:
-    return json.loads((ACTA_DIR / name).read_text())
+    return json.loads((ACTA_DIR / name).read_text(encoding="utf-8"))
 
 
 def _signature_verifies(envelope: dict) -> bool:
@@ -144,6 +144,8 @@ def test_key_mismatch_fixture_is_signed_by_the_committed_second_key():
     """03 is a real signature by the committed mismatched key, not random bytes."""
     env = _load("03-signature-key-mismatch.json")
     other = Ed25519PublicKey.from_public_bytes(
-        bytes.fromhex((ACTA_DIR / "mismatched-signer-public-key.txt").read_text().strip())
+        bytes.fromhex(
+            (ACTA_DIR / "mismatched-signer-public-key.txt").read_text(encoding="utf-8").strip()
+        )
     )
     other.verify(bytes.fromhex(env["signature"]["sig"]), _jcs(env["payload"]))

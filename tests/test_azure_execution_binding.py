@@ -249,7 +249,7 @@ def _wcm():
     import wcm
 
     pem = (root / "amd-root.pem").read_bytes()
-    pinned = json.loads((root / "trust-root.json").read_text())["amd"]["pem_sha256"]
+    pinned = json.loads((root / "trust-root.json").read_text(encoding="utf-8"))["amd"]["pem_sha256"]
     assert hashlib.sha256(pem).hexdigest() == pinned
     trust = wcm.TrustStore()
     trust.add_root_pem(pem.decode())
@@ -258,8 +258,8 @@ def _wcm():
 
 def test_real_stock_boot_packet_replays_and_is_denied():
     wcm, trust = _wcm()
-    packet = json.loads((FIXTURES / "stock-relabel-packet.json").read_text())
-    meta = json.loads((FIXTURES / "stock-relabel-meta.json").read_text())
+    packet = json.loads((FIXTURES / "stock-relabel-packet.json").read_text(encoding="utf-8"))
+    meta = json.loads((FIXTURES / "stock-relabel-meta.json").read_text(encoding="utf-8"))
     ak = x.authenticate_ak(packet, trust)
     quote = x.parse_quote(base64.b64decode(packet["tpm_quote_b64"]))
     events = x.parse_uefi_log(base64.b64decode(packet["uefi_event_log_b64"]))
@@ -291,8 +291,8 @@ def test_real_stock_boot_packet_replays_and_is_denied():
 
 def test_legacy_pcr23_binding_accepts_the_same_unexecuted_agent():
     wcm, trust = _wcm()
-    packet = json.loads((FIXTURES / "stock-relabel-packet.json").read_text())
-    meta = json.loads((FIXTURES / "stock-relabel-meta.json").read_text())
+    packet = json.loads((FIXTURES / "stock-relabel-packet.json").read_text(encoding="utf-8"))
+    meta = json.loads((FIXTURES / "stock-relabel-meta.json").read_text(encoding="utf-8"))
     legacy = wcm.AzureSnpVtpmVerifier(trust).verify(
         packet["legacy_wcm_pcr23_bundle_b64"],
         expected_nonce=meta["challenge"],
@@ -309,12 +309,12 @@ ISSUED = 1790683200  # issuer clock; inside the VCEK and ARK validity windows
 
 
 def real(name):
-    packet = json.loads((FIXTURES / f"{name}-packet.json").read_text())
-    return packet, (FIXTURES / f"{name}.challenge").read_text().strip()
+    packet = json.loads((FIXTURES / f"{name}-packet.json").read_text(encoding="utf-8"))
+    return packet, (FIXTURES / f"{name}.challenge").read_text(encoding="utf-8").strip()
 
 
 def real_policy(**changes):
-    p = json.loads((FIXTURES / "execution-policy.json").read_text())
+    p = json.loads((FIXTURES / "execution-policy.json").read_text(encoding="utf-8"))
     policy = x.ExecutionPolicy(
         required_boot_application=p["required_boot_application"],
         approved_boot_applications=frozenset(p["approved_boot_applications"]),
@@ -329,7 +329,9 @@ def real_policy(**changes):
 def genoa_trust():
     wcm, trust = _wcm()
     pem = (FIXTURES / "ark-genoa.pem").read_bytes()
-    pinned = json.loads((FIXTURES / "execution-policy.json").read_text())["ark_genoa_sha256"]
+    pinned = json.loads((FIXTURES / "execution-policy.json").read_text(encoding="utf-8"))[
+        "ark_genoa_sha256"
+    ]
     assert hashlib.sha256(pem).hexdigest() == pinned
     trust.add_root_pem(pem.decode())
     return trust

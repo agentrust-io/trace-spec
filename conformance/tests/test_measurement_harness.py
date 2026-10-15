@@ -10,8 +10,8 @@ Until this file, those guards had no test. Deleting `assert_suite_imports_this_c
 from `main()` left the whole suite green, which is precisely the property the script was
 written to detect, one level up.
 
-**Method.** Each test builds a synthetic checkout — the smallest tree with the shape the
-script requires — breaks one precondition, runs the script as a subprocess, and asserts
+**Method.** Each test builds a synthetic checkout, the smallest tree with the shape the
+script requires, breaks one precondition, runs the script as a subprocess, and asserts
 it refuses rather than reports. The synthetic tree carries one guarded check and one
 unguarded one, so the reporting path is exercised too and not only the aborts.
 
@@ -94,13 +94,14 @@ def _checkout(root: Path, *, module: str = MODULE, suite: str = SUITE) -> Path:
     (package / "modules").mkdir(parents=True)
     (root / "tests").mkdir()
     (root / "pyproject.toml").write_text(
-        '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npythonpath = ["src"]\n'
+        '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npythonpath = ["src"]\n',
+        encoding="utf-8",
     )
-    (package / "__init__.py").write_text("")
-    (package / "result.py").write_text(RESULT)
-    (package / "modules" / "__init__.py").write_text("")
-    (package / "modules" / "tr_fak.py").write_text(module)
-    (root / "tests" / "test_fake.py").write_text(suite)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "result.py").write_text(RESULT, encoding="utf-8")
+    (package / "modules" / "__init__.py").write_text("", encoding="utf-8")
+    (package / "modules" / "tr_fak.py").write_text(module, encoding="utf-8")
+    (root / "tests" / "test_fake.py").write_text(suite, encoding="utf-8")
     return root
 
 
@@ -108,7 +109,7 @@ def _run(checkout: Path, *, pythonpath: str = "src") -> subprocess.CompletedProc
     """Run the harness against *checkout*, as a person would.
 
     `PYTHONPATH` is relative and resolved by each subprocess against its own working
-    directory, which the script sets to the checkout — so "src" reaches that tree's
+    directory, which the script sets to the checkout, so "src" reaches that tree's
     package and stands in for the editable install a real checkout has.
     """
     return subprocess.run(
@@ -154,9 +155,9 @@ def test_the_module_is_restored_after_the_run(tmp_path: Path) -> None:
     corrupted the thing it was measuring."""
     checkout = _checkout(tmp_path)
     module = checkout / "src" / "trace_tests" / "modules" / "tr_fak.py"
-    before = module.read_text()
+    before = module.read_text(encoding="utf-8")
     _run(checkout)
-    assert module.read_text() == before
+    assert module.read_text(encoding="utf-8") == before
 
 
 # --- the guards, one broken precondition each ---------------------------------------
@@ -244,7 +245,7 @@ def test_a_suite_that_imports_another_tree_is_refused(tmp_path: Path) -> None:
 
     A stale editable install leaves the baseline green and every mutation unobserved:
     pytest never imports the file being rewritten, so every site reports that nothing
-    noticed — which reads exactly like a suite that guards nothing.
+    noticed, which reads exactly like a suite that guards nothing.
     """
     measured = _checkout(tmp_path / "measured")
     imported = _checkout(tmp_path / "imported")
@@ -257,7 +258,9 @@ def test_a_suite_that_imports_another_tree_is_refused(tmp_path: Path) -> None:
 def test_an_uninstallable_package_is_refused_rather_than_measured(tmp_path: Path) -> None:
     """The probe's own failure is a refusal too, not something to measure past."""
     checkout = _checkout(tmp_path)
-    (checkout / "src" / "trace_tests" / "__init__.py").write_text("raise ImportError('broken')\n")
+    (checkout / "src" / "trace_tests" / "__init__.py").write_text(
+        "raise ImportError('broken')\n", encoding="utf-8"
+    )
     result = _run(checkout)
     assert result.returncode != 0
     assert "could not import trace_tests" in result.stderr
