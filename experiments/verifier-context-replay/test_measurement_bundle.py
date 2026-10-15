@@ -29,11 +29,6 @@ class MeasurementBundleAcceptance(unittest.TestCase):
         record=_minimal_record()
         record["policy"]["bundle_hash"]=sha256(POLICY)
         record["runtime"]["measurement"]=ev.record["runtime"]["measurement"]
-        record["appraisal"]["platform_measurement"]={
-            "measurement":record["runtime"]["measurement"],
-            "layers":{"pcr:0":{"outcome":"established"},
-                      "pcr:2":{"outcome":"not-established","reason":"layer-not-measured"}}
-        }
         signed_record=sign_record(record,TRACE_KEY)
         policy={**ev.policy,"required_layers":list(required),
                 "require_preexecution_appraisal":preexecution}
