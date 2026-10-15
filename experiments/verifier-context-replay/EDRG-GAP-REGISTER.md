@@ -1,4 +1,4 @@
-# TRACE retained-context replay — Gap-First EDRG register
+# TRACE retained-context replay: Gap-First EDRG register
 
 Scope: draft PR #2; this register does not assert production acceptance.
 Reference: Frequency/docs/GAP-FIRST-EDRG-0001.md (proposed workflow).
