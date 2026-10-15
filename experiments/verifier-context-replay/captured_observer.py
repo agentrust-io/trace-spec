@@ -8,11 +8,12 @@ import hashlib
 import os
 from pathlib import Path
 import subprocess
+import shutil
 from observer_receipt import issue
 
 
 def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
-            host_label, timeout=300):
+            host_label, timeout=300, isolate_network=False):
     """Run exactly one allowlisted program; sign observed exit and commit binding."""
     if not isinstance(argv, (list, tuple)) or not argv:
         raise ValueError("argv required")
@@ -41,12 +42,32 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
     )
     if status.stdout:
         raise ValueError("dirty working tree")
+    # Network isolation is an explicit, fail-closed opt-in. It is not a
+    # confidential-computing attestation or a general filesystem sandbox.
+    command = list(argv)
+    if type(isolate_network) is not bool:
+        raise ValueError("isolate_network must be boolean")
+    if isolate_network:
+        bubblewrap = shutil.which("bwrap")
+        if bubblewrap is None:
+            raise RuntimeError("bubblewrap unavailable: isolated run refused")
+        command = [
+            bubblewrap, "--unshare-net", "--die-with-parent",
+            "--ro-bind", "/", "/", "--proc", "/proc",
+            "--dev", "/dev", "--tmpfs", "/tmp",
+            "--chdir", str(root), "--",
+            *command,
+        ]
     # Capture observed process status, rather than accepting a supplied result.
     result = subprocess.run(
-        list(argv), cwd=str(root), capture_output=True, timeout=timeout,
+        command, cwd=str(root), capture_output=True, timeout=timeout,
         shell=False, env={"PATH": os.defpath, "HOME": "/nonexistent",
                           "PYTHONNOUSERSITE": "1"},
     )
+    if isolate_network and result.returncode != 0:
+        # A nonzero exit could be the launcher refusing to isolate; do not
+        # misrepresent that as an observed successful sandboxed workload.
+        raise RuntimeError("isolated execution did not complete successfully")
     # Reject observed results if tracked/untracked source changed during execution.
     after = subprocess.run(
         ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"],
@@ -58,6 +79,7 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         raise ValueError("executable changed during execution")
     observation = {
         "executable_sha256": executable_sha256,
+        "network_isolation_requested": isolate_network,
         "commit": rev, "host": host_label,
         "command": list(argv),
         "exit_code": result.returncode,

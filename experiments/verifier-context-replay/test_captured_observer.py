@@ -43,6 +43,38 @@ class CapturedObserverTests(unittest.TestCase):
         receipt["observation"]["exit_code"] = 0
         self.assertFalse(verify(receipt, self.public))
 
+    def test_missing_isolation_tool_refuses_before_execution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                ]
+                with patch("captured_observer.shutil.which", return_value=None):
+                    with self.assertRaisesRegex(RuntimeError, "bubblewrap unavailable"):
+                        capture(argv=[sys.executable, "-c", "pass"],
+                                allowed_argv=[sys.executable, "-c", "pass"],
+                                repository=directory, expected_commit="abc123",
+                                private_key=self.key, host_label="development-host",
+                                isolate_network=True)
+                self.assertEqual(run.call_count, 2)
+
+    def test_failed_isolated_launch_cannot_be_signed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess([], 1, b"", b"bwrap refused"),
+                ]
+                with patch("captured_observer.shutil.which", return_value="/usr/bin/bwrap"):
+                    with self.assertRaisesRegex(RuntimeError, "isolated execution"):
+                        capture(argv=[sys.executable, "-c", "pass"],
+                                allowed_argv=[sys.executable, "-c", "pass"],
+                                repository=directory, expected_commit="abc123",
+                                private_key=self.key, host_label="development-host",
+                                isolate_network=True)
+
     def test_source_changed_during_execution_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch("captured_observer.subprocess.run") as run:

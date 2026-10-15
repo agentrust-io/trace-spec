@@ -36,3 +36,13 @@ The signing key and host label are provided by the caller. This does NOT
 establish independently enrolled authority, hardware-verified process identity,
 authenticated host identity, immutable environment or network isolation.
 External trusted enrollment and measured capture remain release blockers.
+
+### Optional Linux network namespace (development only)
+
+capture(..., isolate_network=True) requires bubblewrap and launches the exact
+allowlisted command through bwrap --unshare-net. Missing bwrap or a failed child
+run causes refusal rather than a signed successful observation. The receipt
+records that the namespace was requested. This is a host-local test facility,
+NOT a claim of an independently attested sandbox, authenticated kernel, or
+confidential execution. Its read-only root still exposes host-readable data;
+do not run untrusted code or interpret this as comprehensive isolation.
