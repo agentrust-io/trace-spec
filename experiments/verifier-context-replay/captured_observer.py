@@ -51,13 +51,16 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         bubblewrap = shutil.which("bwrap")
         if bubblewrap is None:
             raise RuntimeError("bubblewrap unavailable: isolated run refused")
-        command = [
+        sandbox = [
             bubblewrap, "--unshare-net", "--die-with-parent",
             "--ro-bind", "/", "/", "--proc", "/proc",
             "--dev", "/dev", "--tmpfs", "/tmp",
-            "--chdir", str(root), "--",
-            *command,
         ]
+        # A tmpfs on /tmp would otherwise hide a checkout located below /tmp.
+        # Rebind only the verified checkout, read-only, after creating the tmpfs.
+        if root == Path("/tmp") or Path("/tmp") in root.parents:
+            sandbox.extend(["--ro-bind", str(root), str(root)])
+        command = [*sandbox, "--chdir", str(root), "--", *command]
     # Capture observed process status, rather than accepting a supplied result.
     result = subprocess.run(
         command, cwd=str(root), capture_output=True, timeout=timeout,
