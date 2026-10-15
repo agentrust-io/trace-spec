@@ -27,7 +27,8 @@ def _write_exclusive(path, data):
         os.unlink(temporary)
 
 
-def freeze(directory, *, record, root, policy, revocation, resolver, context,\n           measurement_reference=None, measurement_quote=None):
+def freeze(directory, *, record, root, policy, revocation, resolver, context,
+           measurement_reference=None, measurement_quote=None):
     destination = Path(directory)
     destination.mkdir(parents=True, exist_ok=True)
     artifacts = dict(record=record, trusted_root=root, policy=policy,
