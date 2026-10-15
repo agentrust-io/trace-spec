@@ -1,4 +1,4 @@
-# Measurement appraisal retained-context acceptance — 2026-10-15
+# Measurement appraisal retained-context acceptance : 2026-10-15
 
 ## Upstream trigger
 
