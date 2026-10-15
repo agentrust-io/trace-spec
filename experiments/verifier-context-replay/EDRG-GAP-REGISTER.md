@@ -28,6 +28,30 @@ verify the TRACE observer's full execution path, hostile workloads, races,
 signer custody, external trust, or the VPS. T02 remains OPEN pending
 end-to-end sandbox and negative tests on the exact release artifact.
 
+
+## Executable operator acceptance: Prometheus, 2026-10-15
+
+On the authorized Prometheus Ubuntu host, a clean, depth-one checkout at commit
+61d193be45b1d338c35e4253734e3cb789ea8be2 was used for a bounded test.
+The current experiment's retained-evidence, observer and reference-adapter
+unit suites passed 19/19 under local Python 3.14.4.
+
+The actual captured_observer.capture code (not only a manually constructed
+Bubblewrap command) ran /usr/bin/true with isolation requested and returned
+exit 0. An ephemeral Ed25519 test signing key produced a receipt that verified
+with the matching public key. Additional permitted-process checks established
+that /etc/passwd was not visible and that a socket connection to 1.1.1.1:443
+was refused inside the isolated process. A process attempting to overwrite
+the checkout README was refused without a signed successful observation.
+These checks used an operator-controlled host, key and test procedure.
+
+Evidence classification: OPERATOR-LIVE, not independent. No signed artifact
+bundle, trusted timestamp, externally enrolled public key, third-party
+observer, hardware measurement or VPS peer has been established. This
+observation proves bounded execution on the tested SHA, not general sandbox
+escape resistance, source TOCTOU protection, or independent acceptance.
+T01, T02 and T05 remain OPEN; T09 remains EXTERNALLY-BLOCKED.
+
 ## Mandatory negative acceptance
 
 Wrong public key, wrong fingerprint, wrong commit/host, modified receipt,
