@@ -33,12 +33,20 @@ def verify_trace_record(record, trusted_keys, *, verification_time, max_age_seco
         kwargs["verification_time"] = verification_time
     else:
         kwargs["now"] = verification_time
-    if "expected_nonce" in parameters:
+    if expected_nonce is not None and "expected_nonce" not in parameters:
+        return ReferenceResult("not-established", "reference-verifier-cannot-check-nonce")
+    if expected_nonce is not None:
         kwargs["expected_nonce"] = expected_nonce
-    if "revocation" in parameters and revoked_keys is not None:
+    if revoked_keys is not None and "revocation" not in parameters:
+        return ReferenceResult("not-established", "reference-verifier-cannot-check-revocation")
+    if revoked_keys is not None:
         kwargs["revocation"] = revoked_keys
     try:
         result = verifier(record, trusted_keys, **kwargs)
     except Exception as exc:
         return ReferenceResult("rejected", type(exc).__name__)
+    # The pinned reference API raises on rejection and returns None on success.
+    # Any other result is an unknown contract, not successful verification.
+    if result is not None:
+        return ReferenceResult("not-established", "unexpected-reference-verdict")
     return ReferenceResult("verified", "trace-signature-and-requested-checks-passed")
