@@ -27,7 +27,7 @@ VALID_TRACE = {
 
 def _write(tmp_path, data):
     p = tmp_path / "record.json"
-    p.write_text(json.dumps(data))
+    p.write_text(json.dumps(data), encoding="utf-8")
     return str(p)
 
 

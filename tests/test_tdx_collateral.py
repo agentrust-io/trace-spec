@@ -68,7 +68,7 @@ def collateral_with(p, name, change):
 
 
 def test_intel_root_is_the_independently_downloaded_pin():
-    pin = json.loads((CLOUD / "trust-root.json").read_text())["intel"]
+    pin = json.loads((CLOUD / "trust-root.json").read_text(encoding="utf-8"))["intel"]
     der = ROOT.public_bytes(serialization.Encoding.DER)
     assert hashlib.sha256(der).hexdigest() == pin["der_sha256"]
     assert hashlib.sha256(QUOTE).hexdigest() == packet("standard").record["quote_sha256"]
@@ -191,7 +191,9 @@ def test_non_ok_results_deny_by_default(code, reason):
 
 
 def test_ten_year_expired_offline_replay_denies():
-    replay = json.loads((APPRAISAL / "offline" / "offline-replay.json").read_text())
+    replay = json.loads(
+        (APPRAISAL / "offline" / "offline-replay.json").read_text(encoding="utf-8")
+    )
     for name, policy in (
         ("standard", STANDARD),
         ("early", t.CollateralPolicy("early", 22, frozenset({0xA002}))),
@@ -207,7 +209,9 @@ def test_ten_year_expired_offline_replay_denies():
 
 
 def test_historical_offline_replay_reproduces_the_saved_verdict():
-    replay = json.loads((APPRAISAL / "offline" / "offline-replay.json").read_text())
+    replay = json.loads(
+        (APPRAISAL / "offline" / "offline-replay.json").read_text(encoding="utf-8")
+    )
     base = packet("standard")
     historical = dataclasses.replace(
         base, record=t.replay_record(replay, base.record, "standard", "historical")
@@ -322,9 +326,10 @@ def test_nonzero_status_with_consistent_strict_flag_denies():
 def test_duplicate_json_keys_deny(tmp_path):
     for name in ("qvl-appraisal.json", "intel-collateral.json", "sgx_default_qcnl.conf"):
         (tmp_path / name).write_bytes((APPRAISAL / "standard" / name).read_bytes())
-    raw = (tmp_path / "qvl-appraisal.json").read_text()
+    raw = (tmp_path / "qvl-appraisal.json").read_text(encoding="utf-8")
     (tmp_path / "qvl-appraisal.json").write_text(
-        raw.replace('"qve_used": false,', '"qve_used": false, "qve_used": false,')
+        raw.replace('"qve_used": false,', '"qve_used": false, "qve_used": false,'),
+        encoding="utf-8",
     )
     denied("json_duplicate_key", t.load_packet, tmp_path)
 

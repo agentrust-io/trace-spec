@@ -49,3 +49,8 @@ jobs:
 
       - name: Test
         run: pytest --cov=agentrust_trace --cov-report=term-missing
+
+      - name: Portability (non-UTF-8 locale and python -OO)
+        run: |
+          LC_ALL=C PYTHONUTF8=0 pytest
+          PYTHONOPTIMIZE=2 pytest tests/test_review_bar.py

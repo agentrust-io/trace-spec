@@ -76,7 +76,10 @@ def missing_name(message: str, new_names: frozenset[str] = frozenset()) -> bool:
 
 def git(repo: Path, *args: str) -> str:
     proc = subprocess.run(
-        ["git", "-C", str(repo), *args], capture_output=True, text=True
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
     )
     if proc.returncode != 0:
         raise RuntimeError(f"git {args[0]} failed: {proc.stderr.strip()}")
@@ -217,7 +220,13 @@ def run_tests(
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
              "-o", "addopts=", "--tb=short", "--continue-on-collection-errors",
              f"--junitxml={junit}", *tests],
-            cwd=tree, env=env, capture_output=True, text=True, timeout=timeout,
+            cwd=tree,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         junit.unlink(missing_ok=True)
@@ -375,7 +384,7 @@ def _not_collected(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n", 1)[0])
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", required=True)

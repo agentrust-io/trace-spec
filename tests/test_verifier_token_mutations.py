@@ -22,7 +22,7 @@ __all__ = ["fixture"]
 
 
 def load_mutant(changes):
-    source = __import__("pathlib").Path(v.__file__).read_text()
+    source = __import__("pathlib").Path(v.__file__).read_text(encoding="utf-8")
     for before, after in changes:
         assert source.count(before) == 1, before
         source = source.replace(before, after)
@@ -139,7 +139,7 @@ def test_disabling_mapped_gate_admits_counterexample(fixture, rule):
         body = list(__import__("cbor2").loads(raw).value)
         body[3] = bytes([body[3][0] ^ 1]) + body[3][1:]
         raw = __import__("cbor2").dumps(__import__("cbor2").CBORTag(18, body), canonical=True)
-        source = __import__("pathlib").Path(v.__file__).read_text()
+        source = __import__("pathlib").Path(v.__file__).read_text(encoding="utf-8")
         tree = ast.parse(source)
         function = next(
             n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "verify_token"

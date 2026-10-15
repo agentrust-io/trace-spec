@@ -45,7 +45,7 @@ PACKETS = {
 
 
 def packet(name: str) -> dict[str, Any]:
-    return json.loads(PACKETS[name].read_text())
+    return json.loads(PACKETS[name].read_text(encoding="utf-8"))
 
 
 def cpu_component(

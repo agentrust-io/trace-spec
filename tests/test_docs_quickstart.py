@@ -7,7 +7,7 @@ import sys
 
 def test_first_record_tutorial(tmp_path):
     page = Path(__file__).resolve().parents[1] / "docs/quickstart.md"
-    blocks = re.findall(r"^```python\n(.*?)^```", page.read_text(), re.M | re.S)
+    blocks = re.findall(r"^```python\n(.*?)^```", page.read_text(encoding="utf-8"), re.M | re.S)
     assert len(blocks) == 2
     first = subprocess.run(
         [sys.executable, "-c", blocks[0]], cwd=tmp_path, text=True, capture_output=True

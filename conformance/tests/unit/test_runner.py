@@ -12,7 +12,7 @@ VECTORS_DIR = pathlib.Path(__file__).parent.parent / "vectors"
 
 
 def load_vector(filename: str) -> dict:
-    return json.loads((VECTORS_DIR / filename).read_text())
+    return json.loads((VECTORS_DIR / filename).read_text(encoding="utf-8"))
 
 
 @pytest.fixture
