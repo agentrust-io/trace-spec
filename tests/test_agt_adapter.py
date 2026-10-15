@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import inspect
 import json
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from typing import Any
 
-import hashlib
 import rfc8785
 
 import pytest
@@ -388,3 +390,134 @@ def test_the_adapter_floor_is_the_one_the_record_contract_carries() -> None:
         m for m in TrustRecord.model_fields["iat"].metadata if getattr(m, "ge", None) is not None
     )
     assert bound.ge == TRACE_MIN_IAT
+
+
+# ---------------------------------------------------------------------------
+# Issue #534: optional transparency and session field validation
+# ---------------------------------------------------------------------------
+
+def test_transparency_defaults_to_none_and_is_omitted_when_unanchored() -> None:
+    record = _make_adapter(transparency=None).build_trust_record(_make_session())
+    assert "transparency" not in record
+    validate_json(record)
+    assert (
+        inspect.signature(TraceAGTAdapter.__init__).parameters["transparency"].default
+        is None
+    )
+    default_record = TraceAGTAdapter(
+        model_provider="example-provider",
+        model_id="example-model",
+        build_provenance_digest="sha256:" + "a" * 64,
+        enforcement_mode="enforce",
+    ).build_trust_record(_make_session())
+    assert "transparency" not in default_record
+    validate_json(default_record)
+
+
+@pytest.mark.parametrize(
+    "transparency",
+    ["", 123, True, ["https://example.org"], {"uri": "https://example.org"}],
+    ids=repr,
+)
+def test_transparency_rejects_empty_or_non_string(transparency: Any) -> None:
+    with pytest.raises(ValueError, match="transparency"):
+        _make_adapter(transparency=transparency)
+
+
+@pytest.mark.parametrize(
+    "agent_did",
+    [
+        "not-a-uri",
+        "",
+        "https://example.org/agent",
+        "spiffe://example.org",
+        "did:x",
+        123,
+        None,
+        True,
+        ["spiffe://example.org/agent/a"],
+    ],
+    ids=repr,
+)
+def test_agent_did_rejects_invalid_or_non_string_values(agent_did: Any) -> None:
+    with pytest.raises(ValueError, match="agent_did"):
+        _make_session(agent_did=agent_did)
+
+
+@pytest.mark.parametrize(
+    "bundle",
+    ["permit(principal, action, resource);", 123, None, True, [1, 2], {"a": 1}],
+    ids=repr,
+)
+def test_policy_bundle_bytes_rejects_non_bytes(bundle: Any) -> None:
+    with pytest.raises(ValueError, match="policy_bundle_bytes"):
+        _make_session(policy_bundle_bytes=bundle)
+    with pytest.raises(ValueError, match="policy_bundle_bytes"):
+        TraceAGTAdapter._bundle_hash(bundle)
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        "a-string",
+        {"tool": "x", "decision": "permit"},
+        [1, 2],
+        ["entry"],
+        [None],
+        123,
+        None,
+        True,
+    ],
+    ids=repr,
+)
+def test_audit_entries_rejects_non_list_or_non_dict_items(entries: Any) -> None:
+    with pytest.raises(ValueError, match="audit_entries"):
+        _make_session(audit_entries=entries)
+    with pytest.raises(ValueError, match="audit_entries"):
+        TraceAGTAdapter._transcript_hash(entries)
+
+
+@pytest.mark.parametrize(
+    "tip",
+    ["", "\ud800", 123, None, True, b"deadbeef", ["tip"]],
+    ids=repr,
+)
+def test_merkle_chain_tip_rejects_empty_or_non_string(tip: Any) -> None:
+    with pytest.raises(ValueError, match="merkle_chain_tip"):
+        _make_session(merkle_chain_tip=tip)
+    with pytest.raises(ValueError, match="merkle_chain_tip"):
+        TraceAGTAdapter._measurement(tip)
+
+
+@pytest.mark.parametrize(
+    "call_count",
+    [True, False, -1, "1", 1.5, JCS_SAFE_INTEGER + 1],
+    ids=repr,
+)
+def test_call_count_rejects_invalid_values(call_count: Any) -> None:
+    with pytest.raises(ValueError, match="call_count"):
+        _make_session(call_count=call_count)
+
+
+def test_build_trust_record_revalidates_session_and_in_place_mutations() -> None:
+    adapter = _make_adapter()
+    with pytest.raises(ValueError, match="session must be an AGTSessionResult"):
+        adapter.build_trust_record(None)  # type: ignore[arg-type]
+
+    session = _make_session(audit_entries=[{"entry_id": 1, "decision": "permit"}])
+    session.audit_entries.append("not-a-dict")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="audit_entries"):
+        adapter.build_trust_record(session)
+
+    for field_name, bad_value in (
+        ("agent_did", "not-a-uri"),
+        ("policy_bundle_bytes", "not-bytes"),
+        ("merkle_chain_tip", ""),
+        ("call_count", True),
+    ):
+        tampered = _make_session()
+        object.__setattr__(tampered, field_name, bad_value)
+        with pytest.raises(ValueError, match=field_name):
+            adapter.build_trust_record(tampered)
+
+

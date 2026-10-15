@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from agentrust_trace._patterns import _PYTHON_PATTERNS
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
     Appraisal,
@@ -26,6 +27,67 @@ from agentrust_trace.sign import _canonical_bytes
 # schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
 # failure this check exists to stop -- so the floor is the contract's, not zero.
 TRACE_MIN_IAT = 1700000000
+
+_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
+
+
+def _check_agent_did(value: object) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"agent_did must be a string, got {type(value).__name__}")
+    if not _SUBJECT_RE.match(value):
+        raise ValueError(
+            f"agent_did {value!r} must be a SPIFFE URI "
+            "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
+            "It becomes the record subject, which is what a verifier keys on."
+        )
+
+
+def _check_policy_bundle_bytes(value: object) -> None:
+    if not isinstance(value, bytes):
+        raise ValueError(
+            f"policy_bundle_bytes must be bytes, got {type(value).__name__}"
+        )
+
+
+def _check_audit_entries(value: object) -> None:
+    if not isinstance(value, list) or any(not isinstance(entry, dict) for entry in value):
+        raise ValueError(
+            "audit_entries must be a list of dict objects, got "
+            f"{type(value).__name__}"
+        )
+
+
+def _check_merkle_chain_tip(value: object) -> None:
+    if not isinstance(value, str) or not value:
+        raise ValueError(
+            f"merkle_chain_tip must be a non-empty string, got {value!r}"
+        )
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(
+            "merkle_chain_tip must be valid UTF-8 without lone surrogates"
+        ) from exc
+
+
+def _check_call_count(value: object) -> None:
+    if value is None:
+        return
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < 0
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"call_count must be an integer within [0, {JCS_SAFE_INTEGER}] or None, "
+            f"got {value!r}"
+        )
+
+
+def _check_transparency(value: object) -> None:
+    if value is not None and (not isinstance(value, str) or not value):
+        raise ValueError("transparency must be a non-empty URI string or None")
 
 
 def _check_iat(value: object) -> None:
@@ -86,6 +148,11 @@ class AGTSessionResult:
     """Issuance timestamp. Defaults to now."""
 
     def __post_init__(self) -> None:
+        _check_agent_did(self.agent_did)
+        _check_policy_bundle_bytes(self.policy_bundle_bytes)
+        _check_audit_entries(self.audit_entries)
+        _check_merkle_chain_tip(self.merkle_chain_tip)
+        _check_call_count(self.call_count)
         _check_iat(self.iat)
 
 
@@ -125,7 +192,7 @@ class TraceAGTAdapter:
         build_provenance_digest: str,
         build_provenance_builder: str | None = None,
         build_provenance_uri: str | None = None,
-        transparency: str,
+        transparency: str | None = None,
         appraisal_status: Literal["affirming", "warning", "contraindicated", "none"] = "none",
         appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
@@ -144,7 +211,10 @@ class TraceAGTAdapter:
                 being built, and stamping ``affirming`` on an unappraised record puts a
                 verdict in the field a consumer reads to find out whether anybody
                 checked. Set this only when an appraisal actually happened.
+            transparency: SCITT receipt URI. ``None`` means unanchored, which is correct
+                below Level 2 and leaves the key out of the record.
         """
+        _check_transparency(transparency)
         self._model = ModelInfo(
             provider=model_provider,
             model_id=model_id,
@@ -181,13 +251,23 @@ class TraceAGTAdapter:
             The ``cnf.jwk`` placeholder carries no key material until ``sign_record()``
             populates it from the signing key.
         """
+        if not isinstance(session, AGTSessionResult):
+            raise ValueError(
+                f"session must be an AGTSessionResult, got {type(session).__name__}"
+            )
+        _check_agent_did(session.agent_did)
+        _check_policy_bundle_bytes(session.policy_bundle_bytes)
+        _check_audit_entries(session.audit_entries)
+        _check_merkle_chain_tip(session.merkle_chain_tip)
+        _check_call_count(session.call_count)
+        _check_iat(session.iat)
+        _check_transparency(self._transparency)
+
         call_count = (
             session.call_count
             if session.call_count is not None
             else len(session.audit_entries)
         )
-
-        _check_iat(session.iat)
 
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
@@ -214,7 +294,6 @@ class TraceAGTAdapter:
                 policy_ref=self._appraisal_policy_ref,
                 timestamp=session.iat,
             ).model_dump(exclude_none=True),
-            "transparency": self._transparency,
             # cnf is populated by sign_record(); placeholder keeps schema valid
             "cnf": {
                 "jwk": {
@@ -224,6 +303,8 @@ class TraceAGTAdapter:
                 },
             },
         }
+        if self._transparency is not None:
+            record["transparency"] = self._transparency
         return record
 
     # ------------------------------------------------------------------
@@ -232,14 +313,17 @@ class TraceAGTAdapter:
 
     @staticmethod
     def _bundle_hash(policy_bundle_bytes: bytes) -> str:
+        _check_policy_bundle_bytes(policy_bundle_bytes)
         return "sha256:" + hashlib.sha256(policy_bundle_bytes).hexdigest()
 
     @staticmethod
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
         # RFC 8785 (JCS): same canonicalization TraceSandboxAdapter already uses
         # for the same field, and what docs/schema.md calls "canonical JSON".
+        _check_audit_entries(audit_entries)
         return "sha256:" + hashlib.sha256(_canonical_bytes(audit_entries)).hexdigest()
 
     @staticmethod
     def _measurement(merkle_chain_tip: str) -> str:
+        _check_merkle_chain_tip(merkle_chain_tip)
         return "sha256:" + hashlib.sha256(merkle_chain_tip.encode()).hexdigest()

@@ -24,13 +24,11 @@ session = AGTSessionResult(
 adapter = TraceAGTAdapter(
     model_provider="example", model_id="synthetic-demo",
     build_provenance_digest="sha256:" + "e" * 64,
-    transparency="https://example.test/unused",
     enforcement_mode="declared",  # synthetic input: no policy engine ran
 )
 record = adapter.build_trust_record(session)
 assert record["policy"]["enforcement_mode"] == "declared"
-# The adapter currently requires a URI argument but performs no registration.
-record.pop("transparency")
+assert "transparency" not in record
 # `appraisal.status` defaults to "none", which is correct here: synthetic input has not
 # been appraised. Pass appraisal_status only when an appraisal actually happened.
 key = generate_key()

@@ -130,6 +130,71 @@ _SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
 _DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
 
 
+def _check_sandbox_id(value: object) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"sandbox_id must be a string, got {type(value).__name__}")
+    if not _SUBJECT_RE.match(value):
+        raise ValueError(
+            f"sandbox_id {value!r} must be a SPIFFE URI "
+            "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
+            "It becomes the record subject, which is what a verifier keys on."
+        )
+
+
+def _check_image_digest(value: object) -> None:
+    if not isinstance(value, str):
+        raise ValueError(
+            f"image_digest must be a string, got {type(value).__name__}"
+        )
+    if not _DIGEST_RE.match(value):
+        raise ValueError(
+            f"image_digest {value!r} must be a sha256: or sha384: digest."
+        )
+
+
+def _check_policy_bundle_bytes(value: object) -> None:
+    if not isinstance(value, bytes):
+        raise ValueError(
+            f"policy_bundle_bytes must be bytes, got {type(value).__name__}"
+        )
+
+
+def _check_decisions(value: object) -> None:
+    if not isinstance(value, list) or any(not isinstance(d, dict) for d in value):
+        raise ValueError(
+            f"decisions must be a list of dict objects, got {type(value).__name__}"
+        )
+
+
+def _check_call_count(value: object) -> None:
+    if value is None:
+        return
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < 0
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"call_count must be an integer within [0, {JCS_SAFE_INTEGER}] or None, "
+            f"got {value!r}"
+        )
+
+
+def _check_transparency(value: object) -> None:
+    if value is not None and (not isinstance(value, str) or not value):
+        raise ValueError("transparency must be a non-empty URI string or None")
+
+
+def _check_bundle_hash(value: object) -> None:
+    if not isinstance(value, str):
+        raise ValueError(f"bundle_hash must be a string, got {type(value).__name__}")
+    if not _DIGEST_RE.match(value):
+        raise ValueError(
+            f"bundle_hash {value!r} must be a sha256: or sha384: digest."
+        )
+
+
 @dataclass(frozen=True)
 class SandboxAttestation:
     """Hardware evidence for the machine a sandbox ran on.
@@ -203,6 +268,16 @@ class SandboxAttestation:
             )
 
 
+def _check_attestation(value: object) -> None:
+    if value is None:
+        return
+    if not isinstance(value, SandboxAttestation):
+        raise ValueError(
+            f"attestation must be a SandboxAttestation or None, got {type(value).__name__}"
+        )
+    value.__post_init__()
+
+
 @dataclass(frozen=True)
 class SandboxSessionResult:
     """One sandbox session, as the runtime has it at close.
@@ -238,22 +313,12 @@ class SandboxSessionResult:
     """Issuance timestamp. Defaults to now."""
 
     def __post_init__(self) -> None:
-        if not isinstance(self.sandbox_id, str):
-            raise ValueError(f"sandbox_id must be a string, got {type(self.sandbox_id).__name__}")
-        if not _SUBJECT_RE.match(self.sandbox_id):
-            raise ValueError(
-                f"sandbox_id {self.sandbox_id!r} must be a SPIFFE URI "
-                "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
-                "It becomes the record subject, which is what a verifier keys on."
-            )
-        if not isinstance(self.image_digest, str):
-            raise ValueError(
-                f"image_digest must be a string, got {type(self.image_digest).__name__}"
-            )
-        if not _DIGEST_RE.match(self.image_digest):
-            raise ValueError(
-                f"image_digest {self.image_digest!r} must be a sha256: or sha384: digest."
-            )
+        _check_sandbox_id(self.sandbox_id)
+        _check_image_digest(self.image_digest)
+        _check_policy_bundle_bytes(self.policy_bundle_bytes)
+        _check_decisions(self.decisions)
+        _check_attestation(self.attestation)
+        _check_call_count(self.call_count)
         _check_iat(self.iat)
 
 
@@ -311,6 +376,7 @@ class TraceSandboxAdapter:
             build_provenance_slsa_level: Defaults to 0, meaning no provenance claim. Raise
                 it only when a builder genuinely produced the attested level.
         """
+        _check_transparency(transparency)
         self._model = ModelInfo(
             provider=model_provider, model_id=model_id, version=model_version
         )
@@ -346,10 +412,21 @@ class TraceSandboxAdapter:
         passed here. See the module docstring and :class:`SandboxAttestation` for this
         boundary.
         """
+        if not isinstance(session, SandboxSessionResult):
+            raise ValueError(
+                f"session must be a SandboxSessionResult, got {type(session).__name__}"
+            )
+        _check_sandbox_id(session.sandbox_id)
+        _check_image_digest(session.image_digest)
+        _check_policy_bundle_bytes(session.policy_bundle_bytes)
+        _check_decisions(session.decisions)
+        _check_attestation(session.attestation)
+        _check_call_count(session.call_count)
+        _check_iat(session.iat)
+        _check_transparency(self._transparency)
+
         bundle_hash = self.bundle_hash(session.policy_bundle_bytes)
         runtime = self._runtime(session, bundle_hash)
-
-        _check_iat(session.iat)
 
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
@@ -404,6 +481,7 @@ class TraceSandboxAdapter:
     @staticmethod
     def bundle_hash(policy_bundle_bytes: bytes) -> str:
         """SHA-256 of the policy bundle bytes, exactly as supplied."""
+        _check_policy_bundle_bytes(policy_bundle_bytes)
         return "sha256:" + hashlib.sha256(policy_bundle_bytes).hexdigest()
 
     @staticmethod
@@ -416,6 +494,7 @@ class TraceSandboxAdapter:
         pre-image (see :func:`~agentrust_trace.sign.sign_record`) keeps a record
         reproducible by an implementation in another language.
         """
+        _check_decisions(decisions)
         return "sha256:" + hashlib.sha256(_canonical_bytes(decisions)).hexdigest()
 
     @staticmethod
@@ -431,6 +510,8 @@ class TraceSandboxAdapter:
         ``platform: "software-only"``, which the model documents as never to be mistaken
         for hardware-backed evidence.
         """
+        _check_image_digest(image_digest)
+        _check_bundle_hash(bundle_hash)
         return (
             "sha256:"
             + hashlib.sha256(f"{image_digest}\n{bundle_hash}".encode()).hexdigest()
