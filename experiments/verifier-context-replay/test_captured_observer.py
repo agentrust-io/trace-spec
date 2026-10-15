@@ -75,6 +75,27 @@ class CapturedObserverTests(unittest.TestCase):
                                 private_key=self.key, host_label="development-host",
                                 isolate_network=True)
 
+    def test_isolated_command_never_mounts_host_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch("captured_observer.subprocess.run") as run:
+                run.side_effect = [
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess([], 0, b"ok", b""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                ]
+                with patch("captured_observer.shutil.which", return_value="/usr/bin/bwrap"):
+                    capture(argv=[sys.executable, "-c", "pass"],
+                            allowed_argv=[sys.executable, "-c", "pass"],
+                            repository=directory, expected_commit="abc123",
+                            private_key=self.key, host_label="development-host",
+                            isolate_network=True)
+                argv = run.call_args_list[2].args[0]
+                self.assertNotIn(["--ro-bind", "/", "/"],
+                                 [argv[i:i+3] for i in range(len(argv)-2)])
+                self.assertIn(["--ro-bind", directory, directory],
+                              [argv[i:i+3] for i in range(len(argv)-2)])
+
     def test_source_changed_during_execution_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch("captured_observer.subprocess.run") as run:
