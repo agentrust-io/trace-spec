@@ -2,6 +2,8 @@
 
 This page explains how to propose a change to TRACE and what reviewers will ask for. Small fixes such as typos and broken links can go straight to a pull request; changes to the rules every implementation must follow need more discussion and a named organization behind them, as described below.
 
+AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.
+
 TRACE is an open specification. Contributions are welcome in four areas: the specification text, the JSON Schema, the examples, and the conformance test suite (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 
 ## Running the reference-library checks

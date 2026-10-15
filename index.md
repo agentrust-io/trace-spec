@@ -85,4 +85,4 @@ The specification is a **Developer Preview**: usable now, and still expected to 
 
 TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](GOVERNANCE.md) for how decisions are made and [Contributing](CONTRIBUTING.md) for how to propose a change.
 
-**Status:** spec v0.2 · agentrust-trace 0.11.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** spec v0.2 · agentrust-trace 0.11.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.

@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to the TRACE test suite.
 
+AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.
+
 ## How to Contribute
 
 1. Fork the repository and create a feature branch

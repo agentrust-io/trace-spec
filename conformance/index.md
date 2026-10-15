@@ -110,4 +110,4 @@ The table uses the specification's own terms. Each module's page explains them.
 
 The suite tracks [TRACE Spec v0.2](https://trace.agentrust-io.com). See [Changelog](CHANGELOG.md) for what moved between suite versions.
 
-**Status:** agentrust-trace-tests 0.6.2 · Apache-2.0 · tracks TRACE Spec v0.2 · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** agentrust-trace-tests 0.6.2 · Apache-2.0 · tracks TRACE Spec v0.2 · AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.
