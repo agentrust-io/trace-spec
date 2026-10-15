@@ -1,12 +1,30 @@
 """Retain and revalidate exact replay evidence bytes; fail closed if incomplete."""
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 
 REQUIRED = ("record", "trusted_root", "policy", "revocation", "resolver")
 
 def _sha(data):
     return "sha256:" + hashlib.sha256(data).hexdigest()
+
+def _write_exclusive(path, data):
+    """Publish complete bytes using an exclusive, atomic rename from a temp file."""
+    fd, temporary = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if path.exists() or path.is_symlink():
+            raise FileExistsError(str(path))
+        # Hard-link publication refuses replacement of an existing destination.
+        os.link(temporary, path, follow_symlinks=False)
+    finally:
+        os.unlink(temporary)
+
 
 def freeze(directory, *, record, root, policy, revocation, resolver, context):
     destination = Path(directory)
@@ -22,12 +40,12 @@ def freeze(directory, *, record, root, policy, revocation, resolver, context):
         path = destination / (name + ".bin")
         if path.exists():
             raise FileExistsError(str(path))
-        path.write_bytes(data)
+        _write_exclusive(path, data)
         manifest["artifacts"][name] = {"file": path.name, "length": len(data), "digest": _sha(data)}
     manifest_path = destination / "MANIFEST.json"
     if manifest_path.exists():
         raise FileExistsError(str(manifest_path))
-    manifest_path.write_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
+    _write_exclusive(manifest_path, json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())
     return manifest
 
 def inspect(directory, *, expected_context=None):
