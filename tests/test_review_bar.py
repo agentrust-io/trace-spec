@@ -9,6 +9,7 @@ one that needs a git checkout, and one that fails on the head itself.
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
@@ -192,6 +193,10 @@ def test_changed_files_are_the_added_and_modified_tests_support_and_src(repo):
 
 
 def test_a_test_path_git_would_quote_is_still_found(tmp_path):
+    try:
+        os.fsencode("test_été.py")
+    except UnicodeEncodeError:
+        pytest.skip("POSIX C locale with PYTHONUTF8=0 cannot encode non-ASCII filenames")
     _init(tmp_path)
     base = _commit(tmp_path, {"README": "x\n"}, "base")
     head = _commit(tmp_path, {"tests/test_été.py": "def test_x():\n    pass\n"}, "head")
