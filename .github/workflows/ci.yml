@@ -52,3 +52,13 @@ jobs:
 
       - name: Verifier context replay experiment
         run: pytest -q experiments/verifier-context-replay
+
+      - name: Portability (non-UTF-8 locale and python -OO)
+        run: |
+          pip install --require-hashes -r conformance/requirements/test.txt
+          pip install --no-deps -e conformance
+          LC_ALL=C PYTHONUTF8=0 pytest
+          LC_ALL=C PYTHONUTF8=0 pytest -c conformance/pyproject.toml conformance/tests
+          PYTHONOPTIMIZE=2 pytest tests/test_review_bar.py
+          PYTHONOPTIMIZE=2 python tools/check_dashes.py --help
+          PYTHONOPTIMIZE=2 python tools/review_bar.py --help

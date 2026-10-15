@@ -35,7 +35,7 @@ dependencies = [
     # `revocation.py` resolves the bundle schema's statement `$ref` from the packaged
     # copy through a `referencing.Registry`, so validation never fetches. `referencing`
     # already arrives through `jsonschema`; it is declared because it is imported.
-    "referencing>=0.28",
+    "referencing>=0.28.4",
     "rfc8785>=0.1.4",
 ]
 

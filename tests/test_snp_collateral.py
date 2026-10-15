@@ -21,8 +21,8 @@ FLOOR = s.TcbFloor(snp=0x1B, source=SB_3016, os_mitigation_bit=2)
 
 
 def packets():
-    milan = json.loads((FIXTURES / "live-milan-packet.json").read_text())
-    genoa = json.loads((EXEC / "b1-approved-packet.json").read_text())
+    milan = json.loads((FIXTURES / "live-milan-packet.json").read_text(encoding="utf-8"))
+    genoa = json.loads((EXEC / "b1-approved-packet.json").read_text(encoding="utf-8"))
     return milan, genoa
 
 

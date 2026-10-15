@@ -30,7 +30,7 @@ EXAMPLES = pathlib.Path(__file__).resolve().parents[1] / "examples"
 def _load(directory: str, outcome_of, codes_of, boundary_of=None) -> list[Vector]:
     out = []
     for path in sorted((EXAMPLES / directory).glob("*.json")):
-        expected = json.loads(path.read_text())["expected"]
+        expected = json.loads(path.read_text(encoding="utf-8"))["expected"]
         v = Vector(path.stem, outcome_of(expected), codes_of(expected))
         v.boundary = boundary_of(expected) if boundary_of else None
         out.append(v)

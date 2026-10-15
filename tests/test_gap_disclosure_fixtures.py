@@ -241,7 +241,7 @@ def test_fixture_set_is_complete() -> None:
 
 @pytest.mark.parametrize("path", FIXTURES, ids=lambda p: p.stem)
 def test_fixture(path: Path) -> None:
-    doc = json.loads(path.read_text())
+    doc = json.loads(path.read_text(encoding="utf-8"))
     result = verify_gap_disclosure(
         doc["gap_disclosure"], doc["context"], doc["trusted_issuer_keys"]
     )
@@ -263,8 +263,10 @@ def test_the_live_tail_is_not_granted_what_the_seal_earns() -> None:
     advisory, never an outcome. Re-verification after resumption upgrades or
     impeaches the disclosure on the seal that then exists.
     """
-    sealed = json.loads((FIXTURE_DIR / "01-gap-disclosed-valid.json").read_text())
-    tail = json.loads((FIXTURE_DIR / "17-gap-disclosure-at-unsealed-tail.json").read_text())
+    sealed = json.loads((FIXTURE_DIR / "01-gap-disclosed-valid.json").read_text(encoding="utf-8"))
+    tail = json.loads(
+        (FIXTURE_DIR / "17-gap-disclosure-at-unsealed-tail.json").read_text(encoding="utf-8")
+    )
     assert sealed["gap_disclosure"] == tail["gap_disclosure"], (
         "the contrast only isolates the seal if the disclosures are identical"
     )
@@ -290,7 +292,7 @@ def test_every_registered_rule_is_load_bearing_for_two_fixtures() -> None:
     being unenforced."""
     counts: dict[str, int] = {}
     for path in FIXTURES:
-        expected = json.loads(path.read_text())["expected"]
+        expected = json.loads(path.read_text(encoding="utf-8"))["expected"]
         for code in [*expected["failures"], *expected["warnings"]]:
             if code != DISCLOSED:
                 counts[code] = counts.get(code, 0) + 1

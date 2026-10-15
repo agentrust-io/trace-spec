@@ -26,13 +26,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-CANONICAL_SCHEMA = json.loads((ROOT / "schema" / "trace-claim.json").read_text())
+CANONICAL_SCHEMA = json.loads((ROOT / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
 PACKAGED_SCHEMA = json.loads(
-    (ROOT / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_text()
+    (ROOT / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_text(encoding="utf-8")
 )
-NOTE = (ROOT / "docs" / "build-provenance-depth.md").read_text()
-SCHEMA_DOC = (ROOT / "docs" / "schema.md").read_text()
-TRUST_LEVELS_DOC = (ROOT / "docs" / "trust-levels.md").read_text()
+NOTE = (ROOT / "docs" / "build-provenance-depth.md").read_text(encoding="utf-8")
+SCHEMA_DOC = (ROOT / "docs" / "schema.md").read_text(encoding="utf-8")
+TRUST_LEVELS_DOC = (ROOT / "docs" / "trust-levels.md").read_text(encoding="utf-8")
 
 BUILD_PROVENANCE = CANONICAL_SCHEMA["properties"]["build_provenance"]
 
