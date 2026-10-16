@@ -36,7 +36,7 @@ class TeeReplayTests(unittest.TestCase):
         self.challenge="tpm-tee-test-challenge-2026"
         self.observed={"command":["/usr/bin/true"],"commit":"test-commit",
             "executable_sha256":"a"*64,"host":"observer",
-            "network_isolation_requested":True,"exit_code":0,
+            "network_isolation_requested":True,"exit_code":0,"summary":"captured simulated execution",
             "stdout_sha256":"b"*64,"stderr_sha256":"c"*64,
             "challenge":self.challenge,"observed_at_unix":1000}
         self.bundle={"profile":"frequency-software-tee-v1",
