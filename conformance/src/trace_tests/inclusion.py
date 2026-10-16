@@ -157,10 +157,16 @@ def parse_proof(receipt: object) -> tuple[int, list[bytes], int | None, bytes | 
     if not isinstance(raw_path, list):
         raise InclusionError(f"audit_path must be an array, got {type(raw_path).__name__}")
 
+    leaf_count = receipt.get("leaf_count")
+    if "leaf_count" in receipt and (type(leaf_count) is not int):
+        raise InclusionError(
+            f"receipt leaf_count must be an integer, got {type(leaf_count).__name__}"
+        )
+
     return (
         receipt["leaf_index"],
         [decode_hash(node) for node in raw_path],
-        receipt.get("leaf_count"),
+        leaf_count,
         decode_hash(receipt["merkle_root"]) if "merkle_root" in receipt else None,
     )
 
