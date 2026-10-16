@@ -51,9 +51,17 @@ OFFENDERS = {
 }
 
 
+#: Trees imported byte for byte, each with an import manifest of git blob ids.
+IMPORTED_TREES = ("conformance/", "trust-record-verify/differential/corpus/")
+
+
+def _imported(root: pathlib.Path, tree: str) -> dict:
+    manifest = root / tree / "import-manifest.json"
+    return json.loads(manifest.read_text(encoding="utf-8"))["files"] if manifest.exists() else {}
+
+
 def candidates(root: pathlib.Path):
-    manifest = root / "conformance" / "import-manifest.json"
-    imported = json.loads(manifest.read_text(encoding="utf-8"))["files"] if manifest.exists() else {}
+    imported = {tree: _imported(root, tree) for tree in IMPORTED_TREES}
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in EXTENSIONS:
             continue
@@ -64,10 +72,12 @@ def candidates(root: pathlib.Path):
             continue
         # Preserve the reviewed import bytes, including Unicode test vectors.
         # Any edit loses this exemption and is checked by the normal rule.
-        if relative.startswith("conformance/"):
+        tree = next((t for t in IMPORTED_TREES if relative.startswith(t)), None)
+        if tree is not None:
             raw = path.read_bytes()
             preimage = f"blob {len(raw)}\0".encode() + raw
-            if hashlib.sha1(preimage).hexdigest() == imported.get(relative.removeprefix("conformance/")):
+            recorded = imported[tree].get(relative.removeprefix(tree))
+            if hashlib.sha1(preimage).hexdigest() == recorded:
                 continue
         yield path, relative
 

@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/agentrust-io/trace-tests",
+  "commit": "3af2b53eb2e041918b8a6706a3e5a83f143a7568",
+  "source_path": "tests/vectors",
+  "note": "Git blob ids of the vendored vectors. tools/check_dashes.py exempts a file only while its bytes match.",
+  "files": {
+    "vectors-trace-tests-3af2b53/canonicalization/01-non-ascii-values.json": "32cb2275a4b1f7a0fbbd2bdbf4cdcf1766cd9088",
+    "vectors-trace-tests-3af2b53/canonicalization/02-non-bmp-values.json": "a298337846858c7e76b5284f81bdae873a17d711",
+    "vectors-trace-tests-3af2b53/canonicalization/03-utf16-key-order.json": "e2b336e23381ac94468536ac9616fb8ccde655bc",
+    "vectors-trace-tests-3af2b53/canonicalization/04-utf16-key-order-nested.json": "4cafcb78af4708eba404e5f9c5a89b64b294b60e",
+    "vectors-trace-tests-3af2b53/invalid_missing_runtime.json": "62d0d9c466961c4bd192acbdfae7459f6c880e0a",
+    "vectors-trace-tests-3af2b53/invalid_wrong_profile.json": "bb912d4945260282a8411885a02483df45c1f9ad",
+    "vectors-trace-tests-3af2b53/signed_delegated_hop.json": "0e3ea0a893de11b5b375d4d15bec5760369ed7ff",
+    "vectors-trace-tests-3af2b53/signed_root.json": "d0c7321801d2a9a5cc2dba41b1c11a8debe1336d",
+    "vectors-trace-tests-3af2b53/valid_cmcp_runtime.json": "16b8d11f220009632a06590525d2a78641a5c60f",
+    "vectors-trace-tests-3af2b53/valid_level0.json": "84035811e55dd68b49ff0b2b63d2714fe052d8e5",
+    "vectors-trace-tests-3af2b53/valid_level0_with_transcript.json": "37c1b2d73b882376dc109b96c053a3181e7bbb79",
+    "vectors-trace-tests-3af2b53/valid_openshell_import.json": "ab6ecfc1cef150baefa28c6afc737e04189b230c"
+  }
+}
