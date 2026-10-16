@@ -7,6 +7,7 @@ from pathlib import Path
 
 REQUIRED = ("record", "trusted_root", "policy", "revocation", "resolver")
 MEASUREMENT = ("measurement_reference", "measurement_quote")
+SIMULATION = ("simulation_tpm", "simulation_tee")
 
 def _sha(data):
     return "sha256:" + hashlib.sha256(data).hexdigest()
@@ -28,7 +29,8 @@ def _write_exclusive(path, data):
 
 
 def freeze(directory, *, record, root, policy, revocation, resolver, context,
-           measurement_reference=None, measurement_quote=None):
+           measurement_reference=None, measurement_quote=None,
+           simulation_tpm=None, simulation_tee=None):
     destination = Path(directory)
     destination.mkdir(parents=True, exist_ok=True)
     artifacts = dict(record=record, trusted_root=root, policy=policy,
@@ -39,6 +41,12 @@ def freeze(directory, *, record, root, policy, revocation, resolver, context,
     if supplied[0]:
         artifacts.update(measurement_reference=measurement_reference,
                          measurement_quote=measurement_quote)
+    if context.get("simulation_contract") is not None:
+        if type(simulation_tpm) is not bytes or type(simulation_tee) is not bytes:
+            raise ValueError("simulated TPM and TEE evidence must both be retained")
+        artifacts.update(simulation_tpm=simulation_tpm, simulation_tee=simulation_tee)
+    elif simulation_tpm is not None or simulation_tee is not None:
+        raise ValueError("unbound simulation evidence is not allowed")
     if context.get("measurement_contract") is not None and not supplied[0]:
         raise ValueError("measurement appraisal contract requires retained evidence")
     if not isinstance(context, dict) or type(context.get("verification_time")) is not int:
@@ -70,6 +78,8 @@ def inspect(directory, *, expected_context=None):
         if expected_context is not None and context != expected_context:
             return False, "context-drift"
         expected = set(REQUIRED) | (set(MEASUREMENT) if context.get("measurement_contract") is not None else set())
+        if context.get("simulation_contract") is not None:
+            expected |= set(SIMULATION)
         if set(manifest["artifacts"]) != expected:
             return False, "missing-evidence"
         for name in expected:
