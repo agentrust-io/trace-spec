@@ -396,6 +396,19 @@ class TrustRecord(_TraceModel):
     outside the record instead of in this field."""
 
     @model_validator(mode="after")
+    def _platform_measurement_matches_runtime(self) -> "TrustRecord":
+        """Appraisal must describe this record's measurement and canonical TPM PCR names."""
+        pm = self.appraisal.platform_measurement
+        if pm is not None:
+            if pm.measurement != self.runtime.measurement:
+                raise ValueError("platform_measurement.measurement must equal runtime.measurement")
+            if self.runtime.platform == "tpm2":
+                import re
+                if any(re.fullmatch(r"pcr:(?:[0-9]|1[0-9]|2[0-3])", name) is None for name in pm.layers):
+                    raise ValueError("tpm2 layer names must be pcr:0 through pcr:23 without leading zeroes")
+        return self
+
+    @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:
         """A record assembled from someone else's evidence cannot carry a hardware root.
 
