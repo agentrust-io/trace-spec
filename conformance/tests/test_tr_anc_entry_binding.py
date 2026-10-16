@@ -239,3 +239,13 @@ def test_receipt_without_the_section_5_proof_is_malformed(field: str) -> None:
     finding = tr_anc._check_inclusion(claims[1], receipt, _entry(_receipt(claims, 1)))
     assert finding.status is Status.FAIL
     assert f"missing required field(s): {field}" in finding.message
+
+
+@pytest.mark.parametrize("value", [None, "3", 3.0, True])
+def test_a_receipt_carried_leaf_count_that_is_not_an_integer_is_malformed(value: object) -> None:
+    claims = _claims()
+    receipt = _receipt(claims, 1)
+    receipt["leaf_count"] = value
+    finding = tr_anc._check_inclusion(claims[1], receipt, _entry(_receipt(claims, 1)))
+    assert finding.status is Status.FAIL
+    assert "leaf_count must be an integer" in finding.message
