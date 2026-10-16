@@ -9,13 +9,15 @@ from pathlib import Path
 from retained_evidence import inspect
 from independent_verifier import verify as independent_verify
 from measurement_appraisal import appraise as appraise_measurement
+from simulated_tpm import verify as verify_simulated_tpm
+from simulated_tee import verify_software_tee
 from agentrust_trace.sign import verify_record
 from cryptography.exceptions import InvalidSignature
 
 def sha256(data):
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
-def run(directory, expected_manifest_digest):
+def run(directory, expected_manifest_digest, *, tpm2_checkquote=None):
     directory = Path(directory)
     if not isinstance(expected_manifest_digest, str) or not expected_manifest_digest.startswith("sha256:"):
         return {"status":"not-established", "reason":"missing-external-manifest-pin"}
@@ -96,7 +98,8 @@ def run(directory, expected_manifest_digest):
             if measurement_result["status"] != "affirming":
                 return {"status":"not-established" if measurement_result["status"] == "not-established" else "rejected",
                         "reason":"measurement-appraisal-"+measurement_result["reason"],
-                        "measurement_appraisal":measurement_result}
+                        "measurement_appraisal":measurement_result,
+                "simulation":simulation_result}
             claimed = record.get("appraisal", {}).get("platform_measurement")
             if claimed is not None:
                 if not isinstance(claimed, dict) or claimed.get("measurement") != record.get("runtime", {}).get("measurement"):
@@ -108,7 +111,31 @@ def run(directory, expected_manifest_digest):
                     if layers.get(name, {}).get("outcome") != measurement_result["layers"][name]["outcome"]:
                         return {"status":"rejected","reason":"producer-layer-appraisal-disagreement",
                                 "layer":name}
-        return {"status":"crypto-and-context-verified" if reference == "verified" else "rejected",
+        simulation_result = None
+        simulation_contract = context.get("simulation_contract")
+        if simulation_contract is not None:
+            if not isinstance(simulation_contract,dict) or set(simulation_contract)!={"tpm","tee"}:
+                return {"status":"not-established","reason":"incomplete-simulation-contract"}
+            if not isinstance(simulation_contract["tpm"],dict) or not isinstance(simulation_contract["tee"],dict):
+                return {"status":"not-established","reason":"malformed-simulation-policy"}
+            if tpm2_checkquote is None:
+                return {"status":"not-established","reason":"tpm2-quote-verifier-not-provisioned"}
+            tpm_args=dict(simulation_contract["tpm"])
+            tee_args=dict(simulation_contract["tee"])
+            try:
+                tee_args["trusted_observer_public"]=bytes.fromhex(tee_args.pop("trusted_observer_public_hex"))
+                tpm_payload=json.loads((directory/"simulation_tpm.bin").read_bytes())
+                tee_payload=json.loads((directory/"simulation_tee.bin").read_bytes())
+                sim_tpm=verify_simulated_tpm(tpm_payload,tpm2_checkquote=tpm2_checkquote,**tpm_args)
+                sim_tee=verify_software_tee(tee_payload,**tee_args)
+            except (TypeError,ValueError,KeyError,OSError) as exc:
+                return {"status":"not-established","reason":"invalid-simulation-context:"+type(exc).__name__}
+            simulation_result={"tpm":sim_tpm,"tee":sim_tee}
+            if sim_tpm["status"]!="verified-simulation-only" or sim_tee["status"]!="verified-simulation-only":
+                return {"status":"rejected" if "rejected" in (sim_tpm["status"],sim_tee["status"]) else "not-established",
+                        "reason":"simulation-replay-not-established","simulation":simulation_result}
+        return {"status":("simulated-evidence-validated" if simulation_result is not None and reference == "verified"
+                          else "crypto-and-context-verified" if reference == "verified" else "rejected"),
                 "reason":"matched-bounded-verifiers",
                 "reference":reference, "independent":independent,
                 "manifest_digest":expected_manifest_digest,
