@@ -45,8 +45,9 @@ def verify_trace_record(record, trusted_keys, *, verification_time, max_age_seco
         result = verifier(record, trusted_keys, **kwargs)
     except Exception as exc:
         return ReferenceResult("rejected", type(exc).__name__)
-    # The pinned reference API raises on rejection and returns None on success.
-    # Any other result is an unknown contract, not successful verification.
-    if result is not None:
+    # The upstream verifier returns a typed VerificationResult on success.
+    # Refuse unknown values, including false, true and silent None returns.
+    result_type = getattr(module, "VerificationResult", None)
+    if not isinstance(result_type, type) or not isinstance(result, result_type):
         return ReferenceResult("not-established", "unexpected-reference-verdict")
     return ReferenceResult("verified", "trace-signature-and-requested-checks-passed")

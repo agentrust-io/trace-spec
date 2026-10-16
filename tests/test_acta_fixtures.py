@@ -5,22 +5,23 @@ draft-farley-acta-signed-receipts-02 and against the expected
 positive/negative results declared in expected.json, so envelope or
 fixture drift fails CI instead of passing silently.
 
-Uses only dependencies this project already declares: rfc8785 for JCS
-canonicalization and cryptography for Ed25519 verification.
+The signature and chain checks are the ones tools/acta_receipt_verifier.py
+applies to any receipt, so these fixtures and the verifier cannot drift apart.
+That module uses only dependencies this project already declares: rfc8785 for
+JCS canonicalization and cryptography for Ed25519 verification.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-import rfc8785
-from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+from tools.acta_receipt_verifier import chain_link_matches, envelope_hash, jcs, signature_verifies
 
 ACTA_DIR = Path(__file__).resolve().parents[1] / "examples" / "action-receipts" / "acta"
 EXPECTED = json.loads((ACTA_DIR / "expected.json").read_text())
@@ -31,21 +32,12 @@ SIGNER_KEY = Ed25519PublicKey.from_public_bytes(
 )
 
 
-def _jcs(obj) -> bytes:
-    data = rfc8785.dumps(obj)
-    return data if isinstance(data, bytes) else data.encode()
-
-
 def _load(name: str) -> dict:
     return json.loads((ACTA_DIR / name).read_text())
 
 
 def _signature_verifies(envelope: dict) -> bool:
-    try:
-        SIGNER_KEY.verify(bytes.fromhex(envelope["signature"]["sig"]), _jcs(envelope["payload"]))
-        return True
-    except InvalidSignature:
-        return False
+    return signature_verifies(envelope, SIGNER_KEY)
 
 
 def test_expected_manifest_covers_all_fixtures():
@@ -85,8 +77,8 @@ def test_chain_link_result_matches_expected(name):
     """
     env = _load(name)
     predecessor = _load(EXPECTED["chain"][name])
-    recomputed = hashlib.sha256(_jcs(predecessor)).hexdigest()
-    actual = "pass" if env["payload"].get("previousReceiptHash") == recomputed else "fail"
+    link = env["payload"].get("previousReceiptHash")
+    actual = "pass" if chain_link_matches(link, predecessor) else "fail"
     assert actual == EXPECTED["results"][name]["chain"]
 
 
@@ -133,7 +125,7 @@ def test_crosswalk_document_quotes_the_live_fixture_values():
         "acta-decision-receipts.md"
     ).read_text(encoding="utf-8")
     r01 = _load("01-valid-accepted.json")
-    chain_head = hashlib.sha256(_jcs(_load("02-valid-denied.json"))).hexdigest()
+    chain_head = envelope_hash(_load("02-valid-denied.json"))
 
     assert r01["payload"]["policy_digest"] in doc, "the quoted 01 payload is stale"
     assert r01["signature"]["sig"][:64] in doc, "the quoted 01 signature is stale"
@@ -146,4 +138,4 @@ def test_key_mismatch_fixture_is_signed_by_the_committed_second_key():
     other = Ed25519PublicKey.from_public_bytes(
         bytes.fromhex((ACTA_DIR / "mismatched-signer-public-key.txt").read_text().strip())
     )
-    other.verify(bytes.fromhex(env["signature"]["sig"]), _jcs(env["payload"]))
+    other.verify(bytes.fromhex(env["signature"]["sig"]), jcs(env["payload"]))

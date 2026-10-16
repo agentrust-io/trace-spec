@@ -1,0 +1,23 @@
+{
+  "condition": {
+    "id": "gate:tests-and-worktree/1",
+    "criteria": [
+      "the test suite exits 0",
+      "no path outside the task worktree is written",
+      "the diff touches only files the task names"
+    ]
+  },
+  "deliverable": {
+    "id": "task:7f8f9bdabf7a/deliverable",
+    "files": [
+      {
+        "path": "src/backend/payments.py",
+        "sha256": "8a08ae52abe6806d724a354739b7922f4a58d5fc6679c1d597164c2a1f7a9bfe"
+      },
+      {
+        "path": "tests/test_payments.py",
+        "sha256": "b72c350dffe1f6b4961c96e453b5366cd1c966b6c23252aefd035206ef5d42b7"
+      }
+    ]
+  }
+}

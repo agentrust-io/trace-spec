@@ -1,16 +1,22 @@
 # Integration: sandboxed agent runtimes
 
-A sandboxed agent runtime confines one agent on one machine. Filesystem, process and
-network isolation at the kernel, an egress policy, and credentials injected so the agent
-never holds them. That answers what a single agent may touch.
+This page is for people who build or run a sandbox for AI agents and want each session
+to produce a signed TRACE record. It shows the few lines of code needed, what goes into
+the record, and how far the record can be trusted with and without hardware evidence.
+
+A sandboxed agent runtime confines one agent on one machine: the operating system limits
+which files, processes and network connections it can use, a policy limits where it may
+send data, and passwords and keys are supplied from outside so the agent never holds
+them. That answers what a single agent may touch.
 
 It does not answer, on its own, three questions that arrive next:
 
 - **Across the estate.** Which agent, on which of the two hundred machines, took that
   action, and under whose authority?
 - **From a regulator.** Not what the policy said, but what actually ran, evidenced.
-- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM, or a
-  confidential VM, or no secure hardware at all.
+- **From a sovereign or on-prem buyer.** The same answer on a machine with a TPM (a
+  security chip on the motherboard), or a confidential VM (a virtual machine sealed off
+  from the cloud host), or no secure hardware at all.
 
 `TraceSandboxAdapter` answers them from what the runtime already has at session close.
 It requires no change to the runtime.
@@ -30,9 +36,10 @@ from agentrust_trace.adapters import SandboxSessionResult, TraceSandboxAdapter
 
 # Configure once per deployment.
 adapter = TraceSandboxAdapter(
-    model_provider="anthropic",
-    model_id="claude-sonnet-4-6",
+    model_provider="example-provider",
+    model_id="example-model-1",
     data_class="confidential",
+    enforcement_mode="enforce",  # the mode the sandbox actually enforced
 )
 
 # Per session, from what the runtime already knows at close.
@@ -50,9 +57,26 @@ TrustRecord.model_validate(record)
 That record is Level 0: signed, offline-verifiable, and honest that no hardware backed
 it. `runtime.platform` reads `software-only`.
 
+`enforcement_mode` is required and has no default. The adapter records what the runtime
+reports and evaluates nothing itself, so a default of `"enforce"` would claim an
+evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. Pass
+the mode the sandbox actually enforced, or `"declared"` when no policy engine evaluated
+the policy. This changes the evidence constructor, not the runtime's enforcement default
+or behavior.
+
 ## Adding a root of trust
 
-Pass a `SandboxAttestation` and the same call emits Level 1. Nothing else changes.
+A root of trust is hardware that can vouch for what ran, by producing a signed report
+called an attestation. If your machine has one, you can pass its evidence to the adapter.
+The adapter only copies that evidence into the record; checking it is your job, and the
+two warnings after the example explain exactly what is left to you.
+
+Pass a `SandboxAttestation` and the same call emits a Level 1-*shaped* record:
+`runtime.platform` and `runtime.measurement` carry the supplied evidence verbatim.
+Nothing else about the call changes. Actual Level 1 assurance requires that evidence
+to have been independently verified -- by your own attestation verifier, against
+genuine hardware from the named platform -- *before* you construct the
+`SandboxAttestation` below. See the boundary spelled out just after the example.
 
 ```python
 from agentrust_trace.adapters import SandboxAttestation
@@ -71,13 +95,38 @@ This is the point of the adapter spanning both levels. A sandbox runs wherever t
 customer runs it, and the deployments that most need evidence are often the ones with
 the least hardware. One code path covers a developer laptop and a confidential VM.
 
-**The adapter will not let you claim hardware you do not have.** `platform` is only ever
-set from a supplied attestation; an attestation may not name `software-only`; the
+**The adapter checks the shape of an attestation, not its truth.** `platform` is only
+ever set from a supplied attestation; an attestation may not name `software-only`; the
 platform is checked against the enum on `RuntimeInfo` rather than a copy of it; and the
-measurement must be a `sha256:` or `sha384:` digest. A record that says `tpm2` therefore
-carries a measurement something other than this process produced.
+measurement must be a `sha256:` or `sha384:` digest. None of that is cryptographic
+verification: nothing here checks a quote, a signature, or a nonce, so code in your own
+process can construct a `SandboxAttestation` with an invented platform and an invented
+digest and the adapter will emit a record that says `tpm2` (or any other platform)
+anyway. Call this adapter only after your own attestation verifier has checked genuine
+evidence from the named platform. This is the same boundary [trust levels](../trust-levels.md#level-1-hardware-evidence)
+states for every Level 1 producer: `agentrust_trace.verify_record` does not appraise
+hardware quotes, and this adapter does not either.
+
+**Verified evidence is still not the whole requirement.** [Trust levels](../trust-levels.md#level-1-hardware-evidence)
+says Level 1 needs "authenticated evidence binding the record-signing key to the expected
+environment," and [verification](../verification.md#verifying-hardware-rooted-records)
+puts the responsibility for that binding on the producing profile -- this adapter, for a
+sandbox runtime. It does not define one: nothing here ties `measurement` or `nonce` to the
+key you eventually pass to `sign_record`, and that key is chosen independently of, and
+after, whatever attestation you verified. Verifying a genuine quote and then signing with
+an unrelated key is still not Level 1 assurance; this code cannot distinguish that case
+from a fabricated one.
+
+??? info "Technical detail: binding the quote to your signing key"
+    If your platform's quote supports a caller-supplied challenge
+    (TPM qualifying data, SEV-SNP `REPORT_DATA`, TDX `REPORTDATA`), request it with that field
+    set to a value derived from the signing key's RFC 7638 thumbprint, verify the binding
+    yourself, and only then carry the challenge through as `nonce`.
 
 ## Field mapping
+
+Each record field comes from something the runtime already has. Where a field is a hash,
+anyone holding the original input can recompute it.
 
 | Record field | Source |
 |---|---|
@@ -100,10 +149,12 @@ bearing field: edit the policy and the record changes. Where a runtime composes 
 from several files, concatenate them in a defined order and keep that order stable. A
 hash both sides derive differently proves nothing.
 
-**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** The two
-agree on ASCII and diverge on non-ASCII strings and number formatting, and a decision log
-carries paths and hostnames. Using the same canonicalisation as the signature pre-image
-keeps the record reproducible across implementations.
+**The decision log is canonicalised with JCS, not `json.dumps(sort_keys=True)`.** JCS
+(RFC 8785) is a fixed way of writing JSON as bytes, so every implementation hashes the
+same thing. The two methods agree on plain ASCII text and differ on other characters and
+on how numbers are written, and a decision log carries paths and hostnames. Using the
+same canonicalisation as the signature pre-image keeps the record reproducible across
+implementations.
 
 **An unappraised record says so.** `appraisal.status` defaults to `"none"`. Building a
 record does not appraise it, and stamping `affirming` on an unappraised record puts a
@@ -112,11 +163,15 @@ when an appraisal actually happened.
 
 ## Levels
 
-| Level | What you pass | `runtime.platform` |
-|---|---|---|
-| 0 | nothing extra | `software-only` |
-| 1 | a `SandboxAttestation` | the attested platform |
-| 2 | Level 1 plus `transparency=` a SCITT receipt URI | the attested platform |
+Level 0 is a record signed in software. Level 1 adds checked hardware evidence, and Level 2 adds
+an entry in a public log (a SCITT transparency receipt). The table shows what each level
+asks of you and what it proves by itself.
+
+| Level | What you pass                                    | `runtime.platform`    | Assurance this establishes on its own |
+| ----- | ------------------------------------------------ | ---------------------- | -------------------------------------- |
+| 0     | nothing extra                                    | `software-only`       | None claimed -- honestly unattested |
+| 1     | a `SandboxAttestation`                           | the attested platform | Record shape only. Real Level 1 assurance requires the supplied evidence to have been independently verified by your own attestation verifier before construction, *and* that verification to bind the record-signing key to the attested environment -- this adapter defines no such binding |
+| 2     | Level 1 plus `transparency=` a SCITT receipt URI | the attested platform | Same as Level 1, plus a transparency receipt -- the receipt does not itself verify the hardware evidence |
 
 `transparency` defaults to `None`, which leaves the key out of the record. That is
 correct below Level 2: an unanchored record has no receipt to name.
@@ -128,8 +183,15 @@ this adapter.
 
 ## Worked example
 
-`examples/sandbox-runtime.json` is a TPM 2.0 rooted record produced by this adapter,
-validating as-is against the schema.
+`examples/sandbox-runtime.json` shows the record *shape* this adapter emits for a
+`tpm2` attestation, and it validates as-is against the schema. It is not a TPM-rooted
+record: `runtime.measurement`, `runtime.nonce`, and `cnf.jwk` in that file are
+illustrative placeholder values with no relationship to each other or to any real quote
+-- decoding the `nonce` shows it is literally the string `sandbox-runtime-nonce`, not a
+challenge bound to the `cnf.jwk` beside it. Do not copy this file as a template for a
+genuinely attested record without replacing every one of those fields with values your
+own attestation verifier produced, including a `nonce` actually bound to your signing
+key if your platform supports that (see "Adding a root of trust" above).
 
 ## Related
 

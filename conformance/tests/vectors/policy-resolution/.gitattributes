@@ -1,0 +1,13 @@
+# The digests carried in these vectors are SHA-256 over the exact bytes of the
+# sibling files under policies/. Line-ending translation therefore changes the
+# answer: with core.autocrlf=true (the Git for Windows default) an unmarked
+# checkout rewrites LF to CRLF, every policy digest stops matching, and both the
+# byte-reproduction guard and the self-proof tests fail on a clean clone.
+#
+# Verified, not assumed: without this file, deleting
+# policies/appraisal-policy-v1.json and restoring it with `git checkout --`
+# changed its SHA-256 from d8764863... to 7e68506c... on a Windows worktree.
+#
+# `text eol=lf` keeps these diffable as text in review while pinning the working
+# tree to LF on every platform.
+* text eol=lf

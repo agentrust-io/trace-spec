@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentrust-trace"
-version = "0.9.1"
-description = "TRACE v0.2: verifiable governance evidence for AI agents"
+version = "0.11.0"
+description = "TRACE v0.2: signed governance records for AI agents"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
@@ -22,8 +22,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.0",
-    "jsonschema>=4.20",
+    "pydantic>=2.13.5",
+    "jsonschema>=4.26.0",
     # `jsonschema` treats `format` as an annotation unless a checker for that format is
     # installed. Without this, all eight `"format": "uri"` declarations in
     # schema/trace-claim.json are inert: `validate_json` builds a `FormatChecker`, the
@@ -32,16 +32,22 @@ dependencies = [
     # GPLv3, into an Apache-2.0 package's dependency tree.
     "rfc3986-validator>=0.1.1",
     "cryptography>=42.0",
-    "rfc8785>=0.1.2",
+    # `revocation.py` resolves the bundle schema's statement `$ref` from the packaged
+    # copy through a `referencing.Registry`, so validation never fetches. `referencing`
+    # already arrives through `jsonschema`; it is declared because it is imported.
+    "referencing>=0.28",
+    "rfc8785>=0.1.4",
 ]
 
 [project.optional-dependencies]
+prototype = ["cbor2>=5.6,<7"]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.4",
     "mypy>=1.10",
     "types-jsonschema",
+    "PyYAML>=6.0.3",
 ]
 
 [project.urls]

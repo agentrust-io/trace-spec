@@ -9,3 +9,6 @@
 *.py    text eol=lf
 *.yml   text eol=lf
 *.yaml  text eol=lf
+
+# Imported conformance bytes are pinned by import-manifest.json.
+conformance/** -text

@@ -4,12 +4,57 @@
 |---|---|
 | Version | 0.2: Draft |
 | Status | RFC: Request for Comments |
-| Authors | Imran Siddique, Rishabh Poddar, Aaron Fulkerson (OPAQUE Systems) |
+| Authors | Imran Siddique, Rishabh Poddar, Aaron Fulkerson |
 | Target announcement | Confidential Computing Summit, San Francisco: 23 June 2026 |
 | Reference implementation | [agentrust-io/cmcp](https://github.com/agentrust-io/cmcp): Confidential MCP |
-| License | Community Specification License 1.0 (see [LICENSE](../LICENSE)) |
+| License | Community Specification License 1.0 (see [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE)) |
 
 > **Note:** This is a pre-ratification draft. Fields, wire formats, and conformance requirements are subject to change before v1.0. Send feedback to: open an issue on this repository.
+
+**In plain terms.** This is the rulebook for TRACE: it defines the Trust Record (a signed receipt describing one AI agent run), how records are anchored in a public log, and the exact checks a verifier runs. You need it if you are writing software that produces or checks records; to try TRACE first, start with the [quickstart](../docs/quickstart.md). It is a draft (v0.2, Developer Preview), so details can still change before v1.0.
+
+## Authority and conformance claims
+
+<!-- CHANGED: #247 - define specification precedence and identify conformance artifacts -->
+
+This specification defines the meaning of TRACE claims and the requirements for
+conformance. Normative companion specifications apply within the scope this
+specification assigns them. The following rules govern the relationship between
+the specification and its supporting artifacts:
+
+- `schema/trace-claim.json` defines the machine-readable validation constraints.
+  Passing schema validation alone MUST NOT be represented as establishing TRACE
+  conformance: semantic requirements and verification checks also apply. Schema
+  descriptions do not add or override normative requirements.
+- The reference model in `src/agentrust_trace/models.py` is an implementation of
+  those requirements, not an independent source of requirements.
+- `docs/*.md`, including proposals under `docs/rfcs/`, explains the specification
+  and MUST NOT override its normative requirements.
+
+Where the schema, reference model or explanatory documentation disagrees with
+the normative specification, the disagreement MUST be treated as a defect in
+the supporting artifact. Neither accepting the union nor requiring the
+intersection of conflicting implementations resolves the normative rule. A
+schema is too narrow or too broad when it rejects or admits records contrary to
+the specification's structural validation constraints. Requirements enforced by
+verification, including signature and freshness checks, remain separate. Where
+normative text is silent, a rule found only in an implementation, schema description or proposal
+MUST NOT be promoted to a normative requirement without the specification
+change process. Such a coverage gap requires a specification decision.
+
+A conformance claim MUST identify the specification version and exact revision
+being claimed, together with the schema artifact used for validation. For a
+published release, record the release tag or package version and a digest of
+the schema bytes; for an unreleased checkout, record the full commit identifier
+and schema digest. Identify the verifier or conformance-suite version and the
+level assessed when either is used. These are accompanying reporting details,
+not new Trust Record fields. A schema-only result MUST be described as schema
+validation, not as complete conformance.
+
+TRACE v0.2 is a draft: `main` can differ from a published package. A finding
+against one revision MUST NOT be presented as a finding against another without
+checking the applicable requirements and artifacts. Reporting a schema version
+does not make that schema authoritative over the normative specification.
 
 ## Changes from v0.1
 
@@ -29,7 +74,7 @@ Records already issued under v0.1 remain verifiable against the v0.1 specificati
 
 ## Abstract
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, hardware-attested governance record for AI agents and other confidential workloads. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact rooted in silicon attestation. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) defines an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. It binds *what executed* (model, code, runtime), *under what policy*, *on what data class*, *invoking which tools*, into a single signed artifact. The reference SDK does not verify attestation evidence. The record travels with the workload across hosts, clouds, and providers and is verifiable offline by any party.
 
 TRACE composes existing standards rather than replacing them. It profiles RATS/EAT (RFC 9711) for the wire envelope, SLSA for build-time provenance, SCITT for transparency anchoring, SPIFFE for workload identity, EAR for evidence appraisal, and MCP / A2A for the agent execution surface. Where gaps exist, notably the AI-agent execution profile, TRACE proposes the minimum new schema to close them.
 
@@ -53,12 +98,12 @@ The wall is not technical capability: it is evidence. AI builders today produce 
 | Operational tracking | MLflow, W&B, vendor logs | Self-reported, mutable, no tamper evidence |
 | Hardware attestation | NVIDIA NRAS, Intel Trust Authority, AMD SEV-SNP, AWS Nitro, Azure MAA, GCP Confidential Space | Proves the environment is genuine: no governance, policy, or data-class binding |
 | Content provenance | C2PA Content Credentials | Proves content origin: silent on inference execution |
-| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Annex IV / Article 12 | Mandate documentation; no prescribed cryptographic format |
+| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Article 11 / Annex IV | Documentation and governance frameworks; no TRACE cryptographic format specified |
 | **Execution governance proof** | **Vendor-proprietary artifacts** | **No open, portable, vendor-neutral standard exists** |
 
 The result: every regulated AI deployment re-litigates trust at every host boundary. Each cloud, each model provider, each agent framework ships its own evidence shape. Auditors cannot compare. Verifiers cannot federate. Workloads cannot move.
 
-The EU AI Act mandates tamper-evident logging for high-risk AI (Article 12); under the current provisional timeline those obligations apply from around December 2027. Frameworks already in force, DORA for financial entities, HIPAA for healthcare, carry equivalent audit-trail requirements today. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
+The EU AI Act requires high-risk AI systems to support automatic event logging throughout their lifetime (Article 12). It does not prescribe tamper-evident logging; TRACE supplies cryptographic evidence as a separate technical property. Articles 11 and 12 sit in Chapter III Section 2, whose application Article 113, third paragraph, point (c), as replaced by Regulation (EU) 2026/1744, moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I, subject to the transitional provisions in Article 111. See the [consolidated Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727). A TRACE record or verification level does not establish regulatory compliance.
 
 ---
 
@@ -125,8 +170,9 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `tool_transcript` | MCP / A2A tool calls invoked, parameters classified, responses filtered | MCP / A2A protocol transcripts bound to TEE measurement |
 | `origin` | OPTIONAL. Where the evidence came from, when that is not this runtime. See §3.1.1. |: |
 | `references` | OPTIONAL. Facts outside this record that it points at. Assurance-neutral: see §3.1.2. <!-- CHANGED: #197 - new optional assurance-neutral reference block --> |: |
+| `reproducibility` | OPTIONAL. Claim that a named deterministic function of the run, re-executed over a pinned input closure, yields a transcript with the stated digest. See §3.1.4. <!-- CHANGED: #249 - new optional reproducibility claim --> |: |
 | `build_provenance` | How the running code and model were built | SLSA Provenance v1.0 |
-| `appraisal` | Verifier's appraisal of evidence | EAR (EAT Attestation Results) |
+| `appraisal` | Verifier's appraisal of evidence. Carries `method` and a per-method result when the verifier re-executed a reproducibility claim: see §3.1.4. <!-- CHANGED: #249 - appraisal row names method --> | EAR (EAT Attestation Results) |
 | `transparency` | Inclusion proof on append-only log | SCITT Receipt URI |
 | `cnf` | Confirmation key: binds record to TEE-held signing key | EAT `cnf` claim (RFC 8747) |
 | `eat_profile` | Profile URI identifying this as a TRACE v0.2 record | EAT profile claim |
@@ -181,15 +227,217 @@ Registered `rel` values:
 - **`authorized-intent`**. An authorization decided before execution, held in another system.
 - **`approval-outcome`**. An attributable human approval attached to a step-up or defer decision.
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
+- **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
+- **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
 3. A verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence.
 4. A producer that cannot name a `resolver` MUST omit the entry rather than emit one with an empty or self-asserted resolver.
 
+The registry of `rel` values above is informative and open: an unregistered `rel` is legal, and registering a value changes none of the four rules above. What each registered value's referenced object is, what a relying party may establish from a resolved one, and how a name is added are in `docs/references-registry.md`. <!-- CHANGED: #226 - registry status stated -->
+
 Rule 3 is what makes the block safe to add. A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold, and a reference that counted as evidence would be the assurance laundering §3.1.1 exists to prevent.
 
+**What the block cannot carry.** Two consequences follow from assurance-neutrality, and they are general to `references` rather than specific to any one relation. First, a reference cannot carry compliance evidence. The block commits to the pointer and not to the target, so no registered `rel` turns an entry into evidence that an obligation was met: a record pointing at a policy, a configuration, or an approval attests that it points there, and nothing about what the target says or whether it was in force. Second, a reference cannot carry a pre-execution commitment. A Trust Record is issued per execution, so a commitment a party needs to check before the workload runs has nothing to read; the evidence exists only after the thing it would have governed has already happened. Either reason alone settles the question, and registering a new `rel` does not touch either, because both are properties of the block rather than of its relation set.
+
+**`resolver` names who must retain, not who adjudicates.** The field is a retention undertaking: it identifies the party obliged to keep `id` resolvable, alongside `retention` as the period they undertake to keep it so. It is not a verification authority, and the two read as the same field until they are separated. The conformance suite refuses the opposite arrangement for a different field: TR-POL-003 takes its resolver from the caller and never derives it from the record, because a record that names its own checker can name one that agrees with it. Naming yourself as the party who must retain an artifact is ordinary and non-circular; naming yourself as the party who decides whether it is true is the circularity that rule refuses. An operator naming themselves as `resolver` for their own artifact is therefore within this section and would still be refused under TR-POL-003's rule, and both are correct. Rule 4 is aimed at a producer who can name no obliged party at all, not at one who is that party.
+
 **Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together.
+
+#### 3.1.3 `delegation.parent_record_hash`: what the digest covers
+
+<!-- CHANGED: #245 - preimage stated normatively -->
+
+`delegation.parent_record_hash` is the field a verifier walks to reconstruct a delegation chain. The schema gives it a pattern and calls it a "digest of the parent hop's Trust Record", which does not say which bytes are digested, and at least three readings of that phrase produce different digests.
+
+The preimage is the **complete parent record as published, with its `signature` member present**, canonicalised with RFC 8785 (JCS):
+
+```
+delegation.parent_record_hash = "sha256:" + hex(SHA-256(JCS(parent_record)))
+```
+
+with `sha384:` and SHA-384 as the permitted alternative, per the schema pattern.
+
+1. A producer MUST compute `parent_record_hash` over the complete parent record, including its `signature` member where the profile embeds one, canonicalised with RFC 8785. No member is removed, blanked or reordered before digesting.
+2. A verifier MUST recompute the digest the same way, over the parent record as it received it, and MUST NOT reconstruct or re-serialise the parent by any other route.
+3. The digest algorithm named in the prefix MUST match the algorithm used, and a verifier MUST reject a record whose prefix names an algorithm it does not support rather than fall back to another.
+
+**This is not the canonical form defined in §3.2.2, and the difference is deliberate.** §3.2.2 constructs the signature pre-image with the `signature` field *absent*, because a signature cannot cover itself. A chain digest has no such constraint and gains from not having one: digesting the record as published means a verifier digests exactly what it fetched, with no member-removal step to get wrong, and the parent's signature is then covered by the chain digest as well as checked on its own. For an enveloping-signature profile, where the record carries no `signature` member, the two pre-images coincide.
+
+The other two readings fail for concrete reasons. Digesting the file's raw bytes makes the value sensitive to whitespace and key order, so it breaks the first time a record passes through a system that re-serialises it. Digesting with `signature` removed adds a second canonicalisation rule for implementers to get wrong and buys nothing.
+
+**A near-miss here passes every vector but one.** The RFC 8785 key ordering that §3.2.2 describes, and the code-point ordering that `sort_keys=True` produces in several JSON libraries, agree across the Basic Multilingual Plane and diverge only once a key contains a supplementary-plane character. An implementation that takes the shortcut therefore computes correct chain digests for ASCII records indefinitely and produces an unverifiable chain the first time such a key appears.
+`examples/delegation-link/24-parent-key-supplementary-plane.json` is the vector that catches it: its parent record carries a key outside the Basic Multilingual Plane, where the two orderings disagree. Every other record's keys in that corpus are ASCII.
+
+#### 3.1.4 `reproducibility`: deterministic re-execution as evidence
+
+<!-- CHANGED: #249 - reproducibility claim: definition, verifier holdings, re-execution outcome, appraisal method -->
+
+A `software-only` record (§3.1.1) is defined by what it lacks: nothing attested the execution. Some software-only producers can offer positive evidence of a different kind. Where the producer's coordination logic is a deterministic function, anyone holding its inputs can run it again and compare. This block is the claim that they can, stated precisely enough for a verifier to check it and precisely enough that a producer cannot make it loosely.
+
+**Definition.** A reproducibility claim states that re-executing a named deterministic function of the run, over a pinned input closure, yields a transcript whose RFC 8785 canonical digest equals the claimed value. The function is the producer's coordination logic: the code that decided what ran, in what order, on what inputs. It is not the workload's side effects, which are not re-executed, and it is not the model calls, which are not deterministic. The boundary of the function is drawn around every non-deterministic interaction: each one is recorded, content-addressed, and enters the closure as an input like any other. What re-executes is the decision logic over those recorded inputs.
+
+The claim has three parts, all explicit in the record: the code and the function it exposes, the input closure, and the transcript digest.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `function` | yes | Name under which the implementation at `code_identity` exposes the deterministic function re-executed. The convention for invoking it is part of the artifact at `code_identity`, and so content-addressed with it; a convention held anywhere else is something a verifier needs from the producer to begin, which the holdings rule below excludes. |
+| `code_identity` | yes | `sha256:` or `sha384:` digest of the implementation artifact that contains `function`. It MUST resolve to an artifact a verifier can obtain without the producer. For a producer whose coordination logic ships in the artifact `build_provenance` names, this is the same value as `build_provenance.digest`. |
+| `code_resolver` | no | Where the artifact at `code_identity` is obtained, in the sense §3.1.2 gives `resolver`: the party obliged to retain it. Omitted when the digest alone locates the artifact, as on a package index; present otherwise, since a verifier that cannot obtain the artifact reports `not-attempted`. |
+| `input_closure` | yes | The complete content-addressed set of everything `function` reads: the initial configuration, and every recorded external interaction, model calls included. An array of `{id, digest, resolver}` entries, the shape §3.1.2 uses without `rel` or `retention`, since every entry stands in the same relation to the claim, and with `digest` required on every entry. |
+| `transcript_digest` | yes | `sha256:` or `sha384:` digest, in the algorithm its prefix names, over the RFC 8785 canonical bytes of the transcript `function` produces when re-executed over `input_closure`. |
+
+The transcript is the function's complete output as a JSON value: every decision the coordination logic took, in order. Its shape belongs to the producer and is described by the profile or annex that describes the function. What this section fixes is that it is a JSON value canonicalised with RFC 8785, so that two verifiers digest the same bytes, and that the canonicalisation is the one §3.1.3 and §3.2.2 already require, so a verifier carries exactly one.
+
+1. A claim whose closure omits anything that can change the transcript is **malformed**. That is the definition of the claim, not a quality bar on it: a closure that does not pin what it claims to pin is not a weak claim, it is not a claim. A malformed claim is detected at re-execution, as a read beyond the closure, and has the outcome the holdings rule below gives that read. A closure entry the function does not read is surplus and has no effect on the outcome.
+2. A reproducibility claim MUST NOT affect `runtime.platform`. A record carrying the block and no `origin` block is `self` and carries whatever platform value it actually earned. Re-executability is not attestation and does not become it.
+3. The record signature MUST cover `reproducibility`, under the canonicalisation in §3.2.2.
+
+**Verifier holdings.** A verifier MUST hold three things before it reports any outcome other than `not-attempted`. Each carries its own bar, because each is a different kind of thing:
+
+- the implementation at `code_identity`, obtained as a public artifact and without the producer. The bar is availability: an implementation is shipped software and can be required to be obtainable by anyone;
+- every blob in `input_closure`, each resolved through its own `resolver` and each matching its own `digest`. The bar is integrity, not provenance: a run's closure is run-private by construction, a producer that is the only party retaining it is within §3.1.2, and what the verifier requires is that what it obtained matches the digest the producer signed;
+- the claim itself, from the signed record. No bar: it is covered by the signature, and coming from the producer is the point of it.
+
+If re-execution requires state that only the producer's environment can supply, it is not reproduction. The claim is then an assertion about that environment, and belongs elsewhere in the record or nowhere. The operational form of the same rule: a verifier MUST supply the function nothing but the closure, and a read beyond the closure, whether the verifier's environment refused it or let it through, is an observation that fixes the outcome by itself. The outcome is `not-attempted`, with the read named as the reason, whatever the re-run would otherwise have produced: a re-run that completed on something the claim did not pin is not the re-run the claim describes, and a digest it matched or missed says nothing about the claim. This is the rule a reader will be tempted to relax, and it is the one that makes the claim decidable rather than aspirational. It is also why model interactions are inputs in the closure rather than something a verifier re-invokes: a model call cannot be re-run to the same answer, so the function's boundary is drawn around it and the recorded interaction is pinned by digest.
+
+**Outcome.** The re-execution result is one of three values, and a verifier MUST report the one that occurred:
+
+| Outcome | Meaning |
+|---|---|
+| `reproduced` | The re-run completed on the closure alone and the digest of its transcript equals `transcript_digest`. |
+| `diverged` | The re-run completed on the closure alone and the digests differ. The result MUST record the verifier's observed digest, because divergence localises nothing by itself: producer tampering, a function that is not the deterministic one it is named as, and verifier drift are indistinguishable until a third party can compare transcripts. |
+| `not-attempted` | A closure blob could not be resolved, `code_identity` could not be obtained, the function read beyond the closure, the re-run did not run to completion, or the verifier could not establish that the re-run used the closure alone. The result MUST carry the reason. |
+
+`not-attempted` MUST NOT be reported as `reproduced`, and MUST NOT be reported as `diverged`. Absent is not pass, and absent is not failure. This is the discipline §3.2.3 applies to a missing revocation bundle and §3.3.4 applies to a disclosure at the live tail of a chain: an inability to check is reported as that, with its cause, and is never rounded to either outcome a completed check would have produced.
+
+A `reproduced` outcome establishes what the definition says and nothing more: the named function over the pinned closure yields the claimed transcript. It establishes nothing about the workload's side effects or about the model calls, which are inputs. A `diverged` outcome is evidence that resolves and contradicts the record, and §3.3.1's rule for that case applies: the verifier fails the appraisal and does not downgrade to escape the contradiction.
+
+One optional member of the result, carried on any outcome, lets results that disagree be read together. `verifier_code_identity` is the digest of the verifier's own implementation. It discriminates nothing on its own: it is the verifier naming its own build, self-asserted, and it carries no weight singly. It earns its place as a correlation key across results, since two verifiers at different implementations disagreeing over the same closure is verifier drift, and that reading is unavailable without it.
+
+| `verifier_code_identity` across the disagreeing results | Reading |
+|---|---|
+| differs | verifier drift |
+| same | no reproducing verifier found a benign explanation |
+
+The second row is the only one that accuses, and it accuses on absence. The record cannot distinguish a tampering producer from a cause nobody has thought of yet, so the row states what was not found rather than what was done.
+
+**Placement: the claim is producer-side, the result is an appraisal.** The claim sits in the record. The re-execution result is an appraisal attributed to the party that re-ran the function, with that party as `appraisal.verifier`. In a record signed only by its producer, that attribution is the producer's report: the signature establishes that the producer states the named verifier reached the result, not that the verifier did. A result meant to carry independent-verifier weight needs evidence the verifier signed itself (#446). The re-execution result is carried under an appraisal method discriminator, with the outcome scoped under the method:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `appraisal.method` | no | The method this appraisal used. A closed set, for the reason §3.1.1 gives for `origin.kind`: a verifier keys on it. This version defines one value, `re-execution`. |
+| `appraisal.re_execution` | when `method` is `re-execution` | The result block: `outcome`, one of `reproduced`, `diverged`, `not-attempted`; `observed_digest`, required when `outcome` is `diverged`; `reason`, required when `outcome` is `not-attempted`; and the optional `verifier_code_identity` described above. |
+
+`appraisal.re_execution` MUST be present when `method` is `re-execution` and MUST be absent otherwise. `appraisal.status` is untouched: it remains the closed EAR set of `affirming`, `warning`, `contraindicated` and `none`, and the outcome above is not folded into it.
+
+**Why `not-attempted` is not `appraisal.status: none`.** EAR's `none` says that no appraisal was performed on the record. Under re-execution an appraisal was performed: the verifier held a claim, tried to re-run it, and either succeeded, diverged, or could not proceed for a reason it can name. `none` is the wrong value on all three counts, and on the third it is the most misleading, because a generic no-claim value is read as "fine" by the next reader and the reason for the absence is lost. `not-attempted` with a `reason` is the distinction §3.3.4 draws between `receipt_gap_disclosed` and `receipt_missing_required`: a named absence and a generic one are different findings, and collapsing them discards the finding. Keeping the outcome scoped under `method` also keeps `status` closed, which is where #190 left it. A future edit that folds `not-attempted` into `none` on the grounds that they look alike is not a tidy-up; it removes the reason from the record.
+
+Example claim, on the record:
+
+```json
+"reproducibility": {
+  "function": "coordination/v1",
+  "code_identity": "sha256:e5f6a7b8c9d0e1f2...",
+  "code_resolver": "https://artifacts.example.org",
+  "input_closure": [
+    {"id": "config/initial", "digest": "sha256:1a2b3c4d...", "resolver": "https://artifacts.example.org"},
+    {"id": "model-call/0007", "digest": "sha256:9c8d7e6f...", "resolver": "https://artifacts.example.org"}
+  ],
+  "transcript_digest": "sha256:4f5e6d7c..."
+}
+```
+
+Example result, in the appraisal of a verifier that re-ran the function and obtained a different transcript:
+
+```json
+"appraisal": {
+  "status": "contraindicated",
+  "verifier": "https://verifier.example.org",
+  "method": "re-execution",
+  "re_execution": {
+    "outcome": "diverged",
+    "observed_digest": "sha256:7d3c2b1a...",
+    "verifier_code_identity": "sha256:c4d5e6f7..."
+  }
+}
+```
+
+**Two commitments on one record.** A `software-only` record can now carry two recomputable commitments: `runtime.measurement`, over the preimage its producing profile documents, and `transcript_digest`, over the preimage this section fixes. They commit to different objects, the producer's inputs and state against the coordination function's output, and neither outcome implies the other: a `reproduced` result says nothing about `runtime.measurement`, and a `runtime.measurement` that recomputes says nothing about the transcript. A profile whose `runtime.measurement` preimage is itself a function of the closure may say so, and then one closure pins both; absent that statement the two are checked separately.
+
+**Out of scope.** This section names no journal format, no transcript shape, and no way of storing or resolving a closure; those belong to the profile or annex that describes the function.
+
+#### 3.1.5 `appraisal.platform_measurement`: what a matching measurement covers
+
+<!-- CHANGED: #279 - platform-measurement appraisal: per-layer outcome with a named reason -->
+<!-- CHANGED: #279 - a layer is established by its event log or by a reference value, and holds measurements either way -->
+
+On a measured-boot platform `runtime.measurement` is a composite digest over many layers. A verifier that compares it against a reference learns that the composite is the one the reference names. It does not learn which layers recorded anything, which were appraised before they ran, or whether the evidence describes one boot. Three conditions are routinely collapsed into an outcome a completed check would have produced. The last column is that collapse, the error this section removes, not what this section prescribes:
+
+| Reason | Condition | Collapsed, without this section, into |
+|---|---|---|
+| `layer-not-measured` | The layer holds no measurement: its value is the initial value, or on a TPM a separator and nothing else. A match confirms only that nothing was recorded. | pass |
+| `measured-not-appraised` | The layer holds measurements and the evidence establishes what ran in it, by its event log or by a reference value. Nothing in the evidence establishes that what ran was appraised before it ran. | pass |
+| `evidence-spans-multiple-boots` | The evidence does not establish that the quote and the event log describe the same single boot, and the log does not replay to the quoted value. A platform whose measurement registers survive a warm reboot produces this, and so do a quote and a log taken from different boots, and a truncated log. | a failure, read as tampering |
+
+The first two collapse into a pass. The third collapses the other way, into a failure. Under this section all three are `not-established`, which is neither: it never passes, and it is not a finding of tampering. All three are decided against evidence the record does not carry (a quote, an event log, a reference), so they are appraisal outcomes and not properties of `runtime`.
+
+A layer is `established` when the evidence establishes what ran in it and nothing else the verifier's policy requires of that layer is missing. For a layer that holds measurements, the evidence establishes what ran by either of two routes:
+
+- **Event log.** The layer's event log replays from the initial value to the quoted value.
+- **Reference value.** The quoted value equals a reference value for that layer, from a source the verifier's policy trusts and not taken from the evidence under appraisal. This is appraisal against reference values as RFC 9334 describes it. A reference value is per layer: a quoted composite that equals the composite of a reference's per-layer values over the same selection establishes each of those values, and a reference that gives only a composite establishes no layer, because it does not show which layers hold measurements.
+
+A presented event log that does not replay to the quoted value is decided under rule 3 first, and a matching reference value does not then establish the layer. Otherwise, either route requires that the layer holds measurements. A layer whose quoted value is the initial value, or on a TPM the value a separator alone produces, is `layer-not-measured` whichever route matched: a reference value equal to it, like a log that holds a separator and nothing else, confirms only that nothing was recorded. Neither route shows that what ran was appraised before it ran.
+
+Where the policy requires that what ran was appraised and the evidence does not show it, the layer is `measured-not-appraised`. A log that replays from the initial value to the quoted value accounts for every extension since the register was last reset, so for that layer the number of boots does not change what the evidence establishes; `evidence-spans-multiple-boots` arises only when the log does not replay. The reason is named for its most common cause, a platform whose registers survive a warm reboot, and covers the other causes its definition lists.
+
+**Placement.** The result is carried as `appraisal.platform_measurement`, a member of `appraisal` in its own right, as `appraisal.provenance_depth_verified` is. It is not an `appraisal.method` value, so a record can carry it next to a re-execution result (§3.1.4). It is attributed to `appraisal.verifier`; in a record signed only by its producer that attribution is the producer's report, as §3.1.4 states.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `appraisal.platform_measurement` | no | The result block: `measurement`, the digest the appraisal is about; and `layers`, an object with at least one member, each member carrying `outcome`, one of `established` or `not-established`, and `reason`, required when `outcome` is `not-established` and absent otherwise, one of the three reasons above; a `null` reason is neither present nor absent and is refused. |
+
+`appraisal.platform_measurement.measurement` MUST equal `runtime.measurement`: a result about another measurement is not about this record, and a verifier MUST NOT treat it as one. Layers are keyed by the platform's name for them. On a TPM the key MUST be `pcr:` followed by a register number from 0 to 23, the registers a TPM 2.0 PC Client platform defines, in decimal without leading zeros (`pcr:0`, `pcr:10`, `pcr:23`); other platforms name their layers in their profile or annex.
+
+**Rules.**
+
+1. `not-established` MUST NOT be reported as `established`. A layer the result does not list is not established either, and a record that carries no `appraisal.platform_measurement` establishes no layer: a relying party MUST NOT treat an unlisted layer, or any layer of a record without the block, as `established`.
+2. A verifier MUST NOT set `appraisal.status` to `affirming` while any layer its appraisal policy requires is `not-established` or is not listed, and that includes a record in which it writes no `appraisal.platform_measurement` at all.
+3. A verifier that finds the event log does not replay to the quoted value, and cannot establish that the evidence describes a single boot, MUST report the affected layers `not-established` with `evidence-spans-multiple-boots`, and MUST NOT on that basis alone set `appraisal.status` to `contraindicated`. Where the verifier does establish that the evidence describes a single boot, the mismatch is evidence that resolves and contradicts the record, and §3.3.1's rule for that case applies. How a verifier establishes that evidence describes a single boot is platform-specific and out of scope here; a platform profile that wants a replay mismatch read as a contradiction names how its verifiers establish a single boot, and without such a means rule 3 applies. The reason is available only when the log does not replay to the quoted value, and a verifier that reaches for it more often than it should loses a diagnosis, not a rejection: the layer is `not-established` either way.
+4. `measured-not-appraised` is reported when the evidence does not show that the layer was appraised. It is not a finding that appraisal was off: evidence that is silent about appraisal does not establish either.
+5. A verifier that writes `appraisal.platform_measurement` has performed an appraisal and MUST NOT set `appraisal.status` to `none`.
+
+**What the record can and cannot show.** Rules 1, 4 and 5 are about the record and can be checked from it. Rules 2 and 3 bind what a verifier writes: the record carries the verifier's per-layer findings but not its policy, so a reader cannot tell from the record alone which layers the policy required, and cannot check either rule. A relying party that needs that assurance reads the layers it requires itself, under rule 1, and does not rely on `appraisal.status` for them.
+
+**Why rule 2 touches `appraisal.status` when §3.1.4 does not.** A re-execution outcome is about one claim the record makes, reproducibility, which a relying party reads in its own block. A required layer that is not established means the appraisal did not establish what its own policy asked of it, and that is what `affirming` reports; leaving `status` free here would let it say the opposite of the layers beneath it.
+
+**What rule 3 costs.** On a platform whose quote does not show that the measurement registers were reset since the event log began, a verifier cannot establish a single boot, and under rule 3 a replay mismatch on that platform is never `contraindicated` on its own. A TPM's reset counter is an example: on a platform whose TPM is not reset by a warm reboot the counter does not move across one, so it cannot separate the two cases rule 3 is about. This is intended. The alternative reports every unreset platform as tampered, which is the collapse this section exists to remove.
+
+**Why rule 3 does not open a downgrade.** An adversary who can make a tampered boot look like a two-boot mix moves the affected layers from a failure to `not-established`. Rules 1 and 2 make that worthless: `not-established` is never a pass, and a verifier whose policy requires the layer cannot report `affirming`, so a relying party that reads only `appraisal.status` and one that reads the layers both decline the record. The difference between the two readings matters to diagnosis, not to acceptance. What rule 3 prevents is the opposite error, a benign unreset platform reported as tampered.
+
+**Why this is not `appraisal.status: none`.** `none` says no appraisal was performed. Here one was, and its finding is per layer. A record that can only say `none` cannot tell a layer that was never measured from a log that failed to replay across two boots, and the reason that distinguishes them is the finding.
+
+Example result, for a reference composite in which one layer holds a separator only. `warning` here is the verifier's policy choice for a layer it does not require; rule 2 fixes only that `affirming` is unavailable when a required layer is not established.
+
+```json
+"appraisal": {
+  "status": "warning",
+  "verifier": "https://verifier.example.org",
+  "platform_measurement": {
+    "measurement": "sha256:1f3e5d7c...",
+    "layers": {
+      "pcr:0": {"outcome": "established"},
+      "pcr:2": {"outcome": "not-established", "reason": "layer-not-measured"},
+      "pcr:4": {"outcome": "established"}
+    }
+  }
+}
+```
+
+**Relation to the reference library.** `verify_record` already reports a caller-supplied appraiser's per-layer report as its `platform_measurement` field (#457), with the same three causes written `layer_not_measured`, `measured_not_appraised` and `evidence_spans_multiple_boots`. That field is library output and binds no record. This section names the outcomes a record carries.
+
+**Out of scope.** This section does not say how a verifier decides each outcome, and fixes no quote, event-log or reference-value format; those belong to the platform's profile or annex.
 
 ### 3.2 Wire format
 
@@ -205,8 +453,8 @@ Rule 3 is what makes the block safe to add. A reference that could invalidate a 
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
     "weights_digest": "sha256:a3f8d2c1e9b04756..."
   },
@@ -260,7 +508,7 @@ Rule 3 is what makes the block safe to add. A reference that could invalidate a 
 
 **Signature binding.** Every TRACE Trust Record MUST be cryptographically bound by a signature over its canonical JSON form, made by the key in `cnf`. Canonicalization is RFC 8785 (JCS) unless the profile declares a different canonicalization. The signature MAY be either:
 
-- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent; or
+- **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent. The value MUST be the canonical base64url encoding (RFC 4648 section 3.5: unused trailing bits in the final character MUST be zero), and a verifier MUST reject a record whose `signature` is not canonically encoded. <!-- CHANGED: #247 - embedded signature MUST be canonical base64url -->
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
 **Canonical form (RFC 8785 JCS).** The canonical form of a TRACE record for signature purposes is produced by the following algorithm:
@@ -278,6 +526,7 @@ Implementations MUST use an RFC 8785-conformant library. Using `json.dumps(sort_
 
 **What the rule covers.** It is on the object, not only on its declared fields: the pre-image covers every member, including the members RFC 7517 permits a `cnf.jwk` to carry that this schema does not name, and the schema holds those to the same range. It is also not only about a Trust Record. It covers the revocation statements and bundles of section 3.2.3, and it covers any object whose digest is taken over its canonical form, such as a bridge profile's declaration and tool-call digests, where no schema constrains the input and this rule is the only thing standing between two different objects and one digest.
 
+**What counts as an integer.** JSON has one kind of number. RFC 8259 §6 gives it a single grammar in which a fraction and an exponent are optional parts, so `1785000000`, `1785000000.0` and `1.785e9` are three ways of writing one value. Whether a number is an integer, for a member typed `integer` and for the range above, is decided by that value and not by how it is written: `1785000000.0` and `1.785e9` are the integer 1785000000, `1785000000.5` is not an integer, and `1e21` is an integer outside the range. The value is the IEEE 754 double the number parses to, which is what RFC 8785 serializes and so what a signature covers; a spelling with more digits than a double carries, such as `1785000000.0000000001`, is the integer 1785000000. A verifier MUST make both decisions on that value. JSON Schema 2020-12, in which the schemas of this specification are written, defines `integer` the same way (Validation §6.1.1: any number with a zero fractional part). RFC 8785 writes the value and not the text it was read from, so the three spellings above have one pre-image and one signature, and the spelling is not something a signature can vouch for. A verifier whose parser returns only the value, as `JSON.parse` does, has no spelling to decide by; a verifier that decided by spelling would reject records that such a verifier accepts, over the same signed bytes. This paragraph governs every object the rule above covers. For the range, that includes two objects that are canonicalized under this section and whose members this specification does not type: the MCP Server Provenance Record of `spec/server-provenance-v1.md` and `spec/server-provenance-v2.md`, which is signed under section 3.2, and the transcript over whose canonical bytes section 3.1.4's `transcript_digest` is taken. A whole number outside the range in either is rejected however it is written. Which members of such an object are typed `integer` is for the document that defines the object to say, and this paragraph retypes none of them: whether the provenance record's `issued_at` and `tool_catalog.tool_count` are decided by value or by spelling is a separate question, which this paragraph does not settle. <!-- CHANGED: #247 - integer-valued members are decided by value, not by spelling; governs every object the range rule covers -->
 
 Each profile MUST declare which binding form it uses. A record with no verifiable signature binding is not a Trust Record: verifiers MUST reject it. Schema validity alone confers no trust.
 
@@ -330,6 +579,12 @@ Any party, browser, CLI, in-cluster verifier, third-party auditor, verifies:
 6. SCITT receipt resolves on the named transparency log.
 7. SLSA provenance resolves to a trusted builder.
 8. The record-signing key is not revoked as of the entry the record was logged at, per section 3.2.3. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
+
+<!-- CHANGED: #116 - verifier profile declarations and verifier-result fields -->
+
+**Verifier profile compatibility.** A verifier MUST declare a nonempty `accepted_profiles` set of profile identifiers whose schemas and verification semantics it implements. A declaration containing an unimplemented profile MUST be refused, even when the incoming record names another implemented profile. A verifier MUST refuse a record whose `eat_profile` is outside its declared set. These requirements do not override the v0.1 cutover in "Changes from v0.1".
+
+For each successful verification, the verifier MUST report the verified `profile` and the complete `accepted_profiles` set as verifier-result fields, recording the set configured at verification time. `profile` MUST identify the record's signed `eat_profile`. These fields belong to the verifier's result; they are not new claims added to the signed input record.
 
 No callback to the issuer. No vendor in the trust path beyond silicon root and transparency log operators.
 
@@ -385,11 +640,14 @@ A verifier configured with the issuer key that fails any of these three checks M
 
 #### 3.3.3 Action receipts for embodied workflows (informative)
 
+Here, a TRACE session means a receipt stream or producer-defined execution scope,
+not an MCP protocol session.
+
 Embodied-agent profiles need to keep three evidence layers separate:
 
 | Layer | TRACE role | Boundary |
 |---|---|---|
-| Session evidence | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the governed session. | Does not expose every call unless the verifier has the transcript bytes. |
+| Execution-scope evidence | The Trust Record, policy hash, runtime measurement, and `tool_transcript.hash` bind the producer-defined execution scope. | Does not expose every call unless the verifier has the transcript bytes. |
 | Action issuance evidence | Per-call receipts can prove that a specific action request was issued, signed, ordered, and bound to the session or call. | Does not prove that the requested physical or business outcome completed. |
 | Outcome evidence | Controller, monitor, human-review, or safety-system observations can describe acceptance, rejection, aborts, or completion. | The claim belongs to the external issuer, not to core TRACE validity. |
 
@@ -401,7 +659,7 @@ requirement, such as `required`, `optional`, or `none`, without folding action
 evidence into the supply-chain provenance axis.
 
 An action receipt profile can build on the external execution evidence rules in
-section 3.3.1 by requiring the verifier to:
+section 3.3.2 by requiring the verifier to:
 
 1. recompute the receipt's action or evidence digest from the canonical action
    preimage;
@@ -420,6 +678,114 @@ untrusted, stale, out of order, or not bound to the expected call. Conversely, a
 signed acceptance receipt is not proof of physical completion or
 functional-safety certification unless the external issuer and profile
 explicitly make, and the verifier is configured to trust, that stronger claim.
+
+#### 3.3.4 Disclosed gaps in a receipt chain
+
+<!-- CHANGED: #117 - GapDisclosure chain element and the receipt_gap_disclosed outcome -->
+
+Under a profile requiring action receipts, completeness of the receipt chain is the
+load-bearing property. No emitter can be made gap-proof: any writer operating
+asynchronously has a window in which a crash loses a tail of receipts. A specification
+that offers only "complete" and "broken" therefore rewards concealment, because an
+operator who backfills a lost receipt scores better than one who reports the loss.
+
+A `GapDisclosure` is a signed statement, occupying a position in the receipt chain, that
+receipts which would have occupied that position were never emitted. It is negative
+evidence contributed by the emitter about itself. It does not establish that the missing
+receipts ever existed, how many were lost, or that the emitter did not omit them
+selectively; what the splice proves is where the gap sits in the chain, and nothing else.
+
+**Structure.** A `GapDisclosure` is a chain element. It MUST carry:
+
+- `type`, the value `GapDisclosure/1.0`;
+- `previous_receipt_hash`, the digest of the chain element immediately preceding the gap,
+  in the same form and computed the same way as on a receipt;
+- `session_id`, naming the receipt stream the disclosure belongs to;
+- `issuer_key_id`, identifying the key that signed it;
+- `signature`, over the canonical form of the disclosure with the signature field removed.
+
+It MAY carry `cause` and `receipts_lost_estimate`. Both are descriptive self-reports and
+nothing more: the receipts an estimate counts are absent by definition, so nothing in the
+chain corroborates either field. A verifier MUST NOT treat them as established, MUST NOT
+condition any outcome on their values, and MUST NOT reject a disclosure because either
+disagrees with other evidence. They exist to be reported, not relied on.
+
+**Stream binding.** The `session_id` is covered by the signature, and a verifier MUST
+reject a disclosure whose `session_id` does not match the receipt stream under
+verification. Without that comparison, a disclosure honestly signed for one stream is a
+transplantable excuse for a gap in any other: replay, in the position where replay is
+hardest to distinguish from recovery.
+
+**Chain binding.** A `GapDisclosure` MUST be spliced into the receipt chain at the point
+of resumption. Concretely, its `previous_receipt_hash` MUST name a chain element that is
+present, and the next chain element emitted after resumption MUST carry a
+`previous_receipt_hash` naming the disclosure. A disclosure that is not linked from both
+directions has not been sealed into the chain and MUST NOT be treated as covering
+anything.
+
+That requirement has a window in which it cannot be met honestly: at the live tail of
+the chain, after the failure and before resumption, the sealing successor does not exist
+yet. A verifier meeting a tail disclosure whose other checks pass MUST NOT report
+`receipt_gap_disclosed`, and MUST NOT report `receipt_invalid` either: the absence of a
+successor is an inability to check, not evidence of a defect, the same principle as
+section 3.3.2's treatment of unknown issuer keys. It MUST surface the disclosure as
+unverified with a distinct advisory, and re-verification after the chain resumes upgrades
+or impeaches it on the seal that then exists. This matters adversarially: a chain
+truncated immediately after a disclosure is indistinguishable from an honest tail, so
+whatever a verifier grants the honest tail, it grants the truncation.
+
+Gap boundaries MUST NOT be expressed as timestamps or as emitter-assigned sequence
+numbers. Both are signed by the same key that signs the receipts, so neither constrains
+an emitter that is misrepresenting the gap. The chain links are the boundaries.
+
+**Issuer.** A `GapDisclosure` MUST be signed by the key that signed the chain element its
+`previous_receipt_hash` names, or by an ancestor of that key in the hierarchy of
+section 3.2.1. A disclosure signed by any other key MUST be treated as invalid, whether
+or not that key is otherwise trusted. A gap is the moment at which introducing an
+unrelated key is most useful to an adversary and least distinguishable from recovery.
+
+**Consecutive disclosures.** A `GapDisclosure` MAY name another `GapDisclosure` as its
+predecessor, which represents an emitter that failed again before emitting a receipt. A
+verifier MUST report the number of consecutive disclosures. It MUST NOT reject solely on
+that basis: an emitter failing repeatedly and disclosing each time is behaving better
+than one that is silent.
+
+**Verifier outcomes.** The action-receipt outcome `receipt_missing_required` is narrowed,
+and the outcome `receipt_gap_disclosed` is added beside it:
+
+| Outcome | Meaning |
+|---|---|
+| `receipt_gap_disclosed` | Required receipts are absent, and a valid `GapDisclosure` occupies their position in the chain. Emitter-attested negative evidence. |
+| `receipt_missing_required` | Required receipts are absent and no valid disclosure occupies their position. Silent, and treated as presumptively adversarial. |
+
+A verifier MUST report `receipt_gap_disclosed` distinctly from
+`receipt_missing_required`. Collapsing them discards the distinction the disclosure was
+issued to make.
+
+Whether `receipt_gap_disclosed` is accepted or rejected MUST be a verifier policy input,
+not implementation-defined behaviour. A relying party evaluating a payment authorisation
+and one evaluating a telemetry batch will reasonably differ, and neither should have to
+change verifier to express that. One bound on that policy is not negotiable: a profile
+that requires independently proven completeness of the receipt chain MUST NOT accept
+`receipt_gap_disclosed` as satisfying it. A disclosed gap is an attested absence, not a
+proof of completeness, and no policy setting may promote the former into the latter.
+
+A `GapDisclosure` that fails signature verification, is not bound into the chain from
+both directions, names a session other than the stream under verification, is signed by
+a key outside the permitted set, or whose claimed gap is contradicted by chain elements
+that are in fact present, MUST yield `receipt_invalid` rather than falling back to
+`receipt_missing_required`. A forged, transplanted or self-contradictory disclosure is
+worse evidence than no disclosure: it is an attempt to convert silence into attestation,
+and the attempt itself is a finding.
+
+**Reporting.** A verification result MUST report each disclosed gap individually,
+carrying at minimum the linked predecessor, the number of consecutive disclosures, and
+the `cause` when one was supplied. Reducing disclosed gaps to a count or a boolean
+discards exactly the detail a relying party's policy needs.
+
+The conformance vectors for this section are `examples/action-receipts/gap-disclosure/`:
+twenty fixtures, two independent vectors per rule, with a generator that reproduces them
+byte for byte, and the live-tail contrast pinned by a dedicated test.
 
 ### 3.4 Scope
 
@@ -458,7 +824,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 - **SLSA Provenance v1.0**: build-time provenance. Build Level 2 minimum for TRACE-conformant records in v1.0; Build Level 3 is the target for production reference implementations.
 - **SPIFFE / SPIRE**: workload identity. The SVID is bound to the TEE measurement so identity is rooted in hardware.
 - **SCITT**: append-only transparency log. TRACE defines a SCITT profile for Trust Record inclusion (Signed Statement registration, Receipt format, key rotation semantics).
-- **EAR (draft-ietf-rats-ar4si)**: verifier output format. Separates *what was claimed* from *what was accepted*.
+- **EAR (draft-ietf-rats-ear)**: verifier output format, carrying AR4SI's trustworthiness tiers (draft-ietf-rats-ar4si). Separates *what was claimed* from *what was accepted*.
 - **MCP**: Model Context Protocol tool surface. TRACE adds (a) cryptographic binding of the transcript hash into the EAT envelope and (b) a per-call `data_class` classification. The normative MCP profile is not in this version; it is targeted for v0.3.
 - **A2A**: Agent-to-Agent communication. TRACE adds transcript binding and cross-protocol identity threading via SPIFFE SVID. The `delegation` link block (§3.1) landed in v0.2 as the foundation; the normative A2A binding rules are targeted for v0.3.
 - **AIBOM (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM)**: component inventory for models, datasets, dependencies. Referenced by digest from `model`.
@@ -473,9 +839,11 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
-- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
+<!-- CHANGED: #143 - silent allows deny decisions while retaining audit evidence -->
+
+- **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, a policy deny MUST NOT block the action. The audit chain MUST still record every would-have-denied decision; only operational log lines are suppressed. Where modes are compared, `enforce` is the strongest and `silent` the weakest: `advisory` is not weaker than `silent`, because both allow a denied action and `silent` also suppresses operational logs.
 
   **`enforcement_mode: "declared"`.** The three modes above all assert that *something evaluated the policy*. `declared` asserts less: the policy is named and bound into the signed record, and nothing evaluated it. That is not a corner case, it is the common one for a producer with no policy engine: an agent framework observed by an adapter has a policy the operator declares and no evaluation of it anywhere, and with only three values such a record had to claim an evaluation that never happened.
 
@@ -518,17 +886,15 @@ the reference implementation at the MCP tool-call boundary.
 
 ### 6.1 Host
 
-**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". Formation is in progress; on completion, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
+**The Linux Foundation**, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Project Contribution Agreement and the Technical Charter have been executed; when the Technical Charter takes effect, governance transitions to a Technical Steering Committee as defined in `CHARTER.md`, and spec, IP, trademark, and conformance mark sit with the series.
 
-This supersedes the earlier proposal to split the technical workstream to CoSAI and the spec, IP and trademark to the Linux Foundation entity hosting the Model Context Protocol. That arrangement made TRACE a guest of two hosts, neither of which owned the conformance mark outright.
-
-Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS, EAT, SCITT, EAR working groups), CoSAI (WS4 interoperability).
+Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA stewardship), CNCF (SPIFFE/SPIRE stewardship), IETF (RATS and SCITT working groups).
 
 ### 6.2 Target contributing organizations
 
 The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
-Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
+NVIDIA, Intel, AMD, Microsoft, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
 ### 6.3 IP and licensing
 
@@ -543,7 +909,7 @@ Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential
 
 These need input before v1.0. Two are now resolved and are kept here, marked, so a reader tracking them can see how they landed.
 
-1. ~~**Host organization.** CoSAI, Linux Foundation, or a federated arrangement?~~ **Resolved:** the Linux Foundation, as TRACE's own series. See §6.1.
+1. ~~**Host organization.** Which organization hosts the specification?~~ **Resolved:** the Linux Foundation, as TRACE's own series. See §6.1.
 2. **AI-agent profile vs general profile.** One inclusive profile or split agent execution and generic confidential workload from day one?
 3. **Transparency log operator(s).** One canonical SCITT log, federated logs, or BYO with conformance criteria?
 4. **Policy language.** TRACE binds a policy *hash*. Does v1.0 also specify a policy *language* (Cedar, Rego, custom DSL), or stay language-agnostic?
@@ -567,7 +933,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 | SPIFFE | Secure Production Identity Framework For Everyone (CNCF). Workload identity |
 | AIBOM | AI Bill of Materials (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM) |
 | MCP | Model Context Protocol. Agent tool-call surface |
-| A2A | Agent-to-Agent (Google). Inter-agent communication protocol |
+| A2A | Agent2Agent protocol (Linux Foundation). Inter-agent communication protocol |
 | C2PA | Coalition for Content Provenance and Authenticity. Content origin manifests |
 | RIM | Reference Integrity Manifest. Vendor-published reference measurements |
 | Trust Record | TRACE's portable signed artifact: see §3 |
@@ -583,7 +949,8 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 - EAT, Entity Attestation Token (RFC 9711), https://www.rfc-editor.org/rfc/rfc9711
 - SCITT Architecture (draft-ietf-scitt-architecture): https://datatracker.ietf.org/doc/draft-ietf-scitt-architecture/
 - SCITT Reference APIs (draft-ietf-scitt-scrapi): https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/
-- EAR / AR4SI (draft-ietf-rats-ar4si): https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/
+- EAR, EAT Attestation Results (draft-ietf-rats-ear): https://datatracker.ietf.org/doc/draft-ietf-rats-ear/
+- AR4SI, Attestation Results for Secure Interactions (draft-ietf-rats-ar4si): https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/
 - JWS (RFC 7515): https://www.rfc-editor.org/rfc/rfc7515
 - JWE (RFC 7516): https://www.rfc-editor.org/rfc/rfc7516
 - COSE (RFC 9052/9053): https://www.rfc-editor.org/rfc/rfc9052
@@ -594,7 +961,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 ### Foundation Specifications
 
 - SLSA Specification v1.0 (OpenSSF): https://slsa.dev/spec/v1.0/
-- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/
+- SPIFFE / SPIRE Specifications (CNCF): https://spiffe.io/docs/latest/spiffe-about/overview/
 - SPDX 3.0 AI Profile: https://spdx.dev/use/specifications/
 - CycloneDX 1.7 ML-BOM: https://cyclonedx.org/specification/overview/
 - C2PA Technical Specification v2: https://c2pa.org/specifications/specifications/2.0/
@@ -602,7 +969,7 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Vendor Hardware Attestation
 
-- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/api-docs-nras/
+- NVIDIA Remote Attestation Service: https://docs.nvidia.com/attestation/index.html
 - Intel Trust Authority: https://www.intel.com/content/www/us/en/security/trust-authority.html
 - Intel TDX: https://www.intel.com/content/www/us/en/developer/tools/trust-domain-extensions/overview.html
 - AMD SEV-SNP: https://www.amd.com/en/developer/sev.html
@@ -613,8 +980,8 @@ These need input before v1.0. Two are now resolved and are kept here, marked, so
 
 ### Adjacent Work
 
-- Project Oak (Google DeepMind): https://github.com/project-oak/oak
-- Anthropic MCP Specification: https://modelcontextprotocol.io/specification/
-- Google A2A Specification: https://a2a-protocol.org/latest/specification/
+- Project Oak: https://github.com/project-oak/oak
+- Model Context Protocol Specification: https://modelcontextprotocol.io/specification/
+- Agent2Agent (A2A) Protocol Specification: https://a2a-protocol.org/latest/specification/
 - MITRE ATLAS: https://atlas.mitre.org/
 - OWASP Top 10 for Agentic Applications: https://genai.owasp.org/

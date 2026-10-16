@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import base64
 import time
+from typing import get_args
 
 import pytest
+import rfc8785
 
+from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.provenance import (
     FORMAT,
     ProvenanceError,
@@ -23,7 +26,14 @@ from agentrust_trace.provenance import (
     tool_catalog_hash,
     verify_record,
 )
-from agentrust_trace.sign import _canonical_bytes, generate_key, jwk_thumbprint, key_to_jwk
+from agentrust_trace.revocation import NO_CHECK, RevocationCheck
+from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
+    _canonical_bytes,
+    generate_key,
+    jwk_thumbprint,
+    key_to_jwk,
+)
 
 DIGEST = "sha256:" + "a" * 64
 OTHER_DIGEST = "sha256:" + "b" * 64
@@ -203,9 +213,63 @@ def test_unsigned_record_is_rejected() -> None:
         verify_record(_record(), key_to_jwk(generate_key()))
 
 
+@pytest.mark.parametrize(
+    "bad_signature", [12345, 3.14, True, ["A", "B"], {"sig": "AA"}, b"AAAAAAAA"]
+)
+def test_a_non_string_signature_is_rejected_not_crashed_on(bad_signature) -> None:
+    """A `record` reaches `verify_record` untrusted, same as every other field.
+
+    `signature + "=" * (-len(signature) % 4)` used to run on whatever JSON value
+    sat under `record["signature"]`, and a non-string -- an int, a bool, a list,
+    a nested object -- raised a bare `TypeError` (`object of type 'int' has no
+    len()` for an int, a `TypeError` on `+` for a dict) rather than the
+    `ProvenanceError` this function documents for every other malformed input.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["signature"] = bad_signature
+    with pytest.raises(ProvenanceError, match="base64url string"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bad_signature", ["a", "你好", "!!!not-base64!!!padding???"])
+def test_a_malformed_base64_signature_is_rejected_not_crashed_on(bad_signature) -> None:
+    """Correctly typed but not decodable: the other half of the same gap.
+
+    A string signature that cannot pad to a whole byte, or that carries a
+    non-ASCII character, previously reached `base64.urlsafe_b64decode` directly
+    and raised `binascii.Error` / `ValueError`, not `ProvenanceError`.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    signed["signature"] = bad_signature
+    with pytest.raises(ProvenanceError, match="not valid base64url"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_a_malformed_signature_does_not_reorder_the_cnf_check_ahead_of_it() -> None:
+    """The signature-decode guard must land where the crash it replaces did:
+    after the embedded-key checks, not before them.
+
+    Both problems here raise `ProvenanceError`, so nothing here distinguishes a
+    fix that checks the signature first from one that checks `cnf.jwk` first --
+    except which message comes back. This pins that order so a future change
+    that hoists the signature-format check above the `cnf.jwk` checks (an easy
+    slip: the natural-looking place to add it is right where `signature` is
+    first read, several lines above where it is first used) fails here instead
+    of only being noticed as a changed error message downstream.
+    """
+    key = generate_key()
+    signed = sign_record(_record(), key)
+    del signed["cnf"]["jwk"]
+    signed["signature"] = 12345  # also malformed, but cnf.jwk is checked first
+    with pytest.raises(ProvenanceError, match="no cnf.jwk"):
+        verify_record(signed, key_to_jwk(key))
+
+
 def test_unknown_format_version_is_rejected_not_parsed() -> None:
     key = generate_key()
-    signed = sign_record({**_record(), "format": "agentrust-io/mcp-server-provenance/2"}, key)
+    signed = sign_record({**_record(), "format": "agentrust-io/mcp-server-provenance/3"}, key)
     with pytest.raises(ProvenanceError, match="unknown format"):
         verify_record(signed, key_to_jwk(key))
 
@@ -612,11 +676,15 @@ def test_an_unreachable_revocation_source_fails_closed() -> None:
         verify_record(signed, key_to_jwk(key), revocation=unreachable)
 
 
-def test_an_unrevoked_key_passes_the_check() -> None:
+@pytest.mark.parametrize("store", [set(), {"some-other-key"}])
+def test_an_unrevoked_key_passes_the_check(store) -> None:
     """The check must not reject what it should accept."""
     key = generate_key()
     signed = sign_record(_record(), key)
-    verify_record(signed, key_to_jwk(key), revocation={"some-other-key"})
+    result = verify_record(signed, key_to_jwk(key), revocation=store)
+    assert isinstance(result, RevocationCheck)
+    assert result.outcome == "verified"
+    assert result.evidence == {"source": "store"}
 
 
 def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
@@ -626,7 +694,10 @@ def test_revocation_is_off_by_default_and_verification_stays_offline() -> None:
     now has somewhere to put a store, not that one is imposed.
     """
     key = generate_key()
-    verify_record(sign_record(_record(), key), key_to_jwk(key))
+    result = verify_record(sign_record(_record(), key), key_to_jwk(key), revocation=None)
+    assert isinstance(result, RevocationCheck)
+    assert result == NO_CHECK
+    assert result.outcome == "no_check_performed"
 
 
 # --- policy inputs, per the review on #164 ----------------------------------
@@ -709,3 +780,412 @@ def test_the_record_type_is_checked_before_the_record_is_read() -> None:
     with pytest.raises(ProvenanceError) as excinfo:
         verify_record([], key_to_jwk(key))
     assert "unknown format" not in str(excinfo.value)
+
+
+# #320: `build_record` coerced an explicitly supplied `issued_at` with `int()` before
+# handing it to `_check_structure`, so the guard there never saw what the caller passed.
+# Its own comment says what it is for: "bool is an int subclass, and True would otherwise
+# pass as a timestamp". The order defeated it.
+@pytest.mark.parametrize(
+    ("supplied", "was_coerced_to"),
+    [
+        (True, 1),
+        (False, 0),
+        (1.9, 1),
+        ("123", 123),
+        (-0.5, 0),
+    ],
+)
+def test_an_explicitly_supplied_issued_at_is_validated_before_it_is_coerced(
+    supplied: object, was_coerced_to: int
+) -> None:
+    assert int(supplied) == was_coerced_to, "the coercion this pins must still be the one"
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+
+
+@pytest.mark.parametrize("supplied", [[1], "abc", b"7", {"t": 1}, float("nan")])
+def test_an_unconvertible_issued_at_raises_what_the_module_documents(
+    supplied: object,
+) -> None:
+    """`int()` raised `TypeError` or `ValueError` here, which no caller written against
+    this module's contract catches."""
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+
+
+# The other half of #320, which #334 did not carry: the guard had no upper bound, so a
+# producer accepted a timestamp it could not sign. The value is a well-formed non-negative
+# integer, so none of the tests above reaches it; `int(2**60)` is `2**60`.
+@pytest.mark.parametrize(
+    ("supplied", "accepted"),
+    [
+        (JCS_SAFE_INTEGER - 1, True),
+        (JCS_SAFE_INTEGER, True),
+        (JCS_SAFE_INTEGER + 1, False),
+        (2**60, False),
+    ],
+    ids=["below", "at", "above", "far-above"],
+)
+def test_the_issued_at_bound_sits_where_the_canonicalizer_stops(
+    supplied: int, accepted: bool
+) -> None:
+    """The boundary is asserted against `rfc8785` rather than against a number written
+    twice: the guard and the canonicalizer have to agree about which integers exist, or
+    `build_record` emits records `sign_record` refuses."""
+    if accepted:
+        assert _record(issued_at=supplied)["issued_at"] == supplied
+        rfc8785.dumps({"issued_at": supplied})
+        return
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=supplied)
+    with pytest.raises(rfc8785.IntegerDomainError):
+        rfc8785.dumps({"issued_at": supplied})
+
+
+def test_an_out_of_range_issued_at_no_longer_leaves_the_verifier_as_rfc8785s_error() -> None:
+    """`_check_structure` is shared, so the bound reaches `verify_record` as well.
+
+    Under the default freshness policy such a record was already refused, as dated in the
+    future, so nothing that verified before is refused now. The case that changes is a
+    caller who widens `max_future_skew_seconds` past the gap: the structural check ran
+    with the value in hand, the canonicalizer met it first, and `rfc8785`'s
+    `IntegerDomainError` left a function documented to raise `ProvenanceError`.
+    """
+    key = generate_key()
+    record = _record()
+    record["issued_at"] = 2**60
+    signed = dict(record, signature="AA", cnf={"jwk": key_to_jwk(key)})
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        verify_record(signed, key_to_jwk(key), max_future_skew_seconds=10**19)
+
+
+def test_a_valid_issued_at_is_still_carried_through_unchanged() -> None:
+    assert _record(issued_at=1_754_000_000)["issued_at"] == 1_754_000_000
+
+
+@pytest.mark.parametrize(
+    ("accepted_spelling", "refused_spelling"),
+    [
+        (1760000000.0, 1760000000.5),
+        (1.76e9, 17600000005e-1),
+        (float(JCS_SAFE_INTEGER), float(JCS_SAFE_INTEGER + 1)),
+    ],
+)
+def test_issued_at_is_decided_by_value_in_pairs(
+    accepted_spelling: float, refused_spelling: float
+) -> None:
+    """#485: `issued_at` is typed integer in server-provenance-v1 and decided by value
+    per TRACE v0.2 §3.2.2, keeping the bool and range guards."""
+    key = generate_key()
+    built = _record(issued_at=accepted_spelling)
+    assert built["issued_at"] == int(accepted_spelling)
+    assert type(built["issued_at"]) is int
+
+    signed = sign_record(built, key)
+    respelled = {**signed, "issued_at": accepted_spelling}
+    assert type(respelled["issued_at"]) is float
+    verify_record(
+        respelled,
+        key_to_jwk(key),
+        now=int(accepted_spelling),
+        max_age_seconds=300,
+    )
+
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        _record(issued_at=refused_spelling)
+    with pytest.raises(ProvenanceError, match="issued_at"):
+        verify_record(
+            {**signed, "issued_at": refused_spelling},
+            key_to_jwk(key),
+            now=1760000000,
+            max_future_skew_seconds=10**19,
+        )
+
+
+def test_an_omitted_issued_at_is_still_stamped_with_the_current_time() -> None:
+    before = int(time.time())
+    stamped = _record()["issued_at"]
+    assert isinstance(stamped, int) and not isinstance(stamped, bool)
+    assert before <= stamped <= int(time.time())
+
+
+# --- attestation is checked by shape, not by truthiness ---------------------
+#
+# #325 already rejected non-object attestation values. These cases retain
+# that coverage and exercise the remaining object-shape and null-only rules.
+
+
+@pytest.mark.parametrize("bogus_attestation", [{}, [], "", 0, False])
+def test_non_tee_record_rejects_any_non_null_attestation(bogus_attestation: object) -> None:
+    """Non-TEE `attestation` must be `null`, not merely falsy JSON.
+
+    The empty object passed the post-#325 guard. Other falsy non-null values
+    were already refused and remain regression coverage.
+    """
+    with pytest.raises(ProvenanceError, match="attestation evidence"):
+        _record(attestation=bogus_attestation)
+
+
+@pytest.mark.parametrize(
+    "bogus_attestation",
+    ["hello", ["anything"], {}, 1, True, {"platform": "intel-tdx"}],
+)
+def test_tee_attested_rejects_evidence_of_the_wrong_shape(bogus_attestation: object) -> None:
+    """`tee-attested` evidence must be a `runtime`-shaped object, not merely truthy.
+
+    Cover non-object values, an empty object, and an object missing the
+    required measurement. These are structural checks, not hardware appraisal.
+    """
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(kind="tee-attested", attestation=bogus_attestation)
+
+
+def test_tee_attested_rejects_an_unknown_platform() -> None:
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "bogus-platform", "measurement": DIGEST},
+        )
+
+
+def test_tee_attested_rejects_a_malformed_measurement_digest() -> None:
+    with pytest.raises(ProvenanceError, match="attestation"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": "sha256:not-hex"},
+        )
+
+
+def test_tee_attested_accepts_a_well_formed_runtime_shaped_attestation() -> None:
+    """A synthetic object in the runtime shape passes structural validation."""
+    rec = _record(
+        kind="tee-attested",
+        attestation={"platform": "intel-tdx", "measurement": DIGEST},
+    )
+    assert rec["attestation"] == {"platform": "intel-tdx", "measurement": DIGEST}
+
+
+def test_tee_attested_accepts_the_optional_runtime_fields() -> None:
+    attestation = {
+        "platform": "amd-sev-snp",
+        "measurement": DIGEST,
+        "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/example",
+        "nonce": "abc123",
+        "firmware_version": "1.55",
+    }
+    rec = _record(kind="tee-attested", attestation=attestation)
+    assert rec["attestation"] == attestation
+
+
+@pytest.mark.parametrize("bogus_attestation", ["not-actually-attestation", {}, ["x"], 0, False])
+def test_the_verifier_rejects_a_hand_forged_tee_attested_record_with_bad_shape(
+    bogus_attestation: object,
+) -> None:
+    """The exact attack: a correctly-signed record carrying junk as `attestation`.
+
+    `build_record` refusing bad shapes is necessary but not sufficient, per #142:
+    a record does not have to come from `build_record`. This signs the forged JSON
+    directly, the way an attacker holding a publisher key would, and confirms
+    `verify_record`'s copy of the same structural rule (`_check_structure`) still
+    catches it.
+    """
+    key = generate_key()
+    signed = sign_record(
+        _forged(kind="tee-attested", attestation=bogus_attestation), key
+    )
+    with pytest.raises(ProvenanceError, match="attestation"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("bogus_attestation", [{}, [], "", 0, False])
+def test_the_verifier_rejects_a_non_null_attestation_on_a_non_tee_record(
+    bogus_attestation: object,
+) -> None:
+    key = generate_key()
+    signed = sign_record(_forged(attestation=bogus_attestation), key)
+    with pytest.raises(ProvenanceError, match="attestation evidence"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_tee_attested_rejects_software_only_as_the_named_platform() -> None:
+    """Shape-valid is not the same claim as a hardware root.
+
+    `attestation.platform: "software-only"` passes `RuntimeInfo`'s own validation
+    -- it is a legitimate value there, for an honestly non-attested Trust Record --
+    but `docs/platforms/index.md` documents it as carrying no hardware assurance,
+    and §1 defines `tee-attested` as "the server itself, from inside a TEE". A
+    `tee-attested` record naming `software-only` is the claim without the backing,
+    just spelled as a well-formed object instead of `null` or a bad type.
+    """
+    with pytest.raises(ProvenanceError, match="software-only"):
+        _record(
+            kind="tee-attested",
+            attestation={"platform": "software-only", "measurement": DIGEST},
+        )
+
+
+#: Every platform `RuntimeInfo` accepts other than `software-only`. Derived from
+#: the live model, the same way `tests/test_sandbox_adapter.py`'s
+#: `test_accepted_platforms_are_read_from_the_model` does, rather than
+#: hand-copied: a hand-copied list is exactly the class of drift this whole fix
+#: is about, and it had already happened once here (the first version of this
+#: test named five of the nine).
+_HARDWARE_PLATFORMS = sorted(
+    p
+    for p in get_args(RuntimeInfo.model_fields["platform"].annotation)
+    if p != "software-only"
+)
+
+
+@pytest.mark.parametrize("platform", _HARDWARE_PLATFORMS)
+def test_tee_attested_accepts_every_hardware_platform(platform: str) -> None:
+    """The software-only rejection must not overreach onto real hardware roots."""
+    rec = _record(
+        kind="tee-attested",
+        attestation={"platform": platform, "measurement": DIGEST},
+    )
+    assert rec["attestation"]["platform"] == platform
+
+
+def test_hardware_platform_list_is_actually_populated() -> None:
+    """Guard on the derivation itself.
+
+    Pytest collects a skipped case for an empty parameter list. Require the
+    platform coverage to stay populated instead of silently losing coverage
+    through a skip.
+    """
+    assert "software-only" not in _HARDWARE_PLATFORMS
+    all_platforms = get_args(RuntimeInfo.model_fields["platform"].annotation)
+    assert len(_HARDWARE_PLATFORMS) == len(all_platforms) - 1
+    for known in ("intel-tdx", "amd-sev-snp", "nvidia-h100", "tpm2"):
+        assert known in _HARDWARE_PLATFORMS
+
+
+def test_the_verifier_rejects_a_shape_valid_software_only_tee_attested_record() -> None:
+    """The forged-record mirror: `RuntimeInfo`-valid but not a hardware claim."""
+    key = generate_key()
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "software-only", "measurement": DIGEST},
+        ),
+        key,
+    )
+    with pytest.raises(ProvenanceError, match="software-only"):
+        verify_record(signed, key_to_jwk(key))
+
+
+def test_the_verifier_accepts_a_well_formed_tee_attested_record() -> None:
+    """The positive case must still verify end to end after the tightened check."""
+    key = generate_key()
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": DIGEST},
+        ),
+        key,
+    )
+    verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("consumer", ["builder", "verifier"])
+@pytest.mark.parametrize(
+    ("field", "bad_value"),
+    [
+        ("vendor_note", "unexpected member"),
+        ("rim_uri", {"a": 1}),
+        ("nonce", 5),
+        ("firmware_version", ["1.55"]),
+    ],
+)
+def test_attestation_shape_constraints(consumer, field, bad_value) -> None:
+    """Each refusal has a valid control through the same public entry point."""
+    attestation = {
+        "platform": "intel-tdx",
+        "measurement": DIGEST,
+        "rim_uri": "https://example.com/rim",
+        "nonce": "abc123",
+        "firmware_version": "1.55",
+    }
+    key = generate_key()
+
+    def consume(value):
+        if consumer == "builder":
+            return _record(kind="tee-attested", attestation=value)
+        # Sign directly: a builder refusal must not mask a verifier bypass.
+        signed = sign_record(_forged(kind="tee-attested", attestation=value), key)
+        return verify_record(signed, key_to_jwk(key))
+
+    consume(attestation)
+    with pytest.raises(ProvenanceError, match=field):
+        consume({**attestation, field: bad_value})
+
+
+def test_a_surrogate_in_a_record_key_is_refused_by_the_verifier_not_a_crash() -> None:
+    """The key sort inside rfc8785 raised UnicodeEncodeError for a surrogate code point in
+    an object key, and `verify_record` catches `rfc8785.CanonicalizationError` only, so an
+    adversarial record left it as that error instead of `ProvenanceError`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(ProvenanceError, match="no RFC 8785 canonical form"):
+        verify_record({**record, "x\udeff": 1}, jwk)
+
+
+@pytest.mark.parametrize(
+    "bad_store",
+    [
+        "",
+        "revoked-key-k10",
+        b"revoked",
+        bytearray(b"revoked"),
+        {},
+        {"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},
+        {"type": "TraceRevocationBundle/1.0"},
+        123,
+        True,
+    ],
+    ids=[
+        "empty-str",
+        "str-substring",
+        "bytes",
+        "bytearray",
+        "empty-dict",
+        "jwk-dict",
+        "bundle-dict",
+        "int",
+        "bool",
+    ],
+)
+def test_provenance_verify_record_rejects_non_container_or_bare_revocation_store(
+    bad_store: object,
+) -> None:
+    """`provenance.verify_record` shares `_check_not_revoked` and refuses bare
+    strings, bytes, dicts, and non-containers with `ProvenanceError`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(
+        ProvenanceError,
+        match="^revocation must be a container of key identifier strings or a callable",
+    ):
+        verify_record(record, {**jwk, "kid": "k1"}, revocation=bad_store)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "bad_elements",
+    [
+        [1, 2],
+        [None],
+        [{"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}],
+        ("ok-id", 123),
+        {b"bytes-id"},
+    ],
+    ids=["ints", "none", "jwk-dict-in-list", "mixed-tuple", "bytes-set"],
+)
+def test_provenance_verify_record_rejects_revocation_store_with_non_string_elements(
+    bad_elements: object,
+) -> None:
+    """`provenance.verify_record` refuses an iterable `revocation` store whose
+    items are not strings rather than reporting `outcome='verified'`."""
+    record, jwk = _signed(_record())
+    with pytest.raises(ProvenanceError, match="^revocation must contain only str values"):
+        verify_record(record, jwk, revocation=bad_elements)  # type: ignore[arg-type]
+

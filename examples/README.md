@@ -21,22 +21,68 @@ checking any archived record, including these.
 - `amd-sev-snp.json`: AMD SEV-SNP example.
 - `nvidia-h100.json`: NVIDIA H100 Confidential Computing example.
 - `tpm2.json`: TPM 2.0 example.
-- `sandbox-runtime.json`: a sandboxed agent runtime, TPM 2.0 rooted. Produced by
-  `TraceSandboxAdapter`; the decision log is a kernel-sandbox policy trace rather
-  than MCP tool calls.
+- `sandbox-runtime.json`: a sandboxed agent runtime in the shape a `tpm2` attestation
+  produces. Its measurement, nonce and key are placeholders; see
+  `docs/integration/sandbox-runtime.md`. Produced by `TraceSandboxAdapter`; the decision
+  log is a kernel-sandbox policy trace rather than MCP tool calls.
 - `action-receipts/`: informative fixture shapes for action-level receipt
   verification. These are not TRACE Trust Records and are not validated against
   `schema/trace-claim.json`.
-- `build-provenance-depth/`: six vectors that separate the three depths a verifier can
-  stop at when checking `build_provenance`. Each is accepted by the depth below it and
-  rejected by the depth in its filename, so a verifier's stopping point is visible in
-  its verdicts. Informative: not Trust Records, not validated against
-  `schema/trace-claim.json`. See that directory's README.
+- `build-provenance-depth/`: seven vectors that separate the three depths a verifier can
+  stop at when checking `build_provenance`, including an accepting control. Separating
+  vectors introduce a rejection or a named depth downgrade, so the stopping point is
+  visible in the complete appraisal. The explicit-empty-list fixture pairs with the
+  control to catch a missing-key-only check. Informative: not Trust Records, not
+  validated against `schema/trace-claim.json`. See that directory's README.
+- `reproducibility-claim/`: 21 signed Trust Records that pin the shape rules spec
+  section 3.1.4 states for the `reproducibility` claim and its `appraisal.re_execution`
+  result: two vectors per rule and five accepting records. Each file is a test-vector
+  envelope; the record is under `record`, and the digests the claim carries recompute
+  from the JSON under `context`. See that directory's README.
+- `platform-measurement-appraisal/`: 44 signed Trust Records that pin the shape rules
+  spec section 3.1.5 states for `appraisal.platform_measurement`, two vectors per rule,
+  and what a relying party reads off an accepting record, layer by layer: five
+  case-and-twin pairs, an accepting twin for every rejection, and two records carrying
+  published measurements. Each file is a
+  test-vector envelope; the record is under `record`. See that directory's README.
 - `canonicalization-boundary/`: three signed Trust Records that separate an
   RFC 8785-conformant canonicalizer from `json.dumps(sort_keys=True)`, which
   §3.2.2 requires and names as insufficient. Each file is a test-vector envelope;
   the Trust Record is under the `record` key and validates against the schema.
   See that directory's README.
+- `number-spelling/`: seven signed Trust Records for a rule proposed on #247 and not yet
+  accepted: an integer-typed member is decided by its value, not by how it is written.
+  `iat` written `1785000000`, `1785000000.0` and `1.785e9` carries one signature and
+  verifies; a fractional value and a value past the safe-integer range are each rejected
+  in two spellings. Each file is a test-vector envelope with the record under `record`.
+  See that directory's README, which also counts the published records the rule changes.
+- `condition-appraisal/`: five signed Trust Records, each citing an independent check's
+  finding through a `references` entry with `rel: "condition-appraisal"`, against an
+  appraisal store committed beside them: verified, altered after issue, a fail that
+  verifies exactly as the pass does, unresolvable, and an issuer whose key the relying
+  party does not hold. Every digest recomputes; see that directory's README and
+  `docs/references-registry.md`.
+- `observed-effect/`: five signed Trust Records, each citing an observed mutation
+  interval through a `references` entry with `rel: "observed-effect"`, against an effect
+  store committed beside them: verified, altered after issue, an interval where the
+  observer and the observed party disagree that verifies exactly as the agreeing one
+  does, unresolvable, and an observer whose key the relying party does not hold. Every
+  digest recomputes; see that directory's README and `docs/references-registry.md`.
+- `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
+  embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
+  not accepted normative text (#247); carries a `scan_published_signatures.py` tool
+  that reports how many published signatures are already canonical. See that
+  directory's README.
+- [`mcp-retry/`](mcp-retry/README.md): executable example writing a signed v0.2 record
+  binding two synthetic MCP attempts and full paginated declaration snapshots. A lost response stays
+  unknown after retry success; an uncalled tool changes between captures.
+  Informative local format, not an implementation of the proposed v0.3 profile.
+- [`signature-execution-boundary/`](signature-execution-boundary/README.md): executable example
+  demonstrating the boundary between a valid Ed25519 signature and verified execution:
+  verifying against a separately retained trusted key, rejecting a modified signed field,
+  rejecting a wrong issuer key (and `cnf.jwk` substitution), and showing that a trusted
+  issuer can sign invented execution claims that pass `verify_record()` until external
+  evidence is appraised.
 
 The schema sets `additionalProperties: false`, so examples must not carry
 non-schema keys such as `_comment`. Keep descriptive notes in this file.

@@ -1,6 +1,6 @@
 # Antitrust Policy
 
-TRACE is an open specification project hosted under the agentrust-io organization and targeting donation to the Agentic AI Foundation (AAIF) under the Linux Foundation. Participation in this project is subject to antitrust and competition laws.
+TRACE is an open specification project hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC". Participation in this project is subject to antitrust and competition laws.
 
 ## Prohibited topics
 

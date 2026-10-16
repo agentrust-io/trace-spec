@@ -1,0 +1,126 @@
+{
+  "label": "trace.mcp-tool-definition.v1",
+  "derivation": "docs/rfcs/tool-catalog-observed-digest.md",
+  "catalogs": {
+    "deepwiki": {
+      "file": "deepwiki-tools-list.json",
+      "server": "https://mcp.deepwiki.com/mcp",
+      "served": true,
+      "served_on": "2026-10-01",
+      "note": "The tools member of the tools/list result, as served. Each definition carries a _meta member, which the derivation does not hash.",
+      "tools": {
+        "tool:ask_wiki_question": "sha256:7b433df44e34a9356d6481fc370283840a598c47b879d0f663952e91d8b3e729",
+        "tool:read_wiki_contents": "sha256:60d4ddd7838f28963920e8687ef644096fb38e8602cb25b8a53149fe87fc72d5",
+        "tool:read_wiki_structure": "sha256:9b1330cf1cf19a6b003fc093dc0d92bdea53a47de4cf4efd17b7a0add7945c50"
+      },
+      "manifest": "sha256:b3d3955a3da0c0eb95a263ac53e4df2efcb0634193b7cbee92337144f4146cbd"
+    },
+    "deepwiki-drifted": {
+      "file": "deepwiki-tools-list-drifted.json",
+      "server": "https://mcp.deepwiki.com/mcp",
+      "served": false,
+      "constructed_from": "deepwiki",
+      "note": "Not served. The deepwiki catalog with one sentence appended to the description of ask_wiki_question; it stands for what the server would serve after one definition changed.",
+      "tools": {
+        "tool:ask_wiki_question": "sha256:a7da4da5eca7b1d7f329a555a7dd748587124dadd75056f375b306129215b4d6",
+        "tool:read_wiki_contents": "sha256:60d4ddd7838f28963920e8687ef644096fb38e8602cb25b8a53149fe87fc72d5",
+        "tool:read_wiki_structure": "sha256:9b1330cf1cf19a6b003fc093dc0d92bdea53a47de4cf4efd17b7a0add7945c50"
+      },
+      "manifest": "sha256:fffdf1917378cc03057ab6dc7973731123e392adb365f6833dff650281a9dbf6"
+    },
+    "cloudflare-docs": {
+      "file": "cloudflare-docs-tools-list.json",
+      "server": "https://docs.mcp.cloudflare.com/mcp",
+      "served": true,
+      "served_on": "2026-10-02",
+      "note": "The tools member of the tools/list result, as served. Both definitions carry annotations; one carries outputSchema and one does not.",
+      "tools": {
+        "tool:search_cloudflare_documentation": "sha256:c4411b558681b396ca09a421f5dad4582804d906f80cd02a6f823d5d6b3d700e",
+        "tool:migrate_pages_to_workers_guide": "sha256:8f5e64cb597baefb37e8f11d4325f7fe88d23e4947301ef777897aa2ea8e599b"
+      },
+      "manifest": "sha256:aa6ec740288222f2e1081056057f05a0d4a38d4114fe3914ba9b95270835e53b"
+    }
+  },
+  "vectors": {
+    "COMP-MCP-004": {
+      "pinned": "deepwiki",
+      "presented": "deepwiki",
+      "expected": {
+        "token": "valid",
+        "composite_status": "affirming"
+      }
+    },
+    "COMP-MCP-005": {
+      "case": "digest-mismatch",
+      "pinned": "deepwiki",
+      "presented": "deepwiki-drifted",
+      "expected": {
+        "token": "component_observation_mismatch",
+        "composite_status": null
+      }
+    },
+    "COMP-MCP-006": {
+      "case": "wrong-subject",
+      "pinned": "deepwiki",
+      "presented": "cloudflare-docs",
+      "expected": {
+        "token": "component_observation_mismatch",
+        "composite_status": null
+      }
+    }
+  },
+  "key_encoding": [
+    {
+      "name": "ask_wiki_question",
+      "key": "tool:ask_wiki_question"
+    },
+    {
+      "name": "a=b",
+      "key": "tool:a%3Db"
+    },
+    {
+      "name": "x%y",
+      "key": "tool:x%25y"
+    },
+    {
+      "name": "read file",
+      "key": "tool:read%20file"
+    },
+    {
+      "name": "tab\there",
+      "key": "tool:tab%09here"
+    },
+    {
+      "name": "héllo",
+      "key": "tool:h%C3%A9llo"
+    },
+    {
+      "name": "search 🙂",
+      "key": "tool:search%20%F0%9F%99%82"
+    },
+    {
+      "name": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "key": "tool:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "name": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "key": "tool:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc~a2efa32a90eaeb9b"
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "key": "tool:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa~c2a908d98f5df987"
+    },
+    {
+      "name": "éééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "key": "tool:%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9~2d18fe4b61f01139"
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaéééééééééééééééééééé",
+      "key": "tool:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%~cbaf05a1cc450848"
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaéééééééééééééééééééé",
+      "key": "tool:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%C~a1a40b6757b6805f"
+    }
+  ]
+}

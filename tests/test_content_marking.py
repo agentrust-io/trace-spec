@@ -8,6 +8,7 @@ attached to an assertion describing a different execution entirely.
 
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -246,3 +247,78 @@ def test_empty_bytes_are_refused_like_build_assertion_refuses_them() -> None:
     a = build_assertion(_bytes(_record()), url=URL)
     with pytest.raises(ContentMarkingError, match="record_bytes must be the bytes retrieved"):
         verify_assertion(a, b"")
+
+
+# --- presence, not just agreement (#326) -----------------------------------
+#
+# `verify_assertion` compared the duplicated binding fields with `.get()` equality,
+# which establishes that two values agree and not that either exists. A peer-produced
+# assertion omitting `data.subject`, paired with a hash-matching record that also
+# omitted `subject`, compared `None` against `None` and verified.
+#
+# `build_assertion` refuses to build from an incomplete record, so these pairs are
+# constructed by hand: the defect is in what a consumer accepts from a peer, not in
+# what this producer emits.
+
+
+def _pair(record: dict, drop_from_assertion: tuple[str, ...] = ()) -> tuple[dict, bytes]:
+    """An assertion whose hash genuinely matches *record*, so the pair is self-consistent.
+
+    Without recomputing the hash the pair fails at the digest check and the presence
+    check is never reached, which would make every test below pass for the wrong reason.
+    """
+    record_bytes = _bytes(record)
+    assertion = build_assertion(_bytes(_record()), url=URL)
+    assertion["data"]["record"]["hash"] = (
+        "sha256:" + hashlib.sha256(record_bytes).hexdigest()
+    )
+    for field in drop_from_assertion:
+        assert field in assertion["data"], "the field must be present for its removal to count"
+        del assertion["data"][field]
+    return assertion, record_bytes
+
+
+@pytest.mark.parametrize("field", ["subject", "eat_profile"])
+def test_a_field_absent_from_both_sides_is_not_a_binding(field: str) -> None:
+    record = _record()
+    del record[field]
+    assertion, record_bytes = _pair(record, drop_from_assertion=(field,))
+    with pytest.raises(ContentMarkingError, match="required"):
+        verify_assertion(assertion, record_bytes)
+
+
+def test_both_fields_absent_from_both_sides_is_not_a_binding() -> None:
+    record = _record()
+    del record["subject"], record["eat_profile"]
+    assertion, record_bytes = _pair(record, drop_from_assertion=("subject", "eat_profile"))
+    with pytest.raises(ContentMarkingError, match="required"):
+        verify_assertion(assertion, record_bytes)
+
+
+@pytest.mark.parametrize("field", ["subject", "eat_profile"])
+def test_an_assertion_missing_a_required_field_does_not_accuse_the_server(field: str) -> None:
+    """The caller's assertion is malformed, so the reader must not be pointed at the URL.
+
+    Same principle as `test_an_int_no_longer_reports_a_record_mismatch`.
+    """
+    assertion, record_bytes = _pair(_record(), drop_from_assertion=(field,))
+    with pytest.raises(ContentMarkingError) as excinfo:
+        verify_assertion(assertion, record_bytes)
+    assert not isinstance(excinfo.value, RecordMismatch)
+
+
+@pytest.mark.parametrize("field", ["subject", "eat_profile"])
+def test_a_record_missing_a_required_field_is_a_record_mismatch(field: str) -> None:
+    """Here the URL really is serving something that is not a conformant record."""
+    record = _record()
+    del record[field]
+    assertion, record_bytes = _pair(record)
+    with pytest.raises(RecordMismatch, match="required"):
+        verify_assertion(assertion, record_bytes)
+
+
+def test_a_complete_pair_still_verifies() -> None:
+    """The control: presence checks must refuse nothing that used to bind."""
+    record = _record()
+    assertion = build_assertion(_bytes(record), url=URL)
+    assert verify_assertion(assertion, _bytes(record)) == record

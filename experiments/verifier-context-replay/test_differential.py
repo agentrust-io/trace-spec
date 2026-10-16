@@ -37,7 +37,11 @@ def compare(record, jwk, *, when=TIME, max_age=300, future_skew=10,
                    max_future_skew_seconds=future_skew, expected_nonce=nonce)
     independent = independent_verify(record, jwk, **options, revoked_identifiers=revoked)
     try:
-        verify_record(record, jwk, revocation=set(revoked), **options)
+        verify_record(record, jwk, revocation=set(revoked),
+                      now=options["verification_time"],
+                      max_age_seconds=options["max_age_seconds"],
+                      max_future_skew_seconds=options["max_future_skew_seconds"],
+                      expected_nonce=options["expected_nonce"])
         reference = "verified"
     except (ValueError, InvalidSignature) as exc:
         reference = "rejected"

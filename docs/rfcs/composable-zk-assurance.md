@@ -1,8 +1,9 @@
 # RFC Proposal: Composable Zero-Knowledge Proofs for TRACE
 
+This proposal, from Florian Kluge of o1Labs, suggests adding zero-knowledge proofs to TRACE. A zero-knowledge proof lets someone check that a calculation was done correctly without seeing the private data behind it. The proposal treats it as a separate kind of evidence that can be used alone or together with hardware attestation. It is a draft for discussion and changes nothing in the current specification.
+
 **Status:** Draft issue proposal
 **Author:** Florian Kluge
-**Contact:** florian.kluge@o1labs.org
 **Organisation:** o1Labs
 **Scope:** Informative assurance-model proposal; normative implementation requires follow-up changes
 **Target:** TRACE specification

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+from pathlib import Path
+
 import hashlib
 import json
 from typing import Any, get_args
@@ -25,6 +28,10 @@ from agentrust_trace.adapters import (
     SandboxSessionResult,
     TraceSandboxAdapter,
 )
+from agentrust_trace.adapters.sandbox import TRACE_MIN_IAT
+from agentrust_trace.models import JCS_SAFE_INTEGER
+
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "trace-claim.json"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -43,10 +50,11 @@ TRANSPARENCY = "https://registry.agentrust-io.com/claim/sandbox-abc123"
 
 def _make_adapter(**overrides: Any) -> TraceSandboxAdapter:
     defaults: dict[str, Any] = {
-        "model_provider": "anthropic",
-        "model_id": "claude-sonnet-4-6",
+        "model_provider": "example-provider",
+        "model_id": "example-model",
         "model_version": "20251001",
         "data_class": "confidential",
+        "enforcement_mode": "enforce",
     }
     defaults.update(overrides)
     return TraceSandboxAdapter(**defaults)
@@ -175,7 +183,7 @@ def test_the_same_session_is_level_0_or_level_1_by_attestation_alone() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. A caller must not be able to claim hardware it does not have
+# 4. A caller cannot misname unattested evidence (shape validation only)
 # ---------------------------------------------------------------------------
 
 def test_attestation_rejects_software_only_as_a_platform() -> None:
@@ -195,6 +203,90 @@ def test_attestation_rejects_an_unknown_platform() -> None:
 def test_attestation_rejects_a_measurement_that_is_not_a_digest(measurement: str) -> None:
     with pytest.raises(ValueError, match="is not a sha256: or sha384: digest"):
         SandboxAttestation(platform="tpm2", measurement=measurement)
+
+
+# ---------------------------------------------------------------------------
+# 4b. Shape validation is not evidence verification, and must not be mistaken
+#     for it: SandboxAttestation/TraceSandboxAdapter do not, and cannot from
+#     this input alone, verify that a measurement was ever produced by the
+#     named platform. A digest-shaped, enum-valid attestation is accepted
+#     verbatim even when the caller invented every byte of it. Pinning this
+#     documents the actual contract (docs/trust-levels.md's Level 1 boundary:
+#     "agentrust_trace.verify_record does not itself appraise hardware
+#     quotes") rather than letting it silently regress into a false sense of
+#     verification, or silently regress into the adapter starting to reject
+#     input it has never had grounds to trust or distrust.
+# ---------------------------------------------------------------------------
+
+def test_a_fabricated_but_well_shaped_attestation_is_accepted_verbatim() -> None:
+    """Documents the boundary: shape validation, not cryptographic appraisal.
+
+    Nothing in ``SandboxAttestation`` or ``TraceSandboxAdapter`` checks a quote, a
+    signature, or a nonce. A caller who never touched real hardware can build an
+    attestation entirely from invented values, as long as they are shaped like real
+    evidence, and the adapter reproduces them in the signed record unchanged. Verifying
+    that a measurement actually came from the named platform is the responsibility of
+    the caller's own attestation verifier, run *before* constructing the
+    ``SandboxAttestation`` -- see the sandbox.py module docstring and
+    docs/integration/sandbox-runtime.md.
+    """
+    fabricated = SandboxAttestation(
+        platform="amd-sev-snp",
+        measurement="sha256:" + "0" * 64,
+    )
+    record = _make_adapter().build_trust_record(_make_session(attestation=fabricated))
+    assert record["runtime"]["platform"] == "amd-sev-snp"
+    assert record["runtime"]["measurement"] == "sha256:" + "0" * 64
+    # Structurally valid, and signable, despite carrying no actual hardware evidence.
+    TrustRecord.model_validate(record)
+    key = generate_key()
+    signed = sign_record(record, key)
+    verify_record(signed, key_to_jwk(key))
+
+
+def test_genuinely_verified_evidence_is_still_not_bound_to_the_signing_key() -> None:
+    """Documents a second, separate gap from the fabricated-evidence one above.
+
+    Even a caller who *did* independently verify genuine hardware evidence before
+    constructing a ``SandboxAttestation`` -- doing everything the module docstring now
+    asks of them -- still cannot get real Level 1 assurance out of this adapter, because
+    nothing here binds that evidence to the specific key the record ends up signed
+    with. ``nonce`` is carried through verbatim and is never checked against
+    ``cnf.jwk`` or against the signing key passed to ``sign_record``. A verifier can
+    compare it against a value it chose, via ``verify_record(expected_nonce=...)``,
+    which establishes freshness rather than key binding. Two records built from the
+    identical (hypothetically genuine) attestation but signed with unrelated keys both verify
+    successfully; nothing distinguishes "the verified key" from "any key the caller
+    felt like using afterwards". Per docs/trust-levels.md, Level 1 requires
+    "authenticated evidence binding the record-signing key to the expected
+    environment"; per docs/verification.md, defining that binding is this producing
+    profile's job, and it does not define one.
+    """
+    same_attestation = SandboxAttestation(
+        platform="tpm2",
+        measurement=TPM_MEASUREMENT,
+        # A caller following the module's own advice: a nonce that claims to bind a
+        # challenge to *some* key. Nothing checks that it binds to the key used below.
+        nonce="claimed-binding-to-key-A",
+    )
+    record_a = _make_adapter().build_trust_record(_make_session(attestation=same_attestation))
+    record_b = _make_adapter().build_trust_record(_make_session(attestation=same_attestation))
+
+    key_a = generate_key()
+    key_b = generate_key()  # Unrelated to whatever "claimed-binding-to-key-A" meant.
+
+    signed_a = sign_record(record_a, key_a)
+    signed_b = sign_record(record_b, key_b)
+
+    # Both verify: the adapter and sign_record() accept the same "verified" evidence
+    # bound to a nonce string regardless of which key actually signs the record.
+    verify_record(signed_a, key_to_jwk(key_a))
+    verify_record(signed_b, key_to_jwk(key_b))
+    # The nonce, and therefore the claimed binding, is identical in both -- yet the
+    # embedded confirmation keys differ. Nothing here or in sign_record/verify_record
+    # detects that the "binding" is meaningless.
+    assert signed_a["runtime"]["nonce"] == signed_b["runtime"]["nonce"]
+    assert signed_a["cnf"]["jwk"]["x"] != signed_b["cnf"]["jwk"]["x"]
 
 
 def test_accepted_platforms_are_read_from_the_model() -> None:
@@ -235,6 +327,76 @@ def test_a_bad_sandbox_id_fails_at_the_adapter_not_at_model_validate() -> None:
     with pytest.raises(ValueError, match="sandbox_id"):
         _make_session(sandbox_id="build-7f2a")
 
+
+@pytest.mark.parametrize(
+    "iat",
+    ["1800000000", True, False, -5, 0, 1, 1699999999, 1.5, 2**60, JCS_SAFE_INTEGER + 1],
+)
+def test_iat_must_be_within_the_trace_v0_2_range(iat) -> None:
+    """Every other field here reaches the record through a models.py pydantic
+    constructor, which coerces or refuses a bad type before it is dumped. `iat`
+    used to reach build_trust_record's top-level "iat" key untouched, so a
+    numeric string or a bool survived to the signed wire form: model_validate()
+    reported it valid (pydantic's lax mode coerces on the way in) while the wire
+    bytes stayed the original, schema-invalid type. Same failure mode as
+    provenance.build_record's pre-#320 issued_at coercion."""
+    with pytest.raises(ValueError, match="iat must be an integer Unix timestamp"):
+        _make_session(iat=iat)
+
+
+def test_valid_iat_round_trips_as_an_int_on_the_wire() -> None:
+    record = _make_adapter().build_trust_record(_make_session(iat=1800000000))
+    assert record["iat"] == 1800000000
+    assert isinstance(record["iat"], int)
+
+
+@pytest.mark.parametrize("iat", [1700000000, JCS_SAFE_INTEGER])
+def test_boundary_iat_values_reach_the_wire_and_validate(iat) -> None:
+    """The exact contract bounds must survive to the record, not merely construct.
+
+    Constructing the session says nothing about the value that gets signed, which
+    is what this file's iat tests are about, so the assertion is on the wire form
+    and on the schema."""
+    record = _make_adapter().build_trust_record(_make_session(iat=iat))
+    assert record["iat"] == iat
+    assert isinstance(record["iat"], int) and not isinstance(record["iat"], bool)
+    validate_json(record)
+
+
+
+@pytest.mark.parametrize("iat", ["1800000000", 1, 1699999999, JCS_SAFE_INTEGER + 1])
+def test_a_checked_iat_cannot_be_replaced_before_the_record_is_built(iat) -> None:
+    """Passing __post_init__ has to be a property of the value that gets signed.
+
+    While the session was a mutable dataclass it was not: one assignment between
+    construction and build_trust_record put any of these on the wire, where the
+    schema then rejected the record. #320 settled the same point for
+    provenance.build_record, which is why its check sits at the point of use."""
+    with pytest.raises(FrozenInstanceError):
+        _make_session().iat = iat
+    # frozen=True guards __setattr__ and nothing else. Each of these reaches the
+    # field, so the check that decides what gets signed is the one in
+    # build_trust_record. A fresh session per route, or the second assertion would
+    # pass on damage the first one did.
+    for reach in (lambda s: vars(s).__setitem__("iat", iat),
+                  lambda s: object.__setattr__(s, "iat", iat)):
+        session = _make_session()
+        reach(session)
+        assert session.iat == iat
+        with pytest.raises(ValueError, match="iat must be an integer Unix timestamp"):
+            _make_adapter().build_trust_record(session)
+
+
+def test_the_adapter_floor_is_the_one_the_record_contract_carries() -> None:
+    """TRACE_MIN_IAT is a literal here and in models.py. If they ever diverge the
+    adapter refuses records the schema accepts, or emits ones it rejects."""
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    assert schema["properties"]["iat"]["minimum"] == TRACE_MIN_IAT
+    assert schema["properties"]["iat"]["maximum"] == JCS_SAFE_INTEGER
+    bound = next(
+        m for m in TrustRecord.model_fields["iat"].metadata if getattr(m, "ge", None) is not None
+    )
+    assert bound.ge == TRACE_MIN_IAT
 
 # ---------------------------------------------------------------------------
 # 6. Transcript hashing uses JCS
@@ -346,11 +508,20 @@ def test_the_same_session_builds_the_same_record() -> None:
     assert adapter.build_trust_record(session) == adapter.build_trust_record(session)
 
 
-def test_enforcement_mode_reaches_the_record() -> None:
-    record = _make_adapter(enforcement_mode="advisory").build_trust_record(
+def test_enforcement_mode_has_no_default() -> None:
+    # Spec section 4.3: `declared` MUST NOT be a default, and an `enforce` default
+    # would claim an evaluation the adapter never observed (#416, #417).
+    with pytest.raises(TypeError, match="enforcement_mode"):
+        TraceSandboxAdapter(model_provider="example-provider", model_id="example-model")
+
+
+@pytest.mark.parametrize("mode", ["enforce", "advisory", "silent", "declared"])
+def test_enforcement_mode_reaches_the_record(mode: str) -> None:
+    record = _make_adapter(enforcement_mode=mode).build_trust_record(
         _make_session()
     )
-    assert record["policy"]["enforcement_mode"] == "advisory"
+    assert record["policy"]["enforcement_mode"] == mode
+    TrustRecord.model_validate(record)
 
 
 def test_an_invalid_enforcement_mode_is_rejected() -> None:

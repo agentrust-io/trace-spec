@@ -1,0 +1,70 @@
+{
+  "cmcp_version": "1.0",
+  "trace": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1748000000,
+    "subject": "spiffe://cmcp.gateway/session/test-session-001",
+    "runtime": {
+      "platform": "intel-tdx",
+      "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8",
+      "nonce": "dGVzdC1ub25jZQ"
+    },
+    "policy": {
+      "bundle_hash": "sha256:b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4",
+      "enforcement_mode": "enforce",
+      "version": "1.0.0"
+    },
+    "data_class": "confidential",
+    "tool_transcript": {
+      "hash": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8",
+      "call_count": 5
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "kid": "cmcp-d75a9947"
+      }
+    }
+  },
+  "gateway": {
+    "session_id": "test-session-001",
+    "gateway_version": "0.1.0",
+    "sequence_number": 1,
+    "prev_claim_hash": null,
+    "audit_chain": {
+      "root": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "tip": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8",
+      "length": 5
+    },
+    "call_summary": {
+      "tool_calls_total": 100000000000000000000,
+      "tool_calls_allowed": 4,
+      "tool_calls_denied": 1,
+      "tool_calls_faulted": 0,
+      "tools_invoked": [
+        "read_file",
+        "write_file",
+        "search"
+      ],
+      "session_max_sensitivity": "confidential",
+      "call_graph_summary": {
+        "compliance_domains_touched": [
+          "pii",
+          "financial"
+        ],
+        "cross_boundary_events": [],
+        "edges_represent": "temporal-adjacency"
+      }
+    },
+    "catalog": {
+      "hash": "sha256:d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4",
+      "drift_detected": false
+    },
+    "attestation_generated_at": "2025-05-23T12:00:00Z",
+    "attestation_validity_seconds": 3600,
+    "attestation_stale": false
+  },
+  "signature": "unsigned-test-vector"
+}

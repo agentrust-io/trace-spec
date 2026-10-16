@@ -1,0 +1,459 @@
+{
+  "$defs": {
+    "Binding": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "relationship": {
+          "const": "same-workload",
+          "title": "Relationship",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "same-instance-v1",
+            "same-evidence-v1"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "affirming",
+            "warning",
+            "contraindicated",
+            "unverifiable",
+            "missing",
+            "not-appraised"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "fresh_until": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Fresh Until",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "relationship",
+        "method",
+        "status",
+        "digest",
+        "fresh_until"
+      ],
+      "title": "Binding",
+      "type": "object"
+    },
+    "Component": {
+      "additionalProperties": false,
+      "properties": {
+        "component_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "component_type": {
+          "enum": [
+            "identity",
+            "code",
+            "model",
+            "policy",
+            "runtime",
+            "accelerator",
+            "mcp-server",
+            "tool-catalog",
+            "guardrail",
+            "data-state"
+          ],
+          "title": "Component Type",
+          "type": "string"
+        },
+        "profile": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "authority": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Authority",
+          "type": "string"
+        },
+        "instance": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+          "title": "Instance",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "affirming",
+            "warning",
+            "contraindicated",
+            "unverifiable",
+            "missing",
+            "not-appraised"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "appraised_at": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Appraised At",
+          "type": "integer"
+        },
+        "fresh_until": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Fresh Until",
+          "type": "integer"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 16,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "observed_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Digest"
+        },
+        "reasons": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Reasons",
+          "type": "array"
+        },
+        "appraisal": {
+          "default": null,
+          "maxLength": 16384,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Appraisal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component_id",
+        "component_type",
+        "profile",
+        "authority",
+        "instance",
+        "status",
+        "appraised_at",
+        "fresh_until",
+        "evidence_refs",
+        "reasons"
+      ],
+      "title": "Component",
+      "type": "object"
+    },
+    "Composite": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "affirming",
+            "warning",
+            "contraindicated",
+            "unverifiable",
+            "missing",
+            "not-appraised"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "required_components": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Required Components",
+          "type": "array"
+        },
+        "policy": {
+          "$ref": "#/$defs/Policy"
+        },
+        "fresh_until": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Fresh Until",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "status",
+        "required_components",
+        "policy",
+        "fresh_until"
+      ],
+      "title": "Composite",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "media_type": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "resolver": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolver"
+        }
+      },
+      "required": [
+        "profile",
+        "media_type",
+        "digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "HolderKey": {
+      "additionalProperties": false,
+      "properties": {
+        "kty": {
+          "const": "OKP",
+          "title": "Kty",
+          "type": "string"
+        },
+        "crv": {
+          "const": "Ed25519",
+          "title": "Crv",
+          "type": "string"
+        },
+        "x": {
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "title": "X",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kty",
+        "crv",
+        "x"
+      ],
+      "title": "HolderKey",
+      "type": "object"
+    },
+    "ManifestRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "application/agent-manifest+cose",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "version": {
+          "const": "0.2",
+          "title": "Version",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "media_type",
+        "version",
+        "digest"
+      ],
+      "title": "ManifestRef",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "title": "Policy",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "const": "urn:agentrust:trace:verifier-token:experimental-v1",
+      "title": "Profile",
+      "type": "string"
+    },
+    "iss": {
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Iss",
+      "type": "string"
+    },
+    "sub": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Sub",
+      "type": "string"
+    },
+    "instance": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Instance",
+      "type": "string"
+    },
+    "iat": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Iat",
+      "type": "integer"
+    },
+    "exp": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "title": "Exp",
+      "type": "integer"
+    },
+    "jti": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Jti",
+      "type": "string"
+    },
+    "aud": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,254}$",
+      "title": "Aud",
+      "type": "string"
+    },
+    "cnf": {
+      "$ref": "#/$defs/HolderKey"
+    },
+    "manifest": {
+      "$ref": "#/$defs/ManifestRef"
+    },
+    "verification_context_hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Verification Context Hash",
+      "type": "string"
+    },
+    "appraisal_policy": {
+      "$ref": "#/$defs/Policy"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/Component"
+      },
+      "maxItems": 64,
+      "title": "Components",
+      "type": "array"
+    },
+    "bindings": {
+      "items": {
+        "$ref": "#/$defs/Binding"
+      },
+      "maxItems": 128,
+      "title": "Bindings",
+      "type": "array"
+    },
+    "composite_appraisal": {
+      "$ref": "#/$defs/Composite"
+    }
+  },
+  "required": [
+    "profile",
+    "iss",
+    "sub",
+    "instance",
+    "iat",
+    "exp",
+    "jti",
+    "aud",
+    "cnf",
+    "manifest",
+    "verification_context_hash",
+    "appraisal_policy",
+    "components",
+    "bindings",
+    "composite_appraisal"
+  ],
+  "title": "Token",
+  "type": "object"
+}

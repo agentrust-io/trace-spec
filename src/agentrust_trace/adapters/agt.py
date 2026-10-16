@@ -9,10 +9,10 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
-import rfc8785
 from agentrust_trace.models import (
+    JCS_SAFE_INTEGER,
     Appraisal,
     BuildProvenance,
     ModelInfo,
@@ -20,9 +20,36 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
 )
+from agentrust_trace.sign import _canonical_bytes
+
+# TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
+# schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
+# failure this check exists to stop -- so the floor is the contract's, not zero.
+TRACE_MIN_IAT = 1700000000
 
 
-@dataclass
+def _check_iat(value: object) -> None:
+    """The bound ``TrustRecord.iat`` carries, applied to whatever is about to be signed.
+
+    Called from ``__post_init__`` and again where the value is written into the
+    record. ``frozen=True`` stops the ordinary reassignment; it does not stop
+    ``vars()`` or ``object.__setattr__``, and a guard can only speak about the value
+    it is shown, so the one that matters runs where the record is built. #320 settled
+    the same point for ``provenance.build_record``.
+    """
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < TRACE_MIN_IAT
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
+            f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {value!r}"
+        )
+
+
+@dataclass(frozen=True)
 class AGTSessionResult:
     """Minimal AGT session data needed to build a Level 0 TRACE Trust Record.
 
@@ -58,6 +85,9 @@ class AGTSessionResult:
     iat: int = field(default_factory=lambda: int(time.time()))
     """Issuance timestamp. Defaults to now."""
 
+    def __post_init__(self) -> None:
+        _check_iat(self.iat)
+
 
 class TraceAGTAdapter:
     """Build Level 0 TRACE Trust Records from AGT govern() session output.
@@ -66,11 +96,12 @@ class TraceAGTAdapter:
     once per AGT session::
 
         adapter = TraceAGTAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             model_version="20251001",
             build_provenance_digest="sha256:e5f6a7b8...",
             transparency="https://registry.agentrust-io.com/claim/...",
+            enforcement_mode="enforce",
         )
 
         record = adapter.build_trust_record(session)
@@ -95,10 +126,25 @@ class TraceAGTAdapter:
         build_provenance_builder: str | None = None,
         build_provenance_uri: str | None = None,
         transparency: str,
+        appraisal_status: Literal["affirming", "warning", "contraindicated", "none"] = "none",
         appraisal_verifier: str = "https://agentrust-io.com/verify",
         appraisal_policy_ref: str | None = None,
-        enforcement_mode: str = "enforce",
+        enforcement_mode: str,
     ) -> None:
+        """
+        Args:
+            enforcement_mode: Required, with no default. The adapter observes an AGT
+                session; it does not evaluate the policy, so it cannot know which mode
+                applied. ``"enforce"`` would claim an evaluation nobody saw, and spec
+                section 4.3 says ``"declared"`` MUST NOT be a default. Pass the mode the
+                deployment actually ran under, or ``"declared"`` when no engine evaluated
+                the policy.
+            appraisal_status: Defaults to ``"none"``. ``appraisal.status`` is a
+                verifier-owned field (spec section 3.3.1): a record is not appraised by
+                being built, and stamping ``affirming`` on an unappraised record puts a
+                verdict in the field a consumer reads to find out whether anybody
+                checked. Set this only when an appraisal actually happened.
+        """
         self._model = ModelInfo(
             provider=model_provider,
             model_id=model_id,
@@ -112,6 +158,7 @@ class TraceAGTAdapter:
             provenance_uri=build_provenance_uri,
         )
         self._transparency = transparency
+        self._appraisal_status = appraisal_status
         self._appraisal_verifier = appraisal_verifier
         self._appraisal_policy_ref = appraisal_policy_ref
         self._enforcement_mode = enforcement_mode
@@ -140,6 +187,8 @@ class TraceAGTAdapter:
             else len(session.audit_entries)
         )
 
+        _check_iat(session.iat)
+
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
             "iat": session.iat,
@@ -160,7 +209,7 @@ class TraceAGTAdapter:
             ).model_dump(exclude_none=True),
             "build_provenance": self._build_provenance.model_dump(exclude_none=True),
             "appraisal": Appraisal(
-                status="affirming",
+                status=self._appraisal_status,
                 verifier=self._appraisal_verifier,
                 policy_ref=self._appraisal_policy_ref,
                 timestamp=session.iat,
@@ -189,7 +238,7 @@ class TraceAGTAdapter:
     def _transcript_hash(audit_entries: list[dict[str, Any]]) -> str:
         # RFC 8785 (JCS): same canonicalization TraceSandboxAdapter already uses
         # for the same field, and what docs/schema.md calls "canonical JSON".
-        return "sha256:" + hashlib.sha256(rfc8785.dumps(audit_entries)).hexdigest()
+        return "sha256:" + hashlib.sha256(_canonical_bytes(audit_entries)).hexdigest()
 
     @staticmethod
     def _measurement(merkle_chain_tip: str) -> str:

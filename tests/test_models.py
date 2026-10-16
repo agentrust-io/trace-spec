@@ -152,6 +152,29 @@ def test_okp_jwk_with_key_material_accepted() -> None:
     assert record.cnf.jwk.x is not None
 
 
+def test_rsa_jwk_without_key_material_rejected() -> None:
+    """An RSA confirmation key needs n and e, the members its thumbprint is computed over."""
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "RSA"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_rsa_jwk_without_its_exponent_rejected() -> None:
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "RSA", "n": "0vx7agoebGcQSuuPiLJXZptN"}
+    with pytest.raises(ValidationError):
+        TrustRecord.model_validate(data)
+
+
+def test_rsa_jwk_with_key_material_accepted() -> None:
+    data = _load("intel-tdx.json")
+    data["cnf"]["jwk"] = {"kty": "RSA", "n": "0vx7agoebGcQSuuPiLJXZptN", "e": "AQAB"}
+    record = TrustRecord.model_validate(data)
+    assert record.cnf.jwk.n is not None
+    assert record.cnf.jwk.e is not None
+
+
 def test_jwk_with_private_key_material_rejected() -> None:
     """A cnf.jwk is a public key; private params (d, p, q, ...) must be rejected (#70)."""
     data = _load("intel-tdx.json")

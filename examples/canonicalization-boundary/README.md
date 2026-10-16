@@ -3,59 +3,99 @@
 Spec section 3.2.2 requires an RFC 8785-conformant canonicalizer and names
 `json.dumps(sort_keys=True)` as insufficient.
 
-**What already existed.** `tests/test_sign.py` carries four literal-byte known-answer
-tests over `_canonical_bytes` — non-ASCII escaping, number formatting, whitespace and
-key sorting, and a comparison against the reference library. They are good tests and
-they do catch a regression in this library.
+**What already existed.** `tests/test_sign.py` carries literal-byte known-answer
+tests over `_canonical_bytes`: non-ASCII escaping, number formatting, whitespace and
+key sorting, and a comparison against the reference library. Those tests catch a
+regression in this library.
 
-**What these vectors add.** Two things those tests cannot do:
+**What these vectors add.** Portable positive and negative controls over complete,
+schema-valid records, with deterministic signatures:
 
 1. **They are portable.** A known-answer test over a private function is runnable only
    from Python, by this package. The roadmap targets Go, Rust and TypeScript verifiers
    for v1.0, and none of them can run `test_sign.py`. These are signed records: any
-   implementation runs them against its own verifier. Every *other* record in the
-   repository is ASCII-only with schema-fixed keys, where all serializers agree
-   byte-for-byte — so no existing record's acceptance depends on canonicalizing
-   correctly.
-2. **One of them separates key ordering, which nothing else does.**
+   implementation can run them against its own verifier. ASCII-only values and
+   schema-fixed keys can conceal the differences between JCS and ad-hoc serializers;
+   these records deliberately exercise those differences.
+2. **They separate key ordering from escaping.**
    `test_jcs_distinguishes_unicode_key_order_from_json_dumps` compares `{"z": 1,
    "\U0001f600": 2}`. Under RFC 8785's UTF-16 code-unit sort and under Python's
-   code-point sort that object serializes in the *same* order — its own docstring says
-   so — and the test detects divergence through `ensure_ascii` escaping instead. A
-   canonicalizer that sorts by code point but emits raw UTF-8 passes it. Vector `03`
-   is the first object in the repository whose two orderings actually disagree.
+   code-point sort that object serializes in the *same* order; its own docstring says
+   so. The test detects divergence through `ensure_ascii` escaping instead. A
+   canonicalizer that sorts by code point but emits raw UTF-8 passes it. Vectors `03`
+   and `04` instead contain keys whose two orderings disagree, at different nesting
+   depths.
+3. **They require both accepting and rejecting answers.** The original four
+   fixtures expect acceptance. Fixtures `05` and `06` retain valid record shapes and
+   genuine Ed25519 signatures, but those signatures cover different bytes from the
+   RFC 8785 signing preimage. A conformant verifier rejects them. This supplies the
+   missing direction recorded by
+   [the corpus adequacy checks](../../tests/test_adequacy_all_sets.py), without
+   changing the signature contract.
 
-Each record is schema-valid and correctly signed over its RFC 8785 bytes, so a
-conformant verifier accepts it, and a verifier built on any ad-hoc form computes
-different signing bytes and rejects a valid record.
+The positive records are correctly signed over their RFC 8785 bytes. The negative
+records have signatures that are mathematically valid over their declared alternate
+preimages, but are not valid TRACE signatures over those records. This is not a
+test of rejecting random signature bytes, a different trust key, or malformed JSON.
 
 ## The ladder
 
-Each form fixes the previous one's divergence and still fails somewhere:
+Each ad-hoc form fixes the previous one's divergence and still rejects at least one
+positive record. The two negative records also distinguish a verifier that tries
+alternate serializations after JCS signature verification fails:
 
-| Form | Diverges because | Caught by |
+| Form | Diverges because | Positive vectors that it rejects |
 |---|---|---|
-| `json.dumps(o, sort_keys=True)` | Default separators insert spaces | every vector (and any signed record) |
-| `… separators=(",", ":")` | `ensure_ascii` escapes non-ASCII as `\uXXXX`; RFC 8785 emits literal UTF-8 | `01`, `02`, `03` |
-| `… separators=(",", ":"), ensure_ascii=False` | Python sorts keys by code point; RFC 8785 sorts by UTF-16 code units. The orders differ exactly when a key contains a supplementary-plane character | `03` only |
+| `json.dumps(o, sort_keys=True)` | Default separators insert spaces | `01`, `02`, `03`, `04` |
+| `json.dumps(o, sort_keys=True, separators=(",", ":"))` | `ensure_ascii` escapes non-ASCII as `\uXXXX`; RFC 8785 emits literal UTF-8 | `01`, `02`, `03`, `04` |
+| `json.dumps(o, sort_keys=True, separators=(",", ":"), ensure_ascii=False)` | Code-point key order can differ from RFC 8785's UTF-16 code-unit order | `03`, `04` |
 
-`03-utf16-key-order.json` is the load-bearing vector: it is the only record in this
-repository that distinguishes a true RFC 8785 serializer from `json.dumps` with every
-option chosen carefully. Its two extra `cnf.jwk` members (RFC 7517 permits additional
-JWK members, and `cnf.jwk` is the one schema object open to them) are `zk` followed by
-U+1F600 and `zk` followed by U+FFFD — U+1F600 is `D83D DE00` in UTF-16, so it sorts
+`03-utf16-key-order.json` carries two extra `cnf.jwk` members (RFC 7517 permits
+additional JWK members): `zk` followed by U+1F600 and `zk` followed by U+FFFD.
+U+1F600 is `D83D DE00` in UTF-16, so it sorts
 *before* U+FFFD by code units and *after* it by code points.
+`04-utf16-key-order-nested.json` moves that divergence inside another object, so the
+set does not depend on one key-order vector at one nesting depth.
+
+## Negative signing-preimage controls
+
+| Vector | Bytes actually signed | Expected result |
+|---|---|---|
+| `05-ascii-escaped-signature.json` | Compact JSON with non-ASCII string values escaped | `rejected`, `signature_invalid` |
+| `06-codepoint-order-signature.json` | Compact literal-UTF-8 JSON with keys sorted by code point | `rejected`, `signature_invalid` |
+
+For each negative, the tests check the schema and configured key, verify the
+signature over the declared alternate bytes, and confirm that those bytes differ
+from the RFC 8785 form. Verification over the RFC 8785 form fails. Re-signing the
+same payload over its RFC 8785 form succeeds, isolating the signing preimage as the
+reason for rejection. The two forms test different serialization shortcuts rather
+than two arbitrary corruptions of a signature.
+
+The whitespace, escaping and key order of the outer fixture file are not the
+signature preimage. A consumer parses the `record` object and canonicalizes it with
+only `signature` absent. Pretty-printing that same object does not invalidate a
+correct TRACE signature. These fixtures are generated here; they are not evidence
+of an independent producer or a test of delegation parent-record hash semantics.
 
 ## What each fixture carries
 
-- `record` — a complete, schema-valid, signed v0.2 Trust Record.
-- `trusted_key` — the Ed25519 JWK to verify against.
-- `expected.outcome` — `verified`, always. These are positive vectors; the negative
-  behaviour (rejection) is what a non-conformant verifier does to them.
-- `diverges_under` — which ad-hoc forms compute different bytes for this record.
+- `record`: a complete, schema-valid v0.2 record with an embedded signature.
+- `trusted_key`: the Ed25519 JWK selected externally for verification.
+- `expected.outcome`: `verified` for `01` through `04`, or `rejected` for `05` and
+  `06`; the negatives also carry `expected.failure: signature_invalid`.
+- `diverges_under`: which ad-hoc forms compute different bytes for this record.
   `tests/test_canonicalization_boundary.py` recomputes this list on every run rather
   than trusting it, and separately asserts that the set as a whole still catches every
   form on the ladder.
+- `signing_form` (negative fixtures): identifies the alternate serialization that
+  produced the signed bytes.
+- `signed_input_utf8` (negative fixtures): the actual signing preimage as a JSON
+  string; encode its decoded value as UTF-8 to recover the bytes.
+- `canonical_input_utf8` (negative fixtures): the RFC 8785 preimage in the same
+  representation, recomputed by the tests rather than trusted as an assertion.
+
+These fixture metadata fields are outside `record`. They describe the test; they
+are not new TRACE fields or instructions to a verifier to accept another form.
 
 `iat` is fixed so the set regenerates byte-for-byte; run with freshness disabled or
 with `iat`'s instant supplied as "now". `gen_boundary_vectors.py` regenerates the set.
@@ -90,7 +130,7 @@ range produce one digest under `canonicalize` 4.0.0. Section 3.2.2 states the ru
 object canonicalized under it, and here `rfc8785` refuses the value, which is pinned as
 behaviour rather than assumed.
 
-So neither half is reachable now, and neither can be carried by a vector here: a positive
+So neither half is reachable now, and neither can be carried by a vector here: every
 vector is a schema-valid record, and these cases are exactly the records the schema
 rejects. The tests in this directory carry them instead, structurally and behaviourally.
 If a `number` field is ever wanted, `test_no_schema_field_is_typed_number` is the place to

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentrust-io.com/schema/trace-revocation-bundle-v1.json",
+  "title": "TRACE Revocation Bundle",
+  "description": "A signed, cacheable set of TraceRevocation/1.0 statements with an explicit validity horizon. Spec trace-v0.2 section 3.2.3. The bundle exists so revocation does not require a callback at verification time: a verifier offline states what it checked against rather than skipping the check silently.",
+  "type": "object",
+  "required": [
+    "type",
+    "log_id",
+    "issued_at",
+    "valid_until",
+    "statements",
+    "bundle_key_id",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "TraceRevocationBundle/1.0"
+    },
+    "log_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The transparency log every statement in this bundle refers to. One log per bundle, so an entry-ID comparison can never be made across logs by accident."
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 1700000000,
+      "maximum": 9007199254740991,
+      "description": "When the bundle was assembled, Unix epoch seconds."
+    },
+    "valid_until": {
+      "type": "integer",
+      "minimum": 1700000000,
+      "maximum": 9007199254740991,
+      "description": "The horizon this bundle may be relied on to. Past it, a verifier reports the record as unverified for revocation rather than verified: an expired bundle is not evidence a key is still trusted, and spec section 3.2.3 forbids reporting it as an affirming appraisal."
+    },
+    "statements": {
+      "type": "array",
+      "description": "The revocation statements. An empty array is meaningful and legitimate: it asserts that as of issued_at the issuer knew of no revoked keys on this log, which is different from having no bundle at all.",
+      "items": {
+        "$ref": "https://agentrust-io.com/schema/trace-revocation-v1.json"
+      }
+    },
+    "bundle_key_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The key signing this bundle. The bundle signature authenticates the set and its horizon; each statement inside stays independently signed, so a bundle assembler cannot add a revocation it was not authorised to issue."
+    },
+    "sig": {
+      "type": "object",
+      "required": ["alg", "value"],
+      "additionalProperties": false,
+      "description": "Signature over the RFC 8785 canonical form of this object with `sig` absent.",
+      "properties": {
+        "alg": {
+          "type": "string",
+          "enum": ["ed25519", "ES256", "ES384"]
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "base64url, no padding."
+        }
+      }
+    }
+  }
+}

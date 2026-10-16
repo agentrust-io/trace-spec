@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
     paths:
+      - "index.md"
       - "docs/**"
       - "spec/**"
       - "schema/**"
       - "Governance/**"
       - "PRIVACY.md"
       - "overrides/**"
+      - "hooks/**"
       - "robots.txt"
       - "mkdocs.yml"
       - "requirements-docs.txt"
@@ -17,37 +19,54 @@ on:
       - "CHANGELOG.md"
       - "CONTRIBUTING.md"
       - "GOVERNANCE.md"
+      - "CHARTER.md"
       - "ROADMAP.md"
       - "LIMITATIONS.md"
       - "CNAME"
+      - "conformance/**"
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/conformance-docs.yml"
+  pull_request:
+    paths:
+      - 'conformance/**'
+      - '.github/workflows/docs.yml'
+      - '.github/workflows/conformance-docs.yml'
+      - 'mkdocs.yml'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: docs-deploy
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.ref) || 'docs-deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  conformance:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/conformance-docs.yml
   deploy:
-    name: Build and deploy docs
+    name: Build combined specification and conformance docs
+    needs: conformance
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Install docs dependencies
         run: |
-          pip install -r requirements-docs.txt
-          pip install -e ".[dev]"
+          pip install --require-hashes -r requirements/docs.txt
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --no-deps -e .
 
       - name: Configure git for gh-deploy
         run: |
@@ -77,5 +96,26 @@ jobs:
         run: |
           sed 's|^docs_dir: \.$|docs_dir: .docs_build|' mkdocs.yml > .mkdocs_build.yml
 
-      - name: Build and deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean --config-file .mkdocs_build.yml
+      - name: Build specification documentation
+        run: mkdocs build --clean --config-file .mkdocs_build.yml
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: conformance-docs
+          path: site/conformance/
+
+      - name: Verify combined site
+        run: |
+          rm -f site/conformance/CNAME
+          test -s site/index.html
+          test -s site/conformance/index.html
+          test "$(cat site/CNAME)" = "trace.agentrust-io.com"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trace-combined-docs
+          path: site/
+
+      - name: Deploy combined site to GitHub Pages
+        if: github.event_name != 'pull_request'
+        run: ghp-import -n -p -f site

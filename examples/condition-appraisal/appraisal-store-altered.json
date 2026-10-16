@@ -1,0 +1,77 @@
+{
+  "resolver": "https://gates.example.org/run/20260920-165918",
+  "appraisals": {
+    "appraisal/1": {
+      "type": "condition-appraisal",
+      "issuer": "https://gates.example.org",
+      "issuer_key_id": "TgykZrWlznGPOUBFv6DRWH1zxqXN-EiqG9GvwWBAe4I",
+      "condition": {
+        "id": "gate:tests-and-worktree/1",
+        "digest": "sha256:9c74eae4fd96698b215bd4d878493a7f29e28b5bb9eb6ffd44b2fe637e008192"
+      },
+      "subject": {
+        "id": "task:7f8f9bdabf7a/deliverable",
+        "digest": "sha256:4782aca6fd68b0f8691a0df563d78959cf017b71f32e8d19edff3b4e5cbec67c"
+      },
+      "outcome": {
+        "status": "pass",
+        "vocabulary": [
+          "pass",
+          "fail",
+          "inconclusive"
+        ],
+        "detail": "3 criteria checked, 3 held"
+      },
+      "issued_at": "2026-09-20T17:01:00Z",
+      "signature": "yVGFVLsSbXzb6C8bte4zwH_HBbwnIqrHOsOlodJkoOHk-RaA4T77eWg80xQyiw4J10sSMv1w6EkSKS4ZwROgCQ"
+    },
+    "appraisal/2": {
+      "type": "condition-appraisal",
+      "issuer": "https://gates.example.org",
+      "issuer_key_id": "TgykZrWlznGPOUBFv6DRWH1zxqXN-EiqG9GvwWBAe4I",
+      "condition": {
+        "id": "gate:tests-and-worktree/1",
+        "digest": "sha256:9c74eae4fd96698b215bd4d878493a7f29e28b5bb9eb6ffd44b2fe637e008192"
+      },
+      "subject": {
+        "id": "task:7f8f9bdabf7a/deliverable",
+        "digest": "sha256:4782aca6fd68b0f8691a0df563d78959cf017b71f32e8d19edff3b4e5cbec67c"
+      },
+      "outcome": {
+        "status": "pass",
+        "vocabulary": [
+          "pass",
+          "fail",
+          "inconclusive"
+        ],
+        "detail": "criterion 2 not held: tests/fixtures/out.txt written outside the worktree"
+      },
+      "issued_at": "2026-09-20T17:01:00Z",
+      "signature": "KQp3DvJGbODgToEMLEcZTa36mB2JQTUETULAwd_v_rhtab0J8tpaxoJ9omg8_vxHJwxsoTGJA23ngjhf8J_sAg"
+    },
+    "appraisal/3": {
+      "type": "condition-appraisal",
+      "issuer": "https://other-gates.example.org",
+      "issuer_key_id": "XuUXKqX6Sq478KjDWHq4cMfToLp5vt6AlxevmWRk5Nc",
+      "condition": {
+        "id": "gate:tests-and-worktree/1",
+        "digest": "sha256:9c74eae4fd96698b215bd4d878493a7f29e28b5bb9eb6ffd44b2fe637e008192"
+      },
+      "subject": {
+        "id": "task:7f8f9bdabf7a/deliverable",
+        "digest": "sha256:4782aca6fd68b0f8691a0df563d78959cf017b71f32e8d19edff3b4e5cbec67c"
+      },
+      "outcome": {
+        "status": "pass",
+        "vocabulary": [
+          "pass",
+          "fail",
+          "inconclusive"
+        ],
+        "detail": "3 criteria checked, 3 held"
+      },
+      "issued_at": "2026-09-20T17:01:00Z",
+      "signature": "iSw7HeEtrmIm6ysmjiMUvTrxC-UqX0Ey68ZU0Hh1I_gZFm3I_J44mhQp6y8xKVKkXP1SyzMOzkfKlJxzBu0MCw"
+    }
+  }
+}

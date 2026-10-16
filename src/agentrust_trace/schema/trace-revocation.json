@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentrust-io.com/schema/trace-revocation-v1.json",
+  "title": "TRACE Revocation Statement",
+  "description": "A TraceRevocation/1.0 statement withdrawing a record-signing key from a transparency-log entry onward. Spec trace-v0.2 section 3.2.3. The boundary is a log entry ID rather than a timestamp: a compromised record-signing key also signs the iat it would be judged against, so any time-anchored rule is defeated by backdating.",
+  "type": "object",
+  "required": [
+    "type",
+    "compromised_key_id",
+    "last_valid_entry_id",
+    "log_id",
+    "revocation_key_id",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "TraceRevocation/1.0",
+      "description": "Claim type identifier."
+    },
+    "compromised_key_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The revoked record-signing key, as an RFC 7638 JWK thumbprint or a kid. Matching on either identifier rejects the record."
+    },
+    "last_valid_entry_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The highest log entry ID at which this key's records remain valid. A record whose inclusion entry ID is less than or equal to this value is unaffected; a greater one is rejected."
+    },
+    "revoked_after_entry": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The next entry ID after last_valid_entry_id. Redundant by construction and carried so a reader does not have to know the log's successor function to see where the boundary falls."
+    },
+    "log_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The transparency log the entry IDs refer to. Entry IDs from a different log are not comparable and must not satisfy the verifier rule."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why the key was revoked. Free text: the verifier rule does not branch on it, and constraining it would invite a false sense that it is machine-actionable.",
+      "examples": [
+        "key compromise",
+        "superseded",
+        "operator request"
+      ]
+    },
+    "revoked_at": {
+      "type": "integer",
+      "minimum": 1700000000,
+      "maximum": 9007199254740991,
+      "description": "When the revocation was issued, Unix epoch seconds. Informational only. It is deliberately NOT the boundary: see the description of this schema."
+    },
+    "revocation_key_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The key signing this statement. Spec section 3.2.3 requires it to sit above compromised_key_id in the section 3.2.1 hierarchy, or to be an organisational recovery key with an independent compromise domain. A statement the compromised key could sign for itself is a tool for whoever stole it."
+    },
+    "sig": {
+      "type": "object",
+      "required": ["alg", "value"],
+      "additionalProperties": false,
+      "description": "Signature over the RFC 8785 canonical form of this object with `sig` absent.",
+      "properties": {
+        "alg": {
+          "type": "string",
+          "enum": ["ed25519", "ES256", "ES384"],
+          "description": "Signature algorithm, matching the set spec section 3.2.1 allows."
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "base64url, no padding."
+        }
+      }
+    }
+  }
+}

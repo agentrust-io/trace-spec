@@ -1,0 +1,93 @@
+{
+  "id": "TRACE-RBUN-026",
+  "name": "stale-by-issuer-statement-still-rejects",
+  "description": "valid_until is one second past and the bundle names the trusted key. The statement was authenticated with the bundle's signature and has no expiry of its own, so the record is rejected; a verifier that aged the bundle out before reading it would report unverified instead.",
+  "spec": "spec/trace-v0.2.md#323-revocation-of-record-signing-keys",
+  "context": {
+    "now": 1785000000,
+    "max_bundle_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw",
+      "kid": "issuer-key-2026"
+    },
+    "trusted_bundle_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "JfQ5mktI1ldOWzNpLVgad2rHpi8TfeRnX1gVZnP-2Sw"
+      }
+    ],
+    "bundle": {
+      "type": "TraceRevocationBundle/1.0",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1784999999,
+      "statements": [
+        {
+          "type": "TraceRevocation/1.0",
+          "compromised_key_id": "yXtpv-ONw0EPK3ZnfQZl_we6sfTzdf4i5H5wuOn1vKU",
+          "last_valid_entry_id": "41",
+          "revoked_after_entry": "42",
+          "log_id": "https://log.example/trace",
+          "reason": "key compromise",
+          "revocation_key_id": "zMc-RO2DTev16r8Pw0K_1gx_but1-5lSwbTAmpHQewQ",
+          "sig": {
+            "alg": "ed25519",
+            "value": "vUGwaJX0PzXSbI28XY_PY6RwDGGeNZIS3n0cO7uM7-arZgS35G1qewFSDcSo1I3ekM2iXoicHCn_NpTito6qCg"
+          }
+        }
+      ],
+      "bundle_key_id": "zMc-RO2DTev16r8Pw0K_1gx_but1-5lSwbTAmpHQewQ",
+      "sig": {
+        "alg": "ed25519",
+        "value": "VSlkeHF1iP1R9p5D57YXwemnnWdCFtwY0Ff1Vx9pYbTSPEmptbIJt4RkjoPcCqRFJK1SGbv_GaLpCuJN8onqAQ"
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/issuer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw"
+        }
+      },
+      "signature": "cNXX2aeZWv47FIFqe1DSAtHDlG7FUcw3U75o5g4r-9r3cAqoXFLSC2ZlIY9fjiPOI9KiaP_XttbMmZruOSvyCQ"
+    }
+  ],
+  "expected": {
+    "rejected": true,
+    "codes": [
+      "key_revoked",
+      "statement_outlives_bundle"
+    ]
+  }
+}

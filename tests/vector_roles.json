@@ -1,0 +1,114 @@
+{
+  "03-missing-required-receipt.json": {
+    "receipt_missing": []
+  },
+  "04-signature-key-mismatch.json": {
+    "signature_or_key_mismatch": [
+      "checks_structure_only"
+    ]
+  },
+  "05-action-ref-mismatch.json": {
+    "action_ref_mismatch": []
+  },
+  "06-stale-receipt.json": {
+    "receipt_stale": []
+  },
+  "07-receipt-chain-gap.json": {
+    "receipt_chain_gap": []
+  },
+  "08-same-party-self-report.json": {
+    "issuer_not_independent": []
+  },
+  "09-unsupported-physical-completion.json": {
+    "unsupported_physical_completion_claim": []
+  },
+  "10-action-ref-not-recomputable.json": {
+    "action_ref_invalid": []
+  },
+  "11-call-id-mismatch.json": {
+    "call_id_mismatch": []
+  },
+  "12-session-id-mismatch.json": {
+    "session_id_mismatch": []
+  },
+  "13-evidence-hash-mismatch.json": {
+    "evidence_hash_mismatch": []
+  },
+  "14-receipt-issuer-key-unknown.json": {
+    "issuer_key_unknown": []
+  },
+  "15-receipt-from-future.json": {
+    "receipt_from_future": []
+  },
+  "16-decision-not-in-enum.json": {
+    "decision_invalid": []
+  },
+  "17-missing-receipt-explicit-null.json": {
+    "receipt_missing": [
+      "treats_explicit_null_as_present"
+    ]
+  },
+  "18-action-ref-tail-forged.json": {
+    "action_ref_invalid": [
+      "compares_truncated_digest"
+    ]
+  },
+  "19-action-ref-mismatch-in-tail.json": {
+    "action_ref_mismatch": [
+      "compares_truncated_digest"
+    ]
+  },
+  "20-call-id-case-mismatch.json": {
+    "call_id_mismatch": [
+      "compares_case_insensitively"
+    ]
+  },
+  "21-session-id-case-mismatch.json": {
+    "session_id_mismatch": [
+      "compares_case_insensitively"
+    ]
+  },
+  "22-evidence-hash-mismatch-in-tail.json": {
+    "evidence_hash_mismatch": [
+      "compares_truncated_digest"
+    ]
+  },
+  "23-receipt-issuer-key-case-variant.json": {
+    "issuer_key_unknown": [
+      "looks_up_keys_case_insensitively"
+    ]
+  },
+  "24-receipt-signature-malformed.json": {
+    "signature_or_key_mismatch": []
+  },
+  "25-stale-receipt-boundary.json": {
+    "receipt_stale": [
+      "grants_sixty_seconds_grace"
+    ]
+  },
+  "26-receipt-from-future-boundary.json": {
+    "receipt_from_future": [
+      "tolerates_sixty_seconds_skew"
+    ]
+  },
+  "27-receipt-chain-gap-in-tail.json": {
+    "receipt_chain_gap": [
+      "compares_truncated_digest"
+    ]
+  },
+  "28-physical-completion-claim-case.json": {
+    "unsupported_physical_completion_claim": [
+      "compares_case_insensitively"
+    ]
+  },
+  "29-same-party-self-report-rejected.json": {
+    "issuer_not_independent": [
+      "warns_only_on_accepted"
+    ]
+  },
+  "30-decision-case-variant.json": {
+    "decision_invalid": [
+      "matches_enum_case_insensitively"
+    ]
+  }
+}

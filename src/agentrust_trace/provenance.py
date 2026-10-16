@@ -1,8 +1,8 @@
 """MCP Server Provenance Records: build, sign, verify.
 
-Implements ``spec/server-provenance-v1.md``. A provenance record is a signed
-statement *about* an MCP server, not about an execution, so it is deliberately
-not a Trust Record and does not pretend to be one.
+Implements ``spec/server-provenance-v1.md`` and ``spec/server-provenance-v2.md``.
+A provenance record is a signed statement *about* an MCP server, not about an
+execution, so it is deliberately not a Trust Record and does not pretend to be one.
 
 The function that matters here is :func:`check_tool_catalog`. Everything else
 verifies that a document is internally consistent and signed by a key you already
@@ -20,18 +20,28 @@ import re
 import time
 from typing import Any
 
+import rfc8785
+from pydantic import ValidationError
+
+from agentrust_trace.models import RuntimeInfo
+from agentrust_trace.revocation import NO_CHECK, RevocationCheck
 from agentrust_trace.sign import (
     RevocationStore,
+    UnanchorableValue,
+    _b64url_decode,
     _canonical_bytes,
-    anchor_bytes,
     _check_not_revoked,
+    _check_seconds,
+    _integer_value,
     _pubkey_from_jwk,
+    anchor_bytes,
     jwk_thumbprint,
     key_to_jwk,
 )
 
 __all__ = [
     "FORMAT",
+    "FORMAT_V2",
     "KINDS",
     "ProvenanceError",
     "ToolCatalogMismatch",
@@ -43,6 +53,7 @@ __all__ = [
 ]
 
 FORMAT = "agentrust-io/mcp-server-provenance/1"
+FORMAT_V2 = "agentrust-io/mcp-server-provenance/2"
 
 #: Closed on purpose: the value of the field is that a verifier can key on it.
 KINDS = ("publisher-asserted", "observer-attested", "tee-attested")
@@ -66,6 +77,30 @@ def _as_object(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
+def _nonempty_string(value: Any, field: str) -> str:
+    """Return a required textual locator, rejecting truthy non-string JSON values."""
+    if not isinstance(value, str) or not value:
+        raise ProvenanceError(f"{field} must be a non-empty string")
+    return value
+
+
+def _tool_count(catalog: dict[str, Any]) -> int:
+    """Return the required catalog count as a JSON integer, decided by value."""
+    try:
+        value = _integer_value(catalog.get("tool_count"), "tool_catalog.tool_count")
+    except ValueError as exc:
+        raise ProvenanceError(
+            "tool_catalog.tool_count must be a non-negative integer within the JCS "
+            f"safe-integer range: {exc}"
+        ) from exc
+    if value < 0:
+        raise ProvenanceError(
+            "tool_catalog.tool_count must be a non-negative integer within the JCS "
+            f"safe-integer range: it is {value}"
+        )
+    return value
+
+
 class ToolCatalogMismatch(ProvenanceError):
     """The server offered a tool set the record does not describe.
 
@@ -76,7 +111,38 @@ class ToolCatalogMismatch(ProvenanceError):
     """
 
 
-def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
+def _check_format(value: Any, required_format: str | None = None) -> None:
+    if value not in (FORMAT, FORMAT_V2):
+        raise ProvenanceError(f"unknown format {value!r}")
+    if required_format is not None:
+        if required_format not in (FORMAT, FORMAT_V2):
+            raise ProvenanceError(f"unknown required format {required_format!r}")
+        if value != required_format:
+            raise ProvenanceError(
+                f"format {value!r} does not match required format {required_format!r}"
+            )
+
+
+def _behavioral_hints(tool: dict[str, Any]) -> dict[str, bool]:
+    annotations = tool.get("annotations", {})
+    if not isinstance(annotations, dict):
+        raise ProvenanceError("annotations must be an object when present")
+    defaults = {
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    }
+    result = {}
+    for name, default in defaults.items():
+        value = annotations.get(name, default)
+        if not isinstance(value, bool):
+            raise ProvenanceError(f"annotations.{name} must be a boolean when present")
+        result[name] = value
+    return result
+
+
+def tool_catalog_hash(tools: list[dict[str, Any]], *, format: str = FORMAT) -> str:
     """Digest over a tool list, per specification §4.
 
     Covers ``name``, ``description`` and ``input_schema`` of each tool, sorted by
@@ -85,9 +151,9 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     in the query" is the rug-pull this hash exists to catch, and a hash over
     names alone would not notice.
 
-    Output schemas, annotations and vendor extensions are excluded. They change
-    for reasons that are not security-relevant, and a hash that churns is a hash
-    nobody compares.
+    V1 excludes annotations for compatibility. Select ``format=FORMAT_V2`` to
+    bind the four normalized behavioral hints. Output schemas, display metadata
+    and vendor extensions remain excluded. A bound hint is still only a claim.
 
     Raises :class:`ProvenanceError` if *tools* is not a list, or contains
     anything other than an object. This is the input :func:`check_tool_catalog`
@@ -95,18 +161,56 @@ def tool_catalog_hash(tools: list[dict[str, Any]]) -> str:
     untrusted party that function exists to check -- so a malformed entry here
     is not a hypothetical, it is the shape a live attack, or simply a broken
     server, takes.
+
+    Also raises :class:`ProvenanceError` for a catalog with no anchor form: a
+    non-integer number or an integer outside the safe range anywhere in an
+    input schema, or nesting too deep to walk. The catalog cannot be hashed, so
+    it cannot be matched.
     """
+    try:
+        return _tool_catalog_hash(tools, format)
+    except UnanchorableValue as exc:
+        # `anchor_bytes` refuses by name, but with its own type, and this function
+        # documents ProvenanceError. The tools are whatever the server returned, so
+        # a `maximum: 1.5` in one input schema escaped every caller written against
+        # that contract, `check_tool_catalog` included. The raised type is both, so
+        # a caller already catching UnanchorableValue here still does.
+        raise _UnanchorableCatalog(
+            f"the offered tool catalog has no anchor form, so it cannot be hashed: {exc}"
+        ) from exc
+    except RecursionError:
+        # The sort key's str() and the anchor walk are both recursive.
+        raise _UnanchorableCatalog(
+            "the offered tool catalog nests too deeply to hash"
+        ) from None
+
+
+class _UnanchorableCatalog(ProvenanceError, UnanchorableValue):
+    """A tool catalog with no anchor form: this module's refusal, and the anchor one."""
+
+
+def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
+    _check_format(format)
     if not isinstance(tools, list):
         raise ProvenanceError(f"tools must be a list, got {type(tools).__name__}")
     for index, t in enumerate(tools):
         if not isinstance(t, dict):
             raise ProvenanceError(f"tools[{index}] must be an object, got {type(t).__name__}")
+        if (
+            "input_schema" in t
+            and "inputSchema" in t
+            and anchor_bytes(t["input_schema"]) != anchor_bytes(t["inputSchema"])
+        ):
+            raise ProvenanceError(
+                f"tools[{index}] carries conflicting input_schema and inputSchema values"
+            )
     normalized = sorted(
         (
             {
                 "name": t.get("name"),
                 "description": t.get("description"),
                 "input_schema": t.get("input_schema", t.get("inputSchema")),
+                **({"annotations": _behavioral_hints(t)} if format == FORMAT_V2 else {}),
             }
             for t in tools
         ),
@@ -128,7 +232,7 @@ def _check_structure(
     endpoint: dict[str, Any] | None,
     attestation: dict[str, Any] | None,
     issued_at: Any,
-) -> None:
+) -> int:
     """The structural rules both the producer and the consumer must apply.
 
     Shared rather than duplicated because these rules were enforced only in
@@ -145,8 +249,7 @@ def _check_structure(
             raise ProvenanceError(
                 f"identity.artifact must be an object, got {type(artifact).__name__}"
             )
-        if not artifact.get("package"):
-            raise ProvenanceError("artifact.package is required (a Package URL)")
+        _nonempty_string(artifact.get("package"), "artifact.package")
         if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
             raise ProvenanceError(
                 "artifact.digest must be a sha256: digest of the entrypoint. For an "
@@ -158,29 +261,75 @@ def _check_structure(
             raise ProvenanceError(
                 f"identity.endpoint must be an object, got {type(endpoint).__name__}"
             )
-        if not endpoint.get("url"):
-            raise ProvenanceError("endpoint.url is required when endpoint is present")
+        _nonempty_string(endpoint.get("url"), "endpoint.url")
         if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
             raise ProvenanceError(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
             )
-    if kind == "tee-attested" and not attestation:
-        raise ProvenanceError(
-            "kind='tee-attested' without attestation evidence is the claim without the "
-            "thing that backs it"
-        )
-    if kind != "tee-attested" and attestation:
+    # Section 3 requires a runtime-shaped object for tee-attested and null
+    # for every other kind. #325 already refused non-object values; the
+    # remaining empty-object and object-shape gaps need these checks.
+    #
+    # No separate isinstance(dict) guard here: RuntimeInfo.model_validate already
+    # rejects non-objects for tee-attested, and the elif below rejects any non-None
+    # value for every other kind. A standalone guard would just duplicate that, or
+    # misfire with the wrong error message ahead of the kind check.
+    if kind == "tee-attested":
+        if attestation is None:
+            raise ProvenanceError(
+                "kind='tee-attested' without attestation evidence is the claim without the "
+                "thing that backs it"
+            )
+        # Same model TRACE v0.2 §3.1 `runtime` uses -- one shape, one place it's
+        # checked. Rejects wrong types, missing fields, unknown platform, bad
+        # measurement digest, and unexpected extra members.
+        try:
+            validated = RuntimeInfo.model_validate(attestation)
+        except ValidationError as exc:
+            raise ProvenanceError(
+                "attestation does not match the shape TRACE v0.2 §3.1 `runtime` uses: "
+                f"{exc}"
+            ) from exc
+        # Shape-valid isn't the same as a hardware root. "software-only" is a
+        # legitimate RuntimeInfo value elsewhere (an honestly non-attested Trust
+        # Record), but §1 defines tee-attested as attestation "from inside a TEE",
+        # and docs/platforms/index.md documents software-only as no hardware
+        # assurance at all -- so here it's still the claim without the backing,
+        # just shape-valid instead of null or malformed.
+        if validated.platform == "software-only":
+            raise ProvenanceError(
+                "kind='tee-attested' attestation names platform='software-only', which "
+                "TRACE v0.2 §3.1 and docs/platforms/index.md document as carrying no "
+                "hardware assurance -- the claim without the thing that backs it, in "
+                "shape-valid clothing"
+            )
+    elif attestation is not None:
         raise ProvenanceError(
             f"kind={kind!r} carries attestation evidence. Evidence that is present but "
             "not claimed invites a consumer to read it as an attestation that was made."
         )
-    # bool is an int subclass, and True would otherwise pass as a timestamp.
-    if not isinstance(issued_at, int) or isinstance(issued_at, bool) or issued_at < 0:
+    # Decided by value (spec/trace-v0.2.md §3.2.2, spec/server-provenance-v1.md §3, #485):
+    # RFC 8785 writes 1760000000, 1760000000.0 and 1.76e9 as the same canonical bytes, so a
+    # verifier deciding by Python type refuses a spelling the signature covers.
+    # `_integer_value` keeps the bool exclusion (bool is an int subclass in Python, so True
+    # would otherwise pass as a timestamp) and the JCS safe-integer bound (#219, #320),
+    # above which there is no portable canonical form.
+    try:
+        timestamp = _integer_value(issued_at, "issued_at")
+    except ValueError as exc:
         raise ProvenanceError(
-            "issued_at must be a non-negative integer Unix timestamp. A record with no "
-            "issue time cannot be aged, so a consumer has no way to reject a stale one."
+            "issued_at must be a non-negative integer Unix timestamp within the JCS "
+            f"safe-integer range: {exc}. A record with no usable issue time cannot be "
+            "aged, so a consumer has no way to reject a stale one."
+        ) from exc
+    if timestamp < 0:
+        raise ProvenanceError(
+            "issued_at must be a non-negative integer Unix timestamp within the JCS "
+            f"safe-integer range: it is {timestamp}. A record with no usable issue time "
+            "cannot be aged, so a consumer has no way to reject a stale one."
         )
+    return timestamp
 
 
 def build_record(
@@ -192,8 +341,9 @@ def build_record(
     endpoint: dict[str, str] | None = None,
     attestation: dict[str, Any] | None = None,
     issued_at: int | None = None,
+    format: str = FORMAT,
 ) -> dict[str, Any]:
-    """Assemble an unsigned provenance record.
+    """Assemble an unsigned record; opt into hint binding with ``format=FORMAT_V2``.
 
     Raises rather than emitting a record that cannot mean anything: an identity
     with neither an artifact nor an endpoint identifies nothing, and a
@@ -202,7 +352,7 @@ def build_record(
     """
     if kind not in KINDS:
         raise ProvenanceError(f"kind {kind!r} is not one of {', '.join(KINDS)}")
-    if not _PUBLISHER_RE.match(publisher or ""):
+    if not isinstance(publisher, str) or not _PUBLISHER_RE.match(publisher):
         raise ProvenanceError(
             f"publisher {publisher!r} must be a DID or SPIFFE URI. A display name is not "
             "resolvable and a verifier cannot check one."
@@ -212,13 +362,17 @@ def build_record(
             "a record needs artifact identity, endpoint identity, or both. One with "
             "neither identifies nothing."
         )
-    stamped_at = int(issued_at if issued_at is not None else time.time())
-    _check_structure(
+    # An explicitly supplied value reaches _check_structure untouched: coercing first
+    # defeats the guard there, whose whole subject is what the caller actually passed
+    # (#320). int() on a bool, a non-whole float, or a numeric string yields something
+    # an integer test then accepts, and int() on anything else raises a class this
+    # module does not document.
+    stamped_at = _check_structure(
         kind=kind,
         artifact=artifact,
         endpoint=endpoint,
         attestation=attestation,
-        issued_at=stamped_at,
+        issued_at=issued_at if issued_at is not None else int(time.time()),
     )
 
     identity: dict[str, Any] = {}
@@ -228,12 +382,12 @@ def build_record(
         identity["endpoint"] = dict(endpoint)
 
     return {
-        "format": FORMAT,
+        "format": format,
         "kind": kind,
         "issued_at": stamped_at,
         "identity": identity,
         "publisher": publisher,
-        "tool_catalog": {"hash": tool_catalog_hash(tools), "tool_count": len(tools)},
+        "tool_catalog": {"hash": tool_catalog_hash(tools, format=format), "tool_count": len(tools)},
         "attestation": attestation,
     }
 
@@ -244,35 +398,33 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     Raises ``ProvenanceError`` for a *record* that is not a JSON object. ``{**record}``
     reads it before its shape is established, so a non-mapping raised a bare
     ``TypeError`` about dict unpacking, which is not this module's documented refusal.
+    Also raises ``ProvenanceError`` for a *key* that is not an Ed25519 private key, and
+    for a record with no RFC 8785 canonical form, such as an integer outside the JCS
+    safe range; both used to escape as the underlying library's ``ValueError``.
     """
     if not isinstance(record, dict):
         raise ProvenanceError(
             f"record must be a JSON object, got {type(record).__name__}"
         )
-    payload = {**record, "cnf": {"jwk": key_to_jwk(key)}}
-    body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    try:
+        jwk = key_to_jwk(key)
+    except ValueError as exc:
+        raise ProvenanceError(f"key must be an Ed25519 private key: {exc}") from exc
+    payload = {**record, "cnf": {"jwk": jwk}}
+    try:
+        body = _canonical_bytes({k: v for k, v in payload.items() if k != "signature"})
+    except rfc8785.CanonicalizationError as exc:
+        # `_canonical_bytes` is `rfc8785.dumps` and raises its own errors for a value JCS
+        # has no form for, including an integer outside the safe domain. Those are
+        # `ValueError`s, not this module's, so a caller catching `ProvenanceError` saw a
+        # crash. Same shape as the wrap `intent_bridge._jcs` already carries.
+        raise ProvenanceError(
+            f"record has no RFC 8785 canonical form, so it cannot be signed: {exc}"
+        ) from exc
     import base64
 
     sig = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
     return {**payload, "signature": sig}
-
-
-def _check_seconds(name: str, value: Any, *, optional: bool = False) -> None:
-    """Reject a malformed policy input instead of silently acting on it.
-
-    A verifier's age policy is configuration, and a wrong one fails in the
-    direction that matters: ``max_age_seconds=-1`` is not a stricter bound, it
-    classifies every record ever issued as stale, and a caller who meant to
-    disable the bound would see a uniform refusal rather than an error naming
-    the cause. ``bool`` is excluded explicitly because it is a subclass of
-    ``int`` in Python, so ``True`` would otherwise pass as one second.
-    """
-    if optional and value is None:
-        return
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ProvenanceError(f"{name} must be an integer, got {type(value).__name__}")
-    if value < 0:
-        raise ProvenanceError(f"{name} must be non-negative, got {value}")
 
 
 def verify_record(
@@ -282,8 +434,18 @@ def verify_record(
     revocation: RevocationStore | None = None,
     max_age_seconds: int | None = None,
     max_future_skew_seconds: int = 300,
-) -> None:
+    now: int | None = None,
+    required_format: str | None = None,
+) -> RevocationCheck:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
+
+    ``now`` is an optional non-negative integer Unix timestamp for replaying a
+    freshness decision. Booleans and other types are refused as configuration
+    errors. Omitting it retains the host clock's fractional-second precision.
+    This only pins freshness; callers must also retain the record, trusted key,
+    policy and revocation evidence to reproduce the complete decision.
+
+    ``required_format=FORMAT_V2`` rejects legacy records when binding is required.
 
     *trusted_jwk* is required and is never taken from the record. Verifying a
     document against a key it supplies proves only that it is internally
@@ -295,6 +457,11 @@ def verify_record(
     thumbprint *and* its ``kid``. Both a revoked key and an unreachable store fail
     closed. ``None`` skips the check and keeps verification offline; offline
     verification cannot prove non-revocation.
+
+    Successful verification returns a :class:`RevocationCheck`: outcome
+    ``no_check_performed`` when no store is supplied, or ``verified`` when the
+    supplied store is clean for this call. A revoked key still raises
+    :class:`ProvenanceError`.
 
     ``max_age_seconds`` bounds how old ``issued_at`` may be. It defaults to
     ``None``, unlike the 86400 of a Trust Record, because a provenance record
@@ -311,8 +478,6 @@ def verify_record(
     **This does not check the server.** It checks the paper. Call
     :func:`check_tool_catalog` with the tools the server actually offered.
     """
-    import base64
-
     if not isinstance(record, dict):
         raise ProvenanceError(
             f"record must be a JSON object, got {type(record).__name__}. `_as_object` "
@@ -322,11 +487,7 @@ def verify_record(
             "function documents and is not caught by a caller written against it."
         )
 
-    if record.get("format") != FORMAT:
-        raise ProvenanceError(
-            f"unknown format {record.get('format')!r}; expected {FORMAT}. An unknown "
-            "version is rejected rather than parsed best-effort."
-        )
+    _check_format(record.get("format"), required_format)
     if record.get("kind") not in KINDS:
         raise ProvenanceError(f"unknown kind {record.get('kind')!r}")
     if not _PUBLISHER_RE.match(str(record.get("publisher", ""))):
@@ -334,7 +495,7 @@ def verify_record(
     identity = _as_object(record.get("identity"), "identity")
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
-    _check_structure(
+    issued_at = _check_structure(
         kind=str(record.get("kind")),
         artifact=identity.get("artifact"),
         endpoint=identity.get("endpoint"),
@@ -344,14 +505,19 @@ def verify_record(
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
+    _tool_count(catalog)
 
-    # Freshness. `issued_at` has been required and type-checked since the format
+    # Freshness. `issued_at` has been required and checked since the format
     # existed, with an error message explaining that a record with no issue time
     # cannot be aged; this is the step that reads it. `_check_structure` above has
-    # already established it is a non-negative int.
-    _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
-    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
-    age = time.time() - int(record["issued_at"])
+    # already established it is a non-negative integer value.
+    _check_seconds("max_future_skew_seconds", max_future_skew_seconds, exc=ProvenanceError)
+    _check_seconds(
+        "max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError
+    )
+    _check_seconds("now", now, optional=True, exc=ProvenanceError)
+    verification_time = time.time() if now is None else now
+    age = verification_time - issued_at
     if age < -max_future_skew_seconds:
         raise ProvenanceError(
             f"record is dated {int(-age)}s in the future, exceeds "
@@ -376,36 +542,73 @@ def verify_record(
     if not signature:
         raise ProvenanceError("record carries no signature")
 
-    embedded = (record.get("cnf") or {}).get("jwk")
-    if embedded:
-        # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
-        # its key material; `kid`, `use` and `alg` are optional members that carry none
-        # of it, and a key resolved from a JWKS endpoint normally has `kid` while
-        # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
-        # and rejected records signed by exactly the right key.
-        from hmac import compare_digest
+    cnf = _as_object(record.get("cnf"), "cnf")
+    embedded = cnf.get("jwk")
+    if not embedded:
+        raise ProvenanceError("record carries no cnf.jwk")
 
-        try:
-            matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
-        except ValueError as exc:
-            raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
-        if not matched:
-            raise ProvenanceError(
-                "the record's embedded key is not the trusted key. A record signed by "
-                "some other key is a record about a server somebody else is describing."
-            )
+    # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
+    # its key material; `kid`, `use` and `alg` are optional members that carry none
+    # of it, and a key resolved from a JWKS endpoint normally has `kid` while
+    # `key_to_jwk` emits the bare minimum. Dict equality made that difference fatal
+    # and rejected records signed by exactly the right key.
+    from hmac import compare_digest
+
+    try:
+        matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+    except ValueError as exc:
+        raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
+    if not matched:
+        raise ProvenanceError(
+            "the record's embedded key is not the trusted key. A record signed by "
+            "some other key is a record about a server somebody else is describing."
+        )
 
     pub = _pubkey_from_jwk(trusted_jwk)
-    body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
-    padded = signature + "=" * (-len(signature) % 4)
     try:
-        pub.verify(base64.urlsafe_b64decode(padded), body)
+        body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
+    except rfc8785.CanonicalizationError as exc:
+        # The other half of the wrap `sign_record` carries. The record here is the
+        # untrusted document, so it can hold a value JCS has no form for wherever the
+        # structural checks above do not type the field: an integer outside the safe
+        # range under `tools`, say. `rfc8785`'s errors are its own `ValueError`s, not
+        # this module's, so a caller written against `ProvenanceError` saw a crash
+        # where every other malformed record gives a refusal.
+        raise ProvenanceError(
+            f"record has no RFC 8785 canonical form, so its signature cannot be "
+            f"checked: {exc}"
+        ) from exc
+    # `signature` reaches this function from whatever the caller is verifying, the
+    # same untrusted document nothing above this line has vouched for either: a
+    # non-string here (an int, a list of chars, a nested object) previously hit
+    # `signature + "=" * (-len(signature) % 4)` and raised a bare `TypeError` --
+    # "object of type 'int' has no len()" -- which is not the ProvenanceError this
+    # function documents and is not caught by a caller written against it.
+    # `_b64url_decode` is `sign.verify_record`'s own guard for exactly this field;
+    # reused here so a malformed signature fails the same way a malformed one does
+    # everywhere else in this module: closed, and named.
+    try:
+        sig_bytes = _b64url_decode(signature, field="signature")
+    except ValueError as exc:
+        raise ProvenanceError(str(exc)) from exc
+    try:
+        pub.verify(sig_bytes, body)
     except Exception as exc:  # cryptography raises InvalidSignature
         raise ProvenanceError(f"signature does not verify: {exc}") from exc
 
+    if revocation is not None:
+        return RevocationCheck(outcome="verified", evidence={"source": "store"})
+    return NO_CHECK
 
-def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> None:
+
+def check_tool_catalog(
+    record: dict[str, Any], tools: list[dict[str, Any]], *, required_format: str | None = None
+) -> None:
     """Compare the record against the tools the server actually offered.
+
+    Dispatches by record format; ``required_format=FORMAT_V2`` rejects v1.
+    This comparison does not authenticate the format or record. Also call
+    :func:`verify_record` with a trusted key before relying on the result.
 
     Specification §5 step 5, and the only step that catches a live attack. A
     mismatch means the server you are talking to is not the server the record
@@ -428,7 +631,8 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
             "cannot assume that function established the shape."
         )
 
-    actual = tool_catalog_hash(tools)
+    _check_format(record.get("format"), required_format)
+    actual = tool_catalog_hash(tools, format=record["format"])
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")
     if actual != expected:
@@ -439,4 +643,10 @@ def check_tool_catalog(record: dict[str, Any], tools: list[dict[str, Any]]) -> N
             f"({len(tools)} tools offered, record declares {declared_count}). "
             "The signature may be perfectly valid; this is about the server, not the "
             "document."
+        )
+    declared_count = _tool_count(catalog)
+    if declared_count != len(tools):
+        raise ProvenanceError(
+            f"tool_catalog.tool_count declares {declared_count} tools, but the matching "
+            f"catalog contains {len(tools)}"
         )

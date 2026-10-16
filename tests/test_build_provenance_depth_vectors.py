@@ -85,8 +85,9 @@ class Rule:
     check: Callable[[dict[str, Any]], bool] = field(compare=False)
 
 
-def _hex(digest: str) -> str:
-    return digest.split(":", 1)[1]
+def _digest_parts(digest: str) -> tuple[str, str]:
+    algorithm, hexadecimal = digest.split(":", 1)
+    return algorithm, hexadecimal
 
 
 def _attestation(vector: dict[str, Any]) -> dict[str, Any] | None:
@@ -138,9 +139,9 @@ def _attestation_subject_mismatch(vector: dict[str, Any]) -> bool:
     statement = _attestation(vector)
     if statement is None:
         return False  # absence is reported by the rule that owns it, once
-    wanted = _hex(vector["build_provenance"]["digest"])
+    algorithm, wanted = _digest_parts(vector["build_provenance"]["digest"])
     subjects = statement.get("subject", [])
-    return not any(entry.get("digest", {}).get("sha256") == wanted for entry in subjects)
+    return not any(entry.get("digest", {}).get(algorithm) == wanted for entry in subjects)
 
 
 def _attestation_builder_mismatch(vector: dict[str, Any]) -> bool:
@@ -248,6 +249,7 @@ def test_fixture_set_is_complete() -> None:
         "04-builder-accepts-dependency-unattested.json",
         "05-builder-accepts-dependency-publisher-untrusted.json",
         "06-builder-accepts-resolved-dependencies-absent.json",
+        "07-builder-accepts-resolved-dependencies-empty.json",
     ]
 
 
@@ -261,6 +263,58 @@ def test_control_accepts_at_every_depth() -> None:
     """The floor. A set of rejections alone is passed by a verifier that rejects everything."""
     for depth in DEPTHS:
         assert verify(CONTROL, depth)["outcome"] == "accept"
+
+
+def _sha384_control(*, subject_sha384: str) -> dict[str, Any]:
+    vector = copy.deepcopy(CONTROL)
+    hexadecimal = "a" * 96
+    digest = "sha384:" + hexadecimal
+    vector["build_provenance"]["digest"] = digest
+    vector["context"]["artifact_digest"] = digest
+    statement = _attestation(vector)
+    assert statement is not None
+    statement["subject"][0]["digest"] = {
+        "sha256": "b" * 64,
+        "sha384": subject_sha384,
+    }
+    return vector
+
+
+def test_sha384_subject_binding_selects_the_declared_algorithm() -> None:
+    assert verify(_sha384_control(subject_sha384="a" * 96), "builder") == {
+        "outcome": "accept",
+        "verified_depth": "builder",
+        "failures": [],
+        "unresolved": [],
+    }
+
+
+def test_sha384_subject_binding_rejects_the_wrong_digest() -> None:
+    assert verify(_sha384_control(subject_sha384="c" * 96), "builder") == {
+        "outcome": "reject",
+        "verified_depth": "builder",
+        "failures": ["attestation_subject_mismatch"],
+        "unresolved": [],
+    }
+
+
+def _mislabelled_control() -> dict[str, Any]:
+    """Record declares sha384:X; the subject carries the same hex under `sha256`."""
+    vector = copy.deepcopy(CONTROL)
+    hexadecimal = "a" * 96
+    digest = "sha384:" + hexadecimal
+    vector["build_provenance"]["digest"] = digest
+    vector["context"]["artifact_digest"] = digest
+    statement = _attestation(vector)
+    assert statement is not None
+    statement["subject"][0]["digest"] = {"sha256": hexadecimal}
+    return vector
+
+
+def test_a_hex_declared_under_another_algorithm_does_not_bind() -> None:
+    assert verify(_mislabelled_control(), "builder")["failures"] == [
+        "attestation_subject_mismatch"
+    ]
 
 
 @pytest.mark.parametrize("name,vector", FIXTURES, ids=[name for name, _ in FIXTURES])
@@ -558,3 +612,76 @@ def test_a_verifier_that_stops_early_in_the_dependency_list_is_caught(count: int
         f"a verifier checking only the first {count} of resolvedDependencies is accepted "
         f"by every vector that separates this boundary: {[n for n, _ in separating]}"
     )
+
+
+EMPTY_DEPENDENCIES = _load(
+    FIXTURE_DIR / "07-builder-accepts-resolved-dependencies-empty.json"
+)
+
+
+def test_empty_dependencies_fixture_changes_only_the_controls_dependency_list() -> None:
+    paired = copy.deepcopy(CONTROL)
+    statement = _attestation(paired)
+    assert statement is not None
+    assert statement["predicate"]["buildDefinition"]["resolvedDependencies"]
+    statement["predicate"]["buildDefinition"]["resolvedDependencies"] = []
+    # Names, explanation and expected appraisals describe the pair, not its evidence.
+    for key in ("name", "description", "expected"):
+        paired[key] = EMPTY_DEPENDENCIES[key]
+    assert paired == EMPTY_DEPENDENCIES
+
+
+@pytest.mark.parametrize("depth", DEPTHS)
+def test_empty_dependencies_pair_pins_the_complete_appraisal(depth: str) -> None:
+    assert verify(CONTROL, depth) == {
+        "outcome": "accept",
+        "verified_depth": depth,
+        "failures": [],
+        "unresolved": [],
+    }
+    assert verify(EMPTY_DEPENDENCIES, depth) == {
+        "outcome": "accept",
+        "verified_depth": "builder" if depth == "transitive" else depth,
+        "failures": [],
+        "unresolved": ["resolved_dependencies_absent"] if depth == "transitive" else [],
+    }
+
+
+def test_a_missing_key_only_dependency_check_is_caught_by_the_empty_list_pair() -> None:
+    """The old six fixtures pass this shortcut; the new pair observes its false depth."""
+
+    def missing_key_only(vector: dict[str, Any]) -> bool:
+        statement = _attestation(vector)
+        if statement is None:
+            return False
+        return "resolvedDependencies" not in statement.get("predicate", {}).get(
+            "buildDefinition", {}
+        )
+
+    weakened = tuple(
+        Rule(rule.code, rule.depth, rule.effect, missing_key_only)
+        if rule.code == "resolved_dependencies_absent"
+        else rule
+        for rule in RULES
+    )
+    # Establish the audit's gap, including the accepting control, rather than merely
+    # declaring that a mutant exists. All 18 original depth comparisons still pass.
+    for name, vector in FIXTURES:
+        if name == "07-builder-accepts-resolved-dependencies-empty":
+            continue
+        for depth in DEPTHS:
+            assert verify(vector, depth, weakened) == vector["expected"][depth]
+    for depth in DEPTHS:
+        assert verify(CONTROL, depth, weakened) == CONTROL["expected"][depth]
+        if depth != "transitive":
+            assert verify(EMPTY_DEPENDENCIES, depth, weakened) == EMPTY_DEPENDENCIES[
+                "expected"
+            ][depth]
+    wrong = verify(EMPTY_DEPENDENCIES, "transitive", weakened)
+    assert wrong == {
+        "outcome": "accept",
+        "verified_depth": "transitive",
+        "failures": [],
+        "unresolved": [],
+    }
+    assert wrong != EMPTY_DEPENDENCIES["expected"]["transitive"]

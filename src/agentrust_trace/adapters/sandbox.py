@@ -27,11 +27,42 @@ hardware at all. Passing a :class:`SandboxAttestation` moves the record from
 the call changes. An adapter that could only emit Level 0 would force a second code
 path for the deployments that matter most.
 
-**It will not let a caller claim hardware it does not have.** ``platform`` is only ever
-set from a supplied attestation, an attestation may not name ``software-only``, and the
-platform is checked against the enum on :class:`~agentrust_trace.models.RuntimeInfo`
-rather than a copy of it. A record that says ``tpm2`` therefore carries a measurement
-that something other than this process produced.
+**It rejects the ways a caller can misname unattested evidence; it does not appraise the
+evidence itself.** ``platform`` is only ever set from a supplied attestation, an
+attestation may not name ``software-only``, the platform is checked against the enum on
+:class:`~agentrust_trace.models.RuntimeInfo` rather than a copy of it, and
+``measurement`` must be a ``sha256:``/``sha384:`` digest. That is shape validation, not
+cryptographic verification: nothing here checks a quote, a signature, or a nonce, so
+constructing a :class:`SandboxAttestation` with an invented platform and an invented
+digest is accepted and reaches the record unchanged. This is the same boundary
+docs/trust-levels.md states for every Level 1 producer --
+``agentrust_trace.sign.verify_record`` does not appraise hardware quotes either -- and it
+applies here for the same reason: appraising the evidence requires the platform's own
+verification path (a TDX/SEV-SNP quote check against the vendor's key, a TPM quote check
+against a known PCR policy, and so on), which is outside what a record-shaped library can
+do generically. Pass a :class:`SandboxAttestation` only after your own attestation
+verifier has checked genuine evidence from the named platform; passing one built from
+data your process invented produces a Level 1-shaped record with no Level 1 assurance
+behind it.
+
+**Independently verified evidence is necessary but not sufficient.** docs/trust-levels.md
+is explicit that Level 1 needs "authenticated evidence binding the record-signing key to
+the expected environment," and docs/verification.md puts the responsibility for that
+binding on "the producing profile." This adapter is that producing profile for a sandbox
+runtime, and it defines no binding: nothing here ties ``measurement`` (or ``nonce``) to
+the specific key that ends up in the record's ``cnf.jwk`` -- the key :func:`sign_record`
+is called with is chosen independently of, and after, whatever attestation was verified.
+A caller who verifies a genuine quote and then signs with an unrelated key produces a
+record that is no more bound to hardware than a fabricated one; :class:`SandboxAttestation`
+and :func:`~agentrust_trace.sign.sign_record` cannot tell the two cases apart. If your
+attestation flow supports a caller-supplied challenge (a TPM quote's qualifying data, an
+SNP report's ``REPORT_DATA``, a TDX quote's ``REPORTDATA``), bind it yourself: request the
+quote with that field set to a value derived from the signing key you are about to pass to
+``sign_record`` (for example its RFC 7638 thumbprint), verify the quote's binding to that
+value in your own verifier, and only then carry it through as :attr:`SandboxAttestation.nonce`
+so a downstream verifier that knows your convention can check it too.
+:func:`~agentrust_trace.sign.verify_record` does not check this binding either -- nothing
+in this codebase does; it is on you and on whatever verifier you point at these records.
 
 Sandbox identity and image are carried in the existing v0.2 fields (``subject`` and
 ``build_provenance.digest``). A dedicated ``sandbox`` object belongs in a later profile;
@@ -40,15 +71,15 @@ this adapter deliberately needs no schema change.
 
 from __future__ import annotations
 
+from agentrust_trace._patterns import _PYTHON_PATTERNS
+
 import hashlib
-import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Literal, get_args
 
-import rfc8785
-
 from agentrust_trace.models import (
+    JCS_SAFE_INTEGER,
     Appraisal,
     BuildProvenance,
     ModelInfo,
@@ -56,6 +87,32 @@ from agentrust_trace.models import (
     RuntimeInfo,
     ToolTranscript,
 )
+from agentrust_trace.sign import _canonical_bytes
+# TrustRecord.iat is Field(ge=1700000000) in models.py, matching "minimum" in
+# schema/trace-claim.json. Below it a record is schema-invalid, which is the whole
+# failure this check exists to stop -- so the floor is the contract's, not zero.
+TRACE_MIN_IAT = 1700000000
+
+
+def _check_iat(value: object) -> None:
+    """The bound ``TrustRecord.iat`` carries, applied to whatever is about to be signed.
+
+    Called from ``__post_init__`` and again where the value is written into the
+    record. ``frozen=True`` stops the ordinary reassignment; it does not stop
+    ``vars()`` or ``object.__setattr__``, and a guard can only speak about the value
+    it is shown, so the one that matters runs where the record is built. #320 settled
+    the same point for ``provenance.build_record``.
+    """
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < TRACE_MIN_IAT
+        or value > JCS_SAFE_INTEGER
+    ):
+        raise ValueError(
+            f"iat must be an integer Unix timestamp within the TRACE v0.2 range "
+            f"[{TRACE_MIN_IAT}, {JCS_SAFE_INTEGER}], got {value!r}"
+        )
 
 __all__ = ["SandboxAttestation", "SandboxSessionResult", "TraceSandboxAdapter"]
 
@@ -68,9 +125,9 @@ _PLATFORMS: frozenset[str] = frozenset(
 
 # Mirrors TrustRecord.subject. Checked here so a bad identity fails at the adapter with
 # a message naming the field, rather than at model_validate() several steps later.
-_SUBJECT_RE = re.compile(r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")
+_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
 
-_DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
 
 
 @dataclass(frozen=True)
@@ -80,6 +137,21 @@ class SandboxAttestation:
     Supply this when the host produced attestation evidence. Omit it and the record is
     Level 0, marked ``software-only``, which is the honest description of a sandbox on
     a machine with no root of trust.
+
+    This dataclass validates shape only (an accepted platform name, a digest-shaped
+    measurement); it does not verify that the evidence is genuine. Construct one only
+    from a measurement your own attestation verifier obtained from the named platform,
+    not from a value your process computed or invented -- nothing downstream of this
+    constructor can tell the difference.
+
+    Verifying the evidence is genuine is still not the same as Level 1 assurance: TRACE
+    also requires that evidence to bind the record-signing key to the attested
+    environment (see the module docstring). This dataclass has no field that expresses
+    that binding on its own -- ``nonce`` is carried through to the record verbatim, on
+    trust, and is not checked against ``measurement``, against any key, or against
+    anything else. If you bind your quote's challenge to your signing key yourself,
+    ``nonce`` is where that value goes; if you do not, leaving it unset is more honest
+    than filling it with a value that implies a binding nobody verified.
     """
 
     platform: str
@@ -94,8 +166,18 @@ class SandboxAttestation:
     rim_uri: str | None = None
     firmware_version: str | None = None
     nonce: str | None = None
+    """Opaque, carried into ``runtime.nonce`` unchanged. If your attestation verifier
+    bound the quote's challenge to the key you will sign this record with, this is
+    where that challenge goes; nothing here binds it to the key, and downstream
+    ``verify_record(expected_nonce=...)`` compares it only with a value the verifier
+    already knows. Omit it rather than fill it with a value that was never actually
+    bound to anything."""
 
     def __post_init__(self) -> None:
+        if not isinstance(self.platform, str):
+            raise ValueError(
+                f"SandboxAttestation.platform must be a string, got {type(self.platform).__name__}"
+            )
         if self.platform == "software-only":
             raise ValueError(
                 "SandboxAttestation.platform must not be 'software-only'. Omit the "
@@ -108,6 +190,11 @@ class SandboxAttestation:
                 f"SandboxAttestation.platform {self.platform!r} is not an accepted "
                 f"platform. Accepted: {', '.join(sorted(_PLATFORMS))}."
             )
+        if not isinstance(self.measurement, str):
+            raise ValueError(
+                "SandboxAttestation.measurement must be a string, got "
+                f"{type(self.measurement).__name__}"
+            )
         if not _DIGEST_RE.match(self.measurement):
             raise ValueError(
                 f"SandboxAttestation.measurement {self.measurement!r} is not a sha256: or "
@@ -116,7 +203,7 @@ class SandboxAttestation:
             )
 
 
-@dataclass
+@dataclass(frozen=True)
 class SandboxSessionResult:
     """One sandbox session, as the runtime has it at close.
 
@@ -151,16 +238,23 @@ class SandboxSessionResult:
     """Issuance timestamp. Defaults to now."""
 
     def __post_init__(self) -> None:
+        if not isinstance(self.sandbox_id, str):
+            raise ValueError(f"sandbox_id must be a string, got {type(self.sandbox_id).__name__}")
         if not _SUBJECT_RE.match(self.sandbox_id):
             raise ValueError(
                 f"sandbox_id {self.sandbox_id!r} must be a SPIFFE URI "
                 "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
                 "It becomes the record subject, which is what a verifier keys on."
             )
+        if not isinstance(self.image_digest, str):
+            raise ValueError(
+                f"image_digest must be a string, got {type(self.image_digest).__name__}"
+            )
         if not _DIGEST_RE.match(self.image_digest):
             raise ValueError(
                 f"image_digest {self.image_digest!r} must be a sha256: or sha384: digest."
             )
+        _check_iat(self.iat)
 
 
 class TraceSandboxAdapter:
@@ -170,9 +264,10 @@ class TraceSandboxAdapter:
     then call :meth:`build_trust_record` per session::
 
         adapter = TraceSandboxAdapter(
-            model_provider="anthropic",
-            model_id="claude-sonnet-4-6",
+            model_provider="example-provider",
+            model_id="example-model",
             data_class="confidential",
+            enforcement_mode="enforce",
         )
         record = adapter.build_trust_record(session)
         signed = sign_record(record, key)
@@ -189,7 +284,7 @@ class TraceSandboxAdapter:
         model_id: str,
         model_version: str | None = None,
         data_class: str = "confidential",
-        enforcement_mode: Literal["enforce", "advisory", "silent"] = "enforce",
+        enforcement_mode: Literal["enforce", "advisory", "silent", "declared"],
         policy_version: str | None = None,
         policy_uri: str | None = None,
         build_provenance_slsa_level: int = 0,
@@ -202,6 +297,11 @@ class TraceSandboxAdapter:
     ) -> None:
         """
         Args:
+            enforcement_mode: Required, with no default. The adapter records what the
+                runtime reports; it does not evaluate the policy, so ``"enforce"`` as a
+                default would claim an evaluation nobody saw, and spec section 4.3 says
+                ``"declared"`` MUST NOT be a default. Pass the mode the sandbox actually
+                enforced, or ``"declared"`` when no engine evaluated the policy.
             appraisal_status: Defaults to ``"none"``. A record is not appraised by being
                 built, and stamping ``affirming`` on an unappraised record puts a verdict
                 in the field a consumer reads to find out whether anybody checked. Set
@@ -233,10 +333,23 @@ class TraceSandboxAdapter:
     def build_trust_record(self, session: SandboxSessionResult) -> dict[str, Any]:
         """Return an unsigned Trust Record for *session*.
 
-        Level 0 when ``session.attestation`` is ``None``, Level 1 when it is supplied.
+        Level 0 when ``session.attestation`` is ``None``. Otherwise the record is
+        Level 1-*shaped*: ``runtime.platform`` and ``runtime.measurement`` carry the
+        supplied evidence verbatim, with no cryptographic check performed on it here.
+        Actual Level 1 assurance requires that evidence to have been independently
+        verified -- by your own attestation verifier, against the named platform --
+        before you construct the :class:`SandboxAttestation`, *and* it requires that
+        verification to bind the key :func:`~agentrust_trace.sign.sign_record` is
+        called with to the attested environment. This method has no way to check
+        either: the ``cnf`` it returns is a placeholder, and the real key arrives
+        later, at ``sign_record``, decided independently of whatever attestation was
+        passed here. See the module docstring and :class:`SandboxAttestation` for this
+        boundary.
         """
         bundle_hash = self.bundle_hash(session.policy_bundle_bytes)
         runtime = self._runtime(session, bundle_hash)
+
+        _check_iat(session.iat)
 
         record: dict[str, Any] = {
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
@@ -303,7 +416,7 @@ class TraceSandboxAdapter:
         pre-image (see :func:`~agentrust_trace.sign.sign_record`) keeps a record
         reproducible by an implementation in another language.
         """
-        return "sha256:" + hashlib.sha256(rfc8785.dumps(decisions)).hexdigest()
+        return "sha256:" + hashlib.sha256(_canonical_bytes(decisions)).hexdigest()
 
     @staticmethod
     def software_measurement(image_digest: str, bundle_hash: str) -> str:

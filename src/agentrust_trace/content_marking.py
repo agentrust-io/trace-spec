@@ -17,9 +17,14 @@ rather than an optional extra.
 
 from __future__ import annotations
 
+from agentrust_trace._patterns import _PYTHON_PATTERNS
+
 import hashlib
+import json
 import re
 from typing import Any
+
+from rfc3986_validator import validate_rfc3986  # type: ignore[import-untyped]
 
 __all__ = [
     "ASSERTION_LABEL",
@@ -35,8 +40,9 @@ ASSERTION_LABEL = "com.agentrust-io.trace"
 ASSERTION_VERSION = 1
 
 _ALGS = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
-_SUBJECT_RE = re.compile(r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")
-_DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
+_DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
+_HTTP_URL_RE = re.compile(r"^https?://(?P<authority>[^/?#]+)(?:[/?#].*)?$", re.IGNORECASE)
 
 
 class ContentMarkingError(ValueError):
@@ -52,10 +58,86 @@ class RecordMismatch(ContentMarkingError):
     """
 
 
+def _no_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """``object_pairs_hook`` that refuses a JSON object naming one member twice.
+
+    ``json.loads`` keeps the last of two same-named members without a word, and a
+    parser that keeps the first reads different values out of the same bytes. The
+    hash binds bytes, so the record this module compares ``subject`` and
+    ``eat_profile`` against has to be the only reading those bytes have.
+    """
+    obj: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in obj:
+            raise ContentMarkingError(f"duplicate member {name!r} in a JSON object")
+        obj[name] = value
+    return obj
+
+
+def _loads(data: bytes | bytearray, what: str) -> Any:
+    try:
+        return json.loads(data, object_pairs_hook=_no_duplicate_members)
+    except ContentMarkingError as exc:
+        raise ContentMarkingError(f"{what} is not usable JSON: {exc}") from exc
+    except (ValueError, RecursionError) as exc:
+        # RecursionError: nesting deeper than the interpreter stack. The bytes can
+        # come from whoever serves the URL, so a caller written against
+        # ContentMarkingError has to be able to refuse them.
+        raise ContentMarkingError(f"{what} is not JSON: {exc}") from exc
+
+
 def _digest(data: bytes, alg: str) -> str:
     if alg not in _ALGS:
         raise ContentMarkingError(f"unsupported digest algorithm {alg!r}; use sha256 or sha384")
     return f"{alg}:{_ALGS[alg](data).hexdigest()}"
+
+
+def _record_url(value: Any) -> str:
+    """Return a C2PA external-reference URL or refuse the malformed value."""
+    message = "record.url must be an absolute http(s) URI"
+    if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
+        raise ContentMarkingError(message)
+    if validate_rfc3986(value) is None:
+        raise ContentMarkingError(message)
+
+    match = _HTTP_URL_RE.fullmatch(value)
+    if match is None:
+        raise ContentMarkingError(message)
+
+    authority = match.group("authority")
+    hostport = authority.rsplit("@", 1)[-1]
+    if not hostport:
+        raise ContentMarkingError(message)
+
+    port: str | None = None
+    if hostport.startswith("["):
+        close = hostport.find("]")
+        if close <= 1:
+            raise ContentMarkingError(message)
+        tail = hostport[close + 1 :]
+        if tail:
+            if not tail.startswith(":") or not tail[1:].isdigit():
+                raise ContentMarkingError(message)
+            port = tail[1:]
+    else:
+        if hostport.count(":") > 1:
+            raise ContentMarkingError(message)
+        if ":" in hostport:
+            host, port = hostport.rsplit(":", 1)
+            if not host or not port.isdigit():
+                raise ContentMarkingError(message)
+        elif not hostport:
+            raise ContentMarkingError(message)
+
+    # Length before int(): RFC 3986 puts no bound on a port's digits, and int() of
+    # more than 4,300 of them raises Python's own ValueError about its integer-string
+    # limit rather than this module's refusal. Leading zeros are legal, so they are
+    # not counted.
+    if port is not None:
+        significant = port.lstrip("0")
+        if len(significant) > 5 or (significant and int(significant) > 65535):
+            raise ContentMarkingError(message)
+    return value
 
 
 def build_assertion(
@@ -71,6 +153,11 @@ def build_assertion(
     re-serialized dict is a hash of something nobody will ever fetch: key order,
     separators and escaping all change the bytes without changing the record, and
     the verifier hashes what the server sends.
+
+    Raises ``ContentMarkingError`` for a *url* that is empty, an *alg* that is not a
+    digest algorithm name, and an *anchor* that is not a non-empty string. A non-string
+    or empty anchor used to be dropped without a word, so the caller got an assertion
+    with no anchor and no error.
     """
     if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
         raise ContentMarkingError(
@@ -79,13 +166,20 @@ def build_assertion(
         )
     if not url:
         raise ContentMarkingError("url is required: an assertion with no reference binds nothing")
+    url = _record_url(url)
+    if not isinstance(alg, str):
+        raise ContentMarkingError(
+            f"alg must be a digest algorithm name, got {type(alg).__name__}; use sha256 or sha384"
+        )
+    if anchor is not None and (not isinstance(anchor, str) or not anchor):
+        # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
+        # caller who passed one got an assertion with no anchor and no error. Refuse it.
+        raise ContentMarkingError(
+            "anchor must be a non-empty registry entry URI string or None, got "
+            f"{anchor!r}"
+        )
 
-    import json
-
-    try:
-        record = json.loads(record_bytes)
-    except ValueError as exc:
-        raise ContentMarkingError(f"record_bytes is not JSON: {exc}") from exc
+    record = _loads(record_bytes, "record_bytes")
     if not isinstance(record, dict):
         raise ContentMarkingError(
             f"record_bytes must decode to a JSON object, got {type(record).__name__}. A "
@@ -96,8 +190,8 @@ def build_assertion(
     profile = record.get("eat_profile")
     if not _SUBJECT_RE.match(str(subject or "")):
         raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
-    if not profile:
-        raise ContentMarkingError("the record declares no eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ContentMarkingError("the record declares no non-empty string eat_profile")
 
     data: dict[str, Any] = {
         "version": ASSERTION_VERSION,
@@ -125,8 +219,6 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     assertion points at the record it claims, and nothing about whether either
     was signed by anyone it trusts.
     """
-    import json
-
     if not isinstance(assertion, dict):
         raise ContentMarkingError("assertion must be an object")
     if assertion.get("label") != ASSERTION_LABEL:
@@ -136,23 +228,42 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     data = assertion.get("data")
     if not isinstance(data, dict):
         raise ContentMarkingError("assertion has no data object")
-    if data.get("version") != ASSERTION_VERSION:
+    version = data.get("version")
+    if isinstance(version, bool) or version != ASSERTION_VERSION:
         raise ContentMarkingError(
-            f"unknown assertion version {data.get('version')!r}; expected {ASSERTION_VERSION}. "
+            f"unknown assertion version {version!r}; expected {ASSERTION_VERSION}. "
             "An unknown version is rejected rather than parsed best-effort."
         )
 
+    # Section 2 marks both of these required. The comparisons further down establish
+    # agreement, not presence, so without this two absences read as a match (#326).
+    # A malformed assertion is the caller's own input: it is ContentMarkingError rather
+    # than RecordMismatch, which would accuse the server at the URL of serving the wrong
+    # record.
+    for field in ("subject", "eat_profile"):
+        if field not in data:
+            raise ContentMarkingError(
+                f"assertion data has no {field}, which section 2 marks required. The "
+                "binding check compares it against the fetched record, and a comparison "
+                "establishes agreement rather than presence."
+            )
+
     ref = data.get("record")
-    if not isinstance(ref, dict) or not ref.get("url"):
+    if not isinstance(ref, dict):
         raise ContentMarkingError("assertion carries no record reference")
-    alg = ref.get("alg", "sha256")
+    url = _record_url(ref.get("url"))
+    alg = ref.get("alg")
+    if not isinstance(alg, str):
+        raise ContentMarkingError(
+            f"unsupported digest algorithm {alg!r}; use sha256 or sha384"
+        )
     expected = ref.get("hash")
     if not _DIGEST_RE.match(str(expected or "")):
         raise ContentMarkingError(f"record.hash {expected!r} is not a sha256:/sha384: digest")
 
     if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
         raise ContentMarkingError(
-            f"record_bytes must be the bytes retrieved from {ref['url']}, got "
+            f"record_bytes must be the bytes retrieved from {url}, got "
             f"{type(record_bytes).__name__}. `build_assertion` already refuses this and "
             "the reason it matters more here is that `bytes(5)` is five zero bytes: an "
             "int would be hashed, would not match, and the caller would be told the "
@@ -163,22 +274,25 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
     actual = _digest(bytes(record_bytes), alg)
     if actual != expected:
         raise RecordMismatch(
-            f"the record at {ref['url']} does not match the assertion: computed {actual}, "
+            f"the record at {url} does not match the assertion: computed {actual}, "
             f"assertion says {expected}. The record changed after the asset was signed, or "
             "the URL is serving a different one."
         )
 
-    record: dict[str, Any]
-    try:
-        record = json.loads(record_bytes)
-    except ValueError as exc:
-        raise ContentMarkingError(f"record at {ref['url']} is not JSON: {exc}") from exc
+    record = _loads(record_bytes, f"record at {url}")
     if not isinstance(record, dict):
         raise ContentMarkingError(
-            f"the record at {ref['url']} must decode to a JSON object, got "
+            f"the record at {url} must decode to a JSON object, got "
             f"{type(record).__name__}. It matched the declared hash, so this is what the "
             "record actually is at that URL, not a mismatch to report as RecordMismatch."
         )
+    for field in ("subject", "eat_profile"):
+        if field not in record:
+            raise RecordMismatch(
+                f"the record at {url} has no {field}, which section 2 marks required, so "
+                "the assertion has nothing to be bound to. It matched the declared hash, "
+                "so this is what that URL is serving."
+            )
     if record.get("subject") != data.get("subject"):
         raise RecordMismatch(
             f"assertion names subject {data.get('subject')!r} and the record says "

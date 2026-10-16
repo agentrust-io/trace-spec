@@ -1,7 +1,7 @@
 # Technical Charter: TRACE
 
-**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026. The technical workstream is hosted by the Coalition for Secure AI (CoSAI). This supersedes the earlier proposal to split the specification, IP, and trademark to the Linux Foundation entity hosting the Model Context Protocol.  
-**Status**: Draft. The Linux Foundation has accepted the contribution; the Technical Charter and Project Contribution Agreement are still being executed with LF Projects, LLC. This charter is effective when the Technical Charter takes effect.
+**Hosting**: The Linux Foundation, as its own series: "TRACE Specification, a Series of LF Projects, LLC". The Linux Foundation [announced the contribution](https://www.linuxfoundation.org/press/linux-foundation-welcomes-trace-to-advance-verifiable-runtime-evidence-for-ai-workloads) on 25 August 2026.  
+**Status**: Draft. The Linux Foundation has accepted the contribution, and the Project Contribution Agreement with LF Projects, LLC was executed on 17 August 2026. The Technical Charter has been executed and has not yet taken effect. This charter is effective when the Technical Charter takes effect.
 
 > **Note for external contributors:** The Linux Foundation has accepted TRACE, but this charter is still a working draft and the Technical Charter has not yet taken effect. Governance terms, IP policy, and conformance mark ownership described here are proposed, not final. Do not implement production systems based on governance commitments in this document until v1.0 ratification.  
 **Version**: 0.1 (aligned with spec v0.1)
@@ -10,7 +10,7 @@
 
 ## 1. Mission
 
-The TRACE project develops and maintains an open, portable, hardware-attested governance record for AI agents and other confidential workloads. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
+The TRACE project develops and maintains an open, portable, signed governance record for AI agents and other confidential workloads, which can carry hardware attestation evidence. The mission is to make execution governance evidence verifiable by any party: without trusting the operator, without callbacks to the issuer, and without vendor lock-in to any cloud, silicon vendor, or AI provider.
 
 ## 2. Scope
 
@@ -18,7 +18,7 @@ The project includes:
 
 - **The TRACE Specification**: normative text defining the Trust Record schema, wire format, signing and key management protocol, verification rules, hardware root profiles, and conformance requirements.
 - **JSON Schema**: machine-readable schema for Trust Record validation.
-- **Conformance test suite**: the canonical tests validating compliance (in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests)).
+- **Conformance test suite**: the canonical tests validating compliance (in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance)).
 - **Vendor platform annexes**: informative, vendor-co-authored claim-mapping documents for each silicon and cloud attestation surface.
 - **Reference examples**: example Trust Records for each supported hardware platform.
 
@@ -43,19 +43,19 @@ Upon host organization acceptance, governance transitions from the current Proje
 
 ## 4. Intellectual Property Policy
 
-All contributions must be made under the terms of [LICENSE](LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
+All contributions must be made under the terms of [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
 
-Normative specification text and the normative TRACE JSON Schema are licensed under the Community Specification License 1.0. Source code, examples, workflows, and tests are licensed under Apache License 2.0. Documentation other than specification materials is licensed under CC BY 4.0. Earlier specification publications remain available under the licenses stated when they were published. See [LICENSE](LICENSE) and the [license map](Governance/License.md).
+Normative specification text and the normative TRACE JSON Schema are licensed under the Community Specification License 1.0. Source code, examples, workflows, and tests are licensed under Apache License 2.0. Documentation other than specification materials is licensed under CC BY 4.0. Earlier specification publications remain available under the licenses stated when they were published. See [LICENSE](https://github.com/agentrust-io/trace-spec/blob/main/LICENSE) and the [license map](Governance/License.md).
 
 ## 5. Trademark Policy
 
-"TRACE" as a specification name and the "TRACE-conformant" conformance mark are currently held by OPAQUE Systems, Inc. Upon host organization acceptance, trademark ownership transfers to the host under their standard trademark policy.
+"TRACE" as a specification name and the "TRACE-conformant" conformance mark are held by LF Projects, LLC, under the trademark policy at https://www.lfprojects.org/policies/.
 
 Use of "TRACE-conformant" to describe an implementation is permitted only when that implementation passes the published conformance test suite for the version being claimed.
 
 ## 6. Conformance
 
-An implementation may claim TRACE conformance only by passing the conformance test suite in [agentrust-io/trace-tests](https://github.com/agentrust-io/trace-tests) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
+An implementation may claim TRACE conformance only by passing the conformance test suite in [trace-spec/conformance](https://github.com/agentrust-io/trace-spec/tree/main/conformance) at the level being claimed (Level 0, 1, or 2). Conformance claims must reference the test suite version and include a link to a passing run.
 
 Test suite changes that would invalidate previously conformant implementations require a spec version increment.
 
@@ -67,11 +67,11 @@ TRACE profiles, and does not replace:
 - **SLSA**: build provenance
 - **SPIFFE / SPIRE**: workload identity
 - **SCITT**: transparency anchoring
-- **EAR (draft-ietf-rats-ar4si)**: verifier appraisal
+- **EAR (draft-ietf-rats-ear)**: verifier appraisal, carrying AR4SI's trustworthiness tiers (draft-ietf-rats-ar4si)
 - **MCP / A2A**: agent execution surface
 - **AIBOM (SPDX 3.0, CycloneDX 1.7)**: model component inventory
 
-TRACE participates in IETF RATS, SCITT, and EAR working groups as a consuming profile, not a competing standard.
+TRACE participates in the IETF RATS and SCITT working groups as a consuming profile, not a competing standard.
 
 ## 8. Transition timeline
 

@@ -1,9 +1,11 @@
 # RFC Proposal: A2A delegation-link verification profile
 
+When one AI agent hands a task to another, each can write a TRACE record, and the later record points back to the earlier one (a delegation link). This proposal sets out how a checker follows those links and decides whether each hand-off was allowed. It is for people building verifiers, or agents that pass work to each other over A2A (the agent-to-agent protocol). It is a draft: nothing in it binds an implementation yet, and it ships with 24 test vectors so independent implementations can be compared.
+
 **Status:** Draft proposal. Binds nothing.
 **Scope:** Verification rules for the existing `delegation` block. No schema change.
 **Target:** `spec/trace-v0.2.md` §3.1 surface, for the v0.3 A2A profile named in `ROADMAP.md`.
-**Conformance material: ** `examples/delegation-link/`: 23 vectors, generator, published key.
+**Conformance material: ** `examples/delegation-link/`: 24 vectors, generator, published key.
 
 Requirement keywords are lowercase throughout this document, deliberately. `CONTRIBUTING.md`
 draws the line that normative text lives in the specifications and informative text binds no
@@ -11,25 +13,28 @@ implementation; this file is informative until its rules are adopted, at which p
 become uppercase in `spec/` and this file becomes a pointer to where they went. A proposal
 that writes itself in the imperative is a specification nobody agreed to.
 
-**Why the corpus was built before the rules.** The three decisions in §4 were not read out of
-the existing text. They were hit, because no vector could be written without settling them, and
-in each case the text supports both branches. A reader passes over all three without noticing;
-someone building a fixture cannot get to the end of one. That order: corpus first, and let it
-interrogate the text: is the part of this document worth keeping if the rules themselves are
-replaced, because it produces a measurement the repository does not otherwise have.
+The test vectors were written before the rules, on purpose. Writing them surfaced three questions the current text leaves open (§4), and comparing two independent implementations against them (§7.1) shows where the specification text is still missing a sentence.
 
-Not *do the tests cover the rules*, which measures an implementation. **Do two independent
-readings of the same normative text produce the same rules**, which measures the
-specification. Where two readings agree, the text is doing its job; where they diverge, the
-text is under-specified, and the divergence names the sentence that is missing. §7.1 is that
-measurement run once, on two implementations that were written without reference to this
-document: on the digest preimage they agree with §4.1 and with each other, and on the
-unresolvable-algorithm question they split: one treats it as unreadable and one as tampering.
-The first is the text working. The second is a missing sentence, located, in one line, and it
-took no argument to find because two implementations were asked the same question.
+??? info "Technical detail: why the corpus was built before the rules"
+    The three decisions in §4 were not read out of
+    the existing text. They were hit, because no vector could be written without settling them, and
+    in each case the text supports both branches. A reader passes over all three without noticing;
+    someone building a fixture cannot get to the end of one. That order: corpus first, and let it
+    interrogate the text: is the part of this document worth keeping if the rules themselves are
+    replaced, because it produces a measurement the repository does not otherwise have.
 
-A single reading measures nothing. That is the case for a second profile design rather than
-against one.
+    Not *do the tests cover the rules*, which measures an implementation. **Do two independent
+    readings of the same normative text produce the same rules**, which measures the
+    specification. Where two readings agree, the text is doing its job; where they diverge, the
+    text is under-specified, and the divergence names the sentence that is missing. §7.1 is that
+    measurement run once, on two implementations that were written without reference to this
+    document: on the digest preimage they agree with §4.1 and with each other, and on the
+    unresolvable-algorithm question they split: one treats it as unreadable and one as tampering.
+    The first is the text working. The second is a missing sentence, located, in one line, and it
+    took no argument to find because two implementations were asked the same question.
+
+    A single reading measures nothing. That is the case for a second profile design rather than
+    against one.
 
 ---
 
@@ -183,9 +188,24 @@ freshness policy on top of this profile; no rule here reads it.
 
 ## 5. The conformance corpus
 
-`examples/delegation-link/` holds 23 vectors. Each is one scenario: a complete record set,
+`examples/delegation-link/` holds 24 vectors. Each is one scenario: a complete record set,
 the verifier context to judge it under, and the classification and codes it expects, so a
 third party can score an implementation without running anything from this repository.
+
+Twenty of the twenty-four score the ten rules above, two per rule with a
+declared implementation defect that one vector catches and the other misses.
+Three more (`01` to `03`) are clean chains, expected to verify with no rule
+firing. The remaining vector, `24-parent-key-supplementary-plane.json`, is
+not a rule vector: it targets the digest preimage itself, over which every
+rule is evaluated. Spec section 3.1.3 names the gap this vector closes: the
+corpus was entirely ASCII, under which RFC 8785's UTF-16 key ordering and
+a code-point ordering (`sort_keys=True` in several JSON libraries) agree, so
+nothing in the set could tell an implementation that canonicalizes correctly
+apart from one that takes the code-point shortcut. This vector's parent
+record carries a `cnf.jwk` member keyed outside the Basic Multilingual
+Plane, where the two orderings disagree; a canonicalizer that takes the
+shortcut computes the wrong digest for it and reports `parent_not_found` on
+a chain every other vector here shows verifying.
 
 Every record in every vector, including the ones built to fail, validates against
 `schema/trace-claim.json`. A defect the schema already rejects is not a profile defect, and a

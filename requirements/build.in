@@ -1,0 +1,4 @@
+# Build backend for the release path. Compile with:
+#   uv pip compile requirements/build.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/build.txt
+hatchling

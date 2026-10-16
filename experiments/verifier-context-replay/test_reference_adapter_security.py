@@ -5,25 +5,32 @@ from unittest.mock import patch
 from trace_reference_adapter import verify_trace_record
 
 
+class AcceptedVerification:
+    pass
+
+
 class FakeModule:
+    VerificationResult = AcceptedVerification
     @staticmethod
-    def verify_record(record, keys, *, verification_time, max_age_seconds,
+    def verify_record(record, keys, *, now, max_age_seconds,
                       max_future_skew_seconds, expected_nonce=None, revocation=None):
-        return None
+        return AcceptedVerification()
 
 
 class ReturningFalse:
+    VerificationResult = AcceptedVerification
     @staticmethod
-    def verify_record(record, keys, *, verification_time, max_age_seconds,
+    def verify_record(record, keys, *, now, max_age_seconds,
                       max_future_skew_seconds, expected_nonce=None, revocation=None):
         return False
 
 
 class MissingRevocation:
+    VerificationResult = AcceptedVerification
     @staticmethod
-    def verify_record(record, keys, *, verification_time, max_age_seconds,
+    def verify_record(record, keys, *, now, max_age_seconds,
                       max_future_skew_seconds, expected_nonce=None):
-        return None
+        return AcceptedVerification()
 
 
 class ReferenceAdapterSecurity(unittest.TestCase):

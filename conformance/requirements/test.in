@@ -1,0 +1,12 @@
+# Runtime + test dependencies, mirroring [project.dependencies] and the test
+# extra. Installed with --require-hashes before the local package goes in with
+# --no-deps, because pip cannot hash-pin an editable install in the same
+# invocation. Compile with:
+#   uv pip compile requirements/test.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/test.txt
+click>=8.1
+cryptography>=42
+jsonschema>=4.23
+rfc8785>=0.1.2
+pytest>=8.0
+pytest-cov

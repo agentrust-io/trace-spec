@@ -1,0 +1,83 @@
+{
+  "tools": [
+    {
+      "name": "search_cloudflare_documentation",
+      "description": "Search the Cloudflare documentation.\n\n\t\tThis tool should be used to answer any question about Cloudflare products or features, including:\n\t\t- Workers, Pages, R2, Images, Stream, D1, Durable Objects, KV, Workflows, Hyperdrive, Queues\n\t\t- AI Search, Workers AI, Vectorize, AI Gateway, Browser Run\n\t\t- Zero Trust, Access, Tunnel, Gateway, Browser Isolation, WARP, DDOS, Magic Transit, Magic WAN\n\t\t- CDN, Cache, DNS, Zaraz, Argo, Rulesets, Terraform, Account and Billing\n\n\t\tResults are returned as semantically similar chunks to the query.\n\t\t",
+      "inputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "annotations": {
+        "title": "Search Cloudflare docs",
+        "readOnlyHint": true
+      },
+      "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "similarity": {
+                  "type": "number",
+                  "description": "Similarity score from AI Search"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Source file ID"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "Developer documentation URL"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Documentation page title"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Matching documentation chunk text"
+                }
+              },
+              "required": [
+                "similarity",
+                "id",
+                "url",
+                "title",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "migrate_pages_to_workers_guide",
+      "description": "ALWAYS read this guide before migrating Pages projects to Workers.",
+      "inputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {}
+      },
+      "annotations": {
+        "title": "Get Pages migration guide",
+        "readOnlyHint": true
+      }
+    }
+  ]
+}

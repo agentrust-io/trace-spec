@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentrust-trace-tests"
+version = "0.6.2"
+description = "TRACE conformance test suite"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "agentrust-io.com" },
+]
+keywords = ["trace", "conformance", "attestation", "ai-agents", "provenance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Security",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "cryptography>=42",
+    "jsonschema>=4.23",
+    # Signature verification canonicalizes with RFC 8785, which specification
+    # §3.2.2 requires by name and rules out doing by hand.
+    "rfc8785>=0.1.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/agentrust-io/trace-spec"
+Repository = "https://github.com/agentrust-io/trace-spec"
+Documentation = "https://trace.agentrust-io.com/conformance/"
+"Bug Tracker" = "https://github.com/agentrust-io/trace-spec/issues"
+
+[project.scripts]
+trace-tests = "trace_tests.cli:main"
+
+[project.optional-dependencies]
+dev = ["agentrust-trace-tests[test]", "ruff", "mypy", "bandit", "pip-audit"]
+test = ["pytest>=8.0", "pytest-cov"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trace_tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "level0: Level 0 conformance -- structural and schema validity",
+    "level1: Level 1 conformance -- signed EAT envelope present",
+    "level2: Level 2 conformance -- hardware TEE attestation binding",
+    "negative: Negative tests -- invalid records must be rejected",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

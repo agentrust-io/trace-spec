@@ -26,6 +26,8 @@ Run it directly; it takes no arguments beyond an optional --root.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import pathlib
 import sys
 
@@ -50,6 +52,8 @@ OFFENDERS = {
 
 
 def candidates(root: pathlib.Path):
+    manifest = root / "conformance" / "import-manifest.json"
+    imported = json.loads(manifest.read_text(encoding="utf-8"))["files"] if manifest.exists() else {}
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in EXTENSIONS:
             continue
@@ -58,6 +62,13 @@ def candidates(root: pathlib.Path):
         relative = path.relative_to(root).as_posix()
         if relative.startswith(EXEMPT_PREFIXES):
             continue
+        # Preserve the reviewed import bytes, including Unicode test vectors.
+        # Any edit loses this exemption and is checked by the normal rule.
+        if relative.startswith("conformance/"):
+            raw = path.read_bytes()
+            preimage = f"blob {len(raw)}\0".encode() + raw
+            if hashlib.sha1(preimage).hexdigest() == imported.get(relative.removeprefix("conformance/")):
+                continue
         yield path, relative
 
 

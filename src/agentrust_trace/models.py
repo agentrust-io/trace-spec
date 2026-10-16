@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
+from functools import partial
+
+from agentrust_trace._patterns import _PYTHON_PATTERNS, _require_pattern
 
 from pydantic import (
     BaseModel,
+    AfterValidator,
     BeforeValidator,
     ConfigDict,
     Field,
@@ -13,6 +17,21 @@ from pydantic import (
 )
 
 _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
+
+# Section 3.1.5: a TPM layer key. Mirrored in schema/trace-claim.json and its copy,
+# and run through the same adapted pattern the schema validator uses.
+_TPM_LAYER_RE = r"^pcr:([0-9]|1[0-9]|2[0-3])$"
+
+# A workload identity, not a namespace. A SPIFFE ID names a trust domain *and* a
+# workload path within it, and a DID names a method and an identifier within that
+# method, so neither is complete at its prefix: `spiffe://example.org` names a trust
+# domain and no workload, and `did:` names nothing at all. The method name is held to
+# lowercase because DID Core section 3.1 fixes `method-char` to `%x61-7A / DIGIT` and
+# requires every DID to conform to that ABNF; the method-specific identifier is not
+# constrained here, so `did:key:z6Mk...` keeps its case. Mirrored verbatim in
+# `schema/trace-claim.json` and its copy, and held there by
+# `tests/test_the_schema_and_the_models_agree.py`.
+_SUBJECT_RE = r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
 # ISO 8601 duration, spelled out by alternation rather than with a negative
 # lookahead so that the same pattern string can be used here and in the JSON
 # Schema: pydantic's default regex engine (Rust) has no look-around, so a
@@ -22,6 +41,15 @@ _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 _DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
 _DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
 _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
+# Base64url without padding, in its canonical spelling where the length leaves
+# unused bits. An 86-character value is a 64-byte signature (Ed25519 or ES256):
+# its final character carries 2 signed bits and 4 unused ones, which RFC 4648
+# section 3.5 requires to be zero, so that character is one of A, Q, g, w. Other
+# lengths are matched as before. The same string as `schema/trace-claim.json` and
+# `_patterns._ECMA_PATTERNS`, held there by
+# `tests/test_the_schema_and_the_models_agree.py` and
+# `tests/test_schema_regex_semantics.py`.
+_SIGNATURE_RE = r"^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
 
 # The JCS safe-integer range, RFC 8785 Appendix B note 1, raised to a MUST by spec
 # section 3.2.2. Mirrored here because these models are the other artifact a producer
@@ -30,8 +58,8 @@ _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME}
 JCS_SAFE_INTEGER = 9007199254740991
 
 
-def _not_a_boolean(value: Any) -> Any:
-    """Reject ``True`` and ``False`` where JSON says integer.
+def _json_integer(value: Any) -> Any:
+    """Decide an integer as JSON does: by its value, not by Python's type or its spelling.
 
     ``isinstance(True, int)`` is a Python fact and not a JSON one. JSON Schema's
     ``"type": "integer"`` does not match a boolean, so ``schema/trace-claim.json``
@@ -43,6 +71,18 @@ def _not_a_boolean(value: Any) -> Any:
     were safe by accident rather than by design: their lower bound is above 1, so
     the coerced value failed the range check afterwards. ``appraisal.timestamp``
     allows 1 and turned ``true`` into 1 January 1970.
+
+    A string had the same hole: pydantic's lax mode read ``"1785000000"`` as the
+    integer 1785000000, which the schema rejects as a string. It is refused here.
+
+    A number is the other direction (spec section 3.2.2). ``1785000000.0`` and
+    ``1.785e9`` parse to a Python ``float`` and are the integer 1785000000: JSON
+    has one number type, JSON Schema 2020-12 matches ``integer`` to any number with
+    a zero fractional part, and RFC 8785 writes the value back out as
+    ``1785000000``, so the signature cannot tell the spellings apart. Such a float
+    is converted to the ``int`` it stands for, so each member's bounds judge the
+    value, and a record dumped from the model carries the plain integer. A float
+    that is not a whole number is not an integer.
     """
     if isinstance(value, bool):
         raise ValueError(
@@ -50,13 +90,28 @@ def _not_a_boolean(value: Any) -> Any:
             "not match true or false, so a record carrying one is rejected by "
             "schema/trace-claim.json and by any implementation validating against it."
         )
+    if isinstance(value, (str, bytes, bytearray)):
+        raise ValueError(
+            f"expected an integer, got a {type(value).__name__}. JSON Schema type "
+            "'integer' does not match a string, even one that spells a number, so a "
+            "record carrying one is rejected by schema/trace-claim.json."
+        )
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(
+                f"expected an integer value, got {value!r}, which is not a whole number"
+            )
+        return int(value)
     return value
 
 
 #: An integer as JSON means it, rather than as Python's type hierarchy means it.
-JsonInt = Annotated[int, BeforeValidator(_not_a_boolean)]
+JsonInt = Annotated[int, BeforeValidator(_json_integer)]
 
-DigestStr = Annotated[str, Field(pattern=_DIGEST_RE)]
+DigestStr = Annotated[
+    str, Field(pattern=_DIGEST_RE),
+    AfterValidator(partial(_require_pattern, pattern=_DIGEST_RE)),
+]
 
 
 class _TraceModel(BaseModel):
@@ -142,9 +197,11 @@ class PolicyInfo(_TraceModel):
     """How the policy named by ``bundle_hash`` related to this execution.
 
     The first three all assert that **something evaluated the policy**:
-    ``enforce`` acted on the result, ``advisory`` did not, ``silent`` acted and
-    suppressed the log lines. ``declared`` asserts less than any of them: the
-    policy is named and bound into the signed record, and nothing evaluated it.
+    ``enforce`` blocked on deny, ``advisory`` logged and allowed, and ``silent``
+    allowed even on deny while suppressing operational log lines. The audit
+    chain still records every would-have-denied decision in ``silent`` mode.
+    ``declared`` asserts less than any of them: the policy is named and bound
+    into the signed record, and nothing evaluated it.
 
     That case is not hypothetical, it is the common one. An agent framework has
     no policy engine, so a record produced by observing a LangChain or LlamaIndex
@@ -264,8 +321,58 @@ class Reference(_TraceModel):
     rel: Annotated[str, Field(min_length=1)]
     id: Annotated[str, Field(min_length=1)]
     resolver: Annotated[str, Field(min_length=1)]
-    retention: Annotated[str, Field(pattern=_DURATION_RE)] | None = None
+    retention: Annotated[
+        str, Field(pattern=_DURATION_RE),
+        AfterValidator(partial(_require_pattern, pattern=_DURATION_RE)),
+    ] | None = None
     digest: DigestStr | None = None
+
+
+class ClosureEntry(_TraceModel):
+    """One content-addressed input of the deterministic function. Spec section 3.1.4.
+
+    The shape section 3.1.2 gives a reference, without ``rel`` or ``retention``:
+    every entry stands in the same relation to the claim, so nothing distinguishes
+    them. ``digest`` is required where a reference's is optional, because an entry
+    a verifier cannot check against the digest the producer signed pins nothing,
+    and pinning is the whole of what an entry does.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: Annotated[str, Field(min_length=1)]
+    digest: DigestStr
+    resolver: Annotated[str, Field(min_length=1)]
+
+
+class Reproducibility(_TraceModel):
+    """The claim that a named deterministic function of the run re-executes, over a
+    pinned input closure, to a transcript with the stated RFC 8785 digest. Spec
+    section 3.1.4.
+
+    The function is the producer's coordination logic: the code that decided what
+    ran, in what order, on what inputs. It is not the workload's side effects and
+    not the model calls, which are not deterministic; the boundary is drawn around
+    every non-deterministic interaction, each recorded and pinned in the closure as
+    an input like any other.
+
+    Producer-side. The block is the claim; the result of re-running it is an
+    appraisal, under ``Appraisal.method``. A record carrying it earns no assurance
+    from it: re-executability is not attestation and does not become it, so
+    ``runtime.platform`` is untouched, exactly as ``references`` leaves it.
+
+    A closure that omits anything which can change the transcript makes the claim
+    malformed rather than weak. That is detected at re-execution, as a read beyond
+    the closure, and not here: the model fixes the shape.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    function: Annotated[str, Field(min_length=1)]
+    code_identity: DigestStr
+    code_resolver: Annotated[str, Field(min_length=1)] | None = None
+    input_closure: list[ClosureEntry]
+    transcript_digest: DigestStr
 
 
 class BuildProvenance(_TraceModel):
@@ -280,26 +387,87 @@ class BuildProvenance(_TraceModel):
     provenance_depth: Literal["surface", "builder", "transitive"] | None = None
 
 
-class PlatformMeasurementLayer(_TraceModel):
-    """Per-layer appraisal result, with explicit evidence absence reason."""
+class ReExecution(_TraceModel):
+    """The result of re-running a record's reproducibility claim. Spec section 3.1.4.
+
+    Attributed to the party that re-ran the function, named as ``Appraisal.verifier``.
+    In a record signed only by its producer, that attribution is the producer's report.
+    ``outcome`` is the one of three that occurred, and two of them carry what
+    makes them readable: ``diverged`` carries ``observed_digest``, because
+    divergence localises nothing by itself and the two transcripts have to be
+    comparable by a third party; ``not-attempted`` carries ``reason``, because a
+    named absence and a generic one are different findings, and the finding is
+    lost the moment the reason is. ``not-attempted`` is never reported as either
+    of the others: absent is not pass, and absent is not failure.
+
+    ``verifier_code_identity`` is the verifier naming its own build. Self-asserted,
+    no weight singly; a correlation key across results, since two verifiers at
+    different implementations disagreeing over one closure is verifier drift.
+    """
+
     model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["reproduced", "diverged", "not-attempted"]
+    observed_digest: DigestStr | None = None
+    reason: Annotated[str, Field(min_length=1)] | None = None
+    verifier_code_identity: DigestStr | None = None
+
+    @model_validator(mode="after")
+    def _outcome_carries_what_makes_it_readable(self) -> ReExecution:
+        if self.outcome == "diverged" and self.observed_digest is None:
+            raise ValueError(
+                "outcome 'diverged' requires observed_digest: without the verifier's "
+                "digest nobody can compare the two transcripts, and the divergence "
+                "localises nothing"
+            )
+        if self.outcome == "not-attempted" and self.reason is None:
+            raise ValueError(
+                "outcome 'not-attempted' requires reason: an inability to check is "
+                "reported with its cause, and a generic absence is a different finding"
+            )
+        return self
+
+
+class PlatformMeasurementLayer(_TraceModel):
+    """One layer's outcome in a platform-measurement appraisal. Spec section 3.1.5.
+
+    ``not-established`` carries ``reason``, because the three reasons are
+    different findings: a layer that holds nothing, a layer measured and never
+    shown to be appraised, and evidence that does not describe one boot. An
+    ``established`` layer carries no reason.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     outcome: Literal["established", "not-established"]
     reason: Literal[
         "layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"
     ] | None = None
 
     @model_validator(mode="after")
-    def _checked_reason(self) -> PlatformMeasurementLayer:
+    def _not_established_names_its_reason(self) -> PlatformMeasurementLayer:
         if "reason" in self.model_fields_set and self.reason is None:
-            raise ValueError("null reason is not permitted")
+            # The schema refuses an explicit null; so does the model, so the two agree.
+            raise ValueError("reason is absent or one of the three reasons; null is neither")
         if (self.outcome == "not-established") != (self.reason is not None):
-            raise ValueError("reason is required exactly for not-established")
+            raise ValueError(
+                "a layer carries reason exactly when its outcome is 'not-established'; "
+                f"got outcome={self.outcome!r} and reason={self.reason!r}"
+            )
         return self
 
 
 class PlatformMeasurement(_TraceModel):
-    """Per-layer measurement appraisal; must bind the record measurement."""
+    """Per-layer appraisal of ``runtime.measurement``. Spec section 3.1.5.
+
+    A member of ``Appraisal`` in its own right, not an ``Appraisal.method``
+    value, so it can sit next to a re-execution result. ``measurement`` must
+    equal ``runtime.measurement``; ``TrustRecord`` holds that, since it spans
+    two members of the record. A result naming no layer establishes nothing.
+    """
+
     model_config = ConfigDict(extra="forbid")
+
     measurement: DigestStr
     layers: Annotated[dict[str, PlatformMeasurementLayer], Field(min_length=1)]
 
@@ -313,12 +481,36 @@ class Appraisal(_TraceModel):
     timestamp: Annotated[JsonInt, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
+    # Closed, for the reason `Origin.kind` is: a verifier keys on it. `status` is
+    # untouched by it; the re-execution outcome is not folded into the EAR set.
+    method: Literal["re-execution"] | None = None
+    re_execution: ReExecution | None = None
+    # Not a method value: it can sit next to a re-execution result. Section 3.1.5.
     platform_measurement: PlatformMeasurement | None = None
 
     @model_validator(mode="after")
-    def _recorded_measurement_requires_appraisal(self) -> Appraisal:
+    def _a_written_result_is_an_appraisal(self) -> Appraisal:
+        """Section 3.1.5, rule 5: a verifier that writes a per-layer result has
+        performed an appraisal, so ``status`` is not ``none``."""
         if self.platform_measurement is not None and self.status == "none":
-            raise ValueError("appraisal.status cannot be none with a platform measurement result")
+            raise ValueError(
+                "appraisal.status is 'none' while appraisal.platform_measurement is "
+                "present: a written result is an appraisal"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _re_execution_present_exactly_when_the_method_says_so(self) -> Appraisal:
+        """Section 3.1.4: ``re_execution`` is present when ``method`` is
+        ``re-execution`` and absent otherwise. A result under no method is a
+        result a verifier cannot key on; a method with no result reports nothing.
+        """
+        if (self.method == "re-execution") != (self.re_execution is not None):
+            raise ValueError(
+                "appraisal.re_execution must be present exactly when appraisal.method "
+                f"is 're-execution'; got method={self.method!r} and "
+                f"re_execution={'present' if self.re_execution is not None else 'absent'}"
+            )
         return self
 
 
@@ -335,12 +527,18 @@ class JWK(_TraceModel):
     crv: str | None = None
     x: str | None = None
     y: str | None = None
+    n: str | None = None
+    e: str | None = None
     kid: str | None = None
 
     @model_validator(mode="after")
     def _require_key_material(self) -> JWK:
         """A confirmation key without key material binds nothing (RFC 7518 §6)."""
-        required_by_kty = {"OKP": ("crv", "x"), "EC": ("crv", "x", "y")}
+        required_by_kty = {
+            "OKP": ("crv", "x"),
+            "EC": ("crv", "x", "y"),
+            "RSA": ("n", "e"),
+        }
         required = required_by_kty.get(self.kty, ())
         missing = [name for name in required if getattr(self, name) is None]
         if missing:
@@ -365,13 +563,19 @@ class ConfirmationKey(_TraceModel):
 
 
 class TrustRecord(_TraceModel):
-    """TRACE v0.2 Trust Record: hardware-attested governance evidence for an AI agent execution."""
+    """TRACE v0.2 Trust Record: a signed governance record for an AI agent execution.
+
+    It can carry hardware attestation evidence; the SDK does not verify that evidence.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     eat_profile: Literal["tag:agentrust-io.com,2026:trace-v0.2"]
     iat: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
-    subject: Annotated[str, Field(pattern=r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$")]
+    subject: Annotated[
+        str, Field(pattern=_SUBJECT_RE),
+        AfterValidator(partial(_require_pattern, pattern=_SUBJECT_RE)),
+    ]
     model: ModelInfo
     runtime: RuntimeInfo
     policy: PolicyInfo
@@ -380,6 +584,7 @@ class TrustRecord(_TraceModel):
     delegation: Delegation | None = None
     origin: Origin | None = None
     references: list[Reference] | None = None
+    reproducibility: Reproducibility | None = None
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None
@@ -397,29 +602,18 @@ class TrustRecord(_TraceModel):
     absent one.
     """
     cnf: ConfirmationKey
-    signature: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]+$")] | None = None
+    signature: Annotated[
+        str, Field(pattern=_SIGNATURE_RE),
+        AfterValidator(partial(_require_pattern, pattern=_SIGNATURE_RE)),
+    ] | None = None
     """Optional embedded signature (base64url, no padding) by the cnf key over the
     canonical JSON form of the record with only this field absent. Every Trust Record must
     be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
-    outside the record instead of in this field."""
+    outside the record instead of in this field.
 
-    @model_validator(mode="after")
-    def _platform_measurement_matches_runtime(self) -> TrustRecord:
-        """Appraisal must describe this record's measurement and canonical TPM PCR names."""
-        pm = self.appraisal.platform_measurement
-        if pm is not None:
-            if pm.measurement != self.runtime.measurement:
-                raise ValueError("platform_measurement.measurement must equal runtime.measurement")
-            if self.runtime.platform == "tpm2":
-                import re
-                if any(
-                    re.fullmatch(r"pcr:(?:[0-9]|1[0-9]|2[0-3])", name) is None
-                    for name in pm.layers
-                ):
-                    raise ValueError(
-                        "tpm2 layer names must be pcr:0 through pcr:23 without leading zeroes"
-                    )
-        return self
+    An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or
+    ES256) and must be canonically encoded per RFC 4648 section 3.5: the final
+    character's unused bits must be zero, so it must end in A, Q, g, or w."""
 
     @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:
@@ -440,4 +634,30 @@ class TrustRecord(_TraceModel):
                 "another party's output has no hardware root, so the platform must be "
                 "'software-only'"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _platform_measurement_is_about_this_record(self) -> TrustRecord:
+        """Section 3.1.5: the per-layer result is about ``runtime.measurement``.
+
+        A result about another measurement is not about this record. On a TPM a
+        layer is named ``pcr:`` and the register number in decimal without
+        leading zeros, so two verifiers name the same register the same way.
+        """
+        pm = self.appraisal.platform_measurement
+        if pm is None:
+            return self
+        if pm.measurement != self.runtime.measurement:
+            raise ValueError(
+                "appraisal.platform_measurement.measurement must equal "
+                "runtime.measurement: a result about another measurement is not "
+                "about this record"
+            )
+        if self.runtime.platform == "tpm2":
+            bad = sorted(k for k in pm.layers if not _PYTHON_PATTERNS[_TPM_LAYER_RE].search(k))
+            if bad:
+                raise ValueError(
+                    "on tpm2 a layer is named pcr: and a register number from 0 to "
+                    f"23 in decimal without leading zeros; got {bad}"
+                )
         return self

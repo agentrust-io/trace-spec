@@ -1,0 +1,68 @@
+{
+  "name": "unschemaed-profile-first-in-set-refused",
+  "description": "The same defect as vector 04 with the unusable profile first in the declared set instead of last. Every declared profile has to be checked, not one of them: an implementation that reads the head of the set, or the tail, agrees with one of these two vectors and not the other. The record is again an ordinary v0.2 record, so the only difference between the pair is where the unusable entry sits.",
+  "profile": "trace.verifier_compatibility.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#116",
+    "status": "under review, not accepted normative text"
+  },
+  "verifier": {
+    "accepted_profiles": [
+      "tag:example.com,2025:trace-v0.0",
+      "tag:agentrust-io.com,2026:trace-v0.2"
+    ],
+    "verification_time": 1785000100,
+    "check_freshness": false
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "yG9rlff2_KlMwnhgSz5u-yAiTl7XVZOu5jXXD3plPm5YWaUCcWq3VmA_xtwcRg3JCDKRRYLZHH-TpSjDMYrKCA"
+  },
+  "expected": {
+    "outcome": "refused",
+    "failure": "unschemaed_profile_in_accepted_set",
+    "statement": null
+  },
+  "preconditions": {
+    "unschemaed_for_the_verifier_under_test": [
+      "tag:example.com,2025:trace-v0.0"
+    ],
+    "why": "The expectation is a refusal because the verifier carries no schema for this profile. That is a fact about the implementation running the vector, not about this file, so it is stated here rather than assumed. An implementation that does carry a schema for this identifier has not failed the vector: the premise no longer holds for it, and it substitutes an identifier of its own that it cannot check. The rule under test is that a verifier refuses a declared set naming a profile whose shape it cannot check, with an innocent record."
+  }
+}

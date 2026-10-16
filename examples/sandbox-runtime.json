@@ -3,8 +3,8 @@
   "iat": 1785936000,
   "subject": "spiffe://runtime.example.org/sandbox/code-review-7f2a",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001"
   },
   "runtime": {

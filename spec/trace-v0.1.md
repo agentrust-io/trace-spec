@@ -41,12 +41,12 @@ The wall is not technical capability — it is evidence. AI builders today produ
 | Operational tracking | MLflow, W&B, vendor logs | Self-reported, mutable, no tamper evidence |
 | Hardware attestation | NVIDIA NRAS, Intel Trust Authority, AMD SEV-SNP, AWS Nitro, Azure MAA, GCP Confidential Space | Proves the environment is genuine — no governance, policy, or data-class binding |
 | Content provenance | C2PA Content Credentials | Proves content origin — silent on inference execution |
-| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Annex IV / Article 12 | Mandate documentation; no prescribed cryptographic format |
+| Compliance frameworks | NIST AI RMF, ISO 42001, EU AI Act Article 11 / Annex IV | Documentation and governance frameworks; no TRACE cryptographic format specified |
 | **Execution governance proof** | **Vendor-proprietary artifacts** | **No open, portable, vendor-neutral standard exists** |
 
 The result: every regulated AI deployment re-litigates trust at every host boundary. Each cloud, each model provider, each agent framework ships its own evidence shape. Auditors cannot compare. Verifiers cannot federate. Workloads cannot move.
 
-The EU AI Act mandates tamper-evident logging for high-risk AI (Article 12); under the current provisional timeline those obligations apply from around December 2027. Frameworks already in force — DORA for financial entities, HIPAA for healthcare — carry equivalent audit-trail requirements today. Autonomous agents inside critical infrastructure are landing before the standard exists to govern them.
+The EU AI Act requires high-risk AI systems to support automatic event logging throughout their lifetime (Article 12). It does not prescribe tamper-evident logging; TRACE supplies cryptographic evidence as a separate technical property. Articles 11 and 12 sit in Chapter III Section 2, whose application Article 113, third paragraph, point (c), as replaced by Regulation (EU) 2026/1744, moved to 2 December 2027 for systems high-risk under Article 6(2) and Annex III and to 2 August 2028 for systems high-risk under Article 6(1) and Annex I, subject to the transitional provisions in Article 111. See the [consolidated Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727). A TRACE record or verification level does not establish regulatory compliance.
 
 ---
 
@@ -135,8 +135,8 @@ Each field is independently verifiable. Sub-records (e.g., per-tool-call transcr
   "iat": 1750676142,
   "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
   "model": {
-    "provider": "anthropic",
-    "model_id": "claude-sonnet-4-6",
+    "provider": "example-provider",
+    "model_id": "example-model",
     "version": "20251001",
     "weights_digest": "sha256:a3f8d2c1e9b04756..."
   },
@@ -333,7 +333,7 @@ TRACE is a **profile**, not a parallel stack. It binds existing primitives into 
 
 ### 4.3 Bindings TRACE adds
 
-These components exist in their respective ecosystems. TRACE adds the binding rule that places each into a hardware-attested envelope:
+These components exist in their respective ecosystems. TRACE adds the binding rule that places each into one signed envelope that can carry hardware attestation evidence:
 
 - **`policy` claim.** Policy artifacts (OPA bundles, Cedar policies, custom DSLs) and policy hashing are established. TRACE adds the binding: the policy bundle hash is sealed to the TEE measurement, the enforcement mode is recorded, and substituting the policy invalidates the runtime claim. Gateways MUST default `enforcement_mode` to `enforce`. A deployment MUST explicitly configure `silent` mode; `silent` MUST NOT be the default. In `silent` mode, the audit chain still records every would-have-denied decision; only operational log lines are suppressed.
 - **`data_class` claim.** Data classification schemes are established (DLP labels, NIST SP 800-60, sensitivity tags). TRACE adds: a classification label is attached to inputs and outputs at the per-call layer and recorded in the Trust Record alongside the runtime evidence.
@@ -382,7 +382,7 @@ Other standards bodies participate as technical-liaison partners: OpenSSF (SLSA 
 
 The following organizations have been identified as natural contributors to this standard based on their work in confidential computing, AI safety, and open governance. Formal participation is subject to each organization's independent decision.
 
-Anthropic, NVIDIA, Intel, AMD, Microsoft, Google, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
+NVIDIA, Intel, AMD, Microsoft, Linux Foundation, Confidential Computing Consortium, ATRC, TII, AI71.
 
 ### 6.3 IP and licensing
 
@@ -421,7 +421,7 @@ These need input before v0.2:
 | SPIFFE | Secure Production Identity Framework For Everyone (CNCF). Workload identity |
 | AIBOM | AI Bill of Materials (SPDX 3.0 AI Profile, CycloneDX 1.7 ML-BOM) |
 | MCP | Model Context Protocol. Agent tool-call surface |
-| A2A | Agent-to-Agent (Google). Inter-agent communication protocol |
+| A2A | Agent2Agent protocol (Linux Foundation). Inter-agent communication protocol |
 | C2PA | Coalition for Content Provenance and Authenticity. Content origin manifests |
 | RIM | Reference Integrity Manifest. Vendor-published reference measurements |
 | Trust Record | TRACE's portable signed artifact — see §3 |
@@ -467,8 +467,8 @@ These need input before v0.2:
 
 ### Adjacent Work
 
-- Project Oak (Google DeepMind) — https://github.com/project-oak/oak
-- Anthropic MCP Specification — https://modelcontextprotocol.io/specification/
-- Google A2A Specification — https://a2a-protocol.org/latest/specification/
+- Project Oak — https://github.com/project-oak/oak
+- Model Context Protocol Specification — https://modelcontextprotocol.io/specification/
+- Agent2Agent (A2A) Protocol Specification — https://a2a-protocol.org/latest/specification/
 - MITRE ATLAS — https://atlas.mitre.org/
 - OWASP Top 10 for Agentic Applications — https://genai.owasp.org/

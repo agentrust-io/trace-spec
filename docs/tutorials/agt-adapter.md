@@ -1,184 +1,66 @@
-# TraceAGTAdapter: One-line AGT → TRACE upgrade
+# Build a TRACE Record from AGT Session Inputs
 
-Replace ~50 lines of manual field wiring with a single `build_trust_record()` call.
+This page is for developers who use AGT (the Agent Governance Toolkit, open-source software that checks an AI agent's actions against rules) and want each session to produce a TRACE record. You will turn a session's rule file and its log of tool calls into a signed record on your own computer, in about one minute.
 
-## What you'll learn
+The example uses made-up inputs. It does not run AGT, call an AI model, or check any hardware.
 
-- How `TraceAGTAdapter` maps AGT session data to TRACE Trust Record fields
-- How to collect the three inputs AGT exposes (`policy_bundle_bytes`, `audit_entries`, `merkle_chain_tip`)
-- How to sign and validate the resulting record
-- How to upgrade from Level 0 (software-only) to Level 2 (hardware-rooted) inside cMCP
+## Setup
 
-## Prerequisites
-
-```bash
-pip install agentrust-trace
-```
-
----
-
-## The problem: 50 lines of boilerplate per project
-
-Every project that integrates AGT with TRACE has to wire the same field mappings by hand:
+Use the source installation from the [quick start](../quickstart.md). Save the complete block below as `adapter_example.py` and run `python adapter_example.py`.
 
 ```python
-import hashlib, json, time
-from agentrust_trace import (
-    TrustRecord, ModelInfo, RuntimeInfo, PolicyInfo,
-    ToolTranscript, BuildProvenance, Appraisal, ConfirmationKey, JWK,
-)
+import hashlib
+from agentrust_trace import generate_key, sign_record, verify_record
+from agentrust_trace.adapters import AGTSessionResult, TraceAGTAdapter
 
-# Hash the Cedar bundle
-bundle_bytes = Path("policy.cedar").read_bytes()
-bundle_hash = "sha256:" + hashlib.sha256(bundle_bytes).hexdigest()
-
-# Hash the audit entries
-entries_json = json.dumps(audit_entries, sort_keys=True, separators=(",", ":"))
-transcript_hash = "sha256:" + hashlib.sha256(entries_json.encode()).hexdigest()
-
-# Hash the Merkle chain tip
-measurement = "sha256:" + hashlib.sha256(chain_tip.encode()).hexdigest()
-
-# Build the record manually
-record = TrustRecord(
-    eat_profile="tag:agentrust-io.com,2026:trace-v0.2",
-    iat=int(time.time()),
-    subject=agent_did,
-    model=ModelInfo(provider="anthropic", model_id="claude-sonnet-4-6", version="20251001"),
-    runtime=RuntimeInfo(platform="software-only", measurement=measurement),
-    policy=PolicyInfo(bundle_hash=bundle_hash, enforcement_mode="enforce"),
-    data_class="confidential",
-    tool_transcript=ToolTranscript(hash=transcript_hash, call_count=len(audit_entries)),
-    build_provenance=BuildProvenance(slsa_level=2, digest="sha256:e5f6..."),
-    appraisal=Appraisal(status="affirming", verifier="https://agentrust-io.com/verify"),
-    transparency="https://registry.agentrust-io.com/claim/...",
-    cnf=ConfirmationKey(jwk=JWK(kty="OKP", crv="Ed25519", x="...")),
-)
-```
-
-`TraceAGTAdapter` encapsulates all of this.
-
----
-
-## The solution: TraceAGTAdapter
-
-```python
-from pathlib import Path
-from agentrust_trace.adapters import TraceAGTAdapter, AGTSessionResult
-from agentrust_trace import sign_record, load_signing_key, TrustRecord
-
-# 1. Configure once per deployment
-adapter = TraceAGTAdapter(
-    model_provider="anthropic",
-    model_id="claude-sonnet-4-6",
-    model_version="20251001",
-    build_provenance_digest="sha256:e5f6a7b8...",
-    transparency="https://registry.agentrust-io.com/claim/...",
-)
-
-# 2. Collect AGT session data after govern_fn.close_session()
+policy = b'permit(principal, action, resource);'
+entries = [{"tool": "demo.read", "decision": "allow"}]
 session = AGTSessionResult(
-    agent_did="spiffe://trust.example.org/agent/my-agent",
-    policy_bundle_bytes=Path("policy.cedar").read_bytes(),
-    audit_entries=govern_fn.get_audit_entries(),   # list[dict]
-    merkle_chain_tip=govern_fn.chain_tip,           # hex string
+    agent_did="spiffe://example.test/agent/demo",
+    policy_bundle_bytes=policy,
+    audit_entries=entries,
+    merkle_chain_tip="0" * 64,
 )
-
-# 3. Build and sign
-record = adapter.build_trust_record(session)
-key = load_signing_key()                           # reads TRACE_PRIVATE_KEY_PEM env var
-signed = sign_record(record, key)
-
-# 4. Validate structure before writing
-TrustRecord.model_validate(signed)
-
-import json
-Path("session.trace.json").write_text(json.dumps(signed, indent=2))
-```
-
----
-
-## Field mapping reference
-
-| TRACE field | Source |
-|---|---|
-| `subject` | `AGTSessionResult.agent_did` |
-| `policy.bundle_hash` | `sha256(policy_bundle_bytes)` |
-| `policy.enforcement_mode` | `TraceAGTAdapter(enforcement_mode=...)` (default: `enforce`) |
-| `tool_transcript.hash` | `sha256(canonical_json(audit_entries))` |
-| `tool_transcript.call_count` | `len(audit_entries)` or `AGTSessionResult.call_count` override |
-| `runtime.platform` | Always `software-only` (Level 0) |
-| `runtime.measurement` | `sha256(merkle_chain_tip)` |
-| `appraisal.status` | Always `affirming` (Phase 1) |
-| `model`, `data_class`, `build_provenance` | `TraceAGTAdapter(...)` constructor params |
-| `iat`, `appraisal.timestamp` | `AGTSessionResult.iat` (default: current time) |
-
----
-
-## Collecting the three inputs from AGT
-
-### `policy_bundle_bytes`
-
-Read the Cedar bundle from disk immediately after calling `govern()`. The hash must match what the session evaluated against.
-
-```python
-from pathlib import Path
-
-policy_bundle_bytes = Path(config.policy_path).read_bytes()
-```
-
-### `audit_entries`
-
-AGT's `govern()` returns a wrapped callable with `.get_audit_entries()`. Call it after `.close_session()`:
-
-```python
-governed_fn = govern(my_tool, agent_did=agent_did, config=config)
-result = governed_fn(input_data)
-governed_fn.close_session()
-
-audit_entries = governed_fn.get_audit_entries()  # list of Merkle AuditEntry dicts
-```
-
-### `merkle_chain_tip`
-
-The Merkle chain tip is the hash of the last `AuditEntry` in the chain:
-
-```python
-chain_tip = governed_fn.chain_tip  # hex string, e.g. "deadbeef..."
-```
-
----
-
-## Adapting to different enforcement modes
-
-```python
 adapter = TraceAGTAdapter(
-    ...
-    enforcement_mode="advisory",  # "enforce" | "advisory" | "silent"
+    model_provider="example", model_id="synthetic-demo",
+    build_provenance_digest="sha256:" + "e" * 64,
+    transparency="https://example.test/unused",
+    enforcement_mode="declared",  # synthetic input: no policy engine ran
 )
+record = adapter.build_trust_record(session)
+assert record["policy"]["enforcement_mode"] == "declared"
+# The adapter currently requires a URI argument but performs no registration.
+record.pop("transparency")
+# `appraisal.status` defaults to "none", which is correct here: synthetic input has not
+# been appraised. Pass appraisal_status only when an appraisal actually happened.
+key = generate_key()
+trusted_key = key.public_key()
+signed = sign_record(record, key)
+verify_record(signed, public_key_or_jwk=trusted_key)
+assert signed["runtime"]["platform"] == "software-only"
+assert signed["policy"]["bundle_hash"] == "sha256:" + hashlib.sha256(policy).hexdigest()
+assert signed["tool_transcript"]["call_count"] == 1
+assert "transparency" not in signed
+print("PASS: mapped and signed synthetic session; no hardware appraisal or registry anchor")
 ```
 
-`enforce` (default) means policy decisions are binding: tool calls blocked by a `forbid` rule do not execute. `advisory` means decisions are logged but not enforced. The mode appears in `policy.enforcement_mode` in the TRACE record so verifiers know what the policy actually did.
+The script prints `PASS` when the session has been turned into a record and signed. Some values are placeholders: the build digest (a fingerprint meant to identify how the software was built) is illustrative, and nobody checked it, and the chain tip (the last link in AGT's tamper-evident log) is made up. So the example checks two things only: that the fields were filled in correctly, and that the software signature works.
 
----
+## Use real session evidence
 
-## Upgrading to Level 2 (hardware-rooted)
+For a real session, pass in four things: the exact rule file (policy) the session used, byte for byte; the log entries as plain dictionaries; the session's chain tip; and the agent's checked identity. The adapter turns the log and the chain tip into fingerprints (hashes) that go into the record. By default it counts one call per log entry.
 
-`TraceAGTAdapter` produces Level 0 records: `runtime.platform` is `software-only` and the signing key is not TEE-bound. For Level 2:
+The record says which enforcement mode you configured, meaning whether the rules were meant to block actions or only to be noted. Writing the mode down does not prove the rules ran. That is why the adapter has no default and makes you choose the mode yourself. This tutorial passes `"declared"` because no rule engine ran on the made-up input. Pass the mode your deployment really ran under.
 
-1. Deploy your AGT-governed agent inside cMCP on an Azure DCasv5 (SEV-SNP) or DCesv6 (TDX) VM, or GCP N2D (SEV-SNP) or C3 (TDX)
-2. cMCP measures the Cedar policy bundle into the TEE hardware at startup
-3. The cMCP runtime generates a TEE-bound key and emits a Level 2 TRACE record that supersedes the Level 0 record for the same session
-4. Both records share `subject` and `tool_transcript.hash` and are mutually verifiable
+The appraisal status (whether anyone checked the evidence) starts as `none` for the same reason. Building a record is not checking it. Before signing, set each claim to match the checks that really happened.
 
-The Level 0 record from `TraceAGTAdapter` remains valid: it is evidence of policy enforcement at the software layer. The Level 2 record from cMCP adds hardware attestation on top.
+??? info "Technical detail: how the adapter hashes its inputs and why the defaults are what they are"
+    The adapter hashes the audit list with RFC 8785 and the chain-tip string as UTF-8. Its default call count is the list length; supply `call_count` only when your producing profile defines a different count.
 
-→ [Deploy on Azure](https://cmcp.agentrust-io.com/tutorials/deploy-azure/): `Standard_DC2as_v5` (SEV-SNP) or `Standard_DC2es_v6` (TDX)  
-→ [Deploy on GCP](https://cmcp.agentrust-io.com/tutorials/deploy-gcp/): `n2d-standard-4` (SEV-SNP) or `c3-standard-4` (TDX)  
-→ Platform detail: [AMD SEV-SNP](../platforms/amd-sev-snp.md) · [Intel TDX](../platforms/intel-tdx.md)
+    The adapter records the configured enforcement mode; it does not enforce that mode or prove the policy was evaluated. `enforcement_mode` is required and has no default: a default of `"enforce"` would claim an evaluation nobody saw, and spec section 4.3 says `"declared"` must not be a default. This does not change runtime enforcement defaults or behavior.
 
----
+    `appraisal.status` defaults to `none` because the field is the verifier's (spec section 3.3.1).
 
-## Summary
+## Verify and extend
 
-`TraceAGTAdapter` turns 50 lines of manual field wiring into three calls: configure the adapter once, collect the three AGT session values (`policy_bundle_bytes`, `audit_entries`, `merkle_chain_tip`) after each session, call `build_trust_record()`. The record is structurally valid and ready for `sign_record()` without any additional construction.
+Whoever receives the record should get your public key through their own trusted channel, then follow [record verification](verifying-a-trust-record.md). To add hardware evidence, use a profile and checker built for that hardware; writing a hardware name into the record proves nothing by itself. For Level 2 (records also published to a public log), follow the [registry anchor format](../../spec/registry-anchor-v1.md). If you change any signed field, sign the record again.

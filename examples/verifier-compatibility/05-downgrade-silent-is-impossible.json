@@ -1,0 +1,61 @@
+{
+  "name": "downgrade-silent-is-impossible",
+  "description": "The same older record against a verifier that did not declare the older profile. There must be no outcome in which verification succeeds under a profile absent from the accepted set: silent fallback is the failure this vector exists to forbid.",
+  "profile": "trace.verifier_compatibility.proposal.v0",
+  "proposal": {
+    "issue": "agentrust-io/trace-spec#116",
+    "status": "under review, not accepted normative text"
+  },
+  "verifier": {
+    "accepted_profiles": [
+      "tag:agentrust-io.com,2026:trace-v0.2"
+    ],
+    "verification_time": 1785000100,
+    "check_freshness": false
+  },
+  "trusted_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+  },
+  "record": {
+    "eat_profile": "tag:example.com,2025:trace-v0.0",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "transparency": "https://rekor.example/api/v1/log/entries/0",
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "S9f_IqfsGG7jIzI7brZ7VVXCyF-_1jj_Guc1ynPKpuI"
+      }
+    },
+    "signature": "k-xFOqcbE8ORmqx1ob6FPFxhrCM3KHuVqRkUBqzV_4sBkEdbp4vMGwj_kkRiOmauUl36X0dR8qJq8PI8t-X0CQ"
+  },
+  "expected": {
+    "outcome": "refused",
+    "failure": "profile_not_accepted",
+    "statement": null
+  }
+}

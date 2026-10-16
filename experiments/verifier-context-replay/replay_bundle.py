@@ -113,7 +113,13 @@ def run(directory, expected_manifest_digest, *, tpm2_checkquote=None):
             record, trusted_key, **options, revoked_identifiers=revoked
         )
         try:
-            verify_record(record, trusted_key, revocation=set(revoked), **options)
+            verify_record(
+                record, trusted_key, revocation=set(revoked),
+                now=options["verification_time"],
+                max_age_seconds=options["max_age_seconds"],
+                max_future_skew_seconds=options["max_future_skew_seconds"],
+                expected_nonce=options["expected_nonce"],
+            )
             reference = "verified"
         except (ValueError, InvalidSignature):
             reference = "rejected"

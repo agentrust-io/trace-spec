@@ -12,18 +12,22 @@ from agentrust_trace.adapters import (
 from agentrust_trace.models import (
     Appraisal,
     BuildProvenance,
+    ClosureEntry,
     ConfirmationKey,
     Delegation,
     Origin,
     JWK,
     ModelInfo,
     PolicyInfo,
+    ReExecution,
     Reference,
+    Reproducibility,
     RuntimeInfo,
     ToolTranscript,
     TrustRecord,
 )
 from agentrust_trace.sign import (
+    DEFAULT_ACCEPTED_PROFILES,
     TRACE_PROFILE_V0_2,
     RevocationStore,
     generate_key,
@@ -33,7 +37,20 @@ from agentrust_trace.sign import (
     load_signing_key,
     sign_record,
     verify_record,
-    verify_record_report,
+)
+from agentrust_trace.citation import (
+    CitationCheck,
+    check_citations,
+)
+from agentrust_trace.platform_measurement import (
+    LayerCheck,
+    PlatformMeasurementCheck,
+    check_platform_measurement,
+)
+from agentrust_trace.revocation import (
+    RevocationCheck,
+    VerificationResult,
+    check_bundle,
 )
 from agentrust_trace.validate import (
     iter_errors,
@@ -62,17 +79,29 @@ __all__ = [
     "TraceSandboxAdapter",
     "Appraisal",
     "BuildProvenance",
+    "ClosureEntry",
     "ConfirmationKey",
     "Delegation",
     "Origin",
     "JWK",
     "ModelInfo",
     "PolicyInfo",
+    "ReExecution",
     "Reference",
+    "Reproducibility",
     "RuntimeInfo",
     "ToolTranscript",
     "TrustRecord",
+    "CitationCheck",
+    "RevocationCheck",
     "RevocationStore",
+    "VerificationResult",
+    "check_bundle",
+    "check_citations",
+    "check_platform_measurement",
+    "LayerCheck",
+    "PlatformMeasurementCheck",
+    "DEFAULT_ACCEPTED_PROFILES",
     "TRACE_PROFILE_V0_2",
     "SCHEMA",
     "iter_errors",
@@ -84,7 +113,6 @@ __all__ = [
     "load_signing_key",
     "sign_record",
     "verify_record",
-    "verify_record_report",
 ]
 
 # MCP Server Provenance Records (spec/server-provenance-v1.md) live in their own

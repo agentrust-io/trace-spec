@@ -1,0 +1,245 @@
+{
+  "format": "chap-audit-export/fixture-1",
+  "generated_by": "chap-coordinator 0.2.13",
+  "workspace": "wsp_refund_review",
+  "chain_head": "sha256:af6936b56e73ebb082f2ca207a2ea3e8784784186cca1392b7b960c13bc64d96",
+  "chap_verify_chain": {
+    "status": "verified",
+    "ok": true,
+    "entries_total": 12,
+    "entries_checked": 12,
+    "entries_unchecked": 0,
+    "checked_from_seq": 0,
+    "chain_head": "sha256:af6936b56e73ebb082f2ca207a2ea3e8784784186cca1392b7b960c13bc64d96"
+  },
+  "entries": [
+    {
+      "seq": 0,
+      "arrived": "2026-09-14T19:24:05.590Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "1",
+        "method": "workspace.create",
+        "params": {
+          "workspace": "wsp_refund_review"
+        }
+      },
+      "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "seq": 1,
+      "arrived": "2026-09-14T19:24:05.590Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "2",
+        "method": "participant.join",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "type": "human",
+          "role": "reviewer",
+          "from": "human:alice@example.org"
+        }
+      },
+      "prev_hash": "sha256:141a7f6a8211877c875c0ad546ab4c5b7d448319cebaf3a2408fcb35bbdbc7b7"
+    },
+    {
+      "seq": 2,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "3",
+        "method": "participant.join",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "type": "agent",
+          "role": "drafter",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:db05e82e960b72fa8b4a82207587338fcf6570f2d72c0f7679a2beb127202369"
+    },
+    {
+      "seq": 3,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "4",
+        "method": "task.create",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "kind": "refund_decision",
+          "input": {
+            "order": "1042"
+          },
+          "assignee": "agent:refund-bot",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:073f95f9a5078f154be2b6738b63daa529f7479d928bbba267fc2c9342ffa46c"
+    },
+    {
+      "seq": 4,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "5",
+        "method": "review.request",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQ34NXBAB10JYF6ZFB",
+          "artefact": {
+            "order": "1042",
+            "action": "refund",
+            "amount_minor": 1250
+          },
+          "to": "human:alice@example.org",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:93866e63e1e543e8c190c4e131aa20a9ab795c1ddaad58ba3f66846d24499163"
+    },
+    {
+      "seq": 5,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "6",
+        "method": "task.create",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "kind": "refund_decision",
+          "input": {
+            "order": "1043"
+          },
+          "assignee": "agent:refund-bot",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:00f9c00f6f79ee87ed22f81df6cacb61f21cbbb75ad30593cd8327780f5d7b90"
+    },
+    {
+      "seq": 6,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "7",
+        "method": "review.request",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQT9D39HRC8WWPQPGY",
+          "artefact": {
+            "order": "1043",
+            "action": "refund",
+            "amount_minor": 98000
+          },
+          "to": "human:alice@example.org",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:1d7d9c65c15a37c917d3e063d5cbc857413567cdc8149ff3a5e01e713195ab30"
+    },
+    {
+      "seq": 7,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "8",
+        "method": "task.create",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "kind": "refund_decision",
+          "input": {
+            "order": "1044"
+          },
+          "assignee": "agent:refund-bot",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:c10dbc2b718a705e669d9727c8e76a275777ea880d452cb2a7a02399a6409179"
+    },
+    {
+      "seq": 8,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "9",
+        "method": "review.request",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQME3VPQZTTBWQJJVV",
+          "artefact": {
+            "order": "1044",
+            "action": "refund",
+            "amount_minor": 4000
+          },
+          "to": "human:alice@example.org",
+          "from": "agent:refund-bot"
+        }
+      },
+      "prev_hash": "sha256:772ff01e74427725c58bcdb759f14bf95945734b25da3721ac77fff77ee392e1"
+    },
+    {
+      "seq": 9,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "10",
+        "method": "decide.approve",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQ34NXBAB10JYF6ZFB",
+          "comment": "Within policy.",
+          "tags": [],
+          "approved_artefact_digest": "sha256:580a9b57ee97ae0d385e362bf4a8cbb1ad569ba934ed0fe2b48a02d0a5ed9653",
+          "from": "human:alice@example.org"
+        }
+      },
+      "prev_hash": "sha256:3d5fca6786ed70a2b54602fe9d23fd6d05bc1dd38d4d3fb76c012a6af2ab6817"
+    },
+    {
+      "seq": 10,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "11",
+        "method": "decide.reject",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQT9D39HRC8WWPQPGY",
+          "comment": "Above the refund limit.",
+          "reason": "Above the refund limit.",
+          "tags": [],
+          "approved_artefact_digest": "sha256:79d5626bbcb80e5453aea8201791cf642d9e4916f26555c4e6d28b1ec5cd683b",
+          "from": "human:alice@example.org"
+        }
+      },
+      "prev_hash": "sha256:3e27cb94bb1f30c129cbd154f3309caebf3bab245019dab81f71a8a0befb1d28"
+    },
+    {
+      "seq": 11,
+      "arrived": "2026-09-14T19:24:05.591Z",
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": "12",
+        "method": "decide.override",
+        "params": {
+          "workspace": "wsp_refund_review",
+          "task_id": "tsk_01M2GP0TJQME3VPQZTTBWQJJVV",
+          "rationale": "Partial refund only.",
+          "comment": "Partial refund only.",
+          "tags": [],
+          "diff": [
+            {
+              "op": "replace",
+              "path": "/amount_minor",
+              "value": 2000
+            }
+          ],
+          "approved_artefact_digest": "sha256:ae50a5a82f1626e7e69ad07c41bc4e0f2fd44d7a625f3d50b2c085d493f42361",
+          "from": "human:alice@example.org"
+        }
+      },
+      "prev_hash": "sha256:f6540bfa2e3e799ba11c27a5522231a1dec6df4ba54b6a3f57cdf96ac7d36aad"
+    }
+  ]
+}

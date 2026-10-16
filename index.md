@@ -1,59 +1,22 @@
 ---
-title: Hardware-attested receipts for AI agent actions
-description: TRACE is an open specification for hardware-attested AI agent governance records. A Trust Record states what ran, where, under which policy, touching which data, calling which tools, in a form any third party can verify without trusting the operator.
+title: "TRACE: evidence for AI agent runs"
+description: Portable, signed runtime evidence about AI agent runs. Start with software signing and tamper detection, then add attestation and transparency checks.
+hide:
+  - navigation
+  - toc
 ---
 
-# TRACE
+[04 · Evidence: can a third party verify all of it offline, years later?](https://agentrust-io.com/#chain)
 
-TRACE (Trust, Runtime Attestation, and Compliance Evidence) is an open specification for hardware-attested AI agent governance records. It defines the record format, the anchoring protocol, and the verification rules for cryptographic evidence that an AI agent ran under a specific policy, in a verified hardware environment, on a given data class, invoking identified tools, all bound into a single signed artifact rooted in silicon attestation.
+# Evidence a third party can check, years later
 
-**A Trust Record answers what ran, where, under which policy, touching which data, and calling which tools, in a form any third party can verify without trusting the operator.**
+TRACE is a free, open format for a signed receipt of what an AI agent did: which program ran, under which rules, on what kind of data, and which tools it called. Anyone holding the receipt can check it on their own computer, with no access to the system that produced it. This site is for engineers who produce or check these receipts, and for anyone deciding how much a receipt can be trusted ([the terms, in plain English](https://agentrust-io.com/#plain-terms)).
+
+[Create and verify your first record](docs/quickstart.md){ .md-button .md-button--primary }
+[What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
 !!! tip "TL;DR"
-    - An audit log is written by the system being audited. A Trust Record is signed inside a TEE and checked against a hardware root, so the operator cannot author it after the fact.
-    - The current specification is **v0.2**, with a [conformance test suite](https://tests.agentrust-io.com) that scores a record by level.
-    - Install with `pip install agentrust-trace` and sign your first record in a few minutes.
-    - TRACE Specification is hosted at the Linux Foundation as its own series, [TRACE Specification, a Series of LF Projects, LLC](https://www.linuxfoundation.org/).
-
-```bash
-pip install agentrust-trace
-```
-
-```python
-import time
-from agentrust_trace import generate_key, sign_record
-
-key = generate_key()
-
-record = {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-    "iat": int(time.time()),
-    "subject": "spiffe://trust.example.org/agent/payments-processor",
-    "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
-    "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
-    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
-    "data_class": "confidential",
-    "build_provenance": {"slsa_level": 1, "digest": "sha256:" + "e" * 64},
-    "appraisal": {"status": "none", "verifier": "https://verifier.example.org"},
-}
-
-signed = sign_record(record, key)
-```
-
-## What a Trust Record proves
-
-Each question maps to a claim a third party can check without asking you.
-
-| Question | TRACE claim |
-|---|---|
-| What model ran? | `model.model_id` + `model.weights_digest` |
-| Where did it run? | `runtime.platform` + `runtime.measurement` |
-| Under which policy? | `policy.bundle_hash` + `policy.enforcement_mode` |
-| What data did it touch? | `data_class` |
-| Which tools were called? | `tool_transcript.hash` + `tool_transcript.call_count` |
-| Is the record independently anchored? | `transparency` (SCITT receipt URI) |
-
-## Where to start
+    With spec v0.2 and the [agentrust-trace](https://pypi.org/project/agentrust-trace/) 0.11.0 Python library you can sign and check records on a laptop, with no cloud account. A v0.2 signature proves who made a record and that nobody changed it afterwards; what the record says about the hardware is still only the producer's word until the proposed [runtime evidence profile](docs/rfcs/runtime-evidence-profile.md) adds checkable hardware reports, and its top "attested" grade is specified but not yet demonstrated.
 
 <div class="grid cards" markdown>
 
@@ -61,42 +24,65 @@ Each question maps to a claim a third party can check without asking you.
 
     ---
 
-    Sign a record, verify it, and see what a failed check looks like.
+    Sign a record, check it with a key kept somewhere else, and see what a failed check looks like.
 
     [Quickstart](docs/quickstart.md)
 
--   __Read it__
+-   __What it proves, and what it does not__
 
     ---
 
-    The normative specification, with the claim set, the anchoring protocol, and the verification rules.
+    A signature tells you who said something, not that it is true. The verification page lists what a checker still has to confirm on its own.
 
-    [TRACE v0.2](spec/trace-v0.2.md)
+    [Verification protocol](docs/verification.md)
 
--   __Test it__
-
-    ---
-
-    Score an implementation against the spec by conformance level before claiming compliance.
-
-    [Conformance suite](https://tests.agentrust-io.com)
-
--   __Integrate it__
+-   __Hardware evidence__
 
     ---
 
-    Emit and consume Trust Records from AGT, cMCP, and sandboxed agent runtimes.
+    Some processors can produce a signed report of what is running on them (attestation). TRACE carries those reports to existing checkers; the runtime evidence profile uses agent-manifest's checker for Intel TDX reports. Check a real TDX report at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
 
-    [Integration guides](docs/integration/agt.md)
+    [Runtime evidence profile](docs/rfcs/runtime-evidence-profile.md)
+
+-   __The chain__
+
+    ---
+
+    TRACE is the evidence step, the last of four. Publish records to the public [TRACE Registry](https://agentrust-io.com/registry/) and test an implementation with the [conformance suite](https://trace.agentrust-io.com/conformance/).
+
+    [See the chain](https://agentrust-io.com/#chain)
 
 </div>
 
+## What the record contains
+
+Each row is a question a reader might ask about an agent run, the part of the record that answers it, and what a checker needs beyond the signature before believing the answer.
+
+| Question | Fields to inspect | What the verifier still needs |
+|---|---|---|
+| Which workload is named? | `subject`, `model` | An authenticated issuer and evidence binding the workload |
+| What runtime is claimed? | `runtime` | Valid attestation and approved measurements for hardware provenance |
+| Which policy is named? | `policy` | Independently approved policy inputs |
+| What data class is declared? | `data_class` | Evidence supporting the producer's classification |
+| What transcript is committed? | `tool_transcript` | Transcript evidence when individual calls matter |
+| Was evidence anchored? | `transparency` | A verified receipt and the required log trust policy |
+
+Every field is the producer's claim. A valid signature alone does not show that the run happened as described or that the rules were actually applied. The [verification protocol](docs/verification.md) walks through the full set of checks.
+
+## Where to go next
+
+- [TRACE v0.2](spec/trace-v0.2.md): the specification itself, with the fields, the publishing protocol and the checking rules.
+- [Conformance suite](https://trace.agentrust-io.com/conformance/): test an implementation, level by level, before saying it complies.
+- [Integration guides](docs/integration/agt.md): produce and read Trust Records from AGT, cMCP and sandboxed agent runtimes.
+
 ## What it is built on
 
-TRACE profiles existing IETF and IRTF work rather than replacing it: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring. A related standardization track runs in [CoSAI WS4](https://github.com/oasis-open-projects/coalition-for-secure-ai).
+TRACE reuses published internet standards instead of inventing new ones: [RFC 9711 (EAT)](https://www.rfc-editor.org/rfc/rfc9711) for the claim envelope, [RFC 9334 (RATS)](https://www.rfc-editor.org/rfc/rfc9334) for the attester, verifier, and relying-party roles, and the SCITT draft for transparency-ledger anchoring.
 
 ## Status and governance
 
-The specification is a **Developer Preview**. v0.2 is current and published with a conformance test suite. Read [Limitations](LIMITATIONS.md) for the scope boundaries before relying on it in production.
+The specification is a **Developer Preview**: usable now, and still expected to change. v0.2 is current and ships with a conformance test suite. Read [Limitations](LIMITATIONS.md) for what it does not cover before relying on it in production.
 
-TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). See [Governance](GOVERNANCE.md) for how decisions are made and [Contributing](CONTRIBUTING.md) for how to propose a change.
+TRACE Specification is an [LF Project](https://www.linuxfoundation.org/), hosted at the Linux Foundation as its own series, "TRACE Specification, a Series of LF Projects, LLC", under [LF Projects policies](https://lfprojects.org/policies/). It has also been proposed to the Agentic AI Foundation at the Sandbox stage ([aaif/project-proposals #42](https://github.com/aaif/project-proposals/issues/42), opened 14 September 2026). See [Governance](GOVERNANCE.md) for how decisions are made and [Contributing](CONTRIBUTING.md) for how to propose a change.
+
+**Status:** spec v0.2 · agentrust-trace 0.11.0 · specification under the Community Specification License 1.0, code under Apache 2.0 · AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.

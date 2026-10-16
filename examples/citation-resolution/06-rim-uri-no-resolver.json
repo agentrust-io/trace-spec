@@ -1,0 +1,82 @@
+{
+  "id": "TRACE-CRES-006",
+  "name": "rim-uri-no-resolver",
+  "description": "The record cites runtime.rim_uri; the harness supplies no resolver. Every consumed surface reports not_attempted with cause no_resolver, whether or not the record carries it.",
+  "spec": "spec/trace-v0.2.md#312-references-facts-this-record-points-at",
+  "context": {
+    "now": 1785000000,
+    "max_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/citer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "rim_uri": "https://rim.example/software-only/measurement-00.json"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "transparency": "https://log.example/trace/receipts/1",
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "XJaPcSv3zKfyOX4dAhtMO4KinsHIqLU-IvLI1RJ5Zsk"
+        }
+      },
+      "signature": "AQ8ckkbCv8JbuRxWRx1rWdOMqrjNkp0bNF7w3AfZ3ib0TNDki9NsDpARrTW-HnSIyOQYtf9Qkw4TgV6zndtIAg"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "citations": {
+      "appraisal.policy_ref": {
+        "outcome": "not_attempted",
+        "cause": "no_resolver",
+        "evidence": {}
+      },
+      "runtime.rim_uri": {
+        "outcome": "not_attempted",
+        "cause": "no_resolver",
+        "evidence": {}
+      },
+      "model.aibom_uri": {
+        "outcome": "not_attempted",
+        "cause": "no_resolver",
+        "evidence": {}
+      },
+      "transparency": {
+        "outcome": "not_attempted",
+        "cause": "surface_deferred",
+        "evidence": {
+          "reason": "coordinated in agentrust-io/trace-tests#92; spec section 7 open question 3"
+        }
+      }
+    }
+  }
+}

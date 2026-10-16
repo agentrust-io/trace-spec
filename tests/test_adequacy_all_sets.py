@@ -4,12 +4,11 @@ The criteria come from defects found on real sets. A standard that only ever mea
 other people's work is advocacy, so this module measures every set by the same loader
 and records the shortfalls where they fall rather than where it would be comfortable.
 
-Where they fall today: `canonicalization-boundary`, which is ours, expects acceptance
-in every vector, so it cannot tell a conformant verifier from one that accepts
-unconditionally. That is recorded in `KNOWN_ONE_DIRECTIONAL` with the record asserted
-exactly, so it cannot widen unnoticed and the entry is deleted when the missing
-direction is added. `build-provenance-depth` carries a margin at every boundary and
-nothing is recorded against it.
+`canonicalization-boundary` previously expected acceptance in every vector, so it
+could not tell a conformant verifier from one that accepts unconditionally. Its
+non-JCS signing-preimage negatives supply the missing direction. No set currently
+needs an exemption in `KNOWN_ONE_DIRECTIONAL`; any future shortfall is recorded
+exactly rather than allowed to widen unnoticed.
 
 A set is measured here or named in `MEASURED_ELSEWHERE` with the test that covers it.
 Neither is possible to skip: `test_every_vector_set_on_disk_is_measured_somewhere`
@@ -71,6 +70,11 @@ def build_provenance_depth() -> list[Vector]:
                  lambda e: deepest(e)["outcome"], codes, separates_at)
 
 
+def verifier_compatibility() -> list[Vector]:
+    return _load("verifier-compatibility",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 def canonicalization_boundary() -> list[Vector]:
     return _load("canonicalization-boundary",
                  lambda e: e["outcome"], lambda e: [e.get("failure")])
@@ -114,25 +118,75 @@ def delegation_link() -> list[Vector]:
                  lambda e: e["classification"], lambda e: list(e.get("codes") or []))
 
 
+def revocation_bundle() -> list[Vector]:
+    """The revocation-bundle set. Boundaries are its codes, one code per rule.
+
+    `rejected` is a fourth outcome beside 3.2.3's three: the key was named by a
+    statement and the record refused. It counts as non-accepting here, which is
+    what it is.
+    """
+    return _load("revocation-bundle",
+                 lambda e: "rejected" if e["rejected"] else e["outcome"],
+                 lambda e: list(e.get("codes") or []))
+
+
+def reproducibility_claim() -> list[Vector]:
+    """The reproducibility-claim set (spec section 3.1.4). One code per rule the schema
+    holds, two vectors per code, and five accepting records: a claim with no result
+    and one result per outcome."""
+    return _load("reproducibility-claim",
+                 lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
+
+
+def platform_measurement_appraisal() -> list[Vector]:
+    """The platform-measurement appraisal set (spec section 3.1.5). One code per rule
+    the schema or the reference model holds, at least two vectors per code, and
+    twenty-eight accepting records: five case-and-twin pairs, a twin for every rejection,
+    and two from published measurements."""
+    return _load("platform-measurement-appraisal",
+                 lambda e: e["outcome"], lambda e: list(e.get("codes") or []))
+
+
+def number_spelling() -> list[Vector]:
+    """The number-spelling set (#247, proposed). Boundaries are its failure codes, one
+    per rule an integer-typed member is held to once it is decided by value: two
+    vectors each, spelled differently, and three accepting spellings of one value.
+    `tests/test_integer_by_value.py` runs plausible defective verifiers over it."""
+    return _load("number-spelling",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
+def signature_encoding() -> list[Vector]:
+    """The signature-encoding set (spec section 3.2.2, proposal #247). One rule, one
+    code, and two rejecting vectors that trip it with different unused-bit patterns
+    (0001 and 1111), so the boundary is not covered by one specific bad string a
+    shortcut implementation could special-case."""
+    return _load("signature-encoding",
+                 lambda e: e["outcome"], lambda e: [e.get("failure")])
+
+
 SETS = {
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
+    "reproducibility-claim": (reproducibility_claim, None),
+    "platform-measurement-appraisal": (platform_measurement_appraisal, None),
+    "revocation-bundle": (revocation_bundle, None),
     "canonicalization-boundary": (canonicalization_boundary, None),
     "delegation-link": (delegation_link, None),
+    "verifier-compatibility": (verifier_compatibility, None),
+    "number-spelling": (number_spelling, None),
+    "signature-encoding": (signature_encoding, None),
 }
 
 # Every set must be able to fail both unconditional implementations. A set that
 # only ever expects rejection is passed by one that rejects everything; a set that
 # only ever expects acceptance is passed by one that accepts everything, and that
 # half is the one that gets left out.
-# One set is knowingly one-directional. `canonicalization-boundary` detects a
-# non-conformant canonicalizer by the fact that it *rejects* records a conformant
-# verifier accepts, so every vector in it expects acceptance and the set cannot tell
-# a correct verifier from one that accepts unconditionally. That second implementation
-# is a real failure, not a hypothetical, so this is a gap rather than a design: it
-# closes when the set gains one record signed over a non-JCS form, which a conformant
-# verifier must reject. Recorded rather than skipped, and asserted exactly, so it
-# cannot widen and cannot be forgotten.
-KNOWN_ONE_DIRECTIONAL = {"canonicalization-boundary": "accept"}
+# No set currently needs an exemption. The former `canonicalization-boundary`
+# entry was removed when schema-valid records signed over non-JCS preimages added
+# the rejecting direction alongside the existing RFC 8785 positive controls.
+# Keep any future shortfall explicit and exact; removing an exemption does not
+# relax either unconditional-answer check below.
+KNOWN_ONE_DIRECTIONAL: dict[str, str] = {}
 
 
 @pytest.mark.parametrize("name", sorted(SETS))
@@ -152,7 +206,37 @@ def test_no_set_is_satisfied_by_an_unconditional_answer(name: str) -> None:
 
 # The shortfall this repository currently carries, stated exactly. Widening it fails
 # here; closing it fails here too, and the entry is then deleted.
-KNOWN_THIN: dict[str, dict[str, str]] = {}
+KNOWN_THIN: dict[str, dict[str, str]] = {
+    # This fork's own set, and the shape #124 established as insufficient. It was four
+    # of the five refusal rules. Three have since closed, each by a different route.
+    # `profile_absent` closed by writing the second vector, 11, which carries a profile
+    # claim that is present and empty rather than absent. `superseded_profile_refused`
+    # and `superseded_profile_in_accepted_set` closed by leaving: 03 and 08 followed 10
+    # out of the set on 2026-09-15 under the #116 ruling that the v0.1 cutover is merged
+    # normative text and not this issue's to pin, and both rules are now tested in
+    # `test_sign.py` beside the cutover's own tests.
+    #
+    # The one below was measured and is not closable, which is different from not yet
+    # done, so the reason is recorded here rather than left as an open task:
+    #
+    #   no_accepted_profiles       The rule fires on the verifier's own configuration
+    #                              before any record is read, and the configuration has
+    #                              one shape: the accepted set is empty. The one other
+    #                              axis, pairing the empty set with a second defect the
+    #                              verifier would catch later, needs `check_freshness`,
+    #                              which every vector in the set asserts is False, for
+    #                              a good reason: a fixed `iat` would make the set
+    #                              expire. Varying the record instead pins nothing, as
+    #                              no plausible implementation branches on record
+    #                              content when deciding an empty set accepts nothing.
+    #
+    # A second vector written to close a count rather than to catch a defect an
+    # implementation could plausibly have makes this record worse, not better: it
+    # reports a margin that does not exist.
+    "verifier-compatibility": {
+        "no_accepted_profiles": "06-empty-accepted-set-refused",
+    },
+}
 
 
 @pytest.mark.parametrize("name", sorted(SETS))
@@ -182,8 +266,58 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    # Experimental profile, not a stable TRACE conformance corpus. The 14 original
+    # vectors, also carried byte for byte as LEGACY-01 to LEGACY-14 in the set below.
+    "verifier-token-profile": "tests/test_verifier_token_profile.py, which executes "
+                              "all positive and negative vectors; "
+                              "tests/test_independent_verifier.py runs them through "
+                              "the second verifier",
+    # Expected outcomes are verifier result codes and composite statuses, not
+    # accept/reject, and every requirement's causal test lives beside the loader.
+    "verifier-token-conformance": "tests/test_conformance_corpus.py, which executes "
+                                  "every vector and gates per-requirement coverage; "
+                                  "tests/test_conformance_causal.py disables each gate; "
+                                  "tests/test_independent_verifier.py runs the second "
+                                  "verifier",
+    # Not loadable here: every vector verifies, and the outcomes are per-surface
+    # resolvability rather than accept/reject, so `trivially_satisfied_by` would
+    # grade the set as passable by an implementation that accepts everything.
+    "citation-resolution": "tests/test_citation_resolution.py, which compares the "
+                           "citations mapping of every vector against its expected "
+                           "block and holds the invariants I1 to I11",
+    # Not loadable here, for the reason given for citation-resolution: every vector
+    # verifies, and the outcome is what the appraiser reported, not accept/reject.
+    "platform-measurement": "tests/test_platform_measurement.py, which compares the "
+                            "platform_measurement field of every vector against its "
+                            "expected block and holds the invariants P1 to P11",
     "action-receipts": "tests/test_vector_completeness.py, which recovers its rule "
                        "inventory from the verifier's source rather than restating it",
+    # Not loadable here: the adequacy criteria grade a set on accept/reject outcomes,
+    # and this set's outcomes are three assurance grades, so `trivially_satisfied_by`
+    # would be comparing against the wrong two unconditional implementations.
+    "runtime-evidence": "tests/test_runtime_evidence_vectors.py, which asserts the "
+                        "half this repository can honestly measure (schema, signature, "
+                        "evidence shape, and the pinned claim that the top grade is "
+                        "unreachable) and names the half it cannot, quote verification, "
+                        "which examples/runtime-evidence/test_appraisal.py runs in the "
+                        "dedicated runtime-evidence job against agent-manifest's verifier "
+                        "at a pinned commit",
+    # Not loadable here: every record in this set is a valid Trust Record, and the
+    # cases differ only in what the reference resolves to in a separate CHAP log,
+    # so there is no per-file accept/reject outcome for the criteria to grade.
+    "chap-approval-outcome": "tests/test_chap_approval_outcome_fixtures.py, which "
+                             "recomputes every verdict from the committed record and "
+                             "CHAP log instead of reading expected.json",
+    # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the appraisal store beside them.
+    "condition-appraisal": "tests/test_condition_appraisal_fixtures.py, which recomputes "
+                           "every verdict from the committed record and appraisal store "
+                           "instead of reading expected.json, and re-runs the generator",
+    # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the effect store beside them.
+    "observed-effect": "tests/test_observed_effect_fixtures.py, which recomputes every "
+                       "verdict from the committed record and effect store instead of "
+                       "reading expected.json, and re-runs the generator",
 }
 
 

@@ -1,0 +1,52 @@
+{
+  "name": "01-digest-matches",
+  "status": "v0.3-draft",
+  "proposal": "agentrust-io/trace-spec#483",
+  "record": {
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "iat": 1785000000,
+    "subject": "spiffe://factory.example/agent/payments/prod",
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model-1"
+    },
+    "runtime": {
+      "platform": "software-only",
+      "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policy": {
+      "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "enforcement_mode": "enforce"
+    },
+    "data_class": "confidential",
+    "build_provenance": {
+      "slsa_level": 0,
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example/v1"
+    },
+    "cnf": {
+      "jwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "mcKFJmGaHdWlVL-4I-ETFbbmCsVheweKmgdxHkcqEBc"
+      }
+    },
+    "manifest": {
+      "id": "urn:example:agent-manifest:payments-agent",
+      "digest": "sha256:a773501007076390d7532a16294e4ee8c1ae07aa030f90c85cf513fdeeeeb472",
+      "media_type": "application/json"
+    },
+    "signature": "wnkUTs2U7NvWLbQb5baCkvn3TtiuP5Wb5ktJ_yVT-SO77noVRCACo5-upQJqoveMTrwnrN_i8RtL5Ta0zV8nDw"
+  },
+  "resolver": {
+    "urn:example:agent-manifest:payments-agent": "{\"manifest_id\":\"urn:example:agent-manifest:payments-agent\",\"version\":\"1.4.0\",\"tools\":[\"refund\",\"lookup_payment\"],\"model_id\":\"example-model-1\"}"
+  },
+  "expected": {
+    "record": "valid",
+    "manifest": "established"
+  },
+  "why": "the signed digest equals sha256 of the manifest bytes the verifier resolved"
+}

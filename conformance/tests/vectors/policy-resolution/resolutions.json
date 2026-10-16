@@ -1,0 +1,7 @@
+{
+  "https://policy.example.org/bundles/policy-bundle-base.json": "policies/policy-bundle-base.json",
+  "https://policy.example.org/bundles/policy-bundle-onebyte.json": "policies/policy-bundle-onebyte.json",
+  "https://policy.example.org/bundles/policy-bundle-other.json": "policies/policy-bundle-other.json",
+  "https://policy.example.org/bundles/policy-bundle-unrelated.json": "policies/policy-bundle-unrelated.json",
+  "https://policy.example.org/bundles/policy-bundle-gone.json": "policies/policy-bundle-gone.json"
+}

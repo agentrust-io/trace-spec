@@ -1,5 +1,9 @@
 # Default owners for all files
-* @agentrust-io/maintainers
+* @agentrust-io/maintainers @lywinged @rajnisht7
 
 # CI/CD workflow changes
-.github/workflows/ @agentrust-io/maintainers
+.github/workflows/ @agentrust-io/maintainers @lywinged @rajnisht7
+
+# Conformance suite retains its existing maintainer review ownership.
+/conformance/ @agentrust-io/maintainers @lywinged @rajnisht7
+/.github/workflows/conformance-*.yml @agentrust-io/maintainers @lywinged @rajnisht7

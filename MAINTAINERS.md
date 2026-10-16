@@ -1,19 +1,30 @@
 # Maintainers
 
+This page lists who reviews and decides changes to TRACE, and how a regular contributor can take on one of those roles.
+
 ## Project Lead
 
 | Name | Affiliation | GitHub | Contact |
 |---|---|---|---|
-| Imran Siddique | AgenTrust-io | @imran-siddique | imransiddique@live.com |
+| Imran Siddique | AgenTrust-io | @imran-siddique | [GitHub profile](https://github.com/imran-siddique) |
 
-The Project Lead has final decision authority on specification changes, AAIF/CoSAI submission scope, conformance requirements, and Maintainer appointments.
+The Project Lead has final decision authority on specification changes, submission of TRACE deliverables to other organizations, conformance requirements, and Maintainer appointments.
 
-## Spec Editors
+## Repository Maintainers
 
-| Name | Affiliation | Area |
+| Name | GitHub | Scope |
 |---|---|---|
-| Rishabh Poddar | OPAQUE Systems | Specification, TEE profiles |
-| Aaron Fulkerson | OPAQUE Systems | Specification, governance |
+| Louie Lu | [@lywinged](https://github.com/lywinged) | TRACE specification and conformance requirements |
+| Rajnish Tiwari | [@rajnisht7](https://github.com/rajnisht7) | Adapters, provenance verification, and conformance vectors |
+
+Louie's appointment was [announced by the Project Lead](https://github.com/orgs/agentrust-io/discussions/33). Rajnish's was [announced here](https://github.com/orgs/agentrust-io/discussions/40).
+
+## Reviewers
+
+| Name | GitHub | Since |
+|---|---|---|
+| Alex Chernysh | [@chernistry](https://github.com/chernistry) | 2026-10-15, [accepted](https://github.com/agentrust-io/.github/issues/60#issuecomment-6186352539) |
+| Val Rukhaylo | [@altrudev](https://github.com/altrudev) | 2026-10-15, [accepted](https://github.com/agentrust-io/.github/issues/60#issuecomment-6188941788) |
 
 ## How to become a maintainer
 
@@ -29,4 +40,9 @@ Affiliations identify each maintainer's professional context. They do not give a
 
 Maintainers who step back from active review are listed here with thanks.
 
-_(none yet)_
+| Name | Former role |
+|---|---|
+| Rishabh Poddar | Spec Editor: specification, TEE profiles |
+| Aaron Fulkerson | Spec Editor: specification, governance |
+
+Rishabh Poddar and Aaron Fulkerson remain owners of the agentrust-io organization. That role covers organization administration and recovery, not routine review.

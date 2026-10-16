@@ -1,0 +1,89 @@
+{
+  "id": "TRACE-RBUN-018",
+  "name": "bundle-signed-by-record-key",
+  "description": "The record-signing key signed the bundle about itself. It is not in trusted_bundle_keys, so the bundle is untrusted; 3.2.3's signing-key independence is the reason it must not be.",
+  "spec": "spec/trace-v0.2.md#323-revocation-of-record-signing-keys",
+  "context": {
+    "now": 1785000000,
+    "max_bundle_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw",
+      "kid": "issuer-key-2026"
+    },
+    "trusted_bundle_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "JfQ5mktI1ldOWzNpLVgad2rHpi8TfeRnX1gVZnP-2Sw"
+      }
+    ],
+    "bundle": {
+      "type": "TraceRevocationBundle/1.0",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "statements": [],
+      "bundle_key_id": "yXtpv-ONw0EPK3ZnfQZl_we6sfTzdf4i5H5wuOn1vKU",
+      "sig": {
+        "alg": "ed25519",
+        "value": "6OjaEPPkBFWle-6eIXehUDDXPw0mXhGxOWqaNfLlvNz6PX78B6XDBDKDOWfLSeMqPiwoxQhwFpiQKHGyKkMZCg"
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/issuer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw"
+        }
+      },
+      "signature": "cNXX2aeZWv47FIFqe1DSAtHDlG7FUcw3U75o5g4r-9r3cAqoXFLSC2ZlIY9fjiPOI9KiaP_XttbMmZruOSvyCQ"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [
+      "bundle_key_untrusted"
+    ],
+    "outcome": "unverified_for_revocation",
+    "cause": "bundle_key_untrusted",
+    "evidence": {
+      "bundle_digest": "sha256:fcd8377884499efaa3850cf82ccf8ac217caae6cca2c81d91707fd05bc064dec",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "now": 1785000000,
+      "max_bundle_age_seconds": 86400,
+      "bundle_key_id": "yXtpv-ONw0EPK3ZnfQZl_we6sfTzdf4i5H5wuOn1vKU"
+    }
+  }
+}
