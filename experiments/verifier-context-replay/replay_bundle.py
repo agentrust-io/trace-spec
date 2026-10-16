@@ -125,6 +125,19 @@ def run(directory, expected_manifest_digest, *, tpm2_checkquote=None):
                 tee_args["trusted_observer_public"]=bytes.fromhex(tee_args.pop("trusted_observer_public_hex"))
                 tpm_payload=json.loads((directory/"simulation_tpm.bin").read_bytes())
                 tee_payload=json.loads((directory/"simulation_tee.bin").read_bytes())
+                expected_workload_digest=tee_args.pop("expected_workload_digest",None)
+                expected_tpm_source_digest=tee_args.pop("expected_tpm_source_digest",None)
+                event_digests=tpm_payload.get("event_digests")
+                expected_closure=[
+                    sha256(tee_args["expected_commit"].encode()).removeprefix("sha256:"),
+                    tee_args["expected_executable_digest"],
+                    expected_workload_digest,
+                    expected_tpm_source_digest,
+                ]
+                if not all(isinstance(v,str) and len(v)==64 for v in expected_closure):
+                    return {"status":"not-established","reason":"missing-measured-source-closure"}
+                if event_digests!=expected_closure:
+                    return {"status":"rejected","reason":"tpm-tee-measurement-closure-disagreement"}
                 sim_tpm=verify_simulated_tpm(tpm_payload,tpm2_checkquote=tpm2_checkquote,**tpm_args)
                 sim_tee=verify_software_tee(tee_payload,**tee_args)
             except (TypeError,ValueError,KeyError,OSError) as exc:
