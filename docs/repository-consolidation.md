@@ -30,7 +30,7 @@ python -m pytest -v --tb=short
 
 ## Cutover after merge
 
-1. Recheck trace-tests main and open work immediately before cutover. [PR #137](https://github.com/agentrust-io/trace-tests/pull/137), portable anchor inclusion vectors, was open at import time; merge and import it or preserve its review in the new location before archiving.
+1. Recheck trace-tests main and open work immediately before cutover. trace-tests PR #137, portable anchor inclusion vectors, was open at import time; merge and import it or preserve its review in the new location before archiving.
 2. Update consuming CI, source checkout URLs, the organization profile, and the website to this directory.
 3. Configure a trusted PyPI publisher for the existing package from trace-spec with a separate workflow and release policy. Root library tags must not release the conformance package accidentally. Verify a release from the new publisher before retiring the original release workflow.
 4. Move the tests.agentrust-io.com deployment to a host supporting a second site from this repository, or a dedicated deployment repository. A second gh-deploy in trace-spec would overwrite the specification site, so this PR only builds the tests documentation. Keep the existing source deployment active until the replacement is verified.

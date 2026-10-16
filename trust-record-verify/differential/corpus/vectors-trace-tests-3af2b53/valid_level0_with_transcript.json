@@ -1,0 +1,45 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1748000001,
+  "subject": "spiffe://example.org/agent/payments/01926b4c-1234-7abc-9def-000000000002",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-opus-4-8",
+    "version": "2026-06"
+  },
+  "runtime": {
+    "platform": "amd-sev-snp",
+    "measurement": "sha256:d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2",
+    "nonce": "dGVzdG5vbmNl",
+    "firmware_version": "1.55"
+  },
+  "policy": {
+    "bundle_hash": "sha256:e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6",
+    "enforcement_mode": "enforce",
+    "version": "1.2.0"
+  },
+  "data_class": "restricted",
+  "tool_transcript": {
+    "hash": "sha256:f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0",
+    "call_count": 7
+  },
+  "build_provenance": {
+    "slsa_level": 3,
+    "digest": "sha256:a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2",
+    "builder": "https://github.com/actions/runner"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://verifier.example.org",
+    "timestamp": 1748000010
+  },
+  "transparency": "https://scitt.example.org/receipts/def456ghi789",
+  "cnf": {
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "dGVzdHZhbHVleA",
+      "y": "dGVzdHZhbHVleQ"
+    }
+  }
+}

@@ -27,7 +27,7 @@ holds. The outcome names are not accepted normative text
 
 `transparency` appears in every record and every expected block shows it
 `not_attempted` with cause `surface_deferred`: its resolution is coordinated in
-[agentrust-io/trace-tests#92](https://github.com/agentrust-io/trace-tests/issues/92)
+[#547](https://github.com/agentrust-io/trace-spec/issues/547) (formerly trace-tests#92)
 and held by section 7 open question 3 of the specification. A consumer that reads it
 fails every vector in this set.
 

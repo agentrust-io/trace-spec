@@ -66,21 +66,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check out the published conformance vectors
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: agentrust-io/trace-tests
-          # Pinned: the corpus is scored input, so it changes when this workflow
-          # says it changes. The case count below is pinned with it: compare.py
-          # fails unless exactly that many cases came from this checkout, and
-          # generate_cases.py fails if the checkout is missing, so a corpus that
-          # did not run cannot print as a smaller corpus with `unexpected: 0`.
-          # generate_cases.py writes the SHA-256 of every file it read into
-          # build/manifest.json; compare.py prints the count and the manifest
-          # digest, and both are uploaded with the report.
-          ref: 3af2b53eb2e041918b8a6706a3e5a83f143a7568
-          path: .vectors
-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
@@ -102,7 +87,16 @@ jobs:
         run: npm run build --prefix trust-record-verify
 
       - name: Generate the corpus
-        run: python differential/generate_cases.py --external "$GITHUB_WORKSPACE/.vectors/tests/vectors"
+        run: python differential/generate_cases.py --external differential/corpus/vectors-trace-tests-3af2b53
+        # Pinned: the corpus is scored input, so it changes only when this
+        # directory does. It holds the 12 vectors from trace-tests@3af2b53
+        # byte for byte (that repository is retired). The case count below is
+        # pinned with it: compare.py fails unless exactly that many cases came
+        # from this directory, and generate_cases.py fails if it is missing, so
+        # a corpus that did not run cannot print as a smaller corpus with
+        # `unexpected: 0`. generate_cases.py writes the SHA-256 of every file it
+        # read into build/manifest.json; compare.py prints the count and the
+        # manifest digest, and both are uploaded with the report.
         working-directory: trust-record-verify
 
       - name: Run both implementations and compare

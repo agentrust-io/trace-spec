@@ -6,4 +6,4 @@ The CLI does not send project telemetry or analytics and does not fetch arbitrar
 
 Uninstalling the package does not delete input records, evidence files, exported reports, badges, logs, or backups. Manage those artifacts through your application's retention and deletion procedures.
 
-[Report a correction](https://github.com/agentrust-io/trace-tests/issues).
+[Report a correction](https://github.com/agentrust-io/trace-spec/issues).
