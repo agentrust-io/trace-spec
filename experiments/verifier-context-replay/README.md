@@ -168,3 +168,53 @@ certification, independent third-party audit, or hardware attestation.
 | Not established | Indeterminate / insufficient-evidence decision |
 | Fail closed | Reject or withhold positive approval when checks are absent |
 | Proof of hardware identity | Vendor/hardware certificate-backed attestation, out of scope |
+
+
+### Verifier-owned operational enrollment (strict gate)
+
+The initial `simulation_gate.py verify` evaluates a historical replay with
+trust selectors retained in its envelope. This is useful for reproducibility
+but is **not authorization** of those selectors.
+
+The `verify-enrolled` action requires a **separate, verifier-owned policy
+registry** (`frequency-verifier-policy-v1`) whose exact SHA-256 digest
+must be supplied to the verifier from an independent channel. The registry
+contains allowlisted producer commit and host, record public-key digest,
+policy and resolver digests, observer public-key digest, TPM attestation
+public-key digest, expected PCR0 value, challenge, allowed maximum freshness
+window and policy validity interval. The verifier refuses:
+
+- absent or modified registry pin; non-software assurance status; expired
+  or future-dated policy and observation; missing policy fields;
+- any substituted signing key, attestation key, source commit, resolver,
+  policy, host, reference PCR, or challenge; and
+- otherwise cryptographically valid evidence whose effective verification
+  time has expired relative to the verifier's current clock.
+
+```sh
+python simulation_gate.py verify-enrolled \
+  --bundle /path/to/received-evidence \
+  --pin sha256:PINNED_EVIDENCE_MANIFEST \
+  --checkquote /path/to/tpm2_checkquote \
+  --registry /path/to/verifier-owned-policy.json \
+  --registry-pin sha256:PREAPPROVED_REGISTRY_DIGEST \
+  --verification-time 1792000000
+```
+
+**Critical:** The producer must never be permitted to generate or approve the
+verifier's registry. Computing a registry from the received evidence afterward
+is **test-only trust on first use**, not external enrollment. The live
+`test_enrolled_live.py` intentionally uses such a disposable fixture to
+prove field enforcement, not independent source authorization. Actual
+production enrollment requires an out-of-band operator-approved policy,
+a separate owner for its signing/enrollment keys, authenticated provenance,
+explicit revocation, and reissuance. There is no automatic enrollment
+command, because treating producer values as authorized would defeat the
+purpose of the gate.
+
+This path returns `simulation-enrolled-verified`, never
+`hardware-attested` or `production-conformant`. It is an additional
+**simulation-only operational acceptance condition**. For historical
+forensic replay, use the original non-operational replay and retain its
+effective verification time; do not rebrand historical replay as fresh
+operational authority.
