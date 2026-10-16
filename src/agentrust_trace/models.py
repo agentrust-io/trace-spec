@@ -284,10 +284,12 @@ class PlatformMeasurementLayer(_TraceModel):
     """Per-layer appraisal result, with explicit evidence absence reason."""
     model_config = ConfigDict(extra="forbid")
     outcome: Literal["established", "not-established"]
-    reason: Literal["layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"] | None = None
+    reason: Literal[
+        "layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"
+    ] | None = None
 
     @model_validator(mode="after")
-    def _checked_reason(self) -> "PlatformMeasurementLayer":
+    def _checked_reason(self) -> PlatformMeasurementLayer:
         if "reason" in self.model_fields_set and self.reason is None:
             raise ValueError("null reason is not permitted")
         if (self.outcome == "not-established") != (self.reason is not None):
