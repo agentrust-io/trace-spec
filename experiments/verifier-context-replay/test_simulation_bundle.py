@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 from simulation_gate import create
-from replay_bundle import run
+from replay_bundle import run, sha256
 
 @unittest.skipUnless(all(os.environ.get(name) for name in (
     "TRACE_SWTPM_BINARY","TRACE_SWTPM_TOOL_DIR","TRACE_REPLAY_REPO")) and shutil.which("bwrap"),
@@ -41,9 +41,19 @@ class MixedSimulationEndToEnd(unittest.TestCase):
             self.assertEqual(run(directory,manifest,**opts)["status"],"rejected")
             quote.write_bytes(original)
             tee=directory/"simulation_tee.bin"
+            original_tee=tee.read_bytes()
             tee.write_bytes(b'{"profile":"frequency-software-tee-v1"}')
             self.assertEqual(run(directory,manifest,**opts)["status"],"rejected")
-            self.assertEqual(run(directory,manifest,**opts)["status"],"rejected")
+            tee.write_bytes(original_tee)
+            # Even an attacker who changes the manifest AND supplies its new
+            # checksum cannot make two contradictory evidence sources agree.
+            file=directory/"MANIFEST.json"
+            contents=json.loads(file.read_bytes())
+            contents["context"]["simulation_contract"]["tee"]["expected_workload_digest"]="0"*64
+            file.write_bytes(json.dumps(contents,sort_keys=True,separators=(",",":")).encode())
+            repinned="sha256:"+sha256(file.read_bytes()).removeprefix("sha256:")
+            self.assertEqual(run(directory,repinned,**opts)["reason"],
+                             "tpm-tee-measurement-closure-disagreement")
 
 if __name__=="__main__":
     unittest.main()
