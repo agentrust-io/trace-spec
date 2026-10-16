@@ -2,7 +2,10 @@
 verifier under test.
 
 Shape under test: an optional signed top-level ``manifest {id, digest, media_type}`` naming the
-agent manifest the record ran under. Records are v0.2 records signed embedded per §3.2.2:
+agent manifest the record ran under. Records 01-05 carry the v0.3 profile tag, so each is
+schema-valid against ``schema/trace-claim-v0.3-draft.json`` exactly as signed (03 excepted on
+purpose: it carries the forbidden ``manifest_verification_result``). 06 stays a v0.2 record,
+the "verifies as today" control. All are signed embedded per §3.2.2:
 Ed25519 over RFC 8785 of the record with ``signature`` absent, base64url without padding, key in
 ``cnf.jwk``. The signing key is a PUBLIC TEST KEY derived from a fixed seed; never use it for
 anything else.
@@ -58,6 +61,9 @@ BASE = {
     "appraisal": {"status": "affirming", "verifier": "https://verifier.example/v1"},
     "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": b64u(PUB)}},
 }
+# 01-05 are v0.3 records: a checker can validate the schema, the signature and the digest binding
+# on the same signed bytes. Patching eat_profile after signing would break the signature.
+BASE_V03 = {**BASE, "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3"}
 REF = {"id": MID, "digest": digest(M_RAN.encode()), "media_type": "application/json"}
 
 
@@ -69,11 +75,11 @@ def sign(rec: dict) -> dict:
 
 
 def with_manifest(**extra) -> dict:
-    return {**copy.deepcopy(BASE), "manifest": dict(REF), **extra}
+    return {**copy.deepcopy(BASE_V03), "manifest": dict(REF), **extra}
 
 
 def vectors() -> list[dict]:
-    added_after = sign(BASE)
+    added_after = sign(BASE_V03)
     added_after["manifest"] = dict(REF)
     cases = [
         (
@@ -144,4 +150,6 @@ def vectors() -> list[dict]:
 
 if __name__ == "__main__":
     for v in vectors():
-        (HERE / f"{v['name']}.json").write_text(json.dumps(v, indent=2, ensure_ascii=False) + "\n")
+        (HERE / f"{v['name']}.json").write_text(
+            json.dumps(v, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline=""
+        )
