@@ -65,9 +65,10 @@ def create(*,repo,tool_dir,swtpm,output,host_label):
         (state/"tpm-state").mkdir(mode=0o700)
         (state/"work").mkdir(mode=0o700)
         port=_available_port()
-        ctrl=_available_port()
-        while port==ctrl:
-            ctrl=_available_port()
+        # TSS swtpm TCTI assumes the control socket is data port + 1.
+        if port >= 65534:
+            raise RuntimeError("invalid emulator port")
+        ctrl=port+1
         env={**os.environ}
         libdir=swtpm.parents[2]/"lib"/"x86_64-linux-gnu"
         # Rootless package installation stores binaries in .../usr/bin and
