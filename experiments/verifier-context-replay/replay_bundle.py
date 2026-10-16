@@ -98,8 +98,7 @@ def run(directory, expected_manifest_digest, *, tpm2_checkquote=None):
             if measurement_result["status"] != "affirming":
                 return {"status":"not-established" if measurement_result["status"] == "not-established" else "rejected",
                         "reason":"measurement-appraisal-"+measurement_result["reason"],
-                        "measurement_appraisal":measurement_result,
-                "simulation":simulation_result}
+                        "measurement_appraisal":measurement_result}
             claimed = record.get("appraisal", {}).get("platform_measurement")
             if claimed is not None:
                 if not isinstance(claimed, dict) or claimed.get("measurement") != record.get("runtime", {}).get("measurement"):
@@ -141,6 +140,7 @@ def run(directory, expected_manifest_digest, *, tpm2_checkquote=None):
                 "manifest_digest":expected_manifest_digest,
                 "scope":"exact-snapshot-equality-only-not-external-authority",
                 "semantic_status":semantic_status,
-                "measurement_appraisal":measurement_result}
+                "measurement_appraisal":measurement_result,
+                "simulation":simulation_result}
     except (OSError, KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
         return {"status":"not-established", "reason":"bundle-unreadable:" + type(exc).__name__}
