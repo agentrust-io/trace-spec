@@ -47,6 +47,22 @@ class FailClosedEnrollment(unittest.TestCase):
             decision=verify_enrolled(tmp,"sha256:"+"0"*64,registry_path=p,registry_pin=pin,
                                      checkquote="/usr/bin/true",verification_time=2001)
             self.assertEqual(decision["reason"],"policy-outside-validity")
+    def test_operational_freshness_rejects_stale_pinned_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,_,pin=self.fixture(tmp)
+            result=verify_enrolled(tmp,"sha256:"+"0"*64,registry_path=p,registry_pin=pin,
+                                   checkquote="/usr/bin/true",verification_time=1200,
+                                   operational_now=1400)
+            self.assertEqual(result["reason"],"operational-freshness-expired")
+
+    def test_operational_clock_cannot_precede_historical_decision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,_,pin=self.fixture(tmp)
+            result=verify_enrolled(tmp,"sha256:"+"0"*64,registry_path=p,registry_pin=pin,
+                                   checkquote="/usr/bin/true",verification_time=1200,
+                                   operational_now=1199)
+            self.assertEqual(result["reason"],"operational-freshness-expired")
+
     def test_incomplete_enrollment_not_positive(self):
         with tempfile.TemporaryDirectory() as tmp:
             p,data,_=self.fixture(tmp)
