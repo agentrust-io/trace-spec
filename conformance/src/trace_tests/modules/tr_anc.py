@@ -13,8 +13,15 @@ def check(
     trace: dict[str, Any],
     receipt: dict[str, Any] | None = None,
     entry: dict[str, Any] | None = None,
+    subject: dict[str, Any] | None = None,
 ) -> list[Finding]:
     """Return TR-ANC findings for the transparency claim.
+
+    *subject* is the object the anchor leaf commits to: the complete signed
+    claim, signature included (registry-anchor-v1 section 1). For an enveloping
+    format such as ``cmcp-runtime`` that is the whole envelope, not the nested
+    *trace*; the runner passes it. It defaults to *trace*, which is the complete
+    claim for a bare TRACE record.
 
     TR-ANC-001 checks the shape of the ``transparency`` URI. TR-ANC-002 checks
     that the record is actually anchored: the receipt's ``merkle_root`` and
@@ -50,12 +57,12 @@ def check(
         f"transparency is a well-formed https URI ({transparency[:80]}); "
         "this checks the pointer, not the anchor (see TR-ANC-002)",
     ))
-    findings.append(_check_inclusion(trace, receipt, entry))
+    findings.append(_check_inclusion(trace if subject is None else subject, receipt, entry))
     return findings
 
 
 def _check_inclusion(
-    trace: dict[str, Any],
+    subject: dict[str, Any],
     receipt: dict[str, Any] | None,
     entry: dict[str, Any] | None,
 ) -> Finding:
@@ -103,7 +110,7 @@ def _check_inclusion(
         )
 
     try:
-        proven = verify_inclusion(trace, leaf_index, audit_path, leaf_count, merkle_root)
+        proven = verify_inclusion(subject, leaf_index, audit_path, leaf_count, merkle_root)
     except InclusionError as exc:
         return Finding("TR-ANC-002", Status.FAIL, f"TR-ANC-002: could not verify inclusion: {exc}")
 
@@ -111,8 +118,9 @@ def _check_inclusion(
         return Finding(
             "TR-ANC-002", Status.PASS,
             f"inclusion proven against merkle_root {merkle_root.hex()[:16]}... "
-            f"(leaf {leaf_index} of {leaf_count}) of registry entry {producer} {batch_id}; "
-            "the link from the transparency URI to this entry is not checked "
+            f"(leaf {leaf_index} of {leaf_count}) of registry entry {producer} {batch_id}, "
+            "over the complete signed claim; the link from the transparency URI to "
+            "this entry is not checked "
             "(trace-spec#448 finding 21)",
         )
     return Finding(

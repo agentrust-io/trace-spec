@@ -101,7 +101,7 @@ def _run_core(
 
     if "TR-ANC" in active:
         results["TR-ANC"] = invoke(
-            "TR-ANC", lambda: anc(trace, receipt=receipt, entry=entry)
+            "TR-ANC", lambda: anc(trace, receipt=receipt, entry=entry, subject=record)
         )
 
     return results

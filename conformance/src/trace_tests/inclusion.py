@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 from typing import Any
 
 LEAF_PREFIX = b"\x00"
@@ -162,6 +163,18 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
 
 
 _ENTRY_STRINGS = ("ts", "producer", "batch_id")
+_UTC_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z")
+
+
+def _is_utc_timestamp(value: str) -> bool:
+    """True iff *value* is a real ISO-8601 UTC date-time with a Z suffix (section 4)."""
+    if not _UTC_TIMESTAMP.fullmatch(value):
+        return False
+    try:
+        datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return False
+    return True
 
 
 def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
@@ -183,6 +196,12 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
     for key in _ENTRY_STRINGS:
         if not isinstance(entry[key], str) or not entry[key]:
             raise InclusionError(f"registry entry {key} must be a non-empty string")
+
+    if not _is_utc_timestamp(entry["ts"]):
+        raise InclusionError(
+            "registry entry ts must be an ISO-8601 UTC timestamp ending in Z, "
+            f"got {entry['ts'][:40]!r}"
+        )
 
     leaf_count = entry["leaf_count"]
     if not isinstance(leaf_count, int) or isinstance(leaf_count, bool) or leaf_count < 1:
