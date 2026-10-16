@@ -58,8 +58,12 @@ class LiveVerifierEnrollment(unittest.TestCase):
                 "not_before_unix": tee["verification_time"] - 1,
                 "not_after_unix": tee["verification_time"] + 120,
             }
-            registry = root / "verifier-owned-policy.json"
-            registry.write_bytes(canonical(policy))
+            # Linux memfd keeps test policy inputs out of persistent storage.
+            # The live simulator test is Linux-only (Bubblewrap).
+            fd = os.memfd_create("trace-verifier-policy", flags=0)
+            self.addCleanup(os.close, fd)
+            registry = Path(f"/proc/self/fd/{fd}")
+            os.write(fd, canonical(policy))
             pinned_policy = digest(registry.read_bytes())
             options = {
                 "registry_path": registry,
@@ -87,7 +91,9 @@ class LiveVerifierEnrollment(unittest.TestCase):
                 "operational-freshness-expired",
             )
             policy["observer_public_digest"] = "sha256:" + "0" * 64
-            registry.write_bytes(canonical(policy))
+            os.ftruncate(fd, 0)
+            os.lseek(fd, 0, os.SEEK_SET)
+            os.write(fd, canonical(policy))
             self.assertEqual(
                 verify_enrolled(
                     bundle,
