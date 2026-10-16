@@ -101,3 +101,29 @@ class LiveSwtpmQuoteTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+@unittest.skipUnless(os.environ.get("TRACE_REPLAY_REPO") and shutil.which("bwrap"),
+                     "live Bubblewrap integration needs explicit repository and isolation runtime")
+class LiveSoftwareTeeTests(unittest.TestCase):
+    def test_actual_isolated_process_signed_and_replayed(self):
+        import time
+        import uuid
+        repo=Path(os.environ["TRACE_REPLAY_REPO"]).resolve()
+        commit=subprocess.check_output(["git","-C",str(repo),"rev-parse","HEAD"],text=True).strip()
+        key=Ed25519PrivateKey.generate()
+        public=key.public_key().public_bytes(serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        challenge=uuid.uuid4().hex
+        executable=Path("/usr/bin/true")
+        b=capture_software_tee(argv=[str(executable)],repository=repo,
+                               expected_commit=commit,signing_key=key,
+                               host_label="software-tee-test",challenge=challenge)
+        opts=dict(trusted_observer_public=public,trusted_observer_digest=sha(public),
+                  expected_commit=commit,
+                  expected_executable_digest=sha(executable.read_bytes()),
+                  expected_host="software-tee-test",expected_command=[str(executable)],
+                  expected_challenge=challenge,verification_time=int(time.time()),
+                  max_age_seconds=60)
+        self.assertEqual(verify_software_tee(b,**opts)["status"],"verified-simulation-only")
+        self.assertEqual(verify_software_tee(b,**{**opts,"expected_challenge":"substituted-nonce-test"})["status"],"rejected")
+        self.assertEqual(verify_software_tee(b,**{**opts,"verification_time":opts["verification_time"]+61})["status"],"rejected")
