@@ -58,8 +58,12 @@ def create(*,repo,tool_dir,swtpm,output,host_label):
     output.mkdir(mode=0o700,parents=True)
     nonce_hex=os.urandom(24).hex()
     challenge=uuid.uuid4().hex
-    executable=Path("/usr/bin/true").resolve(strict=True)
-    events=[raw_sha(commit.encode()),raw_sha(executable.read_bytes())]
+    python_runtime=Path("/usr/bin/python3").resolve(strict=True)
+    workload=Path(__file__).resolve().with_name("software_tee_workload.py")
+    tpm_source=Path(__file__).resolve().with_name("simulated_tpm.py")
+    # Model the measured execution closure, not an unrelated no-op program.
+    events=[raw_sha(commit.encode()),raw_sha(python_runtime.read_bytes()),
+            raw_sha(workload.read_bytes()),raw_sha(tpm_source.read_bytes())]
     now=int(time.time())
     with tempfile.TemporaryDirectory(prefix="trace-tpm-state-") as scratch:
         state=Path(scratch)
@@ -103,8 +107,6 @@ def create(*,repo,tool_dir,swtpm,output,host_label):
                 except (ValueError,ProcessLookupError,PermissionError):
                     pass
     tee_key=Ed25519PrivateKey.generate()
-    python_runtime=Path("/usr/bin/python3").resolve(strict=True)
-    workload=Path(__file__).resolve().with_name("software_tee_workload.py")
     command=[str(python_runtime),"-I",str(workload),commit,challenge]
     tee=capture_software_tee(argv=command,repository=repo,
                  expected_commit=commit,signing_key=tee_key,
@@ -135,6 +137,8 @@ def create(*,repo,tool_dir,swtpm,output,host_label):
                 "trusted_observer_digest":raw_sha(tee_public),
                 "expected_commit":commit,"expected_executable_digest":raw_sha(python_runtime.read_bytes()),
                 "expected_host":host_label,"expected_command":command,
+                "expected_workload_digest":raw_sha(workload.read_bytes()),
+                "expected_tpm_source_digest":raw_sha(tpm_source.read_bytes()),
                 "expected_stdout_digest":raw_sha(expected_workload_output(commit,challenge)),
                 "expected_stderr_digest":raw_sha(b""),
                 "expected_challenge":challenge,"verification_time":int(time.time()),
