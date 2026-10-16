@@ -705,6 +705,19 @@ def verify_record(
             f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
         ) from exc
 
+    # Platform appraisal is a producer-signed claim, not independent appraisal.
+    # Still enforce the cross-field consistency required by TRACE §3.1.5.
+    platform_claim = record.get("appraisal", {}).get("platform_measurement")
+    if platform_claim is not None:
+        if platform_claim["measurement"] != record["runtime"]["measurement"]:
+            raise ValueError("platform_measurement.measurement must equal runtime.measurement")
+        if record["appraisal"]["status"] == "none":
+            raise ValueError("a recorded platform appraisal cannot have status none")
+        if record["runtime"]["platform"] == "tpm2":
+            import re
+            if any(re.fullmatch(r"pcr:(?:[0-9]|1[0-9]|2[0-3])", name) is None for name in platform_claim["layers"]):
+                raise ValueError("tpm2 layer names must be pcr:0 through pcr:23")
+
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.
     if public_key_or_jwk is None:
