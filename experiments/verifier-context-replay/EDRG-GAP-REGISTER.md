@@ -52,6 +52,31 @@ observation proves bounded execution on the tested SHA, not general sandbox
 escape resistance, source TOCTOU protection, or independent acceptance.
 T01, T02 and T05 remain OPEN; T09 remains EXTERNALLY-BLOCKED.
 
+## Persistent operator-key trial: 2026-10-15
+
+A persistent Ed25519 observer signing key was created on the VPS under a
+restricted user-owned key directory; the corresponding 32-byte public key
+was pinned in a separate restricted directory on Prometheus. Its SHA-256
+fingerprint was f1a5093adb64d7e1710bd9bd25b59c1b96d986f239e649e05875d32752c524e8.
+The private key was not transferred to Prometheus or placed in this repo.
+
+At the pinned source revision
+aed444729430b01c92ff44e86894d8d7d3ba48fe, the actual observer on
+the VPS ran the allowlisted /usr/bin/true workload under Bubblewrap and
+signed the exit-zero observation with that persistent key. Prometheus
+verified the receipt through verify_pinned with the enrolled public-key
+fingerprint, expected source commit and asserted host label. Four
+negative cases were rejected: tampered exit code, wrong host label,
+wrong source commit and wrong pinned fingerprint.
+
+This is OPERATOR-KEY-CONTINUITY evidence only. Both endpoints, key
+creation and enrollment are operator-controlled. No independent
+authority approved the enrollment, no trusted clock or replay-resistant
+challenge was verified, and no TPM/TEE attestation was produced.
+The private key is stored in user-controlled software storage, not a
+hardware-protected signing service. T03/T04/T05/T09 therefore remain
+open or externally blocked at the stronger production-assurance level.
+
 ## Mandatory negative acceptance
 
 Wrong public key, wrong fingerprint, wrong commit/host, modified receipt,
