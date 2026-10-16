@@ -3,7 +3,7 @@
   "status": "v0.3-draft",
   "proposal": "agentrust-io/trace-spec#483",
   "record": {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
     "iat": 1785000000,
     "subject": "spiffe://factory.example/agent/payments/prod",
     "model": {
@@ -40,7 +40,7 @@
       "media_type": "application/json"
     },
     "manifest_verification_result": "verified",
-    "signature": "6i9nltz5j8ZeiVN-_Htg8v5qrmfm8w82EeKRHj-3rz3BB8EK68pWrKM96kY_U2ZvEtgahRUArceT1oSeYQy_AQ"
+    "signature": "gK8h5i8LKjqrNhm8mSkOe0nj7uxQ_f0RqEWfKA-qK63U5TPvUxjHPKUesbFmgrsMtdGzmGcYrn7aQ8tgs4O0AQ"
   },
   "resolver": {
     "urn:example:agent-manifest:payments-agent": "{\"manifest_id\":\"urn:example:agent-manifest:payments-agent\",\"version\":\"1.5.0\",\"tools\":[\"refund\",\"lookup_payment\",\"wire_transfer\"],\"model_id\":\"example-model-1\"}"

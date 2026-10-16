@@ -3,7 +3,7 @@
   "status": "v0.3-draft",
   "proposal": "agentrust-io/trace-spec#483",
   "record": {
-    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+    "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
     "iat": 1785000000,
     "subject": "spiffe://factory.example/agent/payments/prod",
     "model": {
@@ -39,7 +39,7 @@
       "digest": "sha256:a773501007076390d7532a16294e4ee8c1ae07aa030f90c85cf513fdeeeeb472",
       "media_type": "application/json"
     },
-    "signature": "wnkUTs2U7NvWLbQb5baCkvn3TtiuP5Wb5ktJ_yVT-SO77noVRCACo5-upQJqoveMTrwnrN_i8RtL5Ta0zV8nDw"
+    "signature": "rUh168-hGMZYRMBDHgOd58OBF-KI_AYKfFGnwdO_9SDImtkrer9ra_YSNIwA0jl6KzCAnoxvU0QuBbgOtF7DAg"
   },
   "resolver": {},
   "expected": {
