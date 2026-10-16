@@ -208,3 +208,34 @@ def test_the_cli_reads_entry(load_vector, tmp_path: Path) -> None:
     without = report([])
     assert "no registry entry supplied" in without
     assert "transparency URI to this entry is not checked" not in without
+
+
+def _proof_only(receipt: dict[str, Any]) -> dict[str, Any]:
+    """The section 5 proof alone: what a producer hands a claim holder."""
+    return {"leaf_index": receipt["leaf_index"], "audit_path": receipt["audit_path"]}
+
+
+def test_proof_only_receipt_anchors_against_its_entry() -> None:
+    claims = _claims()
+    receipt = _receipt(claims, 2)
+    finding = tr_anc._check_inclusion(claims[2], _proof_only(receipt), _entry(receipt))
+    assert finding.status is Status.PASS, finding.message
+
+
+def test_proof_only_receipt_is_refused_against_another_batch() -> None:
+    claims = _claims()
+    receipt = _receipt(claims, 2)
+    other = _receipt([{"transparency": "https://log.example.com/entries/other", "iat": 1}] * 3, 0)
+    finding = tr_anc._check_inclusion(claims[2], _proof_only(receipt), _entry(other))
+    assert finding.status is Status.FAIL
+    assert "does not reproduce the committed merkle_root" in finding.message
+
+
+@pytest.mark.parametrize("field", ["leaf_index", "audit_path"])
+def test_receipt_without_the_section_5_proof_is_malformed(field: str) -> None:
+    claims = _claims()
+    receipt = _receipt(claims, 1)
+    receipt.pop(field)
+    finding = tr_anc._check_inclusion(claims[1], receipt, _entry(_receipt(claims, 1)))
+    assert finding.status is Status.FAIL
+    assert f"missing required field(s): {field}" in finding.message

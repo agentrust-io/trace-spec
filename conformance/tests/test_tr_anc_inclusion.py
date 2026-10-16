@@ -135,7 +135,9 @@ def test_a_forged_root_fails():
 
 # --- malformed receipts are reported as malformed, not as "not included" ----
 
-@pytest.mark.parametrize("field", ["leaf_index", "audit_path", "leaf_count", "merkle_root"])
+# Only the section 5 proof is the receipt's own; merkle_root and leaf_count come from the
+# entry (section 5.1), so a receipt that leaves them out is not malformed.
+@pytest.mark.parametrize("field", ["leaf_index", "audit_path"])
 def test_a_receipt_missing_a_field_says_which(field):
     claims = [_trace(i) for i in range(4)]
     receipt = _receipt(claims, 1)
