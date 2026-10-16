@@ -137,7 +137,7 @@ def create(*,repo,tool_dir,swtpm,output,host_label):
                 "expected_host":host_label,"expected_command":command,
                 "expected_stdout_digest":raw_sha(expected_workload_output(commit,challenge)),
                 "expected_stderr_digest":raw_sha(b""),
-                "expected_challenge":challenge,"verification_time":now,
+                "expected_challenge":challenge,"verification_time":int(time.time()),
                 "max_age_seconds":120}
     context={"verification_time":now,"max_age_seconds":120,
              "max_future_skew_seconds":10,"expected_nonce":None,
