@@ -90,6 +90,14 @@ def verify_enrolled(
             or not 0 <= registry["max_observation_age_seconds"] <= 3600
         ):
             return {"status": "not-established", "reason": "invalid-freshness-policy"}
+        wall_time = int(time.time()) if operational_now is None else operational_now
+        if (
+            type(wall_time) is not int
+            or not 0
+            <= wall_time - verification_time
+            <= registry["max_observation_age_seconds"]
+        ):
+            return {"status": "rejected", "reason": "operational-freshness-expired"}
         bundle = Path(bundle)
         manifest = json.loads((bundle / "MANIFEST.json").read_bytes())
         ctx = manifest["context"]
@@ -119,14 +127,6 @@ def verify_enrolled(
             return {"status": "rejected", "reason": "unexpected-hardware-runtime"}
         if tee.get("max_age_seconds") > registry["max_observation_age_seconds"]:
             return {"status": "rejected", "reason": "freshness-policy-too-permissive"}
-        wall_time = int(time.time()) if operational_now is None else operational_now
-        if (
-            type(wall_time) is not int
-            or not 0
-            <= wall_time - verification_time
-            <= registry["max_observation_age_seconds"]
-        ):
-            return {"status": "rejected", "reason": "operational-freshness-expired"}
         if tee.get("verification_time") != verification_time:
             return {"status": "rejected", "reason": "verification-time-not-pinned"}
         result = replay(bundle, manifest_pin, tpm2_checkquote=checkquote)
