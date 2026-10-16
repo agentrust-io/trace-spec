@@ -48,7 +48,7 @@ confidential execution. Its read-only root still exposes host-readable data;
 do not run untrusted code or interpret this as comprehensive isolation.
 
 
-## About / Trust — software TPM and software TEE lab
+## About / Trust : software TPM and software TEE lab
 
 This is an **experimental verifier-side test lab** for the TRACE v0.2
 retained-context problem. It uses actual `swtpm` (IBM-origin TPM 2.0 emulator)
