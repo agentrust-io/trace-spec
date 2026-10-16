@@ -47,7 +47,9 @@ class TeeReplayTests(unittest.TestCase):
                      trusted_observer_digest=sha(self.pub),
                      expected_commit="test-commit",expected_executable_digest="a"*64,
                      expected_host="observer",expected_command=["/usr/bin/true"],
-                     expected_challenge=self.challenge,verification_time=1001,
+                     expected_challenge=self.challenge,
+                     expected_stdout_digest="b"*64,expected_stderr_digest="c"*64,
+                     verification_time=1001,
                      max_age_seconds=300)
         options.update(overrides)
         return verify_software_tee(bundle or self.bundle,**options)
@@ -66,6 +68,10 @@ class TeeReplayTests(unittest.TestCase):
     def test_hardware_label_is_not_accepted(self):
         b=copy.deepcopy(self.bundle);b["classification"]="GENUINE_TEE"
         self.assertEqual(self.check(b)["status"],"rejected")
+    def test_wrong_expected_output(self):
+        self.assertEqual(self.check(expected_stdout_digest="0"*64)["reason"],
+                         "execution-output-digest-mismatch")
+
     def test_receipt_tamper(self):
         b=copy.deepcopy(self.bundle);b["receipt"]["observation"]["exit_code"]=1
         self.assertEqual(self.check(b)["reason"],"invalid-observer-signature")
@@ -122,7 +128,8 @@ class LiveSoftwareTeeTests(unittest.TestCase):
                   expected_commit=commit,
                   expected_executable_digest=sha(executable.read_bytes()),
                   expected_host="software-tee-test",expected_command=[str(executable)],
-                  expected_challenge=challenge,verification_time=int(time.time()),
+                  expected_challenge=challenge,expected_stdout_digest=sha(b""),
+                  expected_stderr_digest=sha(b""),verification_time=int(time.time()),
                   max_age_seconds=60)
         self.assertEqual(verify_software_tee(b,**opts)["status"],"verified-simulation-only")
         self.assertEqual(verify_software_tee(b,**{**opts,"expected_challenge":"substituted-nonce-test"})["status"],"rejected")
