@@ -1,13 +1,13 @@
-# EDRG — strict simulated TPM/TEE enrollment gate
+# EDRG : strict simulated TPM/TEE enrollment gate
 **Assessment date:** 2026-10-15
 **Tested source commit:** `c68c3d7d6ef07c808716d38a03d67bd99549a7d2`
 **Repository:** `altrudev/trace-spec`, draft PR #2
 
 ## Outcome
 
-**PASS — fully exercised bounded software-only attestation and retained-context gate.**
+**PASS : fully exercised bounded software-only attestation and retained-context gate.**
 
-**NOT ESTABLISHED — production hardware-backed attestation, trusted outside-party enrollment, or third-party certification.**
+**NOT ESTABLISHED : production hardware-backed attestation, trusted outside-party enrollment, or third-party certification.**
 
 ## Observed execution
 
