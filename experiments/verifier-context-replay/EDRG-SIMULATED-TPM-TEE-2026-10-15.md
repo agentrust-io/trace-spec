@@ -1,13 +1,13 @@
-# EDRG — rootless simulated TPM + isolated software execution
+# EDRG: rootless simulated TPM + isolated software execution
 **Observed:** 2026-10-15  
 **Candidate under test:** `dcd222c2962eb4d35c4c6d88fb1378ee09f68c54`  
 **Review branch:** `freq/retained-context-replay-20261013`, draft PR #2 in `altrudev/trace-spec`
 
 ## Acceptance decision
 
-**PASS — bounded software-simulation end-to-end acceptance.**
+**PASS: bounded software-simulation end-to-end acceptance.**
 
-**NOT ESTABLISHED — hardware-backed TPM/TEE authenticity, real guest measured boot, independently enrolled production trust roots, external auditor certification, or full upstream conformance.**
+**NOT ESTABLISHED: hardware-backed TPM/TEE authenticity, real guest measured boot, independently enrolled production trust roots, external auditor certification, or full upstream conformance.**
 
 Those two statuses are separate by design. A software TPM's signed quote verifies that a software TPM held the signing key and produced the asserted PCR selection; it cannot prove a physical TPM. A Bubblewrap sandbox is an OS namespace process sandbox, **not** a confidential-computing TEE.
 
@@ -33,7 +33,7 @@ Static checking on the candidate (Prometheus) passed:
 5. The replay envelope preserved exact signed TRACE record bytes, trusted public root, policy bytes, revocation identifiers, resolver snapshot, TPM quote/AK/public attestation material and TEE execution receipt, all with content hashes. An **out-of-band manifest SHA256** was required. Verifier configuration, effective time/freshness, expected PCR0, quote challenge, trusted AK digest, expected code/TEE output hashes and observer public-key digest were pinned.
 6. Two separate TRACE signature implementations compared signed-record decisions; the software TPM and TEE results also had to match each other on the committed workload measurement closure. Any mismatch produced `rejected` or `not-established`, never a positive simulation result.
 
-## Independent cross-host replay — same candidate source
+## Independent cross-host replay: same candidate source
 
 Evidence originated independently on each machine; public synthetic evidence bundles (no private keys) were transferred directly to the **other** machine for fresh offline verification.
 
