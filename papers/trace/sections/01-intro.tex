@@ -1,0 +1,49 @@
+\section{Introduction}
+\label{sec:intro}
+
+AI agents now invoke tools, call external services, and exchange data across
+organizational boundaries. When a relying party (a downstream service, an auditor,
+or a partner organization) consumes the result of an agent workflow, it has
+no portable, vendor-neutral way to answer basic governance questions: which policy
+governed the agent, which identity was authenticated, what hardware enforced the
+policy, and whether the recorded evidence has been altered. Ad hoc logs are
+operator-controlled and therefore not trustworthy across a trust boundary.
+
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) is a signed, hardware-
+attestable evidence record for AI agent runtimes. It instantiates the RATS
+roles~\citep{rats2021} (Attester, Verifier, Relying Party) and profiles the
+Entity Attestation Token~\citep{eat2023} with the fields an agent runtime needs:
+the model and runtime measurements, the policy and data class in effect, the
+invoked-tool transcript, the authenticated agent identity, a confirmation key
+rooted in the TEE attestation, and an inclusion proof on an append-only
+transparency log. The result, a \emph{Trust Record}, is appraisable offline,
+without trusting the operator that produced it.
+
+\subsection*{Contributions}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{A portable evidence record.} The Trust Record: an EAT profile that
+    binds model, runtime, policy, data class, tool transcript, identity, a
+    confirmation key, and a transparency receipt into one signed artifact
+    (Section~\ref{sec:model}).
+  \item \textbf{A role and protocol model.} How Attester, Verifier, and Relying
+    Party interact in the RATS passport model, for single- and cross-organizational
+    deployments (Section~\ref{sec:protocol}).
+  \item \textbf{An offline verification procedure.} Signature binding, freshness,
+    silicon-root chaining, reference-value matching, policy, transparency, and
+    provenance, with no callback to the issuer (Section~\ref{sec:verification}).
+  \item \textbf{A reference profile and conformance suite.} cMCP~\citep{cmcp2026}
+    produces Trust Records at the MCP boundary (Section~\ref{sec:profiles}), and a
+    conformance suite checks records against the normative requirements
+    (Section~\ref{sec:conformance}).
+\end{itemize}
+
+\subsection*{Paper structure}
+
+Section~\ref{sec:background} reviews RATS, EAT, TEE attestation, and agent identity.
+Section~\ref{sec:model} defines the Trust Record. Section~\ref{sec:protocol} gives
+the role model and protocol. Section~\ref{sec:verification} specifies verification.
+Section~\ref{sec:profiles} describes profiles, with cMCP as the reference instance.
+Section~\ref{sec:conformance} describes the conformance suite,
+Section~\ref{sec:related} surveys related work, and Section~\ref{sec:conclusion}
+concludes.

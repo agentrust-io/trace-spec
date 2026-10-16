@@ -1,0 +1,39 @@
+{
+  "repeats_per_record": 200,
+  "records_tested": 5,
+  "total_distinct_hashes_expected": 5,
+  "total_distinct_hashes_observed": 5,
+  "deterministic": true,
+  "per_record": {
+    "invalid_missing_runtime": {
+      "repeats": 200,
+      "distinct_hashes": 1,
+      "canonical_bytes": 614,
+      "hash": "062320eeef338c44715fbb976d9eb6044f8ead22ecab00584bc5282a635fad0e"
+    },
+    "invalid_wrong_profile": {
+      "repeats": 200,
+      "distinct_hashes": 1,
+      "canonical_bytes": 735,
+      "hash": "df5e998340232d6b909b612d641fa4db2bfbbe68acf1bc1a6acd09f42d384b17"
+    },
+    "valid_cmcp_runtime": {
+      "repeats": 200,
+      "distinct_hashes": 1,
+      "canonical_bytes": 1616,
+      "hash": "76da0d83ee135a394d6269bb4d0f914f20497ad920c4b6130df1337feb2b0eeb"
+    },
+    "valid_level0": {
+      "repeats": 200,
+      "distinct_hashes": 1,
+      "canonical_bytes": 882,
+      "hash": "ef8bc99bc39149955076ec58a6e7bba6e67bb09397f7c96f4f6ef89f4620e09f"
+    },
+    "valid_level0_with_transcript": {
+      "repeats": 200,
+      "distinct_hashes": 1,
+      "canonical_bytes": 1113,
+      "hash": "9029b13ac92569ca438c1c4467cd2b3080a35bfb9a20e0b00c3b885f4618a8cf"
+    }
+  }
+}

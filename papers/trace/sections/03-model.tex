@@ -1,0 +1,163 @@
+\section{The Trust Record}
+\label{sec:model}
+
+The unit of evidence in TRACE is the \emph{Trust Record}: a single signed artifact
+that binds \emph{what executed} (model, code, runtime), \emph{under what policy},
+\emph{on what data class}, \emph{invoking which tools}, optionally accompanied by attestation evidence. A record travels with the workload
+across hosts, clouds, and providers. Offline checks require the relevant trusted
+keys and evidence; a signature alone does not establish silicon provenance.
+
+\subsection{Logical schema}
+
+A Trust Record is an EAT~\citep{eat2023} carrying the claims in
+Table~\ref{tab:fields}. All fields are required unless marked optional. The presence of a field does not verify its contents; appraisal requires
+independent evidence and trust policy. Sub-records (for example per-tool-call transcripts)
+compose under one root envelope.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Trust Record claims (TRACE v0.2). ``Source primitive'' names the existing
+standard each claim is drawn from; TRACE adds the binding into a hardware-attested
+envelope rather than redefining the primitive.}
+\label{tab:fields}
+\begin{tabular}{p{2.9cm}p{6.2cm}p{3.4cm}}
+\toprule
+Field & Description & Source primitive \\
+\midrule
+\texttt{eat\_profile} & Profile URI identifying a TRACE v0.2 record:
+  \texttt{tag:agentrust-io.com,2026:trace-v0.2} & EAT profile claim \\
+\texttt{iat} & Issued-at timestamp (Unix epoch) & EAT standard claim \\
+\texttt{subject} & Workload identity (agent, tool, or model invocation) &
+  SPIFFE SVID or DID URI \\
+\texttt{model} & Model identity, weights digest, version & EAT claim + AIBOM ref \\
+\texttt{runtime} & TEE measurement chain (firmware $\rightarrow$ kernel
+  $\rightarrow$ image $\rightarrow$ workload) & RATS Evidence + vendor RIM \\
+\texttt{policy} & Bound policy-set hash and enforcement mode &
+  Policy hash sealed to TEE measurement \\
+\texttt{data\_class} & Classification of inputs and outputs &
+  Per-call classification label \\
+\texttt{tool\_transcript} & \emph{(optional)} Tool calls invoked, parameters
+  classified, responses filtered & MCP / A2A transcript, bound by hash \\
+\texttt{build\_provenance} & How the running code and model were built &
+  SLSA Provenance v1.0 \\
+\texttt{appraisal} & Verifier's appraisal of the evidence & EAR (AR4SI) \\
+\texttt{transparency} & Inclusion proof on an append-only log & SCITT receipt URI \\
+\texttt{cnf} & Confirmation key binding the record to a TEE-held signing key &
+  EAT \texttt{cnf} claim (RFC 7800) \\
+\texttt{signature} & \emph{(optional field)} Embedded signature; see
+  Section~\ref{sec:model:sig} & JWS / COSE over canonical JSON \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Claim structure}
+
+The composite claims carry the following members (optional members italicized):
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{\texttt{model}}: \texttt{provider}, \texttt{model\_id},
+    \emph{\texttt{version}}, \emph{\texttt{weights\_digest}},
+    \emph{\texttt{aibom\_uri}}.
+  \item \textbf{\texttt{runtime}}: \texttt{platform} (one of \texttt{intel-tdx},
+    \texttt{amd-sev-snp}, \texttt{nvidia-h100}, \texttt{nvidia-blackwell},
+    \texttt{aws-nitro}, \texttt{arm-cca}, \texttt{google-confidential-space},
+    \texttt{tpm2}, \texttt{software-only}), \texttt{measurement} (a
+    \texttt{sha256:}/\texttt{sha384:} digest), \emph{\texttt{rim\_uri}},
+    \emph{\texttt{nonce}}, \emph{\texttt{firmware\_version}}.
+  \item \textbf{\texttt{policy}}: \texttt{bundle\_hash},
+    \texttt{enforcement\_mode} (\texttt{enforce} $|$ \texttt{advisory} $|$
+    \texttt{silent}), \emph{\texttt{version}}, \emph{\texttt{policy\_uri}}.
+    \texttt{enforcement\_mode} MUST default to \texttt{enforce}; \texttt{silent}
+    MUST be configured explicitly.
+  \item \textbf{\texttt{tool\_transcript}}: \texttt{hash} (binds the full
+    transcript), \emph{\texttt{call\_count}}, \emph{\texttt{transcript\_uri}}.
+  \item \textbf{\texttt{build\_provenance}}: \texttt{slsa\_level} (0 to 3),
+    \emph{\texttt{builder}}, \texttt{digest}, \emph{\texttt{provenance\_uri}}.
+  \item \textbf{\texttt{appraisal}}: \texttt{status} (\texttt{affirming} $|$
+    \texttt{warning} $|$ \texttt{contraindicated} $|$ \texttt{none}),
+    \texttt{verifier}, \emph{\texttt{policy\_ref}}, \emph{\texttt{timestamp}}.
+  \item \textbf{\texttt{cnf}}: a single \texttt{jwk} (\texttt{kty}, and the key
+    material required by the key type, e.g. \texttt{crv}/\texttt{x} for OKP,
+    \texttt{crv}/\texttt{x}/\texttt{y} for EC).
+\end{itemize}
+
+The three questions a deployer must answer map onto these claims:
+\texttt{runtime}$+$\texttt{model}$+$\texttt{build\_provenance} answer \emph{what
+ran}; \texttt{tool\_transcript} answers \emph{what it did}; \texttt{policy}$+$
+\texttt{data\_class} answer \emph{what rules were in force}.
+
+\subsection{Wire format}
+
+The envelope is an EAT~\citep{eat2023}: a JWT in JSON-friendly contexts, or a
+CWT/CBOR-COSE in constrained or high-throughput contexts. The profile URI is
+\texttt{tag:agentrust-io.com,2026:trace-v0.2}.
+
+\subsection{Signature binding}
+\label{sec:model:sig}
+
+Every Trust Record MUST be cryptographically bound by a signature over its canonical
+form, made by the key in \texttt{cnf}. Canonicalization is RFC~8785 (JCS):
+ad-hoc sorting such as \texttt{json.dumps(sort\_keys=True)} is insufficient because
+it diverges from JCS on non-ASCII strings and IEEE~754 number serialization. The
+binding may be \emph{embedded} (the top-level \texttt{signature} field, base64url, over
+the record with \texttt{signature} absent) or \emph{enveloping} (a JWS, a
+\texttt{COSE\_Sign1}, or cMCP's RuntimeClaim). Each profile declares which it uses.
+A record with no verifiable binding is not a Trust Record; verifiers MUST reject it,
+and schema validity alone confers no trust. JWT contexts use \texttt{ES256},
+\texttt{ES384}, or \texttt{EdDSA}; COSE contexts use \texttt{COSE\_Sign1} or
+\texttt{COSE\_Sign}.
+
+\subsection{Freshness}
+
+Records MUST carry \texttt{iat}, and verifiers MUST enforce a maximum age (default
+24~hours; a profile MAY override). For online verification, a verifier MAY supply a
+challenge nonce that the issuer echoes in \texttt{runtime.nonce}; when a challenge
+was issued, a record that omits or mismatches it MUST be rejected.
+
+\subsection{Worked example}
+
+A Trust Record in the readable (JWT) form, abbreviated:
+
+\begin{lstlisting}
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1750676142,
+  "subject": "spiffe://trust.example.org/agent/payments-processor/prod",
+  "model":   { "provider": "example-provider", "model_id": "example-model",
+               "version": "20251001", "weights_digest": "sha256:a3f8d2c1..." },
+  "runtime": { "platform": "amd-sev-snp", "measurement": "sha384:c9e4b1d2...",
+               "rim_uri": "https://kdsintf.amd.com/vcek/v1/Milan/..." },
+  "policy":  { "bundle_hash": "sha256:b2c3d4e5...", "enforcement_mode": "enforce",
+               "version": "1.2.0" },
+  "data_class": "confidential",
+  "tool_transcript": { "hash": "sha256:d4e5f6a7...", "call_count": 3 },
+  "build_provenance": { "slsa_level": 2,
+               "builder": "https://github.com/slsa-framework/slsa-github-generator",
+               "digest": "sha256:e5f6a7b8..." },
+  "appraisal": { "status": "affirming", "verifier": "https://trust-authority.example.org" },
+  "transparency": "https://registry.agentrust-io.com/claim/trace-2026-06-23T09:15:42Z-f2a8d1",
+  "cnf": { "jwk": { "kty": "EC", "crv": "P-256", "x": "MEkwEw...", "y": "GHkVPy..." } }
+}
+\end{lstlisting}
+
+The signature is carried per the binding the profile declares
+(Section~\ref{sec:model:sig}); the cMCP profile wraps this record in a signed
+RuntimeClaim (Section~\ref{sec:profiles}).
+
+\subsection{External execution evidence}
+
+A deployment may attach independent, out-of-band receipts to individual
+audit-chain entries (for example, a signed assertion from a safety controller
+confirming or rejecting an actuation). The Trust Record commits the audit chain by
+hash; the receipts live inside that chain, not in the record. A receipt carries an
+issuer identity (\texttt{issuer}), a key reference (\texttt{issuer\_key\_id}), a
+signature over its canonical fields (\texttt{signature}), a content digest
+(\texttt{evidence\_hash}), a type tag (\texttt{evidence\_type}), and a binding to the
+tool call (\texttt{linked\_call\_id}). A verifier holding the issuer's key verifies
+the signature over the canonical (JCS) receipt fields and asserts that
+\texttt{linked\_call\_id} matches the enclosing entry; a failure invalidates the
+record. A receipt whose issuer key is unknown is \emph{unverified, not invalid}: the
+gateway-produced evidence stands, and the verifier surfaces an advisory status. TRACE
+binds the receipt into the audit chain; it does not certify that the physical action
+occurred or met any functional-safety standard: that claim belongs to the issuer.

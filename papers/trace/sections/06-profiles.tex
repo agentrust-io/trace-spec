@@ -1,0 +1,68 @@
+\section{Profiles}
+\label{sec:profiles}
+
+TRACE is a base format; a \emph{profile} fixes the platform, the policy engine, and
+the evidence specifics for a deployment context.
+
+\subsection{The cMCP profile}
+
+cMCP~\citep{cmcp2026} is the reference profile. It produces a Trust Record at the
+Model Context Protocol~\citep{mcp2024} boundary: a TEE gateway evaluates
+Cedar~\citep{cedar2023} policies before each tool call, measures the policy bundle
+and tool catalog at startup, and emits a Trust Record at session close that binds
+the session's hash-chained audit log to the gateway's attested key. cMCP is an
+\emph{enveloping}-signature profile (Section~\ref{sec:model:sig}): its RuntimeClaim
+wraps the canonical record with an Ed25519 signature, and it commits the key into
+the hardware \texttt{report\_data} via an RFC~7638 JWK thumbprint~\citep{jose7638}.
+
+Table~\ref{tab:cmcp-map} maps the base Trust Record claims onto the cMCP
+RuntimeClaim. cMCP populates the runtime-governance core and adds gateway-specific
+addenda (the hash-chained audit log, per-session call summary, and catalog state);
+the supply-chain and transparency claims (\texttt{model},
+\texttt{build\_provenance}, \texttt{appraisal}, \texttt{transparency}) are not yet
+populated and are the gap cMCP closes as it matures toward the full Trust Record.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Base Trust Record claims as realized by the cMCP RuntimeClaim.}
+\label{tab:cmcp-map}
+\begin{tabular}{p{3.5cm}p{4.8cm}p{3.7cm}}
+\toprule
+Trust Record claim & cMCP RuntimeClaim location & Status \\
+\midrule
+\texttt{eat\_profile}, \texttt{iat}, \texttt{subject} & \texttt{trace.*} (subject is the gateway SPIFFE ID) & populated \\
+\texttt{runtime} & \texttt{trace.runtime} (platform, measurement, nonce) & populated \\
+\texttt{policy} & \texttt{trace.policy} (Cedar bundle hash, mode) & populated \\
+\texttt{data\_class} & \texttt{trace.data\_class} (session max sensitivity) & populated \\
+\texttt{tool\_transcript} & \texttt{trace.tool\_transcript} (\texttt{hash} = audit-chain tip) & populated \\
+\texttt{cnf} & \texttt{trace.cnf.jwk} (Ed25519 / OKP) & populated \\
+\texttt{signature} & RuntimeClaim envelope signature & populated (enveloping) \\
+\texttt{model} & n/a &not yet populated \\
+\texttt{build\_provenance} & n/a &not yet populated \\
+\texttt{appraisal} & (optional NRAS appraisal in runtime context) & not in the record \\
+\texttt{transparency} & n/a &TRACE v0.2 registry anchoring \\
+\midrule
+\multicolumn{3}{l}{\emph{cMCP addenda (no base-record equivalent)}} \\
+\texttt{gateway.audit\_chain} & hash-chained audit log root/tip/length & cMCP extension \\
+\texttt{gateway.call\_summary}, \texttt{gateway.catalog} & per-session counts; pinned catalog hash & cMCP extension \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+cMCP's experimental results (six security properties validated by reproducible
+experiments) are reported in~\citep{cmcp2026}.
+
+\subsection{Extensibility}
+
+A new profile fixes four things for its deployment context: the \emph{platform} and
+how its measurement and \texttt{report\_data} map into \texttt{runtime}; the
+\emph{policy model} and how its bundle hash and enforcement mode populate
+\texttt{policy} (cMCP uses Cedar~\citep{cedar2023}; OPA/Rego or a custom DSL are
+equally admissible, since TRACE binds a policy \emph{hash}, not a language); the
+\emph{identity source} for \texttt{subject} (a SPIFFE SVID~\citep{spiffe2018} or a
+DID); and the \emph{signature binding} it declares (embedded or enveloping,
+Section~\ref{sec:model:sig}). The Agent Governance Toolkit~\citep{agt2026} supplies a
+policy engine and identity layer that a profile can wire into the \texttt{policy} and
+\texttt{subject} claims directly. An AI-agent profile registry pins, per workload
+class, the required claim set, evidence requirements, and verification rules.

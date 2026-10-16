@@ -1,0 +1,63 @@
+\section{Background}
+\label{sec:background}
+
+\subsection{Remote Attestation (RATS)}
+
+The RATS architecture~\citep{rats2021} separates three roles: the \emph{Attester}
+produces evidence about a target environment; the \emph{Verifier} appraises that
+evidence against policy and reference values to produce an attestation result; and
+the \emph{Relying Party} consumes the result to make a trust decision. TRACE maps
+the agent runtime to the Attester; the Trust Record carries both the runtime's
+Evidence and the Verifier's appraisal (the \texttt{appraisal} claim, in the EAR
+format) so a Relying Party can act on it offline. RATS describes two topologies: the
+\emph{background-check} model, in which the Relying Party forwards Evidence to a
+Verifier at decision time, and the \emph{passport} model, in which the Attester
+obtains an appraised result up front and presents it directly. TRACE uses the
+passport model: the Trust Record is self-contained and verifiable offline, so no
+party need call back to the issuer.
+
+\subsection{Entity Attestation Tokens (EAT)}
+
+EAT~\citep{eat2023} standardizes a token carrying claims about an entity, including
+measurements, a nonce, and a confirmation (\texttt{cnf}) key, in a JWT or CBOR-COSE
+envelope. TRACE is an EAT profile under the URI
+\texttt{tag:agentrust-io.com,2026:trace-v0.2}. It reuses the standard EAT claims
+(\texttt{iat}, \texttt{nonce}, \texttt{cnf}, the profile claim) and adds the
+agent-governance claims an agent runtime needs (\texttt{model}, \texttt{policy},
+\texttt{data\_class}, \texttt{tool\_transcript}, \texttt{build\_provenance},
+\texttt{appraisal}, \texttt{transparency}); these are enumerated in
+Section~\ref{sec:model}.
+
+\subsection{TEE Attestation}
+
+Confidential-computing platforms (AMD SEV-SNP~\citep{amdsevsnp2023} and Intel
+TDX~\citep{inteltdx2023}) produce hardware-signed reports binding a launch
+measurement and a caller-supplied \texttt{report\_data} field. TRACE records the
+measurement in \texttt{runtime} and binds the record's signing key through the
+\texttt{cnf} claim; a profile additionally commits the key into \texttt{report\_data}
+so the hardware report and the signing key are cryptographically linked (the cMCP
+profile does this with an RFC~7638 JWK thumbprint, Section~\ref{sec:profiles}). The
+\texttt{runtime.measurement} is the platform's launch measurement (for SEV-SNP
+the 48-byte report measurement, for TDX the MRTD and runtime measurement registers),
+which a verifier checks against vendor-published Reference Integrity Manifests
+(RIMs) named by \texttt{runtime.rim\_uri}.
+
+\subsection{Agent Identity}
+
+SPIFFE/SVID~\citep{spiffe2018} provides workload identity that TRACE carries in the
+\texttt{subject} claim (a SPIFFE ID or DID URI), so a record names \emph{which}
+agent acted, not only \emph{which} enclave ran. The SVID is bound to the TEE
+measurement, rooting identity in hardware; the companion Agent Manifest
+specification~\citep{manifest2026} supplies the issuer keys and the
+manifest-to-session binding behind that identity.
+
+\subsection{The gap}
+
+Each layer above exists, but none, alone, lets a relying party verify agent runtime
+governance across a trust boundary. Static documentation (model cards, AIBOMs)
+diverges from deployed reality; operational logs are self-reported and mutable;
+hardware attestation proves the environment is genuine but says nothing about policy,
+data class, or tools; content provenance is silent on execution. No open, portable,
+vendor-neutral artifact binds \emph{what ran}, \emph{under what policy}, \emph{on
+what data}, \emph{invoking which tools} into one record a third party can appraise
+offline. TRACE closes that gap.

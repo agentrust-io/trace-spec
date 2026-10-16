@@ -1,0 +1,66 @@
+\section{Conformance and Reproducibility}
+\label{sec:conformance}
+
+TRACE ships an executable conformance suite (\texttt{trace-tests}) and a public
+transparency registry (\texttt{trace-registry}). Both are open source, so any
+implementer can check a Trust Record against the normative requirements and any
+auditor can confirm a record was anchored.
+
+\subsection{Conformance suite}
+
+The suite is organized into seven modules, each validating one claim group, and three
+conformance levels that compose them (Table~\ref{tab:conf}). It is pip-installable and
+run from the command line:
+
+\begin{lstlisting}[language=bash]
+pip install agentrust-trace-tests
+trace-tests verify --record trust-record.json --level 1 [--max-age SECONDS]
+\end{lstlisting}
+
+Each check reports \texttt{pass}, \texttt{fail}, \texttt{skip} (a benign omission of
+an optional field), or \texttt{unverified} (the signature could not be
+cryptographically verified). A record that is \texttt{unverified} passes at Level~0
+with an advisory but fails at Level~1 and above; a failed signature or a stale
+\texttt{iat} fails at every level.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Conformance modules and the levels that require them. Level~0 targets
+software-only development, Level~1 production TEE-attested records, and Level~2 full
+records with transparency anchoring.}
+\label{tab:conf}
+\begin{tabular}{llccc}
+\toprule
+Module & Validates & L0 & L1 & L2 \\
+\midrule
+\texttt{TR-ENV} & EAT structure, profile URI, \texttt{iat} freshness, \texttt{subject}, \texttt{cnf} & \checkmark & \checkmark & \checkmark \\
+\texttt{TR-SIG} & EdDSA signature (EC keys accepted, not verified); no private key in \texttt{cnf} & \checkmark & \checkmark & \checkmark \\
+\texttt{TR-POL} & policy bundle-hash format and enforcement mode & \checkmark & \checkmark & \checkmark \\
+\texttt{TR-RTE} & TEE platform (not software-only), measurement, RIM URI & & \checkmark & \checkmark \\
+\texttt{TR-SCA} & SLSA level and digest format & & \checkmark & \checkmark \\
+\texttt{TR-TXN} & tool-transcript hash format & & & \checkmark \\
+\texttt{TR-ANC} & transparency claim is an \texttt{https} URI & & & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The suite is reproducible against a set of versioned test vectors: valid Level~0
+and Level~2 records, a cMCP-wrapped record, and negative cases (missing runtime,
+wrong profile). A conformance claim is therefore checkable, not asserted. The default
+freshness bound is 24~hours, configurable per deployment.
+Table~\ref{tab:conf} describes trace-tests 0.2.0, the evaluated revision:
+TR-TXN checks the digest format, not the transcript, and TR-ANC does not replay
+an inclusion proof. Later releases replay the proof against the committed root.
+
+\subsection{Transparency registry}
+
+\texttt{trace-registry} is the public accountability layer. Each entry records the
+Merkle root~\citep{ct2013} of a batch of signed Trust Records as an append-only,
+git-committed file; the commit history is the tamper-evidence layer, since rewriting a
+published entry diverges hashes that auditors and mirrors have already observed. A
+producer issues each record holder an inclusion proof (a leaf index and audit path);
+a verifier recomputes the leaf hash and replays the inclusion-proof check, accepting
+only if the recomputed root equals the committed Merkle root. A standalone
+\texttt{verify\_inclusion} tool performs this offline, so the \texttt{transparency}
+claim (Section~\ref{sec:model}) is independently checkable.

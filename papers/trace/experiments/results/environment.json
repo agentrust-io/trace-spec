@@ -1,0 +1,8 @@
+{
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "ARMv8 (64-bit) Family 8 Model 1 Revision 201, Qualcomm Technologies Inc",
+  "agentrust_trace": "0.2.0",
+  "trace_tests": "0.2.0",
+  "timestamp_utc": "2026-07-01T20:45:09Z"
+}

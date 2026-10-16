@@ -1,0 +1,147 @@
+{
+  "invalid_missing_runtime": {
+    "fmt": "trace",
+    "levels": {
+      "0": {
+        "pass": 7,
+        "fail": 0,
+        "skip": 0,
+        "unverified": 1,
+        "modules_run": 3,
+        "overall_pass": true
+      },
+      "1": {
+        "pass": 9,
+        "fail": 2,
+        "skip": 0,
+        "unverified": 0,
+        "modules_run": 5,
+        "overall_pass": false
+      },
+      "2": {
+        "pass": 10,
+        "fail": 3,
+        "skip": 0,
+        "unverified": 0,
+        "modules_run": 7,
+        "overall_pass": false
+      }
+    }
+  },
+  "invalid_wrong_profile": {
+    "fmt": "trace",
+    "levels": {
+      "0": {
+        "pass": 6,
+        "fail": 1,
+        "skip": 0,
+        "unverified": 1,
+        "modules_run": 3,
+        "overall_pass": false
+      },
+      "1": {
+        "pass": 10,
+        "fail": 2,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 5,
+        "overall_pass": false
+      },
+      "2": {
+        "pass": 11,
+        "fail": 3,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 7,
+        "overall_pass": false
+      }
+    }
+  },
+  "valid_cmcp_runtime": {
+    "fmt": "cmcp-runtime",
+    "levels": {
+      "0": {
+        "pass": 6,
+        "fail": 1,
+        "skip": 0,
+        "unverified": 0,
+        "modules_run": 3,
+        "overall_pass": false
+      },
+      "1": {
+        "pass": 8,
+        "fail": 2,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 5,
+        "overall_pass": false
+      },
+      "2": {
+        "pass": 10,
+        "fail": 3,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 7,
+        "overall_pass": false
+      }
+    }
+  },
+  "valid_level0": {
+    "fmt": "trace",
+    "levels": {
+      "0": {
+        "pass": 7,
+        "fail": 0,
+        "skip": 0,
+        "unverified": 1,
+        "modules_run": 3,
+        "overall_pass": true
+      },
+      "1": {
+        "pass": 11,
+        "fail": 1,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 5,
+        "overall_pass": false
+      },
+      "2": {
+        "pass": 12,
+        "fail": 2,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 7,
+        "overall_pass": false
+      }
+    }
+  },
+  "valid_level0_with_transcript": {
+    "fmt": "trace",
+    "levels": {
+      "0": {
+        "pass": 7,
+        "fail": 0,
+        "skip": 0,
+        "unverified": 1,
+        "modules_run": 3,
+        "overall_pass": true
+      },
+      "1": {
+        "pass": 11,
+        "fail": 1,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 5,
+        "overall_pass": false
+      },
+      "2": {
+        "pass": 14,
+        "fail": 1,
+        "skip": 1,
+        "unverified": 0,
+        "modules_run": 7,
+        "overall_pass": false
+      }
+    }
+  }
+}

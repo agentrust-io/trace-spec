@@ -1,0 +1,46 @@
+\section{Verification Procedure}
+\label{sec:verification}
+
+Any party (a browser, a CLI, an in-cluster verifier, or a third-party auditor)
+appraises a Trust Record with no callback to the issuer and no vendor in the trust
+path beyond the silicon root and the transparency-log operator. The steps are
+fail-closed and ordered so that nothing is trusted before the signature is checked:
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Signature binding.} Verify the record's signature
+    (Section~\ref{sec:model:sig}) against the key in \texttt{cnf}, \emph{before any
+    other field is trusted}. A record with no verifiable binding is rejected.
+  \item \textbf{Freshness.} Confirm \texttt{iat} is within the maximum age (default
+    24~hours unless the profile overrides). If the verifier issued a challenge
+    nonce, confirm \texttt{runtime.nonce} echoes it.
+  \item \textbf{Silicon root.} Confirm the attestation signature chain resolves to a
+    known silicon root (AMD~\citep{amdsevsnp2023}, Intel~\citep{inteltdx2023},
+    NVIDIA, or equivalent), with unrevoked vendor keys.
+  \item \textbf{Reference values.} Confirm the \texttt{runtime} measurements match
+    the published Reference Integrity Manifests (RIMs).
+  \item \textbf{Policy.} Confirm \texttt{policy.bundle\_hash} matches the policy the
+    relying party expects, and inspect \texttt{enforcement\_mode}.
+  \item \textbf{Transparency.} Confirm the \texttt{transparency} receipt resolves on
+    the named append-only log.
+  \item \textbf{Provenance.} Confirm \texttt{build\_provenance} resolves to a
+    trusted builder at the required SLSA level.
+\end{enumerate}
+
+\subsection{Result object}
+
+The verifier emits its own appraisal in the EAR format, separating \emph{what was
+claimed} from \emph{what was accepted}. The appraisal carries an overall
+\texttt{status} (\texttt{affirming}, \texttt{warning}, \texttt{contraindicated},
+or \texttt{none}) together with a per-claim breakdown of which fields verified and
+which did not. A field may be \emph{unverified} without the record being
+\emph{invalid}: for instance, a silicon cert-chain step that needs an online vendor
+service (AMD KDS for the SEV-SNP VCEK chain, Intel DCAP for the TDX quote) may be
+unavailable to an offline verifier, which then reports that field as unverified and
+downgrades the status rather than rejecting outright. A failed \emph{signature}
+binding or a \emph{stale} record, by contrast, is fatal: the record is rejected. The
+cMCP reference verifier (\texttt{cmcp\_verify}) implements exactly this object, with
+status values \texttt{verified}, \texttt{partially\_verified}, and
+\texttt{unverified}~\citep{cmcp2026}.
+
+A Relying Party keys its decision on the appraisal status plus its own policy on
+which fields are mandatory for its risk tolerance.
