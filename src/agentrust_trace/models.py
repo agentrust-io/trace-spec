@@ -316,7 +316,7 @@ class Appraisal(_TraceModel):
     platform_measurement: PlatformMeasurement | None = None
 
     @model_validator(mode="after")
-    def _recorded_measurement_requires_appraisal(self) -> "Appraisal":
+    def _recorded_measurement_requires_appraisal(self) -> Appraisal:
         if self.platform_measurement is not None and self.status == "none":
             raise ValueError("appraisal.status cannot be none with a platform measurement result")
         return self
