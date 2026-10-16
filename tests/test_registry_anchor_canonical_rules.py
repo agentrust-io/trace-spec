@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agentrust_trace.sign import anchor_bytes
+from agentrust_trace.sign import UnanchorableValue, anchor_bytes
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _INCLUSION_SPEC = importlib.util.spec_from_file_location(
@@ -16,6 +16,7 @@ _INCLUSION_SPEC = importlib.util.spec_from_file_location(
 assert _INCLUSION_SPEC is not None and _INCLUSION_SPEC.loader is not None
 _INCLUSION_MODULE = importlib.util.module_from_spec(_INCLUSION_SPEC)
 _INCLUSION_SPEC.loader.exec_module(_INCLUSION_MODULE)
+InclusionError = _INCLUSION_MODULE.InclusionError
 canonical_claim_bytes = _INCLUSION_MODULE.canonical_claim_bytes
 
 SERIALIZERS = (anchor_bytes, canonical_claim_bytes)
@@ -120,6 +121,21 @@ def test_rule_4_integer_zero_is_written_without_minus_sign(serialize) -> None:
     assert serialize({"n": -0}) == b'{"n":0}'
 
 
+@pytest.mark.parametrize("bad_str", ["\ud800", "\udbff", "\udc00", "\udfff", "a\ud800b"])
+def test_unpaired_surrogates_in_values_and_keys_are_rejected(bad_str: str) -> None:
+    """Unpaired UTF-16 surrogates (U+D800..U+DFFF) are rejected as outside the profile."""
+    for claim in (
+        {"s": bad_str},
+        {"nested": [bad_str]},
+        {bad_str: 1},
+        {"nested": {bad_str: 1}},
+    ):
+        with pytest.raises(UnanchorableValue, match="surrogate"):
+            anchor_bytes(claim)
+        with pytest.raises(InclusionError, match="surrogate"):
+            canonical_claim_bytes(claim)
+
+
 def test_registry_anchor_spec_documents_all_five_canonical_rules() -> None:
     """spec/registry-anchor-v1.md §1 states all five language-independent rules."""
     doc = (REPO_ROOT / "spec" / "registry-anchor-v1.md").read_text(encoding="utf-8")
@@ -132,8 +148,8 @@ def test_registry_anchor_spec_documents_all_five_canonical_rules() -> None:
         "`/` (`U+002F`) is not escaped",
         "(`U+0000` to `U+001F`)",
         (
-            "from `U+007F` to `U+FFFF` (including `U+007F`, which is escaped as "
-            "`\\u007f`) use lowercase four-hex-digit `\\uXXXX` escapes"
+            "in `U+007F` to `U+D7FF` and `U+E000` to `U+FFFF` (including `U+007F`, "
+            "which is escaped as `\\u007f`) use lowercase four-hex-digit `\\uXXXX` escapes"
         ),
         (
             "(`U+10000` to `U+10FFFF`) use lowercase UTF-16 surrogate pairs "
@@ -142,6 +158,7 @@ def test_registry_anchor_spec_documents_all_five_canonical_rules() -> None:
         ),
         "Integer zero is written `0` (never `-0`).",
         "No trailing newline.",
+        "unpaired UTF-16 surrogate (`U+D800` to `U+DFFF`)",
     ):
         assert required_fragment in section_1, (
             f"spec/registry-anchor-v1.md §1 is missing {required_fragment!r}"
