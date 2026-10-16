@@ -715,7 +715,10 @@ def verify_record(
             raise ValueError("a recorded platform appraisal cannot have status none")
         if record["runtime"]["platform"] == "tpm2":
             import re
-            if any(re.fullmatch(r"pcr:(?:[0-9]|1[0-9]|2[0-3])", name) is None for name in platform_claim["layers"]):
+            if any(
+                re.fullmatch(r"pcr:(?:[0-9]|1[0-9]|2[0-3])", name) is None
+                for name in platform_claim["layers"]
+            ):
                 raise ValueError("tpm2 layer names must be pcr:0 through pcr:23")
 
     # Resolve the trusted public key. A trusted key is required: a record cannot
