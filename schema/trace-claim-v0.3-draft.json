@@ -33,7 +33,7 @@
     }
   },
   "title": "TRACE Trust Record (v0.3 runtime-evidence draft)",
-  "description": "DRAFT. v0.3 profile boundary plus runtime.evidence. Binds nothing until docs/rfcs/runtime-evidence-profile.md is adopted. Outside the profile identifier and runtime.evidence, members are byte-identical to schema/trace-claim.json so the diff is reviewable.",
+  "description": "DRAFT. v0.3 profile boundary plus runtime.evidence and manifest. Binds nothing until docs/rfcs/runtime-evidence-profile.md and #483 are adopted. Outside the profile identifier, runtime.evidence, and manifest, members are byte-identical to schema/trace-claim.json so the diff is reviewable.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -872,6 +872,33 @@
           "additionalProperties": {
             "$ref": "#/$defs/canonicalizableValue"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "description": "The agent manifest this execution ran under, by signed content-addressed reference (#483). Reference-only: the record names the manifest and commits to its digest under the record signature, leaving appraisal to the verifier. A producer-asserted verification result is not carried here.",
+      "required": [
+        "id",
+        "digest",
+        "media_type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the agent manifest this execution ran under."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+          "description": "SHA-256 or SHA-384 digest of the manifest bytes this execution ran under, covered by the record signature and the target of runtime.evidence.binds when set to manifest-digest."
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Media type of the referenced manifest bytes (for example application/json or application/agent-manifest+cose)."
         }
       },
       "additionalProperties": false
