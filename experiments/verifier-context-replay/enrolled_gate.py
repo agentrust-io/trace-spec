@@ -6,6 +6,7 @@ and its SHA-256 pinned by the consuming verifier. There is deliberately no
 """
 import hashlib
 import json
+import time
 from pathlib import Path
 from replay_bundle import run as replay
 
@@ -21,7 +22,7 @@ REQUIRED={"format","assurance","source_commit","host","trace_root_digest",
           "max_observation_age_seconds","not_before_unix","not_after_unix"}
 
 def verify_enrolled(bundle, manifest_pin, *, registry_path, registry_pin,
-                    checkquote, verification_time):
+                    checkquote, verification_time, operational_now=None):
     try:
         if type(verification_time) is not int or verification_time < 0:
             return {"status":"not-established","reason":"invalid-verification-time"}
@@ -66,6 +67,9 @@ def verify_enrolled(bundle, manifest_pin, *, registry_path, registry_pin,
             return {"status":"rejected","reason":"unexpected-hardware-runtime"}
         if tee.get("max_age_seconds")>registry["max_observation_age_seconds"]:
             return {"status":"rejected","reason":"freshness-policy-too-permissive"}
+        wall_time=int(time.time()) if operational_now is None else operational_now
+        if type(wall_time) is not int or not 0 <= wall_time-verification_time <= registry["max_observation_age_seconds"]:
+            return {"status":"rejected","reason":"operational-freshness-expired"}
         if tee.get("verification_time")!=verification_time:
             return {"status":"rejected","reason":"verification-time-not-pinned"}
         result=replay(bundle,manifest_pin,tpm2_checkquote=checkquote)
