@@ -26,6 +26,7 @@ def capture_software_tee(*, argv, repository, expected_commit, signing_key,
 def verify_software_tee(bundle, *, trusted_observer_public, trusted_observer_digest,
                         expected_commit, expected_executable_digest,
                         expected_host, expected_command, expected_challenge,
+                        expected_stdout_digest, expected_stderr_digest,
                         verification_time=None, max_age_seconds=300):
     try:
         if not isinstance(bundle,dict) or bundle.get("profile")!="frequency-software-tee-v1" or bundle.get("classification")!="SIMULATED_TEE_NO_HARDWARE_ROOT":
@@ -49,8 +50,14 @@ def verify_software_tee(bundle, *, trusted_observer_public, trusted_observer_dig
         issued=observed.get("observed_at_unix")
         if type(now) is not int or type(issued) is not int or not 0<=now-issued<=max_age_seconds:
             return {"status":"rejected","reason":"stale-or-future-observation"}
-        if not all(isinstance(observed.get(x),str) and len(observed[x])==64 for x in ("stdout_sha256","stderr_sha256")):
-            return {"status":"not-established","reason":"missing-execution-output-digests"}
+        import re
+        outputs={"stdout_sha256":expected_stdout_digest,
+                 "stderr_sha256":expected_stderr_digest}
+        if any(not isinstance(value,str) or re.fullmatch(r"[0-9a-f]{64}",value) is None
+               for value in outputs.values()):
+            return {"status":"not-established","reason":"missing-trusted-output-expectations"}
+        if any(observed.get(name)!=value for name,value in outputs.items()):
+            return {"status":"rejected","reason":"execution-output-digest-mismatch"}
         return {"status":"verified-simulation-only","reason":"isolated-execution-observed",
                 "commit":expected_commit,"executable_sha256":expected_executable_digest}
     except (KeyError,TypeError,ValueError,AttributeError) as exc:
