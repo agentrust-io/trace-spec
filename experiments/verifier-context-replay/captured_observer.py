@@ -9,16 +9,19 @@ import os
 from pathlib import Path
 import subprocess
 import shutil
+import time
 from observer_receipt import issue
 
 
 def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
-            host_label, timeout=300, isolate_network=False):
+            host_label, timeout=300, isolate_network=False, challenge=None):
     """Run exactly one allowlisted program; sign observed exit and commit binding."""
     if not isinstance(argv, (list, tuple)) or not argv:
         raise ValueError("argv required")
     if any(not isinstance(part, str) or not part or "\x00" in part for part in argv):
         raise ValueError("invalid argv")
+    if challenge is not None and (not isinstance(challenge, str) or len(challenge) < 16):
+        raise ValueError("challenge must be a nontrivial string")
     if type(timeout) not in (int, float) or timeout <= 0:
         raise ValueError("invalid timeout")
     if not isinstance(allowed_argv, (list, tuple)) or tuple(argv) != tuple(allowed_argv):
@@ -95,4 +98,7 @@ def capture(*, argv, allowed_argv, repository, expected_commit, private_key,
         "stdout_sha256": hashlib.sha256(result.stdout).hexdigest(),
         "stderr_sha256": hashlib.sha256(result.stderr).hexdigest(),
     }
+    if challenge is not None:
+        observation["challenge"] = challenge
+        observation["observed_at_unix"] = int(time.time())
     return issue(observation, private_key)
