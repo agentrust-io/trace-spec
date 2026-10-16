@@ -280,6 +280,28 @@ class BuildProvenance(_TraceModel):
     provenance_depth: Literal["surface", "builder", "transitive"] | None = None
 
 
+class PlatformMeasurementLayer(_TraceModel):
+    """Per-layer appraisal result, with explicit evidence absence reason."""
+    model_config = ConfigDict(extra="forbid")
+    outcome: Literal["established", "not-established"]
+    reason: Literal["layer-not-measured", "measured-not-appraised", "evidence-spans-multiple-boots"] | None = None
+
+    @model_validator(mode="after")
+    def _checked_reason(self) -> "PlatformMeasurementLayer":
+        if "reason" in self.model_fields_set and self.reason is None:
+            raise ValueError("null reason is not permitted")
+        if (self.outcome == "not-established") != (self.reason is not None):
+            raise ValueError("reason is required exactly for not-established")
+        return self
+
+
+class PlatformMeasurement(_TraceModel):
+    """Per-layer measurement appraisal; must bind the record measurement."""
+    model_config = ConfigDict(extra="forbid")
+    measurement: DigestStr
+    layers: Annotated[dict[str, PlatformMeasurementLayer], Field(min_length=1)]
+
+
 class Appraisal(_TraceModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -289,6 +311,7 @@ class Appraisal(_TraceModel):
     timestamp: Annotated[JsonInt, Field(ge=-JCS_SAFE_INTEGER, le=JCS_SAFE_INTEGER)] | None = None
     # What this verifier ran, not what the issuer claimed.
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
+    platform_measurement: PlatformMeasurement | None = None
 
 
 # Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
