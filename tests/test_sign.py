@@ -936,3 +936,44 @@ def test_verification_fails_closed_when_uri_format_checker_unavailable(monkeypat
     monkeypatch.delitem(FormatChecker.checkers, "uri", raising=False)
     with pytest.raises(ValueError, match="URI format checker unavailable"):
         verify_record(record, key_to_jwk(key), verification_time=1750000000)
+
+
+def test_signed_platform_appraisal_round_trips_and_verifies():
+    from agentrust_trace.models import TrustRecord
+    key = generate_key()
+    raw = _minimal_record()
+    raw["appraisal"]["platform_measurement"] = {
+        "measurement": raw["runtime"]["measurement"],
+        "layers": {"pcr:0": {"outcome": "established"},
+                   "pcr:2": {"outcome": "not-established", "reason": "layer-not-measured"}},
+    }
+    signed = sign_record(raw, key)
+    assert TrustRecord.model_validate(signed).appraisal.platform_measurement is not None
+    verify_record(signed, key_to_jwk(key), verification_time=raw["iat"], revocation=set())
+
+
+@pytest.mark.parametrize("alter,match", [
+    ("different-measurement", "must equal runtime.measurement"),
+    ("none-appraisal", "cannot have status none"),
+    ("bad-pcr", "pcr:0 through pcr:23"),
+])
+def test_signed_platform_appraisal_invalid_context_rejected(alter, match):
+    from agentrust_trace.models import TrustRecord
+    key = generate_key()
+    raw = _minimal_record()
+    raw["runtime"]["platform"] = "tpm2"
+    raw["appraisal"]["platform_measurement"] = {
+        "measurement": raw["runtime"]["measurement"],
+        "layers": {"pcr:0": {"outcome": "established"}},
+    }
+    if alter == "different-measurement":
+        raw["appraisal"]["platform_measurement"]["measurement"] = "sha256:" + "f"*64
+    elif alter == "none-appraisal":
+        raw["appraisal"]["status"] = "none"
+    else:
+        raw["appraisal"]["platform_measurement"]["layers"] = {"pcr:00": {"outcome": "established"}}
+    signed = sign_record(raw, key)
+    with pytest.raises(ValueError, match=match):
+        verify_record(signed, key_to_jwk(key), verification_time=raw["iat"], revocation=set())
+    with pytest.raises(ValueError):
+        TrustRecord.model_validate(signed)
