@@ -1,0 +1,18 @@
+{
+  "corpus": "vectors-trace-anchor",
+  "repository": "https://github.com/probityai/agent-evidence-vectors",
+  "commit": "0c265d65bd0003eea2ac7641c856abfd80e3143a",
+  "manifest": "vectors-trace-anchor/MANIFEST.json",
+  "manifest_sha256": "3f22497829372efa6c5df887c59904c56050a502b160beeffe7d999fc93733f0",
+  "cases": 27,
+  "known_disagreements": {
+    "anchored-proof-only-receipt": "TR-ANC-002 requires merkle_root and leaf_count on the receipt; registry-anchor-v1 section 5.1 takes both from the entry",
+    "entry-absent": "TR-ANC-002 takes no registry entry and replays against the receipt's own root (#533)",
+    "entry-missing-ts": "TR-ANC-002 takes no registry entry, so an entry's defects are not seen (#533)",
+    "entry-producer-empty": "TR-ANC-002 takes no registry entry, so an entry's defects are not seen (#533)",
+    "receipt-count-lies": "TR-ANC-002 replays with the receipt's own leaf_count (#533)",
+    "receipt-subtree-root": "TR-ANC-002 replays against the receipt's own root, here an interior node (#533)",
+    "self-anchored-no-entry": "a one-leaf receipt naming the record's own leaf hash as root passes with no entry (#533)",
+    "self-anchored-with-real-entry": "the self-anchored record passes beside a genuine entry it is not in (#533)"
+  }
+}

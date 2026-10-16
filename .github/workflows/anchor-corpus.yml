@@ -1,0 +1,59 @@
+name: Anchor corpus
+
+# Runs this repository's TR-ANC-002 over an external registry anchor corpus
+# pinned by commit and SHA-256 in conformance/interop/trace-anchor/pin.json.
+# The corpus is read as data; nothing from it is installed or executed. A pin
+# bump is a reviewed change to pin.json, never a floating reference.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "conformance/src/trace_tests/modules/tr_anc.py"
+      - "conformance/src/trace_tests/inclusion.py"
+      - "conformance/interop/trace-anchor/**"
+      - "spec/registry-anchor-v1.md"
+      - ".github/workflows/anchor-corpus.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "conformance/src/trace_tests/modules/tr_anc.py"
+      - "conformance/src/trace_tests/inclusion.py"
+      - "conformance/interop/trace-anchor/**"
+      - "spec/registry-anchor-v1.md"
+      - ".github/workflows/anchor-corpus.yml"
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  grade:
+    name: TR-ANC-002 against the pinned anchor corpus
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: conformance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Install the suite
+        run: |
+          pip install --require-hashes -r requirements/test.txt
+          pip install --no-deps -e .
+      - name: Grade
+        run: python interop/trace-anchor/grade.py --report build/anchor-corpus.json
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: anchor-corpus-report
+          path: conformance/build/anchor-corpus.json
+          if-no-files-found: ignore
