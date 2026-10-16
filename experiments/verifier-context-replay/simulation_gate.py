@@ -29,6 +29,7 @@ from simulated_tpm import capture as tpm_capture, expected_pcr, sha as raw_sha
 from simulated_tee import capture_software_tee
 from retained_evidence import freeze
 from replay_bundle import run as replay
+from enrolled_gate import verify_enrolled
 from software_tee_workload import output_bytes as expected_workload_output
 
 
@@ -249,6 +250,10 @@ def main():
     b = subs.add_parser("verify")
     for flag in ("bundle", "pin", "checkquote"):
         b.add_argument("--" + flag, required=True)
+    c=subs.add_parser("verify-enrolled")
+    for flag in ("bundle","pin","checkquote","registry","registry-pin"):
+        c.add_argument("--"+flag,required=True)
+    c.add_argument("--verification-time",type=int,required=True)
     args = p.parse_args()
     if args.action == "create":
         result = create(
@@ -258,11 +263,16 @@ def main():
             output=args.output,
             host_label=args.host,
         )
+    elif args.action=="verify-enrolled":
+        result=verify_enrolled(args.bundle,args.pin,registry_path=args.registry,
+                               registry_pin=args.registry_pin,
+                               checkquote=args.checkquote,
+                               verification_time=args.verification_time)
     else:
         result = replay(args.bundle, args.pin, tpm2_checkquote=args.checkquote)
     print(json.dumps(result, sort_keys=True))
     status = result.get("status")
-    if status not in ("simulated-evidence-validated",):
+    if status not in ("simulated-evidence-validated","simulation-enrolled-verified"):
         raise SystemExit(1)
 
 
