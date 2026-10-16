@@ -27,6 +27,6 @@ and a public test key derived from a fixed seed. Records 01-05 were first publis
 [`trace-manifest-ref-v0`](https://github.com/babyblueviper1/preaction-governance-conformance/tree/2cd4ae7f47551903cb10627ef619d7396270528a/examples/trace-manifest-ref-v0)
 at `2cd4ae7`; they now carry the v0.3 profile tag (`tag:agentrust-io.com,2026:trace-v0.3`) and were re-signed for
 that profile change, so each is schema-valid against `schema/trace-claim-v0.3-draft.json` exactly as signed, and a
-checker can run the schema, the signature and the digest binding on the same bytes — but they are no longer
+checker can run the schema, the signature and the digest binding on the same bytes, but they are no longer
 byte-identical to `2cd4ae7`. 03 is the exception on purpose: the draft schema rejects its signed
 `manifest_verification_result`. 06 stays a v0.2 record, the control that verifies as today.
