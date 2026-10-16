@@ -85,3 +85,32 @@ verification session; no new two-host claim is made for this revision.
 License, ownership, and authoritative schema remain those of their respective
 upstream or fork sources. These experiment files do not amend TRACE normative
 requirements.
+
+
+## 2026-10-15 schema and two-host verification addendum
+
+After this initial experiment, the fork's normative schema (`schema/trace-claim.json`),
+packaged schema (`src/agentrust_trace/schema/trace-v0.2.json`), and Pydantic model
+were updated to accept and validate `appraisal.platform_measurement`.
+The layer result schema is based on the upstream v0.2 shape, with a typed
+`patternProperties` map and `additionalProperties: false`, preserving the
+fork's bounded-canonicalization guard. This is a **targeted alignment**, not
+a wholesale claim of parity with the latest upstream main branch.
+
+Reference `verify_record` and `TrustRecord.model_validate` now reject an
+appraisal describing a measurement other than `runtime.measurement`, a
+`none` appraisal status carrying a measurement result, and noncanonical TPM
+PCR layer names. Signed-record positive and negative tests are included.
+
+Both independent execution hosts tested revision
+`afa4e48159044ab5a933e4212eff4241d338cec9` with clean worktrees:
+
+| Host | Runtime | Passed | Skipped | Failed |
+| --- | --- | ---: | ---: | ---: |
+| Prometheus | Python 3.13 | 1141 | 1 | 0 |
+| VPS | Python 3.14.4 | 1141 | 1 | 0 |
+
+The earlier warning that `appraisal.platform_measurement` is rejected by
+the fork's schema is superseded by this addendum. Full upstream parity,
+hardware TPM/TEE attestation, and independently enrolled external trust
+still require separate evidence.
