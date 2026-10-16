@@ -47,7 +47,7 @@ The unit of anchoring is the **complete signed claim object, signature included*
 
 - Object keys sorted lexicographically by Unicode code point, recursively (UTF-16 surrogate pairs are not used for key comparison; see §0).
 - Separators `","` and `":"`, no whitespace.
-- String escaping: `"` (`U+0022`), `\` (`U+005C`), and the five control characters `U+0008`, `U+0009`, `U+000A`, `U+000C`, and `U+000D` use the two-character escapes `\"`, `\\`, `\b`, `\t`, `\n`, `\f`, and `\r`; `/` (`U+002F`) is not escaped; all other control characters (`U+0000` to `U+001F`) and all BMP characters from `U+007F` to `U+FFFF` (including `U+007F`, which is escaped as `\u007f`) use lowercase four-hex-digit `\uXXXX` escapes; supplementary-plane characters (`U+10000` to `U+10FFFF`) use lowercase UTF-16 surrogate pairs (a high surrogate in `U+D800` to `U+DBFF` followed by a low surrogate in `U+DC00` to `U+DFFF`, e.g. `\ud8xx\udcxx`); output is encoded as ASCII bytes.
+- String escaping: `"` (`U+0022`), `\` (`U+005C`), and the five control characters `U+0008`, `U+0009`, `U+000A`, `U+000C`, and `U+000D` use the two-character escapes `\"`, `\\`, `\b`, `\t`, `\n`, `\f`, and `\r`; `/` (`U+002F`) is not escaped; all other control characters (`U+0000` to `U+001F`) and all BMP characters in `U+007F` to `U+D7FF` and `U+E000` to `U+FFFF` (including `U+007F`, which is escaped as `\u007f`) use lowercase four-hex-digit `\uXXXX` escapes; supplementary-plane characters (`U+10000` to `U+10FFFF`) use lowercase UTF-16 surrogate pairs (a high surrogate in `U+D800` to `U+DBFF` followed by a low surrogate in `U+DC00` to `U+DFFF`, e.g. `\ud8xx\udcxx`); output is encoded as ASCII bytes.
 - Integer zero is written `0` (never `-0`).
 - No trailing newline.
 
@@ -57,7 +57,7 @@ In Python this is exactly:
 json.dumps(claim, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
 ```
 
-Claims MUST be JSON objects. TRACE Trust Records contain only strings, integers, booleans, nulls, arrays, and objects. Claims containing non-integer numbers are outside this profile, because cross-language float serialization is not canonical, and claims containing an integer outside -9007199254740991 to 9007199254740991 are outside it for the same reason: an implementation of the five rules above in a language whose only number type is the IEEE 754 double writes one value for two distinct integers. TRACE v0.2 §3.2.2 already holds a Trust Record to that range, so a schema-valid record cannot reach this; a claim that is not a Trust Record can, and this is where it is excluded.
+Claims MUST be JSON objects. TRACE Trust Records contain only strings, integers, booleans, nulls, arrays, and objects. Claims containing non-integer numbers are outside this profile, because cross-language float serialization is not canonical, and claims containing an integer outside -9007199254740991 to 9007199254740991 are outside it for the same reason: an implementation of the five rules above in a language whose only number type is the IEEE 754 double writes one value for two distinct integers. Claims containing an unpaired UTF-16 surrogate (`U+D800` to `U+DFFF`) in a string or object key are also outside this profile, because languages whose string type is UTF-8 cannot represent an unpaired surrogate. TRACE v0.2 §3.2.2 already holds a Trust Record to that range, so a schema-valid record cannot reach this; a claim that is not a Trust Record can, and this is where it is excluded.
 
 ## 2. Leaf hash
 
