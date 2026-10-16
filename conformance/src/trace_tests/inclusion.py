@@ -134,8 +134,13 @@ def verify_inclusion(
     return sn == 0 and r == merkle_root
 
 
-def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
-    """Validate a receipt object and return (leaf_index, audit_path, leaf_count, merkle_root).
+def parse_proof(receipt: object) -> tuple[int, list[bytes], int | None, bytes | None]:
+    """Validate a receipt and return (leaf_index, audit_path, leaf_count, merkle_root).
+
+    The section 5 proof is ``leaf_index`` and ``audit_path``, and both are
+    required. ``leaf_count`` and ``merkle_root`` belong to the registry entry
+    (section 5.1); a receipt may carry its own copies (section 6), and each is
+    returned when present and ``None`` when absent.
 
     Raises InclusionError with a specific reason rather than returning a bare
     False, so a malformed receipt and a receipt that proves nothing are
@@ -144,9 +149,7 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     if not isinstance(receipt, dict):
         raise InclusionError(f"receipt must be a JSON object, got {type(receipt).__name__}")
 
-    missing = [
-        k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root") if k not in receipt
-    ]
+    missing = [k for k in ("leaf_index", "audit_path") if k not in receipt]
     if missing:
         raise InclusionError(f"receipt is missing required field(s): {', '.join(missing)}")
 
@@ -157,9 +160,29 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     return (
         receipt["leaf_index"],
         [decode_hash(node) for node in raw_path],
-        receipt["leaf_count"],
-        decode_hash(receipt["merkle_root"]),
+        receipt.get("leaf_count"),
+        decode_hash(receipt["merkle_root"]) if "merkle_root" in receipt else None,
     )
+
+
+def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
+    """Validate a self-contained receipt: (leaf_index, audit_path, leaf_count, merkle_root).
+
+    For callers that replay a receipt without an entry, such as the published
+    anchor-inclusion vectors, so the receipt must carry ``leaf_count`` and
+    ``merkle_root`` itself.
+    """
+    if isinstance(receipt, dict):
+        missing = [
+            k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root")
+            if k not in receipt
+        ]
+        if missing:
+            raise InclusionError(f"receipt is missing required field(s): {', '.join(missing)}")
+    leaf_index, audit_path, leaf_count, merkle_root = parse_proof(receipt)
+    if leaf_count is None or merkle_root is None:
+        raise InclusionError("receipt leaf_count and merkle_root must not be null")
+    return leaf_index, audit_path, leaf_count, merkle_root
 
 
 _ENTRY_STRINGS = ("ts", "producer", "batch_id")
