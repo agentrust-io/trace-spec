@@ -315,6 +315,12 @@ class Appraisal(_TraceModel):
     provenance_depth_verified: Literal["surface", "builder", "transitive"] | None = None
     platform_measurement: PlatformMeasurement | None = None
 
+    @model_validator(mode="after")
+    def _recorded_measurement_requires_appraisal(self) -> "Appraisal":
+        if self.platform_measurement is not None and self.status == "none":
+            raise ValueError("appraisal.status cannot be none with a platform measurement result")
+        return self
+
 
 # Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
 # proof-of-possession key and must never carry these.
