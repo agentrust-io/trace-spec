@@ -1,0 +1,95 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "mn02E1XyTkaVN6DEOemU5OADMUAUjPHw67oR5KKIM3k",
+    "kid": "5ecb3da505414c4f"
+  },
+  "resolver": "https://in.xchk.io",
+  "plate": "ENG-WNP3",
+  "runSeq": 3057,
+  "generated_at": "2026-10-17T15:54:52.151Z",
+  "cases": {
+    "01-approval-confirmed.json": {
+      "bundle": "01-approval-confirmed.bundle.json",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": true,
+      "disposition": "approved",
+      "verdict": "approval-confirmed"
+    },
+    "02-bundle-altered-after-issue.json": {
+      "bundle": "02-bundle-altered-after-issue.bundle.json",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "bundle_verifies": false,
+      "disposition": "approved",
+      "verdict": "approval-contradicted"
+    },
+    "03-decision-is-a-denial.json": {
+      "bundle": "03-decision-is-a-denial.bundle.json",
+      "reference": "24e7d14e03dbf72472d55d8a7266c1a0f98fe3f6e8600b1601fa17159ce43778",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": true,
+      "disposition": "denied",
+      "verdict": "not-an-approval"
+    },
+    "04-no-answer.json": {
+      "bundle": "04-no-answer.bundle.json",
+      "reference": "5cad45602b4554d5172ee747157b276bc0ad619d146a8b7bf6052ec3fea9c98f",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": true,
+      "disposition": "expired",
+      "verdict": "not-an-approval"
+    },
+    "05-reference-unresolvable.json": {
+      "bundle": null,
+      "reference": "c92c8c55d333d24204fcb453596cf1c784ea2755e6fc963c1176314c3e2bee9f",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "bundle_verifies": null,
+      "disposition": null,
+      "verdict": "approval-unconfirmed"
+    },
+    "06-assertion-from-another-credential.json": {
+      "bundle": "06-assertion-from-another-credential.bundle.json",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": false,
+      "disposition": "approved",
+      "verdict": "approval-contradicted"
+    },
+    "07-amended.json": {
+      "bundle": "07-amended.bundle.json",
+      "reference": "236de6c9aa5f147034e5aaebb6f235c1d90c999a5fe469cd5c07ed9b7405d10f",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": true,
+      "disposition": "approved",
+      "amended": true,
+      "verdict": "approval-confirmed-as-amended"
+    },
+    "08-assertion-over-another-ask.json": {
+      "bundle": "08-assertion-over-another-ask.bundle.json",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": false,
+      "disposition": "approved",
+      "verdict": "approval-contradicted"
+    }
+  }
+}
