@@ -25,6 +25,8 @@ with atheris.instrument_imports():
     from trace_tests.inclusion import (
         InclusionError,
         canonical_claim_bytes,
+        parse_entry,
+        parse_proof,
         parse_receipt,
         verify_inclusion,
     )
@@ -121,8 +123,12 @@ def TestOneInput(data: bytes) -> None:
     findings = tr_anc.check(claim, receipt=receipt, entry=_ENTRY)
     if any(f.code == "TR-ANC-002" and f.passed() for f in findings):
         assert claim is _CLAIMS[_TARGET], f"inclusion proven for the wrong claim: {receipt!r}"
-        root = parse_receipt(receipt)[3]
+        index, path, _, _ = parse_proof(receipt)
+        root, count, _, _ = parse_entry(_ENTRY)
         assert root == _ROOT, f"inclusion proven under another root: {receipt!r}"
+        assert verify_inclusion(claim, index, path, count, root), (
+            f"inclusion not reproduced against the supplied entry: {receipt!r}"
+        )
 
 
 def main() -> None:
