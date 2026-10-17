@@ -12,6 +12,11 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from agentrust_trace._patterns import _PYTHON_PATTERNS
+from agentrust_trace.adapters._validation import (
+    _check_call_count,
+    _check_policy_bundle_bytes,
+    _check_transparency,
+)
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
     Appraisal,
@@ -42,13 +47,6 @@ def _check_agent_did(value: object) -> None:
         )
 
 
-def _check_policy_bundle_bytes(value: object) -> None:
-    if not isinstance(value, bytes):
-        raise ValueError(
-            f"policy_bundle_bytes must be bytes, got {type(value).__name__}"
-        )
-
-
 def _check_audit_entries(value: object) -> None:
     if not isinstance(value, list) or any(not isinstance(entry, dict) for entry in value):
         raise ValueError(
@@ -68,26 +66,6 @@ def _check_merkle_chain_tip(value: object) -> None:
         raise ValueError(
             "merkle_chain_tip must be valid UTF-8 without lone surrogates"
         ) from exc
-
-
-def _check_call_count(value: object) -> None:
-    if value is None:
-        return
-    if (
-        not isinstance(value, int)
-        or isinstance(value, bool)
-        or value < 0
-        or value > JCS_SAFE_INTEGER
-    ):
-        raise ValueError(
-            f"call_count must be an integer within [0, {JCS_SAFE_INTEGER}] or None, "
-            f"got {value!r}"
-        )
-
-
-def _check_transparency(value: object) -> None:
-    if value is not None and (not isinstance(value, str) or not value):
-        raise ValueError("transparency must be a non-empty URI string or None")
 
 
 def _check_iat(value: object) -> None:
