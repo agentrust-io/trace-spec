@@ -96,10 +96,26 @@ def test_editing_the_signed_digest_fails_the_signature():
     assert not _signature_ok(rec)
 
 
-def test_fixtures_are_reproducible():
+def _generator():
     spec = importlib.util.spec_from_file_location(
         "manifest_ref_generator", VECTOR_DIR / "generate.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.vectors() == VECTORS
+    return module
+
+
+def test_undeclared_algorithm_is_unsupported_not_mismatch():
+    # Not a fixture: the v0.3 draft schema rejects a sha512 digest, so the record is not
+    # schema-valid as signed. The digest is the correct sha512 of the manifest the record ran under,
+    # so a checker that hashes it anyway would report established, and one that only knows sha256
+    # or sha384 would report a mismatch. Neither is the draft rule.
+    g = _generator()
+    ref = {**g.REF, "digest": g.digest(g.M_RAN.encode(), "sha512")}
+    vector = {"record": g.sign(g.with_manifest(manifest=ref)), "resolver": {g.MID: g.M_RAN}}
+    assert _signature_ok(vector["record"])
+    assert check(vector) == {"record": "valid", "manifest": "manifest-digest-unsupported"}
+
+
+def test_fixtures_are_reproducible():
+    assert _generator().vectors() == VECTORS
