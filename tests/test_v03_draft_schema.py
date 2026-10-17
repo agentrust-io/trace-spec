@@ -76,6 +76,7 @@ def test_draft_refuses_a_private_key_member_as_canonical_does(member):
         "04-unresolvable.json",
         "05-added-after-signing.json",
         "06-control-no-manifest.json",
+        "07-digest-matches-sha384.json",
     ],
 )
 def test_draft_accepts_manifest_reference_fixtures(fixture_name: str):
@@ -240,3 +241,32 @@ def _load_v03_manifest_record() -> dict:
 
 def _load_example() -> dict:
     return json.loads((REPO_ROOT / "examples" / "amd-sev-snp.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "01-digest-matches.json",
+        "02-digest-mismatch.json",
+        "04-unresolvable.json",
+        "05-added-after-signing.json",
+        "07-digest-matches-sha384.json",
+    ],
+)
+def test_manifest_fixtures_are_v03_schema_valid_as_signed(fixture_name):
+    # No eat_profile patch: the signed bytes themselves are a v0.3 record, so a checker can run the
+    # schema, the signature and the digest binding on one record (05's signature fails on purpose).
+    vector = json.loads((MANIFEST_VECTOR_DIR / fixture_name).read_text(encoding="utf-8"))
+    assert vector["record"]["eat_profile"] == V03_PROFILE
+    draft = jsonschema.Draft202012Validator(_load("trace-claim-v0.3-draft.json"))
+    assert not list(draft.iter_errors(vector["record"]))
+
+
+def test_asserted_result_fixture_is_rejected_as_signed():
+    vector = json.loads(
+        (MANIFEST_VECTOR_DIR / "03-mismatch-with-asserted-result.json").read_text(encoding="utf-8")
+    )
+    assert vector["record"]["eat_profile"] == V03_PROFILE
+    draft = jsonschema.Draft202012Validator(_load("trace-claim-v0.3-draft.json"))
+    errors = list(draft.iter_errors(vector["record"]))
+    assert [e for e in errors if "manifest_verification_result" in e.message] and len(errors) == 1
