@@ -26,10 +26,12 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from trace_tests import accounting
+from trace_tests.inclusion import InclusionError, canonical_claim_bytes
 from trace_tests.modules.unverified import finding_counts_as_level_failure
 from trace_tests.result import Finding, Status, finding_from_row, finding_row
 
 __all__ = [
+    "LEVEL_MODULES",
     "LEVEL_NAMES",
     "ReportData",
     "badge_svg",
@@ -49,7 +51,7 @@ ACCOUNTING_REPORT_SCHEMA = "agentrust-io/trace-tests/obligation-accounting/1"
 
 #: Modules introduced at each level, for the per-level breakdown.
 LEVEL_MODULES = {
-    0: ("TR-ENV", "TR-SIG", "TR-POL"),
+    0: ("TR-ENV", "TR-SIG", "TR-POL", "TR-APR"),
     1: ("TR-RTE", "TR-SCA"),
     2: ("TR-TXN", "TR-ANC"),
 }
@@ -64,8 +66,7 @@ def record_digest(record: dict[str, Any]) -> str:
     specification, section 0; getting it backwards here would be harmless but
     confusing, so the choice is stated rather than left implicit.
     """
-    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return "sha256:" + hashlib.sha256(canonical.encode("ascii")).hexdigest()
+    return "sha256:" + hashlib.sha256(canonical_claim_bytes(record)).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -142,11 +143,19 @@ def _assemble(
     library_version: str | None,
     generated_at: str,
 ) -> ReportData:
-    trace = record.get("trace", record)
+    raw_trace = record.get("trace", record)
+    trace = raw_trace if isinstance(raw_trace, dict) else {}
+    try:
+        digest = record_digest(record)
+    except InclusionError:
+        fallback = json.dumps(
+            record, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=True
+        ).encode("ascii")
+        digest = "sha256:" + hashlib.sha256(fallback).hexdigest()
     return ReportData(
         record_path=record_path,
         record_format=record_format,
-        digest=record_digest(record),
+        digest=digest,
         suite_version=suite_version,
         library_version=library_version,
         generated_at=generated_at,

@@ -7,14 +7,16 @@ authoritative than it is, or that disagrees with the suite it came from.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 
 import pytest
 
 from trace_tests import report as report_mod
+from trace_tests.inclusion import InclusionError, canonical_claim_bytes
 from trace_tests.result import Finding, Status
-from trace_tests.runner import run
+from trace_tests.runner import _LEVEL_MODULES, run
 
 from .conftest import _build_signed_cmcp_record, load_vector
 
@@ -215,3 +217,59 @@ def test_unanchored_record_says_so_rather_than_showing_blank() -> None:
     record.pop("transparency", None)
     out = report_mod.to_html(_build(record))
     assert "unanchored" in out
+
+
+# --- level module parity, malformed trace guard, and canonical digest ------
+
+
+def test_level_modules_include_tr_apr_at_level_zero_and_match_runner() -> None:
+    assert report_mod.LEVEL_MODULES[0] == ("TR-ENV", "TR-SIG", "TR-POL", "TR-APR")
+    assert report_mod.LEVEL_MODULES[0] == _LEVEL_MODULES[0]
+    cumulative = {
+        lv: tuple(m for k in range(lv + 1) for m in report_mod.LEVEL_MODULES[k])
+        for lv in sorted(report_mod.LEVEL_MODULES)
+    }
+    assert cumulative == dict(_LEVEL_MODULES)
+
+
+@pytest.mark.parametrize(
+    "bad_trace",
+    ["not-a-dict", 123, None, [1, 2], True],
+    ids=["str", "int", "none", "list", "bool"],
+)
+def test_build_tolerates_non_dict_trace_field(bad_trace: object) -> None:
+    try:
+        data = report_mod.build(
+            record={"trace": bad_trace},
+            record_path="r.json",
+            record_format="cmcp-runtime",
+            results_by_level={
+                0: {"TR-ENV": [Finding("TR-ENV-001", Status.FAIL, "trace is not an object")]}
+            },
+            suite_version="0.5.0",
+            library_version=None,
+            generated_at="now",
+        )
+    except AttributeError:
+        pytest.fail(f"report.build crashed on non-dict trace value {bad_trace!r}")
+    assert data.transparency is None
+    assert "unanchored" in report_mod.to_html(data)
+
+
+def test_record_digest_matches_canonical_claim_bytes() -> None:
+    record = load_vector("valid_level0.json")
+    expected = "sha256:" + hashlib.sha256(canonical_claim_bytes(record)).hexdigest()
+    assert report_mod.record_digest(record) == expected
+
+
+@pytest.mark.parametrize(
+    "bad_value",
+    [float("nan"), float("inf"), float("-inf"), 1.5, 10**20, -(10**20)],
+    ids=["nan", "inf", "neg-inf", "float", "above-safe-int", "below-safe-int"],
+)
+def test_record_digest_rejects_values_outside_anchor_leaf_profile(bad_value: object) -> None:
+    record = load_vector("valid_level0.json")
+    record["data_class"] = bad_value
+    with pytest.raises(InclusionError):
+        report_mod.record_digest(record)
+
