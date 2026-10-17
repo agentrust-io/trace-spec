@@ -28,7 +28,7 @@ Expected results are machine-readable in [`expected.json`](expected.json).
 | File | Signature | Other checks | Interpretation |
 |---|---|---|---|
 | `01-valid-accepted.json` | pass | all pass | A safe tool call the policy permitted. First receipt in the chain (no `previousReceiptHash`). |
-| `02-valid-denied.json` | pass | all pass | A destructive tool call the policy blocked, evidenced with the same rigor as an allow. A denial is not an absence of evidence, it is its own signed record. `previousReceiptHash` correctly links to `01` per draft section 5.7. |
+| `02-valid-denied.json` | pass | all pass | A destructive tool call the policy blocked, evidenced with the same rigor as an allow. A denial is not an absence of evidence, it is its own signed record. `previousReceiptHash` correctly links to `01` per section 6.7 of revision 03 (5.7 of revision 02). |
 | `03-signature-key-mismatch.json` | **fail** | n/a | Signed by a real but different key ([`mismatched-signer-public-key.txt`](mismatched-signer-public-key.txt), committed) while claiming the signer's `kid`. Resolving `kid` to the published [`signer-public-key.txt`](signer-public-key.txt) deterministically fails verification. The mismatch is in the committed bytes, reproducible by any independent verifier. |
 | `04-broken-chain.json` | pass | **chain fail** | Validly signed by the correct key, but `previousReceiptHash` carries the envelope hash of `01` when the receipt's actual predecessor in the chain is `02`. The signature check passes; recomputing SHA-256(JCS(predecessor envelope)) does not match. This exercises chain verification as its own check: a dishonest or buggy issuer can validly sign a wrong chain pointer, and only recomputation against the actual predecessor catches reordering or omission. |
 | `05-stale-policy-digest.json` | pass | **freshness fail** | Validly signed, but `policy_digest` names a policy bundle that is no longer the one in force (`current_policy_digest` in `expected.json`). Cryptographic validity and authorization freshness are different checks; a verifier that stops at the signature accepts a receipt whose authorization basis has since changed. |
@@ -41,18 +41,20 @@ separately observable failures.
 
 ## Verifying independently
 
-To check any fixture without this repo's tooling, per draft-02 sections 4.1
-and 5.6:
+To check any fixture without this repo's tooling, per revision 03 sections 6.6
+and 6.7 (4.1, 5.6 and 5.7 in revision 02):
 
 1. Extract `payload` from the envelope.
 2. Serialize it with JCS (RFC 8785): recursively sorted keys, no whitespace.
 3. Verify `signature.sig` as a PureEdDSA (Ed25519) signature directly over
    those bytes (no pre-hash), against the public key that `signature.kid`
    resolves to: [`signer-public-key.txt`](signer-public-key.txt) (hex).
-4. Chain check (draft section 5.7): `previousReceiptHash` must equal the
-   lowercase hex SHA-256 of the JCS bytes of the predecessor's **entire
-   envelope, signature included**. The predecessor for each chained fixture
-   is declared in `expected.json`.
+4. Chain check (revision 03 section 6.7): `previousReceiptHash` must name
+   the SHA-256 of the JCS bytes of the predecessor's **entire envelope,
+   signature included**. Revision 03 writes it as `sha256:` followed by the
+   lowercase hex; these fixtures carry the bare hex of revision 02, which
+   section 6.7 still lets a verifier accept. The predecessor for each chained
+   fixture is declared in `expected.json`.
 5. Freshness and binding checks: compare `policy_digest` and `session_id`
    against `current_policy_digest` and `expected_session_id` in
    `expected.json`.
