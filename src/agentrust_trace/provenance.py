@@ -193,9 +193,27 @@ def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
     _check_format(format)
     if not isinstance(tools, list):
         raise ProvenanceError(f"tools must be a list, got {type(tools).__name__}")
+    seen_names: set[str] = set()
     for index, t in enumerate(tools):
         if not isinstance(t, dict):
             raise ProvenanceError(f"tools[{index}] must be an object, got {type(t).__name__}")
+        name = _nonempty_string(t.get("name"), "tool.name")
+        if name in seen_names:
+            raise ProvenanceError(f"duplicate tool name in catalog: {name!r}")
+        seen_names.add(name)
+        description = t.get("description")
+        if description is not None and not isinstance(description, str):
+            raise ProvenanceError(
+                f"tools[{index}].description must be a string when present, "
+                f"got {type(description).__name__}"
+            )
+        for schema_field in ("input_schema", "inputSchema"):
+            schema_val = t.get(schema_field)
+            if schema_val is not None and not isinstance(schema_val, dict):
+                raise ProvenanceError(
+                    f"tools[{index}].{schema_field} must be an object when present, "
+                    f"got {type(schema_val).__name__}"
+                )
         if (
             "input_schema" in t
             and "inputSchema" in t
@@ -207,7 +225,7 @@ def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
     normalized = sorted(
         (
             {
-                "name": t.get("name"),
+                "name": t["name"],
                 "description": t.get("description"),
                 "input_schema": t.get("input_schema", t.get("inputSchema")),
                 **({"annotations": _behavioral_hints(t)} if format == FORMAT_V2 else {}),
@@ -490,7 +508,8 @@ def verify_record(
     _check_format(record.get("format"), required_format)
     if record.get("kind") not in KINDS:
         raise ProvenanceError(f"unknown kind {record.get('kind')!r}")
-    if not _PUBLISHER_RE.match(str(record.get("publisher", ""))):
+    publisher = record.get("publisher")
+    if not isinstance(publisher, str) or not _PUBLISHER_RE.match(publisher):
         raise ProvenanceError("publisher must be a DID or SPIFFE URI")
     identity = _as_object(record.get("identity"), "identity")
     if not identity.get("artifact") and not identity.get("endpoint"):
@@ -506,6 +525,10 @@ def verify_record(
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     _tool_count(catalog)
+    if "attestation" not in record:
+        raise ProvenanceError(
+            "attestation member is required (use null when kind is not tee-attested)"
+        )
 
     # Freshness. `issued_at` has been required and checked since the format
     # existed, with an error message explaining that a record with no issue time
