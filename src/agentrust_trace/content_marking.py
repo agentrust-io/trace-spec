@@ -74,16 +74,63 @@ def _no_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return obj
 
 
+def _no_nonfinite_constant(value: str, what: str = "JSON") -> Any:
+    raise ContentMarkingError(f"{what} contains non-RFC-8259 numeric constant {value!r}")
+
+
+def _has_surrogate(value: Any) -> bool:
+    stack: list[Any] = [value]
+    seen: set[int] = set()
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in item):
+                return True
+        elif isinstance(item, dict):
+            oid = id(item)
+            if oid in seen:
+                continue
+            seen.add(oid)
+            stack.extend(item.keys())
+            stack.extend(item.values())
+        elif isinstance(item, (list, tuple)):
+            oid = id(item)
+            if oid in seen:
+                continue
+            seen.add(oid)
+            stack.extend(item)
+    return False
+
+
 def _loads(data: bytes | bytearray, what: str) -> Any:
+    if not isinstance(data, bytes | bytearray):
+        raise ContentMarkingError(f"{what} must be bytes, got {type(data).__name__}")
     try:
-        return json.loads(data, object_pairs_hook=_no_duplicate_members)
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ContentMarkingError(f"{what} is not valid UTF-8: {exc}") from exc
+    if text.startswith("\ufeff"):
+        raise ContentMarkingError(
+            f"{what} must not start with a UTF-8 byte-order mark (RFC 8259 section 8.1)"
+        )
+    try:
+        parsed = json.loads(
+            text,
+            object_pairs_hook=_no_duplicate_members,
+            parse_constant=lambda value: _no_nonfinite_constant(value, what),
+        )
     except ContentMarkingError as exc:
+        if str(exc).startswith(what):
+            raise
         raise ContentMarkingError(f"{what} is not usable JSON: {exc}") from exc
     except (ValueError, RecursionError) as exc:
         # RecursionError: nesting deeper than the interpreter stack. The bytes can
         # come from whoever serves the URL, so a caller written against
         # ContentMarkingError has to be able to refuse them.
         raise ContentMarkingError(f"{what} is not JSON: {exc}") from exc
+    if _has_surrogate(parsed):
+        raise ContentMarkingError(f"{what} contains an unpaired UTF-16 surrogate")
+    return parsed
 
 
 def _digest(data: bytes, alg: str) -> str:
@@ -171,13 +218,16 @@ def build_assertion(
         raise ContentMarkingError(
             f"alg must be a digest algorithm name, got {type(alg).__name__}; use sha256 or sha384"
         )
-    if anchor is not None and (not isinstance(anchor, str) or not anchor):
-        # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
-        # caller who passed one got an assertion with no anchor and no error. Refuse it.
-        raise ContentMarkingError(
-            "anchor must be a non-empty registry entry URI string or None, got "
-            f"{anchor!r}"
-        )
+    if anchor is not None:
+        if not isinstance(anchor, str) or not anchor:
+            # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
+            # caller who passed one got an assertion with no anchor and no error. Refuse it.
+            raise ContentMarkingError(
+                "anchor must be a non-empty registry entry URI string or None, got "
+                f"{anchor!r}"
+            )
+        if _has_surrogate(anchor):
+            raise ContentMarkingError("anchor must not contain an unpaired UTF-16 surrogate")
 
     record = _loads(record_bytes, "record_bytes")
     if not isinstance(record, dict):
@@ -188,7 +238,7 @@ def build_assertion(
 
     subject = record.get("subject")
     profile = record.get("eat_profile")
-    if not _SUBJECT_RE.match(str(subject or "")):
+    if not isinstance(subject, str) or not _SUBJECT_RE.match(subject):
         raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
     if not isinstance(profile, str) or not profile:
         raise ContentMarkingError("the record declares no non-empty string eat_profile")
@@ -247,6 +297,23 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
                 "binding check compares it against the fetched record, and a comparison "
                 "establishes agreement rather than presence."
             )
+
+    subject = data.get("subject")
+    if not isinstance(subject, str) or not _SUBJECT_RE.match(subject):
+        raise ContentMarkingError("assertion subject must be a SPIFFE or DID URI")
+    profile = data.get("eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ContentMarkingError("assertion eat_profile must be a non-empty string")
+    if "anchor" in data:
+        anchor = data.get("anchor")
+        if not isinstance(anchor, str) or not anchor:
+            raise ContentMarkingError("assertion anchor must be a non-empty string when present")
+        if _has_surrogate(anchor):
+            raise ContentMarkingError(
+                "assertion anchor must not contain an unpaired UTF-16 surrogate"
+            )
+    if _has_surrogate(assertion):
+        raise ContentMarkingError("assertion contains an unpaired UTF-16 surrogate")
 
     ref = data.get("record")
     if not isinstance(ref, dict):
