@@ -34,8 +34,8 @@ def b64u(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
 
 
-def digest(b: bytes) -> str:
-    return "sha256:" + hashlib.sha256(b).hexdigest()
+def digest(b: bytes, alg: str = "sha256") -> str:
+    return alg + ":" + hashlib.new(alg, b).hexdigest()
 
 
 def manifest(version: str, tools: list[str]) -> str:
@@ -132,6 +132,15 @@ def vectors() -> list[dict]:
             "valid",
             "no-manifest-named",
             "a v0.2 record with no manifest object verifies as today and names no deployment",
+        ),
+        (
+            "07-digest-matches-sha384",
+            sign(with_manifest(manifest={**REF, "digest": digest(M_RAN.encode(), "sha384")})),
+            {MID: M_RAN},
+            "valid",
+            "established",
+            "the v0.3 draft schema also accepts sha384; the verifier recomputes with the algorithm "
+            "the signed digest names, not a fixed sha256",
         ),
     ]
     return [

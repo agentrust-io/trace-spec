@@ -76,6 +76,7 @@ def test_draft_refuses_a_private_key_member_as_canonical_does(member):
         "04-unresolvable.json",
         "05-added-after-signing.json",
         "06-control-no-manifest.json",
+        "07-digest-matches-sha384.json",
     ],
 )
 def test_draft_accepts_manifest_reference_fixtures(fixture_name: str):
@@ -249,6 +250,7 @@ def _load_example() -> dict:
         "02-digest-mismatch.json",
         "04-unresolvable.json",
         "05-added-after-signing.json",
+        "07-digest-matches-sha384.json",
     ],
 )
 def test_manifest_fixtures_are_v03_schema_valid_as_signed(fixture_name):

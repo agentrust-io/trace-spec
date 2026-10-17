@@ -2,7 +2,9 @@
 
 No module implements the reference yet, so the draft rule is stated here as a small reference
 checker. The record signature is verified first (§3.3 step 1); the manifest reference is then
-appraised by recomputing sha256 over the bytes the resolver returns for ``manifest.id``. A
+appraised by recomputing the digest the record declares (``sha256:`` or ``sha384:``, the two the v0.3 draft
+schema accepts) over the bytes the resolver returns for ``manifest.id``; any other algorithm is reported as
+unsupported, never as a mismatch. A
 ``manifest_verification_result`` the producer wrote is never read. Four wrong checkers must each
 be caught by at least one fixture.
 """
@@ -27,7 +29,9 @@ MUTANTS = (
     "unresolved_is_pass",
     "manifest_before_signature",
     "rejects_record_on_unresolved",
+    "always_sha256",
 )
+HASHES = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
 
 
 def _b64u(s: str) -> bytes:
@@ -66,7 +70,10 @@ def check(vector: dict, mutant: str | None = None) -> dict:
         if mutant == "rejects_record_on_unresolved":
             return {"record": "manifest-unresolved", "manifest": "not-evaluated"}
         return {"record": "valid", "manifest": "manifest-unresolved"}
-    got = "sha256:" + hashlib.sha256(store[ref["id"]].encode("utf-8")).hexdigest()
+    alg = "sha256" if mutant == "always_sha256" else str(ref.get("digest", "")).partition(":")[0]
+    if alg not in HASHES:
+        return {"record": "valid", "manifest": "manifest-digest-unsupported"}
+    got = alg + ":" + HASHES[alg](store[ref["id"]].encode("utf-8")).hexdigest()
     return {
         "record": "valid",
         "manifest": "established" if got == ref.get("digest") else "manifest-digest-mismatch",
