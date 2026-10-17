@@ -1,0 +1,129 @@
+{
+  "resolver": "https://compliance.deployer-b.example/assessments/2026-10",
+  "assessments": {
+    "assessment/1": {
+      "type": "applicability-assessment",
+      "issuer": "https://compliance.deployer-b.example",
+      "issuer_key_id": "noAJlJadNlkAwRvsReSgdW1dDmQkJw2gAVJsBkCkaSk",
+      "party": {
+        "id": "https://deployer-b.example",
+        "role": "deployer"
+      },
+      "jurisdiction": "EU",
+      "provision": {
+        "instrument": "http://data.europa.eu/eli/reg/2024/1689/oj",
+        "article": "26(6)",
+        "text_as_of": "2026-09-30"
+      },
+      "basis": [
+        "Regulation (EU) 2024/1689, Article 2(1)(b)",
+        "Regulation (EU) 2024/1689, Article 6(2) and Annex III, point 4(a)",
+        "Regulation (EU) 2026/1744, point (40)(b), amending Article 113"
+      ],
+      "outcome": {
+        "status": "applies",
+        "vocabulary": [
+          "applies",
+          "does-not-apply",
+          "undetermined"
+        ],
+        "detail": "high-risk recruitment-screening system under Annex III point 4(a)",
+        "applies_from": "2027-12-02"
+      },
+      "issued_at": "2026-10-01T09:00:00Z",
+      "signature": "fM9L9SnYuMEf8LAv9IHs_WYtUbD_YVBKPYgzClxUIVMeyO4EhFoV3KNNd_9rQCci8fueQiMy_l5gciGgeP6FBA"
+    },
+    "assessment/2": {
+      "type": "applicability-assessment",
+      "issuer": "https://compliance.deployer-b.example",
+      "issuer_key_id": "noAJlJadNlkAwRvsReSgdW1dDmQkJw2gAVJsBkCkaSk",
+      "party": {
+        "id": "https://deployer-b.example",
+        "role": "deployer"
+      },
+      "jurisdiction": "EU",
+      "provision": {
+        "instrument": "http://data.europa.eu/eli/reg/2024/1689/oj",
+        "article": "26(6)",
+        "text_as_of": "2026-09-30"
+      },
+      "basis": [
+        "Regulation (EU) 2024/1689, Article 2(1)(b)",
+        "Regulation (EU) 2024/1689, Article 6(2) and Annex III"
+      ],
+      "outcome": {
+        "status": "does-not-apply",
+        "vocabulary": [
+          "applies",
+          "does-not-apply",
+          "undetermined"
+        ],
+        "detail": "internal formatting assistant outside Annex III high-risk categories"
+      },
+      "issued_at": "2026-10-01T09:00:00Z",
+      "signature": "2EOg2saDXDpEcCkMKICjITk3IzHYmTZmMqYXq3GEbWH7Kf9vPfTui6blOyIsKoDNieKYX1i0ZzIbOiHcZ0IaCg"
+    },
+    "assessment/3": {
+      "type": "applicability-assessment",
+      "issuer": "https://compliance.deployer-b.example",
+      "issuer_key_id": "noAJlJadNlkAwRvsReSgdW1dDmQkJw2gAVJsBkCkaSk",
+      "party": {
+        "id": "https://deployer-b.example",
+        "role": "deployer"
+      },
+      "jurisdiction": "EU",
+      "provision": {
+        "instrument": "http://data.europa.eu/eli/reg/2024/1689/oj",
+        "article": "26(6)",
+        "text_as_of": "2026-09-30"
+      },
+      "basis": [
+        "Regulation (EU) 2024/1689, Article 2(1)(b)",
+        "Regulation (EU) 2024/1689, Article 6(2), Article 6(3), and Annex III, point 4(a)"
+      ],
+      "outcome": {
+        "status": "undetermined",
+        "vocabulary": [
+          "applies",
+          "does-not-apply",
+          "undetermined"
+        ],
+        "detail": "pending Article 6(3) narrow procedural task and profiling review"
+      },
+      "issued_at": "2026-10-01T09:00:00Z",
+      "signature": "-HoxkXP82ZkX7CFm8-BIjRaYm-TzvE9fi56xrCNTnQj4IsouEs8aAvAdiDPMIx0gM466YKAvp8tdjynLyfcxDQ"
+    },
+    "assessment/4": {
+      "type": "applicability-assessment",
+      "issuer": "https://other-assessor.example.org",
+      "issuer_key_id": "uR0f5871IRbLQA9HGFN1XcfLSorBQZfv_BWrxD3iu_U",
+      "party": {
+        "id": "https://deployer-b.example",
+        "role": "deployer"
+      },
+      "jurisdiction": "EU",
+      "provision": {
+        "instrument": "http://data.europa.eu/eli/reg/2024/1689/oj",
+        "article": "26(6)",
+        "text_as_of": "2026-09-30"
+      },
+      "basis": [
+        "Regulation (EU) 2024/1689, Article 2(1)(b)",
+        "Regulation (EU) 2024/1689, Article 6(2) and Annex III, point 4(a)",
+        "Regulation (EU) 2026/1744, point (40)(b), amending Article 113"
+      ],
+      "outcome": {
+        "status": "applies",
+        "vocabulary": [
+          "applies",
+          "does-not-apply",
+          "undetermined"
+        ],
+        "detail": "high-risk recruitment-screening system under Annex III point 4(a)",
+        "applies_from": "2027-12-02"
+      },
+      "issued_at": "2026-10-01T09:00:00Z",
+      "signature": "ZsQ-Hde07R8QyjuBmVWHoQKQmd_af9EaPZUE_X6gDWOwtGpwoqOjNpk4oCUoZLt2P6PZ9WJpkVQ0bEpZby5CAA"
+    }
+  }
+}

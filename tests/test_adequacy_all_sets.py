@@ -318,6 +318,12 @@ MEASURED_ELSEWHERE = {
     "observed-effect": "tests/test_observed_effect_fixtures.py, which recomputes every "
                        "verdict from the committed record and effect store instead of "
                        "reading expected.json, and re-runs the generator",
+    # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the assessment store beside them.
+    "applicability-assessment": "tests/test_applicability_assessment_fixtures.py, which "
+                                "recomputes every verdict from the committed record and "
+                                "assessment store instead of reading expected.json, and "
+                                "re-runs the generator",
 }
 
 

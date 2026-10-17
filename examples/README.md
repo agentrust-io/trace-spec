@@ -68,6 +68,13 @@ checking any archived record, including these.
   observer and the observed party disagree that verifies exactly as the agreeing one
   does, unresolvable, and an observer whose key the relying party does not hold. Every
   digest recomputes; see that directory's README and `docs/references-registry.md`.
+- `applicability-assessment/`: six signed Trust Records, each citing an assessor's
+  statement of whether a stated legal provision applies to a stated party through a
+  `references` entry with `rel: "applicability-assessment"`, against an assessment store
+  committed beside them: an `applies` assessment verified, altered after issue, a
+  `does-not-apply` and an `undetermined` assessment that verify identically to `applies`,
+  unresolvable, and an issuer whose key the relying party does not hold. Every digest
+  recomputes; see that directory's README and `docs/references-registry.md`.
 - `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
   embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
   not accepted normative text (#247); carries a `scan_published_signatures.py` tool
