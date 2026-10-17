@@ -611,6 +611,27 @@ def main(path: str, artifact_path: str = None) -> int:
         else:
             pending += 1
             print("  WAIT no signed identity binding (registry signing not configured when the bundle was made)")
+        # 18 Oct 2026 (AB-1): what the device signed over. With rule ask-v1 the challenge is sha256 over the ask as
+        # issued (attestation id, the prompt the person saw, the digest of the action's parameters), so the assertion
+        # itself names the act it answered; recompute it from the bundle's own decision block, never from `expected`.
+        # Without it the challenge was a nonce and only the registry's binding pairs the assertion with the record:
+        # an assertion by the same credential over another ask passes every other check.
+        ch = ap.get("challenge") or {}
+        if ch.get("rule") == "ask-v1" and isinstance(ch.get("fields"), dict) and a.get("clientDataJSON"):
+            f = ch["fields"]
+            dec = b.get("decision") or {}
+            try:
+                cd = json.loads(b64d(a["clientDataJSON"]).decode("utf-8"))
+            except Exception:  # noqa: BLE001
+                cd = {}
+            recomputed = base64.urlsafe_b64encode(hashlib.sha256(canonical(f).encode("utf-8")).digest()).decode("ascii").rstrip("=")
+            ok(cd.get("challenge") == recomputed, "the challenge the device signed is sha256 over the ask (rule ask-v1)")
+            ok(f.get("attestationId") == ap.get("attestationId"), "the signed ask names this ceremony")
+            ok(f.get("prompt") == dec.get("prompt"), "the signed ask carries the prompt the person saw")
+            ok(f.get("actionParamsHash") == dec.get("actionParamsHash"), "the signed ask carries the digest of the action's parameters")
+        else:
+            pending += 1
+            print("  WAIT challenge not derived from the ask (ceremony before 18 Oct 2026): the binding alone pairs this assertion with the record")
 
     # 6. anchor
     anchor = b.get("anchor") or {}

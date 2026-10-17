@@ -1,6 +1,6 @@
 {
   "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
-  "iat": 1792217514,
+  "iat": 1792252491,
   "subject": "did:web:in.xchk.io:plate:ENG-WNP3",
   "model": {
     "provider": "anthropic",
@@ -8,7 +8,7 @@
   },
   "runtime": {
     "platform": "software-only",
-    "measurement": "sha256:d2fabc971646294c4a3a3a842f97056b66719eb03579cd68b3ef7b015ccd5554"
+    "measurement": "sha256:c60a771a8f6e4fda60fbb2b745397c800c38da090f153f72e302147a1851746a"
   },
   "policy": {
     "bundle_hash": "sha256:8e1e29b1e2b1470b57fba453991d3c9ef0d0ae19ba59927c014525177ee741ae",
@@ -16,20 +16,20 @@
   },
   "data_class": "internal",
   "tool_transcript": {
-    "hash": "sha256:299be718c06e91388ab4ed723cd944de14658c6bc385611d3d2f0c7f15cf9e8b",
-    "call_count": 294
+    "hash": "sha256:54ea01281f1acf13dec96c509cb243c5ee87b826524044ac8c2700a63cd9f2bb",
+    "call_count": 101
   },
   "references": [
     {
       "rel": "approval-outcome",
-      "id": "425164f977780d1e821d28f55fe1258db9f0349816fc19b3bb37b0bec9e1991a",
+      "id": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
       "resolver": "https://in.xchk.io",
-      "digest": "sha256:425164f977780d1e821d28f55fe1258db9f0349816fc19b3bb37b0bec9e1991a"
+      "digest": "sha256:aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5"
     }
   ],
   "build_provenance": {
     "slsa_level": 0,
-    "digest": "sha256:d2fabc971646294c4a3a3a842f97056b66719eb03579cd68b3ef7b015ccd5554"
+    "digest": "sha256:c60a771a8f6e4fda60fbb2b745397c800c38da090f153f72e302147a1851746a"
   },
   "appraisal": {
     "status": "none",
@@ -43,5 +43,5 @@
       "kid": "5ecb3da505414c4f"
     }
   },
-  "signature": "F6WroC7V0nhc10h-qoyPtAnn9NS_60CKzcbmuCcQWTwMTg8b-dqfbGR-fxig-yYNvd8f3KA7xEBDTnv6L6UvDQ"
+  "signature": "Vjgt2d7DVF_KmYdb3UXuOaL4YxRO1k46Uj91QkI5vc0EC5NraQ7U7S58DuD35d8GMy70wW-I08OtkRiCKTfPAQ"
 }

@@ -7,12 +7,12 @@
   },
   "resolver": "https://in.xchk.io",
   "plate": "ENG-WNP3",
-  "runSeq": 3053,
-  "generated_at": "2026-10-17T06:11:54.916Z",
+  "runSeq": 3057,
+  "generated_at": "2026-10-17T15:54:52.151Z",
   "cases": {
     "01-approval-confirmed.json": {
       "bundle": "01-approval-confirmed.bundle.json",
-      "reference": "425164f977780d1e821d28f55fe1258db9f0349816fc19b3bb37b0bec9e1991a",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": true,
@@ -22,7 +22,7 @@
     },
     "02-bundle-altered-after-issue.json": {
       "bundle": "02-bundle-altered-after-issue.bundle.json",
-      "reference": "425164f977780d1e821d28f55fe1258db9f0349816fc19b3bb37b0bec9e1991a",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": false,
@@ -32,7 +32,7 @@
     },
     "03-decision-is-a-denial.json": {
       "bundle": "03-decision-is-a-denial.bundle.json",
-      "reference": "c8d58cb0bbf42d13013511139a0d550a44f0a93997c9f94b30669186325227d0",
+      "reference": "24e7d14e03dbf72472d55d8a7266c1a0f98fe3f6e8600b1601fa17159ce43778",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": true,
@@ -42,7 +42,7 @@
     },
     "04-no-answer.json": {
       "bundle": "04-no-answer.bundle.json",
-      "reference": "35a32cf870aad6c68f4195e5cfefd9b43c4cc737d6ba39b65234d8f6aba88b6e",
+      "reference": "5cad45602b4554d5172ee747157b276bc0ad619d146a8b7bf6052ec3fea9c98f",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": true,
@@ -62,7 +62,7 @@
     },
     "06-assertion-from-another-credential.json": {
       "bundle": "06-assertion-from-another-credential.bundle.json",
-      "reference": "425164f977780d1e821d28f55fe1258db9f0349816fc19b3bb37b0bec9e1991a",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": true,
@@ -72,7 +72,7 @@
     },
     "07-amended.json": {
       "bundle": "07-amended.bundle.json",
-      "reference": "2c49714297958e514b8d26307d200d8e9a18e815a7fabe90ec5fa1c8bc908783",
+      "reference": "236de6c9aa5f147034e5aaebb6f235c1d90c999a5fe469cd5c07ed9b7405d10f",
       "trace_record_verifies": true,
       "reference_resolves": true,
       "digest_matches": true,
@@ -80,6 +80,16 @@
       "disposition": "approved",
       "amended": true,
       "verdict": "approval-confirmed-as-amended"
+    },
+    "08-assertion-over-another-ask.json": {
+      "bundle": "08-assertion-over-another-ask.bundle.json",
+      "reference": "aa2bfd5b1d9b6307ed22eb0daa4213383beecb57d7d31ec011060ac98f7fe0b5",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "bundle_verifies": false,
+      "disposition": "approved",
+      "verdict": "approval-contradicted"
     }
   }
 }

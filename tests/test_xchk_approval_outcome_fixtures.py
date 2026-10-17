@@ -148,3 +148,18 @@ def test_the_impersonated_approver_offers_a_key_the_binding_does_not_name() -> N
     for field in ("authenticatorData", "clientDataJSON"):
         assert a_after["assertion"][field] == a_before["assertion"][field]
     assert a_after["assertion"]["signature"] != a_before["assertion"]["signature"]
+
+
+def test_the_crossed_assertion_is_the_same_persons_answer_to_another_ask() -> None:
+    """08: key, binding and user verification all genuine; the challenge the device signed names another ask."""
+    before = _load("01-approval-confirmed.bundle.json")
+    after = _load("08-assertion-over-another-ask.bundle.json")
+    a_before, a_after = before["approver"], after["approver"]
+    assert a_after["publicKey"] == a_before["publicKey"]
+    assert a_after["binding"] == a_before["binding"]
+    assert a_after["credentialId"] == a_before["credentialId"]
+    assert a_after["challenge"] == a_before["challenge"]
+    assert a_after["challenge"]["rule"] == "ask-v1"
+    assert a_after["assertion"] != a_before["assertion"]
+    a_after["assertion"] = a_before["assertion"]
+    assert after == before
