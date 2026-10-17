@@ -23,7 +23,7 @@ from typing import Any
 import rfc8785
 from pydantic import ValidationError
 
-from agentrust_trace.models import RuntimeInfo
+from agentrust_trace.models import RuntimeInfo, _JWK_PRIVATE_PARAMS
 from agentrust_trace.revocation import NO_CHECK, RevocationCheck
 from agentrust_trace.sign import (
     RevocationStore,
@@ -532,6 +532,13 @@ def verify_record(
     # Revocation, before the signature rather than after. A signature made by a
     # revoked key stays cryptographically valid for ever, so the verifier is the
     # only place the fact can be applied.
+    if isinstance(trusted_jwk, dict):
+        private = sorted(_JWK_PRIVATE_PARAMS.intersection(trusted_jwk))
+        if private:
+            raise ProvenanceError(
+                f"trusted_jwk must not contain private key material: found {', '.join(private)}. "
+                "trusted_jwk must be a public confirmation key."
+            )
     if revocation is not None:
         try:
             _check_not_revoked(trusted_jwk, revocation)
@@ -546,6 +553,13 @@ def verify_record(
     embedded = cnf.get("jwk")
     if not embedded:
         raise ProvenanceError("record carries no cnf.jwk")
+    if isinstance(embedded, dict):
+        private = sorted(_JWK_PRIVATE_PARAMS.intersection(embedded))
+        if private:
+            raise ProvenanceError(
+                f"cnf.jwk must not contain private key material: found {', '.join(private)}. "
+                "cnf.jwk is a public confirmation key."
+            )
 
     # Compared by RFC 7638 thumbprint, not by dict equality. A JWK is identified by
     # its key material; `kid`, `use` and `alg` are optional members that carry none
@@ -564,7 +578,10 @@ def verify_record(
             "some other key is a record about a server somebody else is describing."
         )
 
-    pub = _pubkey_from_jwk(trusted_jwk)
+    try:
+        pub = _pubkey_from_jwk(trusted_jwk)
+    except ValueError as exc:
+        raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
     try:
         body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
     except rfc8785.CanonicalizationError as exc:

@@ -123,6 +123,80 @@ def test_schema_still_accepts_an_ordinary_public_jwk() -> None:
     assert validator.is_valid({"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"})
 
 
+@pytest.mark.parametrize("member", _PRIVATE_JWK_MEMBERS)
+def test_provenance_verify_record_refuses_private_key_material_in_cnf_jwk(
+    member: str,
+) -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    secret = "Zm9yYmlkZGVuLXByaXZhdGUta2V5LW1hdGVyaWFs"
+    record = build_record(
+        kind="publisher-asserted",
+        publisher="did:web:acme.example",
+        tools=TOOLS,
+        artifact=ARTIFACT,
+    )
+    record["cnf"] = {"jwk": {**trusted, member: secret}}
+    body = _canonical_bytes(record)
+    record["signature"] = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+
+    with pytest.raises(ProvenanceError, match="private key material") as exc_info:
+        verify_record(record, trusted)
+    assert secret not in str(exc_info.value)
+
+
+@pytest.mark.parametrize("member", _PRIVATE_JWK_MEMBERS)
+def test_provenance_verify_record_refuses_private_key_material_in_trusted_jwk(
+    member: str,
+) -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    secret = "Zm9yYmlkZGVuLXByaXZhdGUta2V5LW1hdGVyaWFs"
+    record = build_record(
+        kind="publisher-asserted",
+        publisher="did:web:acme.example",
+        tools=TOOLS,
+        artifact=ARTIFACT,
+    )
+    record["cnf"] = {"jwk": trusted}
+    body = _canonical_bytes(record)
+    record["signature"] = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+
+    with pytest.raises(ProvenanceError, match="private key material") as exc_info:
+        verify_record(record, {**trusted, member: secret})
+    assert secret not in str(exc_info.value)
+
+    called = False
+
+    def _revocation_store(_kid: str) -> bool:
+        nonlocal called
+        called = True
+        return False
+
+    with pytest.raises(ProvenanceError, match="private key material"):
+        verify_record(record, {**trusted, member: secret}, revocation=_revocation_store)
+    assert not called
+
+
+@pytest.mark.parametrize(
+    "unusable_jwk",
+    [
+        {"kty": "RSA", "n": "abc", "e": "AQAB"},
+        {"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"},
+        {"kty": "OKP", "crv": "X25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+    ],
+    ids=["rsa", "ec", "x25519", "short-x", "padded-x"],
+)
+def test_provenance_verify_record_wraps_pubkey_from_jwk_errors_in_provenance_error(
+    unusable_jwk: dict[str, str],
+) -> None:
+    record, _ = _signed_with_cnf({"jwk": unusable_jwk})
+    with pytest.raises(ProvenanceError, match="unusable"):
+        verify_record(record, unusable_jwk)
+
+
 def test_the_two_schema_copies_stay_in_step() -> None:
     """schema/ is the published artifact, src/ is what the package ships."""
     from pathlib import Path

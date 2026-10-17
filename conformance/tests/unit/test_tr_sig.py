@@ -286,3 +286,57 @@ def test_number_spelling_vectors_match_expected_conformance_verdicts():
         apr_ts = next(f for f in res["TR-APR"] if f.code == "TR-APR-004").status.value
         sig = next(f for f in res["TR-SIG"] if f.code == "TR-SIG-005").status.value
         assert (env_iat, apr_ts, sig) == expected_by_name[path.name], path.name
+
+
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "k"])
+def test_cmcp_runtime_private_key_material_in_cnf_jwk_fails(member: str) -> None:
+    priv = Ed25519PrivateKey.generate()
+    pub = priv.public_key()
+    x = _b64url(pub.public_bytes_raw())
+    secret = "Zm9yYmlkZGVuLXByaXZhdGUta2V5LW1hdGVyaWFs"
+
+    record = _make_signed_record()
+    record["trace"]["cnf"]["jwk"] = {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": x,
+        member: secret,
+    }
+    body = _canonical_json({k: v for k, v in record.items() if k != "signature"})
+    record["signature"] = _b64url(priv.sign(body))
+
+    findings = check(record["trace"], record, "cmcp-runtime")
+    assert len(findings) == 1
+    assert findings[0].code == "TR-SIG-001"
+    assert findings[0].failed()
+    assert "private key material" in findings[0].message
+    assert secret not in findings[0].message
+
+
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "k"])
+def test_plain_trace_all_private_jwk_members_fail_tr_sig_004(member: str) -> None:
+    priv = Ed25519PrivateKey.generate()
+    pub = priv.public_key()
+    x = _b64url(pub.public_bytes_raw())
+    secret = "Zm9yYmlkZGVuLXByaXZhdGUta2V5LW1hdGVyaWFs"
+
+    trace: dict = {
+        "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+        "iat": 1748000000,
+        "subject": "did:mesh:spiffe://example.org/agent/test",
+        "runtime": {"platform": "software-only", "measurement": "sha256:" + "a" * 64},
+        "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
+        "data_class": "internal",
+        "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, member: secret}},
+        "signature": "",
+    }
+    body = _canonical_json({k: v for k, v in trace.items() if k != "signature"})
+    trace["signature"] = _b64url(priv.sign(body))
+
+    findings = check(trace, trace, "trace", level=1)
+    by_code = {f.code: f for f in findings}
+    assert by_code["TR-SIG-004"].status is Status.FAIL
+    assert "private key material" in by_code["TR-SIG-004"].message
+    assert secret not in by_code["TR-SIG-004"].message
+    assert by_code["TR-SIG-005"].status is Status.UNVERIFIED
+
