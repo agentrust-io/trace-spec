@@ -19,3 +19,7 @@ jsonschema
 jcs (dev dependency — RFC 8785 canonical JSON)
   License: MIT
   https://github.com/nicowillis/jcs
+
+examples/xchk-approval-outcome/verify_receipt.py: the xChk registry's offline receipt verifier,
+copyright (c) 2026 Sean MacGuire, MIT License (the notice in the file's header), vendored unchanged
+for the fixtures' test. Not part of the agentrust-trace package.

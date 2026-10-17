@@ -1,0 +1,47 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1792217514,
+  "subject": "did:web:in.xchk.io:plate:ENG-WNP3",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-fable-5-1"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:d2fabc971646294c4a3a3a842f97056b66719eb03579cd68b3ef7b015ccd5554"
+  },
+  "policy": {
+    "bundle_hash": "sha256:8e1e29b1e2b1470b57fba453991d3c9ef0d0ae19ba59927c014525177ee741ae",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "internal",
+  "tool_transcript": {
+    "hash": "sha256:299be718c06e91388ab4ed723cd944de14658c6bc385611d3d2f0c7f15cf9e8b",
+    "call_count": 294
+  },
+  "references": [
+    {
+      "rel": "approval-outcome",
+      "id": "2c49714297958e514b8d26307d200d8e9a18e815a7fabe90ec5fa1c8bc908783",
+      "resolver": "https://in.xchk.io",
+      "digest": "sha256:2c49714297958e514b8d26307d200d8e9a18e815a7fabe90ec5fa1c8bc908783"
+    }
+  ],
+  "build_provenance": {
+    "slsa_level": 0,
+    "digest": "sha256:d2fabc971646294c4a3a3a842f97056b66719eb03579cd68b3ef7b015ccd5554"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://in.xchk.io"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "mn02E1XyTkaVN6DEOemU5OADMUAUjPHw67oR5KKIM3k",
+      "kid": "5ecb3da505414c4f"
+    }
+  },
+  "signature": "COptwqmJVyFfYgdPXBPkWRR5u0wV00CkI81WyvHqmEHs5niUYOLF3O42ovH4XhlOUElHJnpd3KcUvP8gotAXAQ"
+}

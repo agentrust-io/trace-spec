@@ -1,0 +1,188 @@
+{
+  "format": "xchk-receipt-bundle/2",
+  "issuer": {
+    "name": "xChk registry",
+    "base": "https://in.xchk.io",
+    "servedAt": "2026-10-17T06:11:54.913Z",
+    "headline": "ENG-WNP3: APPROVED terminal in global at 2026-10-17T06:10:51.420Z — approved by sean@maclawran.ca."
+  },
+  "recordHash": "2c49714297958e514b8d26307d200d8e9a18e815a7fabe90ec5fa1c8bc908783",
+  "record": {
+    "v": 1,
+    "agentId": "6acbf860a627414b66045478",
+    "plate": "ENG-WNP3",
+    "seq": 9568,
+    "ts": "2026-10-17T06:10:51.420Z",
+    "harness": "claude",
+    "runSeq": 3053,
+    "runRef": "ENG WNP3.3053",
+    "area": "global",
+    "tool": "terminal",
+    "summary": "S=\"/private/tmp/nonexistent-trace-probe-amend1\"; cd \"$S/sets\" && rm -f AMEND-THIS-ONE-change-the-filename.parquet; echo \"amend-probe finished\"",
+    "paramsHash": "02a4da88960ac13d8b3ee0078ece79b5b27f266605cad7f3829a89dd59e613c7",
+    "amount": null,
+    "disposition": "approved",
+    "code": null,
+    "reason": null,
+    "deskCondition": "normal",
+    "continuityClass": "standard",
+    "authRef": "de7e7f200901a398c1dcc808",
+    "prevHash": "c4feab32601637d205d06d91b6e7ad44c9ba83907a7317d4e13127f2da38fdd3",
+    "rvnBlock": "0000000000012fa3af5fdc0b0b01a7940db0cdac8cd5f87955283f6c50ddba83@4584793",
+    "approverEmail": "sean@maclawran.ca",
+    "authMethod": "webauthn",
+    "attestationId": "6ad311238b8c44c6de57493c",
+    "attestationHash": "c78ee3a89c808e7e76e2551e46c36e79b9905cc07fd5c99998bfcb54dd2932a3",
+    "photoUrl": "https://xchk-main.s3.us-east-005.backblazeb2.com/xchk/xchk/baseline/att_6ad311238b8c44c6de57493c/0.jpg",
+    "model": "claude-fable-5-1"
+  },
+  "canonicalization": {
+    "profile": "JSON with object keys sorted (code-unit order), no whitespace, scalars as JSON.stringify would emit them, undefined omitted, integers only; hash = sha256 over the UTF-8 bytes",
+    "hashedConditionalKeys": [
+      "rvnBlock",
+      "approverEmail",
+      "authMethod",
+      "requiredAuthMethod",
+      "attestationId",
+      "attestationHash",
+      "photoUrl",
+      "labelsHash",
+      "delegationHash",
+      "model",
+      "tokensIn",
+      "tokensOut",
+      "tokensCacheRead",
+      "contextPct",
+      "actor",
+      "chargeCode",
+      "workspace",
+      "policyHash",
+      "outcomeOf",
+      "resultHash",
+      "endedAt",
+      "artifactHash"
+    ],
+    "note": "conditional keys are present only when the record carried them; absent keys are absent from the bytes, not null"
+  },
+  "merkle": null,
+  "seal": null,
+  "registrySignature": {
+    "unsigned": true,
+    "note": "this seal carries no registry signature"
+  },
+  "approver": {
+    "email": "sean@maclawran.ca",
+    "authLevel": "didit",
+    "authMethod": "webauthn",
+    "attestationId": "6ad311238b8c44c6de57493c",
+    "credentialId": "Yqa88hkURHnPqSTiV3o1jA",
+    "publicKey": {
+      "format": "ec-p256-uncompressed",
+      "alg": "ES256",
+      "raw": "BIWcVSzcT4ocdVb/bHtVrZNK/4RKRn1xhg6SE8TSy3QGpnJUufsDz2z+G1PqK3yP/7q5IPI9PEfjC77W/OxqD5k="
+    },
+    "assertion": {
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOW9Sb2dPY2d4OEdlc1h5aFROODdUajRaVG9rdVd5Qkg2dFQ1QjFWeFBqbyIsIm9yaWdpbiI6Imh0dHBzOi8vaW4ueGNoay5pbyIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+      "authenticatorData": "dcRETaEWF68z8NRCzR6PN99N5Mn8aYw-RadnYwZSFr0dAAAAAA",
+      "signature": "MEYCIQDYeloGNyNpXUhzIF4QEx-gKi9ojm-4GEaIoclBlgg_ewIhAOBio_iFIXsgIYCu_57km-0UC0SDJfvujj-ZPBmeAcnB",
+      "encoding": "base64url"
+    },
+    "binding": {
+      "fields": {
+        "v": 1,
+        "recordHash": "2c49714297958e514b8d26307d200d8e9a18e815a7fabe90ec5fa1c8bc908783",
+        "attestationId": "6ad311238b8c44c6de57493c",
+        "credentialId": "Yqa88hkURHnPqSTiV3o1jA",
+        "publicKey": "BIWcVSzcT4ocdVb/bHtVrZNK/4RKRn1xhg6SE8TSy3QGpnJUufsDz2z+G1PqK3yP/7q5IPI9PEfjC77W/OxqD5k=",
+        "approverEmail": "sean@maclawran.ca",
+        "authLevel": "didit",
+        "authMethod": "webauthn",
+        "verifiedAt": "2026-10-17T06:10:51.385Z"
+      },
+      "signature": "tFnW68QKw8PeVU//RxQxaGlxYKcQuOpFbN3fsJyisVny88wHqqTH2JLnZjV8emW0F8p8P4rWinp3U+6/Y+7OCA==",
+      "keyId": "5ecb3da505414c4f",
+      "signedAt": "2026-10-17T06:11:54.897Z",
+      "alg": "ed25519+ml-dsa-65",
+      "signatures": [
+        {
+          "alg": "ed25519",
+          "keyId": "5ecb3da505414c4f",
+          "signature": "tFnW68QKw8PeVU//RxQxaGlxYKcQuOpFbN3fsJyisVny88wHqqTH2JLnZjV8emW0F8p8P4rWinp3U+6/Y+7OCA=="
+        },
+        {
+          "alg": "ml-dsa-65",
+          "keyId": "8bb85bc1f41c568c",
+          "signature": "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"
+        }
+      ],
+      "rule": "registry signature(s) over canonical(fields): each of `signatures` with the registrySignature.keys entry of the same alg/keyId (hybrid: all must verify); `signature` is the Ed25519 half"
+    },
+    "rules": [
+      "assertion: WebAuthn signature = ECDSA-P256/SHA-256 over authenticatorData || sha256(clientDataJSON), verified with publicKey.raw (uncompressed point); clientDataJSON.type must be \"webauthn.get\"; authenticatorData flags must include UV (user verified)",
+      "binding: verify each of binding.signatures (or binding.signature with alg ed25519) over canonical(binding.fields) with the matching registrySignature.keys entry — Ed25519 and, when present, ML-DSA-65; all must verify; binding.fields.recordHash must equal recordHash, binding.fields.credentialId must equal the assertion credential, and binding.fields.publicKey must equal approver.publicKey.raw (17 Oct 2026: an assertion re-signed by another key, with that key offered, passes every other check)"
+    ]
+  },
+  "basis": {
+    "asked": {
+      "seq": 9567,
+      "ts": "2026-10-17T06:09:39.179Z",
+      "area": "global",
+      "tool": "terminal",
+      "summary": "S=\"/private/tmp/nonexistent-trace-probe-amend1\"; cd \"$S/sets\" && rm -f AMEND-THIS-ONE-change-the-filename.parquet; echo \"amend-probe finished\"",
+      "paramsHash": "9258fd294b1a52f693af3612e5f1382b4e33cf416890c7023f398009d9d997a3",
+      "code": "hook_escalation",
+      "reason": "destructive filesystem command outside scratch roots",
+      "recordHash": "c4feab32601637d205d06d91b6e7ad44c9ba83907a7317d4e13127f2da38fdd3",
+      "model": "claude-fable-5-1"
+    },
+    "grant": {
+      "area": "global",
+      "disposition": "allow",
+      "policyId": null,
+      "maxAmount": null,
+      "resources": []
+    },
+    "authorizeDisposition": "attest",
+    "area": "global",
+    "objective": null,
+    "rule": "asked = the attest record this ceremony answers (same plate, same action summary, raised just before the ceremony; cite it by recordHash); grant = the plate's grant rows as they stood when the ceremony was raised; asked.reason is the registry's stated reason for asking"
+  },
+  "decision": {
+    "prompt": "ENG-WNP3.3053 (via Claude Code) wants to S=\"/private/tmp/nonexistent-trace-probe-amend1\"; cd \"$S/sets\" && rm -f AMEND-THIS-ONE-change-the-filename.parquet; echo \"amend-probe finished\"",
+    "response": "approved",
+    "status": "completed",
+    "createdAt": "2026-10-17T06:09:39.394Z",
+    "respondedAt": "2026-10-17T06:10:51.385Z",
+    "by": "sean@maclawran.ca",
+    "authMethod": "webauthn",
+    "requiredAuthMethod": null,
+    "amendment": {
+      "command": "S=\"/private/tmp/nonexistent-trace-probe-amend1\"; cd \"$S/sets\" && rm -f AMEND-THIS-ONE-I-CHANGED-IT-change-the-filename.parquet; echo \"amend-probe finished\"",
+      "byEmail": "sean@maclawran.ca",
+      "at": "2026-10-17T06:10:51.388Z",
+      "area": "global",
+      "originalParamsHash": "37d21fb58b4714b2c5ee03202b61c025728540ce2120dabbb41a13f16f182f0b"
+    },
+    "actionParamsHash": "37d21fb58b4714b2c5ee03202b61c025728540ce2120dabbb41a13f16f182f0b",
+    "attestationHash": "c78ee3a89c808e7e76e2551e46c36e79b9905cc07fd5c99998bfcb54dd2932a3",
+    "attestationHashRule": "sha256 over the registry's canonical attestation JSON (utils/attestationHashUtils.computeAttestationHash: id, prompt, response, status, respondedAt, approver, method, amendment, delivery, chain …); recomputable on the registry, cited here so the record and this decision are bound"
+  },
+  "legalHolds": null,
+  "anchor": null,
+  "howToVerify": [
+    "1. canonicalize `record` per `canonicalization.profile`, sha256 it, compare to `recordHash`",
+    "2. walk `merkle.proof` from `recordHash` (L: sha256(step+cur), R: sha256(cur+step)); the result must equal `seal.merkleRoot`",
+    "3. canonicalize the seal fields per `seal.rule`, sha256 it, compare to `seal.sealHash`",
+    "4. verify every entry of `registrySignature.signatures` over the seal hash with the key of the same alg/keyId in `registrySignature.keys` (Ed25519 + ML-DSA-65 when hybrid); older bundles: Ed25519-verify `signature` with `publicKeyRaw`",
+    "5. if `approver` is present: verify the WebAuthn assertion with `approver.publicKey.raw`, then Ed25519-verify `approver.binding.signature` over canonical(`approver.binding.fields`) with the registry key, and require `approver.binding.fields.publicKey` to equal `approver.publicKey.raw`: the binding, not the bundle, names the key the assertion may be checked with",
+    "6. if `anchor.proof` is present: check the OP_RETURN, the txid, the header hash and the merkleblock; else look up `anchor.rvnTxId` on any Ravencoin explorer",
+    "8. if `seal.profileHash` is present: `profile.document` must be present, sha256(canonical(document)) must equal it, and `profile.signature` must verify over the hash with the registry keys; absent profileHash = sealed before profiles",
+    "7. if `basis`/`decision` are present: `basis.asked.recordHash` is another record on the same chain (fetch its bundle and run steps 1–4); `decision.attestationHash` equals `record.attestationHash`; `decision.amendment.command`, when present, is what ran"
+  ],
+  "profile": null,
+  "verifier": {
+    "html": "https://in.xchk.io/verify-receipt.html",
+    "python": "https://in.xchk.io/verify/verify_receipt.py",
+    "license": "MIT"
+  }
+}

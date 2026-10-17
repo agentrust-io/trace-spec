@@ -246,6 +246,7 @@ nav:
           - MITRE ATLAS: docs/crosswalks/mitre-atlas.md
           - Acta decision receipts: docs/crosswalks/acta-decision-receipts.md
           - CHAP review decisions: docs/crosswalks/chap-review-decisions.md
+          - xChk sealed receipts: docs/crosswalks/xchk-sealed-receipts.md
           - N'KEMBA institutional reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
   - Guides:
       - Tutorials:

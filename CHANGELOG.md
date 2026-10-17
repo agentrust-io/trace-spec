@@ -11,6 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **xChk sealed receipts as `approval-outcome` references.** A cross-walk,
+  `docs/crosswalks/xchk-sealed-receipts.md`, and seven fixtures in
+  `examples/xchk-approval-outcome/` show a Trust Record pointing at a sealed receipt of an
+  xChk registry by its record hash, with the receipt served as a bundle that verifies
+  offline down to the approver's passkey assertion and the registry's binding of that
+  credential to a named person. The cases fail one verifier step each, or settle one
+  verdict (a denial, an unanswered ask, an approval with changes); one is an
+  impersonated approver whose assertion verifies with the key the bundle offers while the
+  binding names another. Informative; no schema or normative change. Fixtures minted on the
+  registry; `tests/test_xchk_approval_outcome_fixtures.py` recomputes every verdict.
 - **Section 3.1.5: a layer is established by its event log or by a reference value
   (#279).** As merged, a layer was `established` only when its event log replayed to the
   quoted value, so a quote that equals signed reference values with no log could not be
