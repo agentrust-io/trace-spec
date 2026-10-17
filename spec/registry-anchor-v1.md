@@ -147,6 +147,10 @@ TRACE v0.2 makes `transparency` optional below Level 2, because an unanchored Le
 
 At **Level 2 and above the anchor is what makes the record independently checkable**, so a verifier appraising a Level 2 record MUST be able to retrieve the entry and check inclusion without contacting the record's issuer. A `transparency` value that resolves only through the issuer's own infrastructure does not satisfy this.
 
+A Level 2 verdict MUST rest on the registry entry itself, held by the verifier as the third input of §5.1, and not on a `merkle_root` and `leaf_count` carried only beside the proof. Where a receipt carries its own `merkle_root` or `leaf_count`, the verifier MUST check that each equals the entry's and MUST refuse the anchor if either differs. A verifier that does not hold the entry MUST NOT report Level 2.
+
+This document does not yet define how an entry is identified from the `transparency` value, so a verifier cannot check that the entry it holds is the one the record names. Until that is defined, a Level 2 verdict establishes inclusion in the entry the verifier was given, and a verifier MUST state that the link from `transparency` to that entry was not checked. Defining the link is tracked as finding 21 of [trace-spec#448](https://github.com/agentrust-io/trace-spec/issues/448).
+
 ## 7. Reference implementations
 
 Named so that "here is the algorithm, and here is one implementation that is not the definition" is available as a pairing. Neither is normative.

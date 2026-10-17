@@ -7,7 +7,7 @@ The receipt is the second untrusted file ``trace-tests verify`` reads
 * ``tr_anc.check`` returns findings for any receipt JSON; ``parse_receipt`` and
   ``verify_inclusion`` raise nothing but ``InclusionError``.
 * TR-ANC-002 never passes unless the receipt commits to the genuine Merkle
-  root and the claim is the one that root includes. Forging either takes a
+  root of the supplied entry and the claim is the one that root includes. Forging either takes a
   SHA-256 collision, so a PASS on anything else is a defect in the replay.
 
 Half the inputs are raw receipt bytes; the other half start from a genuine
@@ -67,6 +67,14 @@ def _genuine() -> tuple[dict, bytes]:
 
 
 _RECEIPT, _ROOT = _genuine()
+# The registry entry sealed with the genuine receipt (registry-anchor-v1 section 4).
+_ENTRY = {
+    "ts": "2026-10-15T00:00:00Z",
+    "merkle_root": _RECEIPT["merkle_root"],
+    "leaf_count": _RECEIPT["leaf_count"],
+    "producer": "fuzz/1.0.0",
+    "batch_id": "fuzz-1",
+}
 if not verify_inclusion(_CLAIMS[_TARGET], *parse_receipt(_RECEIPT)):
     raise SystemExit("fuzz_receipt: the genuine receipt does not verify; the harness is wrong")
 
@@ -110,7 +118,7 @@ def TestOneInput(data: bytes) -> None:
 
     if not isinstance(receipt, dict):
         return
-    findings = tr_anc.check(claim, receipt=receipt)
+    findings = tr_anc.check(claim, receipt=receipt, entry=_ENTRY)
     if any(f.code == "TR-ANC-002" and f.passed() for f in findings):
         assert claim is _CLAIMS[_TARGET], f"inclusion proven for the wrong claim: {receipt!r}"
         root = parse_receipt(receipt)[3]

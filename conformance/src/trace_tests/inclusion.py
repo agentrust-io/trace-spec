@@ -18,13 +18,20 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 from typing import Any
 
 LEAF_PREFIX = b"\x00"
 NODE_PREFIX = b"\x01"
 _HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")  # fullmatch: $ admits a trailing newline
 
-__all__ = ["InclusionError", "canonical_claim_bytes", "decode_hash", "verify_inclusion"]
+__all__ = [
+    "InclusionError",
+    "canonical_claim_bytes",
+    "decode_hash",
+    "parse_entry",
+    "verify_inclusion",
+]
 
 
 class InclusionError(ValueError):
@@ -127,8 +134,13 @@ def verify_inclusion(
     return sn == 0 and r == merkle_root
 
 
-def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
-    """Validate a receipt object and return (leaf_index, audit_path, leaf_count, merkle_root).
+def parse_proof(receipt: object) -> tuple[int, list[bytes], int | None, bytes | None]:
+    """Validate a receipt and return (leaf_index, audit_path, leaf_count, merkle_root).
+
+    The section 5 proof is ``leaf_index`` and ``audit_path``, and both are
+    required. ``leaf_count`` and ``merkle_root`` belong to the registry entry
+    (section 5.1); a receipt may carry its own copies (section 6), and each is
+    returned when present and ``None`` when absent.
 
     Raises InclusionError with a specific reason rather than returning a bare
     False, so a malformed receipt and a receipt that proves nothing are
@@ -137,9 +149,7 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     if not isinstance(receipt, dict):
         raise InclusionError(f"receipt must be a JSON object, got {type(receipt).__name__}")
 
-    missing = [
-        k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root") if k not in receipt
-    ]
+    missing = [k for k in ("leaf_index", "audit_path") if k not in receipt]
     if missing:
         raise InclusionError(f"receipt is missing required field(s): {', '.join(missing)}")
 
@@ -147,9 +157,85 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     if not isinstance(raw_path, list):
         raise InclusionError(f"audit_path must be an array, got {type(raw_path).__name__}")
 
+    leaf_count = receipt.get("leaf_count")
+    if "leaf_count" in receipt and (type(leaf_count) is not int):
+        raise InclusionError(
+            f"receipt leaf_count must be an integer, got {type(leaf_count).__name__}"
+        )
+
     return (
         receipt["leaf_index"],
         [decode_hash(node) for node in raw_path],
-        receipt["leaf_count"],
-        decode_hash(receipt["merkle_root"]),
+        leaf_count,
+        decode_hash(receipt["merkle_root"]) if "merkle_root" in receipt else None,
     )
+
+
+def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
+    """Validate a self-contained receipt: (leaf_index, audit_path, leaf_count, merkle_root).
+
+    For callers that replay a receipt without an entry, such as the published
+    anchor-inclusion vectors, so the receipt must carry ``leaf_count`` and
+    ``merkle_root`` itself.
+    """
+    if isinstance(receipt, dict):
+        missing = [
+            k for k in ("leaf_index", "audit_path", "leaf_count", "merkle_root")
+            if k not in receipt
+        ]
+        if missing:
+            raise InclusionError(f"receipt is missing required field(s): {', '.join(missing)}")
+    leaf_index, audit_path, leaf_count, merkle_root = parse_proof(receipt)
+    if leaf_count is None or merkle_root is None:
+        raise InclusionError("receipt leaf_count and merkle_root must not be null")
+    return leaf_index, audit_path, leaf_count, merkle_root
+
+
+_ENTRY_STRINGS = ("ts", "producer", "batch_id")
+_UTC_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z")
+
+
+def _is_utc_timestamp(value: str) -> bool:
+    """True iff *value* is a real ISO-8601 UTC date-time with a Z suffix (section 4)."""
+    if not _UTC_TIMESTAMP.fullmatch(value):
+        return False
+    try:
+        datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return False
+    return True
+
+
+def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
+    """Validate a registry entry and return (merkle_root, leaf_count, producer, batch_id).
+
+    The entry is the registry-anchor-v1 section 4 line the receipt claims to
+    commit to. Fields beyond section 4 are ignored rather than rejected, because
+    the reference registry already writes some (trace-spec#448 item 20).
+    """
+    if not isinstance(entry, dict):
+        raise InclusionError(f"registry entry must be a JSON object, got {type(entry).__name__}")
+
+    missing = [
+        k for k in ("ts", "merkle_root", "leaf_count", "producer", "batch_id") if k not in entry
+    ]
+    if missing:
+        raise InclusionError(f"registry entry is missing required field(s): {', '.join(missing)}")
+
+    for key in _ENTRY_STRINGS:
+        if not isinstance(entry[key], str) or not entry[key]:
+            raise InclusionError(f"registry entry {key} must be a non-empty string")
+
+    if not _is_utc_timestamp(entry["ts"]):
+        raise InclusionError(
+            "registry entry ts must be an ISO-8601 UTC timestamp ending in Z, "
+            f"got {entry['ts'][:40]!r}"
+        )
+
+    leaf_count = entry["leaf_count"]
+    if not isinstance(leaf_count, int) or isinstance(leaf_count, bool) or leaf_count < 1:
+        raise InclusionError(
+            f"registry entry leaf_count must be an integer >= 1, got {leaf_count!r}"
+        )
+
+    return decode_hash(entry["merkle_root"]), leaf_count, entry["producer"], entry["batch_id"]
