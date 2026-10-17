@@ -2,11 +2,10 @@
 
 No module implements the reference yet, so the draft rule is stated here as a small reference
 checker. The record signature is verified first (§3.3 step 1); the manifest reference is then
-appraised by recomputing the digest the record declares (``sha256:`` or ``sha384:``, the two the v0.3 draft
-schema accepts) over the bytes the resolver returns for ``manifest.id``; any other algorithm is reported as
-unsupported, never as a mismatch. A
-``manifest_verification_result`` the producer wrote is never read. Four wrong checkers must each
-be caught by at least one fixture.
+appraised by recomputing the digest the record declares (``sha256:`` or ``sha384:``, the two the
+v0.3 draft schema accepts) over the bytes the resolver returns for ``manifest.id``; any other
+algorithm is reported as unsupported, never as a mismatch. A ``manifest_verification_result`` the
+producer wrote is never read. Five wrong checkers must each be caught by at least one fixture.
 """
 
 import base64
