@@ -1,6 +1,6 @@
 # Manifest reference, v0.3 draft fixtures (trace-spec#483)
 
-Six fixtures for an optional signed top-level `manifest {id, digest, media_type}` that names the agent manifest a
+Seven fixtures for an optional signed top-level `manifest {id, digest, media_type}` that names the agent manifest a
 record ran under. Status: **v0.3 draft**. No conformance module implements the reference yet;
 `tests/test_manifest_ref_draft_vectors.py` states the draft rule as a small reference checker.
 
@@ -25,7 +25,8 @@ Each of five wrong checkers is caught by at least one fixture: one trusts the as
 unresolvable manifest as a pass, one reads the manifest before the signature, one rejects the record when the
 manifest is unresolvable, and one always hashes with sha256 (caught by 07).
 
-Regenerate with `python tests/vectors/manifest-ref-v0.3-draft/generate.py`. Signing uses the `rfc8785` dependency
+Regenerate from the repo root with `python conformance/tests/vectors/manifest-ref-v0.3-draft/generate.py`
+(the test commands above are relative to `conformance/`; this one is not). Signing uses the `rfc8785` dependency
 and a public test key derived from a fixed seed. Records 01-05 were first published as
 [`trace-manifest-ref-v0`](https://github.com/babyblueviper1/preaction-governance-conformance/tree/2cd4ae7f47551903cb10627ef619d7396270528a/examples/trace-manifest-ref-v0)
 at `2cd4ae7`; they now carry the v0.3 profile tag (`tag:agentrust-io.com,2026:trace-v0.3`) and were re-signed for
