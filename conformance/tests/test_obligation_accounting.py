@@ -23,6 +23,10 @@ MAX_AGE = 10**9
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = b"policy bundle"
 DIGEST = "sha256:" + hashlib.sha256(BUNDLE).hexdigest()
+#: The digest of a policy other than BUNDLE, supplied as verifier context.
+EXPECTED_OTHER = "sha256:" + hashlib.sha256(b"the policy the verifier expects").hexdigest()
+#: Verifier-supplied expected policy hash per branch; absent means none supplied.
+EXPECTED_BY_BRANCH = {"expected_policy_mismatch": EXPECTED_OTHER}
 A = accounting.Applicability.APPLICABLE
 NA = accounting.Applicability.NOT_APPLICABLE
 C = accounting.EvaluationState.COMPLETED
@@ -48,6 +52,7 @@ BRANCH_CASES = (
     ("TR-POL-003", 0, "resolver_non_bytes", A, U, None, Status.UNVERIFIED, False),
     ("TR-POL-003", 0, "resolved_match", A, C, None, Status.PASS, False),
     ("TR-POL-003", 0, "resolved_mismatch", A, C, None, Status.FAIL, True),
+    ("TR-POL-003", 0, "expected_policy_mismatch", A, C, None, Status.FAIL, True),
     ("TR-SCA-002", 1, "build_provenance_missing", A, B, "TR-SCA-001", None, None),
     ("TR-SCA-002", 1, "build_provenance_not_object", A, B, "TR-SCA-001", None, None),
     ("TR-SCA-002", 1, "digest_valid", A, C, None, Status.PASS, False),
@@ -137,9 +142,15 @@ def _execute(
     record: dict[str, Any],
     levels: tuple[int, ...] = (0, 1, 2),
     resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
     return runner._run_levels(
-        record, "trace", levels, max_age_seconds=MAX_AGE, policy_resolver=resolver
+        record,
+        "trace",
+        levels,
+        max_age_seconds=MAX_AGE,
+        policy_resolver=resolver,
+        expected_policy_hash=expected_policy_hash,
     )
 
 
@@ -153,8 +164,9 @@ def _assert_public_and_report_compatibility(
     record: dict[str, Any],
     levels: tuple[int, ...] = (0, 1, 2),
     resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
-    execution = _execute(copy.deepcopy(record), levels, resolver)
+    execution = _execute(copy.deepcopy(record), levels, resolver, expected_policy_hash)
     assert execution.compatibility_results == {
         level: runner.run(
             copy.deepcopy(record),
@@ -162,6 +174,7 @@ def _assert_public_and_report_compatibility(
             level,
             max_age_seconds=MAX_AGE,
             policy_resolver=resolver,
+            expected_policy_hash=expected_policy_hash,
         )
         for level in levels
     }
@@ -216,6 +229,7 @@ def _branch_input(
         "resolver_non_bytes",
         "resolved_match",
         "resolved_mismatch",
+        "expected_policy_mismatch",
     }:
         record["policy"].update(policy_uri="https://p.example/x", bundle_hash=DIGEST)
     elif branch == "build_provenance_missing":
@@ -229,7 +243,7 @@ def _branch_input(
         return record, lambda _uri: (_ for _ in ()).throw(OSError("offline"))
     if branch == "resolver_non_bytes":
         return record, lambda _uri: "wrong"  # type: ignore[return-value]
-    if branch == "resolved_match":
+    if branch in {"resolved_match", "expected_policy_mismatch"}:
         return record, lambda _uri: BUNDLE
     if branch == "resolved_mismatch":
         return record, lambda _uri: b"other"
@@ -653,7 +667,7 @@ def test_cli_report_emits_accounting_from_one_execution(
     assert len(extension["rows"]) == 3
 
 
-def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
+def test_all_twenty_two_registered_branches_have_exact_integration_witnesses(
     valid_level0: dict[str, Any],
 ) -> None:
     projected = []
@@ -661,7 +675,7 @@ def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
         key, level, branch, applicability, state, prerequisite, status, contribution = case
         record, resolver = _branch_input(valid_level0, branch)
         execution = _assert_public_and_report_compatibility(
-            record, tuple(range(level + 1)), resolver
+            record, tuple(range(level + 1)), resolver, EXPECTED_BY_BRANCH.get(branch)
         )
         row = _row(execution, level, key)
         assert (
@@ -690,7 +704,7 @@ def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
         branch["branch"] for item in registry["obligations"] for branch in item["branches"]
     }
     witnessed = {row.producer_branch for row in projected}
-    assert len(BRANCH_CASES) == len(witnessed) == 21 and witnessed == registered
+    assert len(BRANCH_CASES) == len(witnessed) == 22 and witnessed == registered
     prerequisites = [row for row in projected if row.prerequisite_code is not None]
     assert len(prerequisites) == 5
     assert all(row.prerequisite_code != row.obligation_key for row in prerequisites)
@@ -1465,9 +1479,12 @@ def test_prerequisite_row_requires_one_exact_blocking_same_run_finding(
     record.pop("policy")
 
     def hostile(
-        _trace: dict[str, Any], *, policy_resolver: Callable[[str], bytes] | None = None
+        _trace: dict[str, Any],
+        *,
+        policy_resolver: Callable[[str], bytes] | None = None,
+        expected_policy_hash: str | None = None,
     ) -> list[Finding]:
-        del policy_resolver
+        del policy_resolver, expected_policy_hash
         accounting._observe("TR-POL", "policy_missing")
         return list(returned)
 

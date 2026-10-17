@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- `expected_policy_hash` runner input and `--expected-policy-hash` on `verify` and
+  `report`: verifier context for TR-POL-003, which then fails a record declaring any
+  policy other than the expected one, even when its `bundle_hash` matches the bundle
+  `policy_uri` resolves to (trace-spec #280). Same-algorithm digests are compared
+  before resolution, even without `policy_uri`. Across algorithms the comparison
+  requires resolved bytes, and the finding names an expectation it could not compare.
+  Without it, TR-POL-003 is unchanged.
+  Policy-resolution vectors 12 and 13 are the pass and fail pair.
+
 ### Changed
 
 - Vendor-neutral placeholders (`example-provider`, `example-model`) in the unsigned

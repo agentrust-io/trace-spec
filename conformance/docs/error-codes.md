@@ -36,7 +36,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 |------|-------------|------------|
 | TR-POL-001 | `policy.bundle_hash` is not a valid `sha256:` or `sha384:` digest | Compute `sha256:` + 64 hex chars, or `sha384:` + 96 hex chars, over your policy bundle bytes. Both are accepted by the schema and by the module |
 | TR-POL-002 | `policy.enforcement_mode` is not `enforce`, `advisory`, `silent`, or `declared` | Replace `"strict"` or `"monitor"` with one of the four accepted values; `"declared"` is the honest value for a producer that binds a policy without evaluating it |
-| TR-POL-003 | `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares. Unverified when a resolver was supplied and the bundle could not be read; skipped when no `policy_uri` is present or no resolver was supplied | Point `policy_uri` at the bundle whose bytes hash to `bundle_hash`. A record that cites a bundle it cannot be checked against is reported as unverified rather than passed |
+| TR-POL-003 | `policy.policy_uri` is malformed, the resolved bytes disagree with `policy.bundle_hash`, or the expected-policy comparison finds a mismatch. A same-algorithm expectation can establish a mismatch without resolving the bundle, including when `policy_uri` is absent. Otherwise an unreadable bundle is unverified, and absent `policy_uri` or an absent resolver skips resolution | Supply the expected policy hash as verifier context. Point `policy_uri` at bytes matching `bundle_hash`. Expectations using another algorithm require resolved bytes for comparison |
 
 ## TR-APR: Appraisal
 
