@@ -37,16 +37,23 @@ _SAFE_INT = 2**53 - 1
 def _outside_profile(value: Any) -> str | None:
     """Name the first value registry-anchor-v1 section 1 excludes, or None.
 
-    Non-integer numbers (NaN and the infinities among them) and integers outside
-    -(2**53 - 1) to 2**53 - 1 are outside the anchor-leaf profile: two
-    implementations of the four serialization rules write different bytes for
-    them, so a proof over them only proves what Python's ``json.dumps`` wrote.
-    Iterative, because the claim is attacker-controlled and may be deep.
+    Non-integer numbers (NaN and the infinities among them), integers outside
+    -(2**53 - 1) to 2**53 - 1, and unpaired UTF-16 surrogates are outside the
+    anchor-leaf profile: two implementations of the five serialization rules
+    write different bytes or cannot represent them, so a proof over them only
+    proves what Python's ``json.dumps`` wrote. Iterative, because the claim is
+    attacker-controlled and may be deep.
     """
     stack = [value]
     while stack:
         v = stack.pop()
-        if isinstance(v, bool) or v is None or isinstance(v, str):
+        if isinstance(v, bool) or v is None:
+            continue
+        if isinstance(v, str):
+            try:
+                v.encode("utf-8")
+            except UnicodeEncodeError:
+                return "unpaired UTF-16 surrogate"
             continue
         if isinstance(v, int):
             if not -_SAFE_INT <= v <= _SAFE_INT:
@@ -54,6 +61,12 @@ def _outside_profile(value: Any) -> str | None:
         elif isinstance(v, float):
             return f"non-integer number {v!r}"
         elif isinstance(v, dict):
+            for k in v:
+                if isinstance(k, str):
+                    try:
+                        k.encode("utf-8")
+                    except UnicodeEncodeError:
+                        return "unpaired UTF-16 surrogate in object key"
             stack.extend(v.values())
         elif isinstance(v, (list, tuple)):
             stack.extend(v)

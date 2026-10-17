@@ -419,6 +419,17 @@ class UnanchorableValue(ValueError):
 def _reject_unanchorable(value: Any, path: str = "$") -> None:
     if isinstance(value, bool):
         return
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raise UnanchorableValue(
+                f"{path} contains an unpaired UTF-16 surrogate, which registry-anchor-v1 "
+                "section 1 puts outside the profile: languages whose string type is UTF-8 "
+                "cannot represent an unpaired surrogate, so the digest is not reproducible "
+                "by a peer."
+            ) from None
+        return
     if isinstance(value, float):
         raise UnanchorableValue(
             f"{path} is a non-integer number ({value!r}). registry-anchor-v1 section 1 "
@@ -438,8 +449,18 @@ def _reject_unanchorable(value: Any, path: str = "$") -> None:
         )
     if isinstance(value, dict):
         for key, item in value.items():
+            if isinstance(key, str):
+                try:
+                    key.encode("utf-8")
+                except UnicodeEncodeError:
+                    raise UnanchorableValue(
+                        f"{path}.{key!r} contains an unpaired UTF-16 surrogate in an "
+                        "object key, which registry-anchor-v1 section 1 puts outside the "
+                        "profile: languages whose string type is UTF-8 cannot represent "
+                        "an unpaired surrogate."
+                    ) from None
             _reject_unanchorable(item, f"{path}.{key}")
-    elif isinstance(value, list):
+    elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
             _reject_unanchorable(item, f"{path}[{index}]")
 

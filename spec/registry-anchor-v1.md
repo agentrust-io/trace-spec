@@ -32,7 +32,7 @@ The two agree on records whose strings and keys are pure ASCII and whose numbers
 
 - **Non-ASCII strings.** JCS emits the character; §1 emits a `\uXXXX` escape.
 - **Non-integer numbers.** JCS applies ECMAScript number serialization. §1 excludes non-integer numbers from this profile for that reason.
-- **Integers outside the safe-integer range.** JCS converts a number through an IEEE 754 double, so `9007199254740992` and `9007199254740993` become the same bytes; §1 serializes the digits as written, so they stay distinct. Two implementations of §1 do not even agree with each other here: Python's `json.dumps` writes the exact digits, and a JavaScript implementation of the same four rules goes through `JSON.stringify` and emits one value for both, which is a rug-pull this profile exists to catch going undetected. §1 excludes the range for that reason.
+- **Integers outside the safe-integer range.** JCS converts a number through an IEEE 754 double, so `9007199254740992` and `9007199254740993` become the same bytes; §1 serializes the digits as written, so they stay distinct. Two implementations of §1 do not even agree with each other here: Python's `json.dumps` writes the exact digits, and a JavaScript implementation of the same five rules goes through `JSON.stringify` and emits one value for both, which is a rug-pull this profile exists to catch going undetected. §1 excludes the range for that reason.
 - **Key order.** JCS sorts by UTF-16 code unit (RFC 8785 §3.2.3); §1 sorts by Unicode code point, which is what Python's `sort_keys=True` does. The two agree across the Basic Multilingual Plane and disagree once a key contains a supplementary-plane character, because surrogates occupy U+D800 to U+DFFF.
 
 Do not "simplify" a verifier by reusing the signing canonicalizer at the leaf. If you do, write a test that anchors a record containing a non-ASCII character and verifies it, which is the test that catches this.
@@ -45,9 +45,10 @@ The unit of anchoring is the **complete signed claim object, signature included*
 
 `canonical_claim_bytes` is the canonical JSON serialization of the claim object:
 
-- Object keys sorted lexicographically by Unicode code point, recursively.
+- Object keys sorted lexicographically by Unicode code point, recursively (UTF-16 surrogate pairs are not used for key comparison; see §0).
 - Separators `","` and `":"`, no whitespace.
-- Non-ASCII characters escaped (`ensure_ascii`); output encoded as ASCII bytes.
+- String escaping: `"` (`U+0022`), `\` (`U+005C`), and the five control characters `U+0008`, `U+0009`, `U+000A`, `U+000C`, and `U+000D` use the two-character escapes `\"`, `\\`, `\b`, `\t`, `\n`, `\f`, and `\r`; `/` (`U+002F`) is not escaped; all other control characters (`U+0000` to `U+001F`) and all BMP characters in `U+007F` to `U+D7FF` and `U+E000` to `U+FFFF` (including `U+007F`, which is escaped as `\u007f`) use lowercase four-hex-digit `\uXXXX` escapes; supplementary-plane characters (`U+10000` to `U+10FFFF`) use lowercase UTF-16 surrogate pairs (a high surrogate in `U+D800` to `U+DBFF` followed by a low surrogate in `U+DC00` to `U+DFFF`, e.g. `\ud8xx\udcxx`); output is encoded as ASCII bytes.
+- Integer zero is written `0` (never `-0`).
 - No trailing newline.
 
 In Python this is exactly:
@@ -56,7 +57,7 @@ In Python this is exactly:
 json.dumps(claim, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
 ```
 
-Claims MUST be JSON objects. TRACE Trust Records contain only strings, integers, booleans, nulls, arrays, and objects. Claims containing non-integer numbers are outside this profile, because cross-language float serialization is not canonical, and claims containing an integer outside -9007199254740991 to 9007199254740991 are outside it for the same reason: an implementation of the four rules above in a language whose only number type is the IEEE 754 double writes one value for two distinct integers. TRACE v0.2 §3.2.2 already holds a Trust Record to that range, so a schema-valid record cannot reach this; a claim that is not a Trust Record can, and this is where it is excluded.
+Claims MUST be JSON objects. TRACE Trust Records contain only strings, integers, booleans, nulls, arrays, and objects. Claims containing non-integer numbers are outside this profile, because cross-language float serialization is not canonical, and claims containing an integer outside -9007199254740991 to 9007199254740991 are outside it for the same reason: an implementation of the five rules above in a language whose only number type is the IEEE 754 double writes one value for two distinct integers. Claims containing an unpaired UTF-16 surrogate (`U+D800` to `U+DFFF`) in a string or object key are also outside this profile, because languages whose string type is UTF-8 cannot represent an unpaired surrogate. TRACE v0.2 §3.2.2 already holds a Trust Record to that range, so a schema-valid record cannot reach this; a claim that is not a Trust Record can, and this is where it is excluded.
 
 ## 2. Leaf hash
 
