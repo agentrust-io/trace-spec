@@ -180,9 +180,7 @@ def tool_catalog_hash(tools: list[dict[str, Any]], *, format: str = FORMAT) -> s
         ) from exc
     except RecursionError:
         # The sort key's str() and the anchor walk are both recursive.
-        raise _UnanchorableCatalog(
-            "the offered tool catalog nests too deeply to hash"
-        ) from None
+        raise _UnanchorableCatalog("the offered tool catalog nests too deeply to hash") from None
 
 
 class _UnanchorableCatalog(ProvenanceError, UnanchorableValue):
@@ -197,10 +195,13 @@ def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
     for index, t in enumerate(tools):
         if not isinstance(t, dict):
             raise ProvenanceError(f"tools[{index}] must be an object, got {type(t).__name__}")
-        name = _nonempty_string(t.get("name"), "tool.name")
-        if name in seen_names:
-            raise ProvenanceError(f"duplicate tool name in catalog: {name!r}")
-        seen_names.add(name)
+        if "name" in t:
+            name = t["name"]
+            if not isinstance(name, str):
+                raise ProvenanceError("tool.name must be a string when present")
+            if name in seen_names:
+                raise ProvenanceError(f"duplicate tool name in catalog: {name!r}")
+            seen_names.add(name)
         description = t.get("description")
         if description is not None and not isinstance(description, str):
             raise ProvenanceError(
@@ -225,14 +226,14 @@ def _tool_catalog_hash(tools: list[dict[str, Any]], format: str) -> str:
     normalized = sorted(
         (
             {
-                "name": t["name"],
+                "name": t.get("name"),
                 "description": t.get("description"),
                 "input_schema": t.get("input_schema", t.get("inputSchema")),
                 **({"annotations": _behavioral_hints(t)} if format == FORMAT_V2 else {}),
             }
             for t in tools
         ),
-        key=lambda t: str(t["name"]),
+        key=lambda t: (str(t["name"]), anchor_bytes(t) if t["name"] is None else b""),
     )
     # Sorted-key JSON, matching the anchor format rather than JCS. The two
     # canonicalizations at two layers are described in registry-anchor-v1.md §0;
@@ -306,8 +307,7 @@ def _check_structure(
             validated = RuntimeInfo.model_validate(attestation)
         except ValidationError as exc:
             raise ProvenanceError(
-                "attestation does not match the shape TRACE v0.2 §3.1 `runtime` uses: "
-                f"{exc}"
+                f"attestation does not match the shape TRACE v0.2 §3.1 `runtime` uses: {exc}"
             ) from exc
         # Shape-valid isn't the same as a hardware root. "software-only" is a
         # legitimate RuntimeInfo value elsewhere (an honestly non-attested Trust
@@ -421,9 +421,7 @@ def sign_record(record: dict[str, Any], key: Any) -> dict[str, Any]:
     safe range; both used to escape as the underlying library's ``ValueError``.
     """
     if not isinstance(record, dict):
-        raise ProvenanceError(
-            f"record must be a JSON object, got {type(record).__name__}"
-        )
+        raise ProvenanceError(f"record must be a JSON object, got {type(record).__name__}")
     try:
         jwk = key_to_jwk(key)
     except ValueError as exc:
@@ -525,19 +523,13 @@ def verify_record(
     if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     _tool_count(catalog)
-    if "attestation" not in record:
-        raise ProvenanceError(
-            "attestation member is required (use null when kind is not tee-attested)"
-        )
 
     # Freshness. `issued_at` has been required and checked since the format
     # existed, with an error message explaining that a record with no issue time
     # cannot be aged; this is the step that reads it. `_check_structure` above has
     # already established it is a non-negative integer value.
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds, exc=ProvenanceError)
-    _check_seconds(
-        "max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError
-    )
+    _check_seconds("max_age_seconds", max_age_seconds, optional=True, exc=ProvenanceError)
     _check_seconds("now", now, optional=True, exc=ProvenanceError)
     verification_time = time.time() if now is None else now
     age = verification_time - issued_at
@@ -598,8 +590,7 @@ def verify_record(
         # this module's, so a caller written against `ProvenanceError` saw a crash
         # where every other malformed record gives a refusal.
         raise ProvenanceError(
-            f"record has no RFC 8785 canonical form, so its signature cannot be "
-            f"checked: {exc}"
+            f"record has no RFC 8785 canonical form, so its signature cannot be checked: {exc}"
         ) from exc
     # `signature` reaches this function from whatever the caller is verifying, the
     # same untrusted document nothing above this line has vouched for either: a

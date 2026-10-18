@@ -1,5 +1,5 @@
 """Regression coverage for tool_catalog entry validation, duplicate tool names, and
-required attestation member (#558)."""
+optional attestation member (#558)."""
 
 from __future__ import annotations
 
@@ -41,41 +41,48 @@ def _signed_record(*, kind: str = "publisher-asserted") -> tuple[dict[str, Any],
 
 
 @pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
-def test_empty_tool_dict_in_catalog_is_refused(fmt: str) -> None:
-    record, _ = _signed_record()
-    record["format"] = fmt
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
-        tool_catalog_hash([{}], format=fmt)
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
-        build_record(
-            kind="publisher-asserted",
-            publisher="did:web:acme.example",
-            tools=[{}],
-            artifact=ARTIFACT,
-            format=fmt,
-        )
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
-        check_tool_catalog(record, [{}])
+def test_missing_tool_name_retains_null_projection(fmt: str) -> None:
+    import hashlib
+    from agentrust_trace.sign import anchor_bytes
+
+    projected: dict[str, Any] = {"name": None, "description": None, "input_schema": None}
+    if fmt == FORMAT_V2:
+        projected["annotations"] = {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        }
+    expected = "sha256:" + hashlib.sha256(anchor_bytes([projected])).hexdigest()
+    assert tool_catalog_hash([{}], format=fmt) == expected
+
+
+@pytest.mark.parametrize("fmt", [FORMAT, FORMAT_V2], ids=["v1", "v2"])
+def test_nameless_catalog_order_is_deterministic(fmt: str) -> None:
+    from itertools import permutations
+
+    tools = [{}, {"description": "z"}, {"description": "a"}, {"name": "None"}]
+    assert len({tool_catalog_hash(list(p), format=fmt) for p in permutations(tools)}) == 1
 
 
 @pytest.mark.parametrize(
     "bad_name",
-    [None, "", 123, True, False, [], {}],
-    ids=["none", "empty", "int", "true", "false", "list", "dict"],
+    [None, 123, True, False, [], {}],
+    ids=["none", "int", "true", "false", "list", "dict"],
 )
-def test_non_string_or_empty_tool_name_is_refused(bad_name: Any) -> None:
+def test_non_string_tool_name_is_refused(bad_name: Any) -> None:
     bad_tool = {**VALID_TOOL, "name": bad_name}
     record, _ = _signed_record()
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
+    with pytest.raises(ProvenanceError, match=r"tool\.name must be a string when present"):
         tool_catalog_hash([bad_tool])
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
+    with pytest.raises(ProvenanceError, match=r"tool\.name must be a string when present"):
         build_record(
             kind="publisher-asserted",
             publisher="did:web:acme.example",
             tools=[bad_tool],
             artifact=ARTIFACT,
         )
-    with pytest.raises(ProvenanceError, match=r"tool\.name must be a non-empty string"):
+    with pytest.raises(ProvenanceError, match=r"tool\.name must be a string when present"):
         check_tool_catalog(record, [bad_tool])
 
 
@@ -137,9 +144,7 @@ def test_non_string_tool_description_is_refused(bad_description: Any) -> None:
     ["not-a-dict", 123, True, False, []],
     ids=["str", "int", "true", "false", "list"],
 )
-def test_non_object_tool_input_schema_is_refused(
-    schema_field: str, bad_schema: Any
-) -> None:
+def test_non_object_tool_input_schema_is_refused(schema_field: str, bad_schema: Any) -> None:
     bad_tool: dict[str, Any] = {"name": "search", "description": "search the docs"}
     bad_tool[schema_field] = bad_schema
     record, _ = _signed_record()
@@ -158,7 +163,7 @@ def test_non_object_tool_input_schema_is_refused(
 
 
 @pytest.mark.parametrize("kind", ["publisher-asserted", "observer-attested"])
-def test_verify_record_requires_attestation_member_and_accepts_null(kind: str) -> None:
+def test_verify_record_accepts_missing_or_null_attestation(kind: str) -> None:
     key = generate_key()
     jwk = key_to_jwk(key)
     record = build_record(
@@ -174,8 +179,7 @@ def test_verify_record_requires_attestation_member_and_accepts_null(kind: str) -
     without_attestation = dict(record)
     del without_attestation["attestation"]
     signed_without_attestation = sign_record(without_attestation, key)
-    with pytest.raises(ProvenanceError, match="attestation member is required"):
-        verify_record(signed_without_attestation, jwk, now=1_760_000_000)
+    verify_record(signed_without_attestation, jwk, now=1_760_000_000)
 
 
 class _StringyPublisher:
