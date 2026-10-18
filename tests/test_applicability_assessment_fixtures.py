@@ -103,11 +103,14 @@ def _assess(record: dict, store: dict, issuer_keys: dict) -> dict:
             "outcome": None,
             "verdict": "assessment-unresolved",
         }
-    digest_matches = _jcs_sha256(obj) == reference["digest"]
+    digest = reference.get("digest")
+    digest_matches = _jcs_sha256(obj) == digest if digest is not None else None
     jwk = issuer_keys.get(obj["issuer_key_id"])
     configured = jwk is not None
     verifies = _assessment_verifies(obj, jwk) if configured else None
-    if not digest_matches:
+    if digest_matches is None:
+        verdict = "assessment-digest-unavailable"
+    elif not digest_matches:
         verdict = "assessment-digest-mismatch"
     elif not configured:
         verdict = "assessment-unverified"
@@ -259,3 +262,24 @@ def test_the_generator_reproduces_the_committed_bytes(tmp_path: Path) -> None:
     assert produced == committed
     for name in committed:
         assert (tmp_path / name).read_bytes() == (DIR / name).read_bytes(), name
+
+
+def test_missing_optional_digest_does_not_claim_cited_byte_identity() -> None:
+    record = copy.deepcopy(_load("01-assessment-applies-verified.json"))
+    # This exercises only the external-object helper, not the modified record
+    # signature. It makes no assertion that the edited TRACE record verifies.
+    del record["references"][0]["digest"]
+    observed = _assess(record, _load("assessment-store.json"), EXPECTED["issuer_keys"])
+    assert observed["reference_resolves"] is True
+    assert observed["digest_matches"] is None
+    assert observed["assessment_verifies"] is True
+    assert observed["verdict"] == "assessment-digest-unavailable"
+
+
+def test_valid_signature_does_not_hide_a_reference_digest_mismatch() -> None:
+    record = copy.deepcopy(_load("01-assessment-applies-verified.json"))
+    record["references"][0]["digest"] = "sha256:" + "0" * 64
+    observed = _assess(record, _load("assessment-store.json"), EXPECTED["issuer_keys"])
+    assert observed["digest_matches"] is False
+    assert observed["assessment_verifies"] is True
+    assert observed["verdict"] == "assessment-digest-mismatch"

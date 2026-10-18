@@ -42,7 +42,7 @@ issuer key, plus one `applies` object signed by a second issuer. Each one carrie
 | `jurisdiction` | The legal system under which the provision is read (`EU`) |
 | `provision.instrument`, `provision.article`, `provision.text_as_of` | The official ELI URI (`http://data.europa.eu/eli/reg/2024/1689/oj`), the article (`26(6)`), and the date of the text read (`2026-09-30`) |
 | `basis` | The provisions on which the outcome rests, including the scope rule, classification rule, and any amending provision |
-| `outcome.status`, `outcome.vocabulary`, `outcome.detail`, `outcome.applies_from` | The assessor's claim (`applies`, `does-not-apply`, or `undetermined`) in the closed vocabulary the object names, with optional `applies_from` when later than `iat` |
+| `outcome.status`, `outcome.vocabulary`, `outcome.detail`, `outcome.applies_from` | The assessor's claim (`applies`, `does-not-apply`, or `undetermined`) in the closed vocabulary the object names, with optional `applies_from` stating the application date independently of any Trust Record |
 | `issued_at` | When the issuer signed |
 | `signature` | Ed25519 over the RFC 8785 canonical form of the object without this member |
 
@@ -84,6 +84,12 @@ reported as unresolved, which is a different answer from "no assessment".
 `06` cites an assessment signed by an issuer whose key this relying party does not hold.
 The rule §3.3.2 gives receipts applies: unverified, not invalid. The cited bytes are
 the cited bytes; whether the named issuer signed them is not established.
+
+If the optional reference digest is absent, the example assessment helper reports
+`assessment-digest-unavailable` and `digest_matches: null`: a signature can still
+verify, but identity with the bytes cited by the record has not been established.
+This helper reports findings about the external object; it is not an assessment
+resolver invoked by `verify_record`.
 
 ## Running the checks
 
