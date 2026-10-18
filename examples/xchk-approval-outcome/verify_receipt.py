@@ -36,6 +36,7 @@ import base64
 import hashlib
 import json
 import sys
+from typing import Optional
 
 try:  # optional post-quantum half: https://pypi.org/project/dilithium-py (pure Python)
     from dilithium_py.ml_dsa import ML_DSA_65 as _ML_DSA_65
@@ -396,19 +397,22 @@ class _OtsReader:
     def byte(self) -> int:
         if self.i >= len(self.b):
             raise ValueError("ots: truncated")
-        v = self.b[self.i]; self.i += 1
+        v = self.b[self.i]
+        self.i += 1
         return v
 
     def take(self, n: int) -> bytes:
         if self.i + n > len(self.b):
             raise ValueError("ots: truncated")
-        v = self.b[self.i:self.i + n]; self.i += n
+        v = self.b[self.i:self.i + n]
+        self.i += n
         return v
 
     def varuint(self) -> int:
         v, shift = 0, 0
         while True:
-            c = self.byte(); v |= (c & 0x7F) << shift
+            c = self.byte()
+            v |= (c & 0x7F) << shift
             if not c & 0x80:
                 return v
             shift += 7
@@ -442,19 +446,22 @@ def _ots_apply(op: str, arg, msg: bytes) -> bytes:
 
 def ots_attestations(proof: bytes, digest: bytes) -> list:
     """Replay a calendar proof from the digest: [(kind, value, msg)] with kind 'pending' (value = uri) or 'bitcoin' (value = height)."""
-    r = _OtsReader(proof); out = []
+    r = _OtsReader(proof)
+    out = []
 
     def timestamp(msg: bytes, depth: int):
         if depth > 256:
             raise ValueError("ots: too deep")
         tag = r.byte()
         while tag == 0xFF:
-            node(msg, r.byte(), depth); tag = r.byte()
+            node(msg, r.byte(), depth)
+            tag = r.byte()
         node(msg, tag, depth)
 
     def node(msg: bytes, tag: int, depth: int):
         if tag == 0x00:
-            att = r.take(8); payload = r.varbytes(8192)
+            att = r.take(8)
+            payload = r.varbytes(8192)
             if att == OTS_PENDING:
                 out.append(("pending", _OtsReader(payload).varbytes(1000).decode("utf-8", "replace"), msg))
             elif att == OTS_BITCOIN:
@@ -474,7 +481,7 @@ def ots_attestations(proof: bytes, digest: bytes) -> list:
     return out
 
 
-def main(path: str, artifact_path: str = None) -> int:
+def main(path: str, artifact_path: Optional[str] = None) -> int:
     try:
         with open(path, "r", encoding="utf-8") as f:
             b = json.load(f)
@@ -563,7 +570,8 @@ def main(path: str, artifact_path: str = None) -> int:
     keys = pinned_keys(rs)
     if seal and (rs.get("signature") or rs.get("signatures")) and keys:
         pending += registry_verify(ok, rs, seal["sealHash"].encode("utf-8"), keys, "registry signature over the seal hash")
-        print(f"  ..   keys pinned in the bundle: {', '.join(f'{k.get('alg')}/{k.get('keyId')}' for k in keys)}; confirm at {rs.get('wellKnown')} when online")
+        pinned = ", ".join(f"{k.get('alg')}/{k.get('keyId')}" for k in keys)  # 18 Oct 2026: no nested same-quote f-string (3.12-only syntax)
+        print(f"  ..   keys pinned in the bundle: {pinned}; confirm at {rs.get('wellKnown')} when online")
     elif seal:
         pending += 1
         print(f"  WAIT no registry signature in this bundle ({rs.get('note') or 'unsigned'})")
