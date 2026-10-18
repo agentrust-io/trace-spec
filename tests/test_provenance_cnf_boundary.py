@@ -193,7 +193,7 @@ def test_provenance_verify_record_wraps_pubkey_from_jwk_errors_in_provenance_err
     unusable_jwk: dict[str, str],
 ) -> None:
     record, _ = _signed_with_cnf({"jwk": unusable_jwk})
-    with pytest.raises(ProvenanceError, match="unusable"):
+    with pytest.raises(ProvenanceError, match="trusted_jwk is unusable"):
         verify_record(record, unusable_jwk)
 
 

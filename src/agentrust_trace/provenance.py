@@ -581,7 +581,7 @@ def verify_record(
     try:
         pub = _pubkey_from_jwk(trusted_jwk)
     except ValueError as exc:
-        raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
+        raise ProvenanceError(f"trusted_jwk is unusable: {exc}") from exc
     try:
         body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
     except rfc8785.CanonicalizationError as exc:
