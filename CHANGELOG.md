@@ -11,7 +11,6 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
-- **NIST SP 800-53 Rev 5 and DoD AI Tailoring Guide cross-walk.** `docs/crosswalks/nist-sp800-53-dod-ai-tailoring.md` maps each v0.2 Trust Record claim to the SP 800-53 controls it is evidence for, states what each claim establishes and what the assessor still needs, and names the three things a record does not evidence for an authorization package (TEVV results, control implementation across the boundary, non-repudiation against an operator-held key). Includes a citation form for assessment artifacts. Contributed by Antagon Inc. Informative only: no schema, wire-format or normative change.
 - **Accuracy pass on non-normative text.** Examples, schema descriptions, adapter
   docstrings and unsigned test records use vendor-neutral placeholders
   (`example-provider`, `example-model`), the Section 6.2 list keeps confidential-computing and standards
