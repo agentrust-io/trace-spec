@@ -115,10 +115,18 @@ def test_rule_3_escaping_applies_to_object_keys_as_well_as_values(serialize) -> 
     )
 
 
-@pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_4_integer_zero_is_written_without_minus_sign(serialize) -> None:
-    """Integer zero (-0) is serialized as 0, never -0."""
-    assert serialize({"n": -0}) == b'{"n":0}'
+def test_rule_4_integer_zero_is_written_without_minus_sign() -> None:
+    """Guards the spec/registry-anchor-v1.md §1 text only (for languages with signed zero).
+
+    In Python, the integer literal ``-0`` is already the ``int`` ``0`` before it
+    reaches either serializer (and ``-0.0`` is a ``float``, which §1 excludes), so
+    a runtime call like ``anchor_bytes({"z": -0})`` cannot fail on `-0` handling.
+    This test therefore guards only that §1 explicitly states the ``0`` (never ``-0``)
+    rule for implementations in languages whose number representation has a signed zero.
+    """
+    doc = (REPO_ROOT / "spec" / "registry-anchor-v1.md").read_text(encoding="utf-8")
+    section_1 = doc.split("## 1. Canonical claim bytes")[1].split("## 2. Leaf hash")[0]
+    assert "- Integer zero is written `0` (never `-0`)." in section_1
 
 
 @pytest.mark.parametrize("bad_str", ["\ud800", "\udbff", "\udc00", "\udfff", "a\ud800b"])
