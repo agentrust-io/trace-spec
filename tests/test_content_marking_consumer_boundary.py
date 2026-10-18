@@ -133,10 +133,22 @@ def test_verify_assertion_rejects_invalid_anchor_when_present(bad_anchor: Any) -
     assert not isinstance(exc_info.value, RecordMismatch)
 
 
-@pytest.mark.parametrize("surrogate", ["\ud800", "\udfff", "https://example.com/\ud800"])
+@pytest.mark.parametrize(
+    "surrogate",
+    ["\ud800", "\udfff", "\ud800\udc00", "\ud83d\ude00", "https://example.com/\ud800"],
+)
 def test_build_assertion_rejects_unpaired_surrogate_in_anchor(surrogate: str) -> None:
     _assert_positive_controls()
     raw = json.dumps(_valid_record()).encode()
+    escaped_pair_raw = (
+        b'{"subject":"spiffe://example.org/agent/image-bot",'
+        b'"eat_profile":"tag:agentrust-io.com,2026:trace-v0.2",'
+        b'"note":"\\ud83d\\ude00"}'
+    )
+    built_pair = build_assertion(
+        escaped_pair_raw, url=URL, anchor="https://example.com/\U0001f600"
+    )
+    assert verify_assertion(built_pair, escaped_pair_raw)["note"] == "\U0001f600"
     with pytest.raises(
         ContentMarkingError, match="anchor must not contain an unpaired UTF-16 surrogate"
     ):
@@ -226,7 +238,7 @@ def test_unpaired_surrogates_in_record_bytes_are_rejected(
         verify_assertion(assertion, raw)
 
 
-@pytest.mark.parametrize("surrogate", ["\ud800", "\udfff"])
+@pytest.mark.parametrize("surrogate", ["\ud800", "\udfff", "\ud800\udc00", "\ud83d\ude00"])
 def test_unpaired_surrogates_anywhere_in_assertion_are_rejected(
     surrogate: str,
 ) -> None:
@@ -237,7 +249,33 @@ def test_unpaired_surrogates_anywhere_in_assertion_are_rejected(
         verify_assertion(assertion, raw)
 
 
+@pytest.mark.parametrize(
+    ("bad_record_overrides", "expected_match"),
+    [
+        ({"subject": 123}, "the record has no SPIFFE or DID subject to bind to"),
+        ({"subject": "not-a-uri"}, "the record has no SPIFFE or DID subject to bind to"),
+        ({"eat_profile": ""}, "the record declares no non-empty string eat_profile"),
+        ({"eat_profile": 123}, "the record declares no non-empty string eat_profile"),
+        ({"anchor": ""}, "the record anchor must be a non-empty string"),
+        ({"anchor": 123}, "the record anchor must be a non-empty string"),
+    ],
+)
+def test_fetched_record_with_invalid_fields_raises_content_marking_error_not_mismatch(
+    bad_record_overrides: dict[str, Any], expected_match: str
+) -> None:
+    _assert_positive_controls()
+    assertion, _ = _crafted_pair(anchor=ANCHOR)
+    bad_record = {**_valid_record(), **bad_record_overrides}
+    bad_raw = json.dumps(bad_record).encode()
+    assertion["data"]["record"]["hash"] = "sha256:" + hashlib.sha256(bad_raw).hexdigest()
+    with pytest.raises(ContentMarkingError, match=expected_match) as exc_info:
+        verify_assertion(assertion, bad_raw)
+    assert not isinstance(exc_info.value, RecordMismatch)
+
+
 def test_loads_rejects_non_bytes_input() -> None:
     _assert_positive_controls()
-    with pytest.raises(ContentMarkingError, match="record_bytes must be bytes, got str"):
+    with pytest.raises(
+        ContentMarkingError, match="record_bytes must be bytes or bytearray, got str"
+    ):
         _loads("{}", "record_bytes")  # type: ignore[arg-type]

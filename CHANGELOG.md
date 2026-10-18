@@ -11,6 +11,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`content_marking`: consumer field and strict UTF-8 / RFC 8259 JSON boundaries.**
+  `verify_assertion` now validates `subject` (SPIFFE or DID URI), `eat_profile` (non-empty
+  string), and optional `anchor` (non-empty string) on both the assertion and the resolved
+  record before comparing them, and `_loads` decodes `bytes | bytearray` as strict UTF-8
+  JSON without a leading byte-order mark, non-finite numeric constants (`NaN`, `Infinity`,
+  `-Infinity`), or unpaired UTF-16 surrogates (#555, #565, by @drk-ram).
 - **Section 3.1.5: a layer is established by its event log or by a reference value
   (#279).** As merged, a layer was `established` only when its event log replayed to the
   quoted value, so a quote that equals signed reference values with no log could not be

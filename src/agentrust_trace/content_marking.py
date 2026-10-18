@@ -79,6 +79,14 @@ def _no_nonfinite_constant(value: str, what: str = "JSON") -> Any:
 
 
 def _has_surrogate(value: Any) -> bool:
+    """Return True if *value* holds any UTF-16 surrogate code point (U+D800..U+DFFF).
+
+    A JSON surrogate-pair escape such as ``\\ud83d\\ude00`` is decoded by ``json.loads``
+    into the supplementary Unicode scalar ``U+1F600`` before this runs, so valid JSON
+    surrogate pairs pass. Any code point still in ``U+D800..U+DFFF`` after decoding, or
+    passed directly in a Python ``str`` (including two adjacent surrogate code points),
+    is not valid UTF-8 and is refused.
+    """
     stack: list[Any] = [value]
     seen: set[int] = set()
     while stack:
@@ -104,7 +112,9 @@ def _has_surrogate(value: Any) -> bool:
 
 def _loads(data: bytes | bytearray, what: str) -> Any:
     if not isinstance(data, bytes | bytearray):
-        raise ContentMarkingError(f"{what} must be bytes, got {type(data).__name__}")
+        raise ContentMarkingError(
+            f"{what} must be bytes or bytearray, got {type(data).__name__}"
+        )
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -119,10 +129,8 @@ def _loads(data: bytes | bytearray, what: str) -> Any:
             object_pairs_hook=_no_duplicate_members,
             parse_constant=lambda value: _no_nonfinite_constant(value, what),
         )
-    except ContentMarkingError as exc:
-        if str(exc).startswith(what):
-            raise
-        raise ContentMarkingError(f"{what} is not usable JSON: {exc}") from exc
+    except ContentMarkingError:
+        raise
     except (ValueError, RecursionError) as exc:
         # RecursionError: nesting deeper than the interpreter stack. The bytes can
         # come from whoever serves the URL, so a caller written against
@@ -133,10 +141,10 @@ def _loads(data: bytes | bytearray, what: str) -> Any:
     return parsed
 
 
-def _digest(data: bytes, alg: str) -> str:
+def _digest(data: bytes | bytearray, alg: str) -> str:
     if alg not in _ALGS:
         raise ContentMarkingError(f"unsupported digest algorithm {alg!r}; use sha256 or sha384")
-    return f"{alg}:{_ALGS[alg](data).hexdigest()}"
+    return f"{alg}:{_ALGS[alg](bytes(data)).hexdigest()}"
 
 
 def _record_url(value: Any) -> str:
@@ -188,7 +196,7 @@ def _record_url(value: Any) -> str:
 
 
 def build_assertion(
-    record_bytes: bytes,
+    record_bytes: bytes | bytearray,
     *,
     url: str,
     alg: str = "sha256",
@@ -254,7 +262,9 @@ def build_assertion(
     return {"label": ASSERTION_LABEL, "data": data}
 
 
-def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str, Any]:
+def verify_assertion(
+    assertion: dict[str, Any], record_bytes: bytes | bytearray
+) -> dict[str, Any]:
     """Check an assertion against the record bytes actually retrieved from its URL.
 
     *record_bytes* is not optional and has no default. The hash is the binding,
@@ -360,13 +370,23 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
                 "the assertion has nothing to be bound to. It matched the declared hash, "
                 "so this is what that URL is serving."
             )
-    if record.get("subject") != data.get("subject"):
+    record_subject = record.get("subject")
+    if not isinstance(record_subject, str) or not _SUBJECT_RE.match(record_subject):
+        raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
+    record_profile = record.get("eat_profile")
+    if not isinstance(record_profile, str) or not record_profile:
+        raise ContentMarkingError("the record declares no non-empty string eat_profile")
+    if "anchor" in record and (
+        not isinstance(record["anchor"], str) or not record["anchor"]
+    ):
+        raise ContentMarkingError("the record anchor must be a non-empty string")
+    if record_subject != data.get("subject"):
         raise RecordMismatch(
             f"assertion names subject {data.get('subject')!r} and the record says "
-            f"{record.get('subject')!r}: the assertion describes a different record than it "
+            f"{record_subject!r}: the assertion describes a different record than it "
             "points at"
         )
-    if record.get("eat_profile") != data.get("eat_profile"):
+    if record_profile != data.get("eat_profile"):
         raise RecordMismatch(
             "assertion and record disagree about eat_profile, so the assertion describes a "
             "different record than it points at"

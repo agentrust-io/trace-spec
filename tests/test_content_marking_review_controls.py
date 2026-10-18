@@ -43,10 +43,10 @@ def test_bytearray_round_trip_matches_exact_bytes_and_hash(alg: str) -> None:
     raw = _raw(note="supplementary scalar: \U0001f600")
     mutable = bytearray(raw)
     expected = build_assertion(raw, url=URL, alg=alg)
-    built = build_assertion(mutable, url=URL, alg=alg)  # type: ignore[arg-type]
+    built = build_assertion(mutable, url=URL, alg=alg)
     assert built == expected
     assert built["data"]["record"]["hash"] == f"{alg}:" + hashlib.new(alg, raw).hexdigest()
-    assert verify_assertion(built, mutable) == RECORD | {  # type: ignore[arg-type]
+    assert verify_assertion(built, mutable) == RECORD | {
         "note": "supplementary scalar: \U0001f600"
     }
     assert bytes(mutable) == raw
