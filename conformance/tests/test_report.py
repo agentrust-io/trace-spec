@@ -14,14 +14,13 @@ import re
 import pytest
 
 from trace_tests import report as report_mod
-from trace_tests.inclusion import InclusionError, canonical_claim_bytes
 from trace_tests.result import Finding, Status
 from trace_tests.runner import _LEVEL_MODULES, run
 
 from .conftest import _build_signed_cmcp_record, load_vector
 
 #: Wide enough that a fixture's age never decides a test about reporting.
-_MAX_AGE = 10 ** 9
+_MAX_AGE = 10**9
 
 
 def _passing_record():
@@ -256,9 +255,16 @@ def test_build_tolerates_non_dict_trace_field(bad_trace: object) -> None:
     assert "unanchored" in report_mod.to_html(data)
 
 
-def test_record_digest_matches_canonical_claim_bytes() -> None:
+def test_record_digest_matches_diagnostic_serialization() -> None:
     record = load_vector("valid_level0.json")
-    expected = "sha256:" + hashlib.sha256(canonical_claim_bytes(record)).hexdigest()
+    expected = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+                "ascii"
+            )
+        ).hexdigest()
+    )
     assert report_mod.record_digest(record) == expected
 
 
@@ -267,9 +273,27 @@ def test_record_digest_matches_canonical_claim_bytes() -> None:
     [float("nan"), float("inf"), float("-inf"), 1.5, 10**20, -(10**20)],
     ids=["nan", "inf", "neg-inf", "float", "above-safe-int", "below-safe-int"],
 )
-def test_record_digest_rejects_values_outside_anchor_leaf_profile(bad_value: object) -> None:
+def test_record_digest_remains_diagnostic_for_out_of_profile_values(bad_value: object) -> None:
     record = load_vector("valid_level0.json")
     record["data_class"] = bad_value
-    with pytest.raises(InclusionError):
-        report_mod.record_digest(record)
-
+    expected = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+                "ascii"
+            )
+        ).hexdigest()
+    )
+    assert report_mod.record_digest(record) == expected
+    data = report_mod.build(
+        record=record,
+        record_path="r.json",
+        record_format="trace",
+        results_by_level={0: {"TR-ENV": [Finding("TR-ENV-001", Status.FAIL, "boundary record")]}},
+        suite_version="0.5.0",
+        library_version=None,
+        generated_at="now",
+    )
+    assert data.digest == expected
+    assert json.loads(report_mod.to_json(data))["record"]["digest"] == expected
+    assert expected in report_mod.to_html(data)

@@ -26,7 +26,6 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from trace_tests import accounting
-from trace_tests.inclusion import InclusionError, canonical_claim_bytes
 from trace_tests.modules.unverified import finding_counts_as_level_failure
 from trace_tests.result import Finding, Status, finding_from_row, finding_row
 
@@ -66,7 +65,10 @@ def record_digest(record: dict[str, Any]) -> str:
     specification, section 0; getting it backwards here would be harmless but
     confusing, so the choice is stated rather than left implicit.
     """
-    return "sha256:" + hashlib.sha256(canonical_claim_bytes(record)).hexdigest()
+    encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+        "ascii"
+    )
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -145,13 +147,7 @@ def _assemble(
 ) -> ReportData:
     raw_trace = record.get("trace", record)
     trace = raw_trace if isinstance(raw_trace, dict) else {}
-    try:
-        digest = record_digest(record)
-    except InclusionError:
-        fallback = json.dumps(
-            record, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=True
-        ).encode("ascii")
-        digest = "sha256:" + hashlib.sha256(fallback).hexdigest()
+    digest = record_digest(record)
     return ReportData(
         record_path=record_path,
         record_format=record_format,

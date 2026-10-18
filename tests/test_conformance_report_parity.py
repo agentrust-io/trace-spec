@@ -21,8 +21,6 @@ report_mod = importlib.import_module("trace_tests.report")
 result_mod = importlib.import_module("trace_tests.result")
 runner_mod = importlib.import_module("trace_tests.runner")
 
-InclusionError = inclusion_mod.InclusionError
-canonical_claim_bytes = inclusion_mod.canonical_claim_bytes
 Finding = result_mod.Finding
 Status = result_mod.Status
 _LEVEL_MODULES = runner_mod._LEVEL_MODULES
@@ -74,11 +72,37 @@ def test_report_build_guards_non_dict_trace(bad_trace: object) -> None:
     [float("nan"), float("inf"), float("-inf"), 1.5, 10**20, -(10**20)],
     ids=["nan", "inf", "neg-inf", "float", "above-safe-int", "below-safe-int"],
 )
-def test_report_record_digest_enforces_anchor_leaf_profile(bad_value: object) -> None:
+def test_report_record_digest_remains_diagnostic(bad_value: object) -> None:
     record = _load_vector("valid_level0.json")
-    expected = "sha256:" + hashlib.sha256(canonical_claim_bytes(record)).hexdigest()
+    expected = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+                "ascii"
+            )
+        ).hexdigest()
+    )
     assert report_mod.record_digest(record) == expected
 
     record["data_class"] = bad_value
-    with pytest.raises(InclusionError):
-        report_mod.record_digest(record)
+    expected = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
+                "ascii"
+            )
+        ).hexdigest()
+    )
+    assert report_mod.record_digest(record) == expected
+    data = report_mod.build(
+        record=record,
+        record_path="r.json",
+        record_format="trace",
+        results_by_level={0: {"TR-ENV": [Finding("TR-ENV-001", Status.FAIL, "boundary record")]}},
+        suite_version="0.5.0",
+        library_version=None,
+        generated_at="now",
+    )
+    assert data.digest == expected
+    assert json.loads(report_mod.to_json(data))["record"]["digest"] == expected
+    assert expected in report_mod.to_html(data)
