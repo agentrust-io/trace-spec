@@ -151,7 +151,8 @@ def test_the_impersonated_approver_offers_a_key_the_binding_does_not_name() -> N
 
 
 def test_the_crossed_assertion_is_the_same_persons_answer_to_another_ask() -> None:
-    """08: key, binding and user verification all genuine; the challenge the device signed names another ask."""
+    """08: key, binding and user verification all genuine; the challenge the device signed names
+    another ask."""
     before = _load("01-approval-confirmed.bundle.json")
     after = _load("08-assertion-over-another-ask.bundle.json")
     a_before, a_after = before["approver"], after["approver"]
