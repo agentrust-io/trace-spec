@@ -204,6 +204,7 @@ def build_assertion(
 ) -> dict[str, Any]:
     """Build the assertion from the **exact bytes** that will be served at *url*.
 
+    Accepts bytes or bytearray and freezes one bytes snapshot for parsing and hashing.
     Takes bytes rather than a record object on purpose. A hash computed over a
     re-serialized dict is a hash of something nobody will ever fetch: key order,
     separators and escaping all change the bytes without changing the record, and
@@ -237,6 +238,8 @@ def build_assertion(
         if _has_surrogate(anchor):
             raise ContentMarkingError("anchor must not contain an unpaired UTF-16 surrogate")
 
+    # Hash and parse the same immutable snapshot of caller-owned mutable input.
+    record_bytes = bytes(record_bytes)
     record = _loads(record_bytes, "record_bytes")
     if not isinstance(record, dict):
         raise ContentMarkingError(
@@ -253,7 +256,7 @@ def build_assertion(
 
     data: dict[str, Any] = {
         "version": ASSERTION_VERSION,
-        "record": {"url": url, "hash": _digest(bytes(record_bytes), alg), "alg": alg},
+        "record": {"url": url, "hash": _digest(record_bytes, alg), "alg": alg},
         "subject": subject,
         "eat_profile": profile,
     }
@@ -269,6 +272,8 @@ def verify_assertion(
 
     *record_bytes* is not optional and has no default. The hash is the binding,
     and an assertion whose hash was never checked is a URL in a file.
+
+    Hashing and parsing use one immutable snapshot of bytes or bytearray input.
 
     Returns the parsed record on success. Raises :class:`ContentMarkingError` or
     :class:`RecordMismatch` otherwise.
@@ -348,7 +353,9 @@ def verify_assertion(
             "somebody else's server and would be false."
         )
 
-    actual = _digest(bytes(record_bytes), alg)
+    # A caller may mutate a bytearray between hashing and JSON decoding.
+    record_bytes = bytes(record_bytes)
+    actual = _digest(record_bytes, alg)
     if actual != expected:
         raise RecordMismatch(
             f"the record at {url} does not match the assertion: computed {actual}, "
@@ -365,7 +372,7 @@ def verify_assertion(
         )
     for field in ("subject", "eat_profile"):
         if field not in record:
-            raise RecordMismatch(
+            raise ContentMarkingError(
                 f"the record at {url} has no {field}, which section 2 marks required, so "
                 "the assertion has nothing to be bound to. It matched the declared hash, "
                 "so this is what that URL is serving."

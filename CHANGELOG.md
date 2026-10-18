@@ -17,6 +17,10 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   record before comparing them, and `_loads` decodes `bytes | bytearray` as strict UTF-8
   JSON without a leading byte-order mark, non-finite numeric constants (`NaN`, `Infinity`,
   `-Infinity`), or unpaired UTF-16 surrogates (#555, #565, by @drk-ram).
+  Both public functions parse and hash one immutable snapshot of mutable record input.
+  Hash-matching records missing a required field now raise `ContentMarkingError`,
+  consistent with other malformed fields, rather than its `RecordMismatch` subclass.
+  Hash or well-formed field disagreements still raise `RecordMismatch`.
 - **Section 3.1.5: a layer is established by its event log or by a reference value
   (#279).** As merged, a layer was `established` only when its event log replayed to the
   quoted value, so a quote that equals signed reference values with no log could not be

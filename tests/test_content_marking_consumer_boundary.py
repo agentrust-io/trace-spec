@@ -1,4 +1,4 @@
-"""Consumer and RFC 8259 UTF-8 / JSON boundary tests for content_marking (#555)."""
+"""Consumer and RFC 8259 UTF-8 / JSON boundary tests for content_marking."""
 
 from __future__ import annotations
 

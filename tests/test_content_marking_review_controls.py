@@ -1,4 +1,4 @@
-"""Public-API paired regressions offered as a companion to PR #565.
+"""Public-API paired regressions for content-marking boundaries.
 
 These preserve current behavior without deciding the author's pending error-message,
 profile-documentation or fetched-record validation choices.
