@@ -80,11 +80,42 @@ def base(observation):
     }
 
 
+CONTEXT = {
+    "now": 160,
+    "max_age_seconds": 30,
+    "trusted_observer": "observer-1",
+    "executor_id": "executor-1",
+    "independence_required": True,
+    "predicate": "reachable",
+}
+
+
 def generate(out=ROOT):
     cases = []
 
     def add(name, inputs, expected):
-        cases.append({"id": name, "inputs": inputs, "expected": expected})
+        reason = {
+            "003-established": "predicate-satisfied",
+            "003a-empty-envelope": "successor-envelope-missing-fields",
+            "003b-empty-observation": "predicate-undecidable",
+            "003c-unrelated-observation": "predicate-undecidable",
+            "004-contradicted": "predicate-contradicted",
+            "006-wrong-authorization": "successor-authorization-mismatch",
+            "007-substituted-envelope": "successor-digest-mismatch",
+            "008-invalid-observer-signature": "successor-signature-invalid",
+            "009-observer-relabel": "successor-observer-mismatch",
+            "010-stale-observation": "observation-stale",
+            "011-future-observation": "observation-future",
+        }.get(name, "pic-digest-syntax")
+        cases.append(
+            {
+                "schema_version": "1.0",
+                "id": name,
+                "context": dict(CONTEXT),
+                "inputs": inputs,
+                "expected": {**expected, "reason": reason},
+            }
+        )
 
     ok = {"authorization_bound": True, "successor_bound": True, "outcome": "established"}
     add("003-established", base({"reachable": True}), ok)
@@ -130,9 +161,27 @@ def generate(out=ROOT):
     signature = bad["successor"]["signature"]
     bad["successor"]["signature"] = ("A" if signature[0] != "A" else "B") + signature[1:]
     add("008-invalid-observer-signature", bad, {**ok, "successor_bound": False, "outcome": None})
+    for name, observer, observed_at in [
+        ("009-observer-relabel", "observer-other", 150),
+        ("010-stale-observation", "observer-1", 129),
+        ("011-future-observation", "observer-1", 161),
+    ]:
+        data = base({"reachable": True})
+        data["after"].update(observer=observer, observed_at=observed_at)
+        body = {k: v for k, v in data["successor"].items() if k != "signature"}
+        body.update(
+            observer=observer,
+            observed_at=observed_at,
+            successor_observation_digest=digest(data["after"]),
+        )
+        data["successor"] = sign(body, OBS)
+        expected = {**ok, "outcome": "not-established"}
+        if name.startswith("009"):
+            expected.update(successor_bound=False, outcome=None)
+        add(name, data, expected)
     for case in cases:
         (out / (case["id"] + ".json")).write_text(
-            json.dumps(case, indent=2) + "\n", encoding="utf-8"
+            json.dumps(case, indent=2) + "\n", encoding="utf-8", newline="\n"
         )
 
 

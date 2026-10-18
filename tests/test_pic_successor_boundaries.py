@@ -3,6 +3,8 @@
 from __future__ import annotations
 import importlib.util
 import json
+import copy
+import jsonschema
 import subprocess
 import sys
 from pathlib import Path
@@ -28,8 +30,44 @@ def _module(name, path):
 independent = _module("pic_successor_independent", DIR / "independent.py")
 
 
-def _reference(data):
-    result = {"authorization_bound": False, "successor_bound": None, "outcome": None}
+def _reason(exc):
+    message = str(exc)
+    if message.endswith(" must be a sha256 digest"):
+        return "pic-digest-syntax"
+    if message.startswith("successor envelope is missing successor fields:"):
+        return "successor-envelope-missing-fields"
+    return {
+        "successor artifact does not name the authorization that was verified": (
+            "successor-authorization-mismatch"
+        ),
+        "successor envelope does not match the expected digest binding": (
+            "successor-digest-mismatch"
+        ),
+        "successor signature is invalid": "successor-signature-invalid",
+        "successor observer is not the identity the trusted observer key belongs to": (
+            "successor-observer-mismatch"
+        ),
+        "trusted bound successor evidence satisfies the transition predicate": (
+            "predicate-satisfied"
+        ),
+        "trusted bound successor evidence contradicts the transition predicate": (
+            "predicate-contradicted"
+        ),
+        "transition predicate cannot decide from this observation": "predicate-undecidable",
+        "successor observation is stale": "observation-stale",
+        "successor observation is dated in the future": "observation-future",
+    }[message]  # Unknown errors fail the adapter instead of masquerading as expected refusal.
+
+
+def _reference(data, context=None):
+    if context is None:
+        context = json.loads((DIR / "003-established.json").read_text(encoding="utf-8"))["context"]
+    result = {
+        "authorization_bound": False,
+        "successor_bound": None,
+        "outcome": None,
+        "reason": None,
+    }
     try:
         auth = verify_bridge(
             data["bridge"],
@@ -39,9 +77,10 @@ def _reference(data):
             pic_args_digest=data["pic_args_digest"],
             tool_call=data["tool_call"],
             transcript=data["transcript"],
-            now=160,
+            now=context["now"],
         )
-    except IntentBridgeError:
+    except IntentBridgeError as exc:
+        result["reason"] = _reason(exc)
         return result
     result["authorization_bound"] = True
     result["successor_bound"] = False
@@ -49,38 +88,45 @@ def _reference(data):
         bound = verify_successor_artifact(
             data["successor"],
             data["observer_jwk"],
-            trusted_observer="observer-1",
+            trusted_observer=context["trusted_observer"],
             authorization_id=auth["authorization_id"],
             after=data["after"],
         )
-    except IntentBridgeError:
+    except IntentBridgeError as exc:
+        result["reason"] = _reason(exc)
         return result
     result["successor_bound"] = True
     outcome = evaluate_successor_observation(
         bound,
         expected_successor_digest=data["successor"]["successor_observation_digest"],
-        trusted_observers={"observer-1"},
-        executor_id="executor-1",
-        independence_required=True,
-        now=160,
-        max_age_seconds=30,
+        trusted_observers={context["trusted_observer"]},
+        executor_id=context["executor_id"],
+        independence_required=context["independence_required"],
+        now=context["now"],
+        max_age_seconds=context["max_age_seconds"],
         predicate=lambda obs: obs.get("reachable"),
     )
     result["outcome"] = outcome.status
+    result["reason"] = _reason(outcome.reason)
     return result
 
 
 @pytest.mark.parametrize("path", CASES, ids=lambda p: p.stem)
 def test_each_vector_agrees_on_all_three_axes(path):
     case = json.loads(path.read_text(encoding="utf-8"))
-    assert _reference(case["inputs"]) == case["expected"]
-    assert independent.check(case["inputs"]) == case["expected"]
+    independent.validate_case(case)
+    assert _reference(case["inputs"], case["context"]) == case["expected"]
+    assert independent.check(case["inputs"], case["context"]) == case["expected"]
 
 
 def test_corpus_is_nonempty_and_three_axis_case003_split_is_present():
-    assert len(CASES) == 12
+    assert len(CASES) == 15
     cases = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in CASES}
-    assert {name: cases[name]["expected"] for name in cases if name.startswith("003")} == {
+    assert {
+        name: {k: v for k, v in cases[name]["expected"].items() if k != "reason"}
+        for name in cases
+        if name.startswith("003")
+    } == {
         "003-established": {
             "authorization_bound": True,
             "successor_bound": True,
@@ -171,7 +217,12 @@ def test_signature_and_authorization_link_mutations_are_independently_observable
         mutant = json.loads((DIR / (name + ".json")).read_text(encoding="utf-8"))["inputs"]
         assert _reference(positive)["successor_bound"] is True
         assert _reference(mutant)["successor_bound"] is False
-        assert independent.check(mutant)["successor_bound"] is False
+        assert (
+            independent.check(mutant, json.loads(CASES[0].read_text())["context"])[
+                "successor_bound"
+            ]
+            is False
+        )
     # Both always-accept and always-refuse answers disagree with the corpus.
     assert any(
         json.loads(p.read_text(encoding="utf-8"))["expected"]["successor_bound"] is False
@@ -209,12 +260,75 @@ spec = importlib.util.spec_from_file_location("bounded", root / "independent.py"
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 paths = sorted(root.glob("0*.json"))
-if len(paths) != 12:
+if len(paths) != 15:
     raise RuntimeError("missing vectors")
 for path in paths:
     case = json.loads(path.read_text(encoding="utf-8"))
-    observed = m.check(case["inputs"])
+    m.validate_case(case)
+    observed = m.check(case["inputs"], case["context"])
     if observed != case["expected"]:
         raise RuntimeError(f"{path.name}: {observed}")
 """
     subprocess.run([sys.executable, "-O", "-c", code, str(DIR)], check=True)
+
+
+@pytest.mark.parametrize("field", ["schema_version", "context", "expected", "inputs", "id"])
+def test_case_contract_rejects_missing_required_fields(field):
+    case = json.loads(CASES[0].read_text(encoding="utf-8"))
+    del case[field]
+    with pytest.raises(jsonschema.ValidationError):
+        independent.validate_case(case)
+
+
+@pytest.mark.parametrize("edit", ["version", "reason", "unknown", "context", "input"])
+def test_case_contract_rejects_invalid_or_unversioned_shapes(edit):
+    case = json.loads(CASES[0].read_text(encoding="utf-8"))
+    if edit == "version":
+        case["schema_version"] = "2.0"
+    elif edit == "reason":
+        case["expected"]["reason"] = "generic-refusal"
+    elif edit == "unknown":
+        case["typo"] = True
+    elif edit == "context":
+        case["context"]["now"] = True
+    else:
+        case["inputs"]["after"] = []
+    with pytest.raises(jsonschema.ValidationError):
+        independent.validate_case(case)
+
+
+def test_observer_relabel_is_resigned_and_otherwise_bound():
+    case = json.loads((DIR / "009-observer-relabel.json").read_text(encoding="utf-8"))
+    data = case["inputs"]
+    independent.signature(data["successor"], data["observer_jwk"])
+    assert independent.digest(data["after"]) == data["successor"]["successor_observation_digest"]
+    assert _reference(data, case["context"])["reason"] == "successor-observer-mismatch"
+    # Same bytes and key succeed only when verifier-owned identity configuration changes.
+    context = {**case["context"], "trusted_observer": "observer-other"}
+    assert _reference(data, context)["reason"] == "predicate-satisfied"
+    assert independent.check(data, context)["reason"] == "predicate-satisfied"
+
+
+@pytest.mark.parametrize(
+    "name,reason",
+    [
+        ("010-stale-observation", "observation-stale"),
+        ("011-future-observation", "observation-future"),
+    ],
+)
+def test_freshness_refusal_is_not_a_binding_failure(name, reason):
+    case = json.loads((DIR / (name + ".json")).read_text(encoding="utf-8"))
+    data = case["inputs"]
+    assert _reference(data, case["context"])["reason"] == reason
+    assert case["expected"]["successor_bound"] is True
+    fresh = {**case["context"], "now": data["after"]["observed_at"]}
+    assert _reference(data, fresh)["reason"] == "predicate-satisfied"
+    assert independent.check(data, fresh)["reason"] == "predicate-satisfied"
+
+
+def test_reason_mismatch_is_visible_even_with_identical_axes():
+    case = json.loads((DIR / "006-wrong-authorization.json").read_text(encoding="utf-8"))
+    wrong = copy.deepcopy(case["expected"])
+    wrong["reason"] = "successor-signature-invalid"
+    assert _reference(case["inputs"], case["context"]) != wrong
+    assert independent.check(case["inputs"], case["context"]) != wrong

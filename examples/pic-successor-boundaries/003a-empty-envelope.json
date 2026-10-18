@@ -1,5 +1,14 @@
 {
+  "schema_version": "1.0",
   "id": "003a-empty-envelope",
+  "context": {
+    "now": 160,
+    "max_age_seconds": 30,
+    "trusted_observer": "observer-1",
+    "executor_id": "executor-1",
+    "independence_required": true,
+    "predicate": "reachable"
+  },
   "inputs": {
     "bridge": {
       "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
@@ -76,6 +85,7 @@
   "expected": {
     "authorization_bound": true,
     "successor_bound": false,
-    "outcome": null
+    "outcome": null,
+    "reason": "successor-envelope-missing-fields"
   }
 }

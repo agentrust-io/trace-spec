@@ -1,4 +1,4 @@
-"""A deliberately bounded independent checker of these twelve published vectors.
+"""A deliberately bounded independent checker of these published vectors.
 
 Not a general PIC or TRACE verifier. No agentrust_trace imports; schema validation,
 canonicalization and Ed25519 primitives are reused, not the reference control flow.
@@ -33,20 +33,33 @@ def digest(obj):
     return "sha256:" + hashlib.sha256(rfc8785.dumps(obj)).hexdigest()
 
 
-def require(condition):
+def require(condition, reason="outside-bounded-profile"):
     if not condition:
-        raise ValueError("bounded vector condition is not met")
+        raise ValueError(reason)
 
 
-def check(data):
-    result = {"authorization_bound": False, "successor_bound": None, "outcome": None}
+def validate_case(case):
+    schema = json.loads((Path(__file__).parent / "case-v1.schema.json").read_text(encoding="utf-8"))
+    jsonschema.Draft202012Validator(schema).validate(case)
+
+
+def check(data, context):
+    result = {
+        "authorization_bound": False,
+        "successor_bound": None,
+        "outcome": None,
+        "reason": None,
+    }
     auth = data["bridge"]["authorization"]
     try:
         schema = json.loads((ROOT / "schema/pic-trace-bridge-v1.json").read_text(encoding="utf-8"))
+        # Classify the digest representation before general schema rejection.
+        for field in ["intent_digest", "args_digest"]:
+            require(re.fullmatch(r"sha256:[0-9a-f]{64}", auth["pic"][field]), "pic-digest-syntax")
         jsonschema.validate(data["bridge"], schema)
         signature(data["bridge"], data["authorizer_jwk"])
         require(auth["decision"] == "allow")
-        require(auth["authorized_at"] <= 160 < auth["expires_at"])
+        require(auth["authorized_at"] <= context["now"] < auth["expires_at"])
         require(auth["declaration_digest"] == digest(data["declaration"]))
         require(auth["tool_call_digest"] == digest(data["tool_call"]))
         require(data["tool_call"]["name"] in auth["scope"]["tools"])
@@ -54,9 +67,10 @@ def check(data):
         require(data["transcript"] == {"before": {"tool_call": data["tool_call"]}})
         for field in ["intent_digest", "args_digest"]:
             supplied = data["pic_" + field]
-            require(re.fullmatch(r"sha256:[0-9a-f]{64}", supplied))
+            require(re.fullmatch(r"sha256:[0-9a-f]{64}", supplied), "pic-digest-syntax")
             require(supplied == auth["pic"][field])
-    except (ValueError, AssertionError, InvalidSignature, jsonschema.ValidationError):
+    except (ValueError, InvalidSignature, jsonschema.ValidationError) as exc:
+        result["reason"] = str(exc)
         return result
     result["authorization_bound"] = True
     result["successor_bound"] = False
@@ -66,27 +80,41 @@ def check(data):
             (ROOT / "schema/pic-trace-successor-v1.json").read_text(encoding="utf-8")
         )
         jsonschema.validate(artifact, schema)
-        signature(artifact, data["observer_jwk"])
+        try:
+            signature(artifact, data["observer_jwk"])
+        except InvalidSignature:
+            raise ValueError("successor-signature-invalid") from None
         require(artifact["observer_key_id"] == data["observer_jwk"]["kid"])
-        require(artifact["authorization_id"] == auth["authorization_id"])
-        require(artifact["observer"] == "observer-1")
-        require(set(after) == {"observation", "observer", "observed_at"})
+        require(
+            artifact["authorization_id"] == auth["authorization_id"],
+            "successor-authorization-mismatch",
+        )
+        require(artifact["observer"] == context["trusted_observer"], "successor-observer-mismatch")
+        require(
+            set(after) == {"observation", "observer", "observed_at"},
+            "successor-envelope-missing-fields",
+        )
         require(isinstance(after["observation"], dict))
         require(artifact["observer"] == after["observer"])
         require(artifact["observed_at"] == after["observed_at"])
-        require(artifact["successor_observation_digest"] == digest(after))
-    except (ValueError, AssertionError, InvalidSignature, jsonschema.ValidationError):
+        require(
+            artifact["successor_observation_digest"] == digest(after), "successor-digest-mismatch"
+        )
+    except (ValueError, InvalidSignature, jsonschema.ValidationError) as exc:
+        result["reason"] = str(exc)
         return result
     result["successor_bound"] = True
     value = after["observation"].get("reachable")
-    if not (130 <= after["observed_at"] <= 160):
-        result["outcome"] = "not-established"
+    if after["observed_at"] > context["now"]:
+        result.update(outcome="not-established", reason="observation-future")
+    elif context["now"] - after["observed_at"] > context["max_age_seconds"]:
+        result.update(outcome="not-established", reason="observation-stale")
+    elif context["independence_required"] and after["observer"] == context["executor_id"]:
+        result.update(outcome="not-established", reason="observer-not-independent")
+    elif value is True:
+        result.update(outcome="established", reason="predicate-satisfied")
+    elif value is False:
+        result.update(outcome="contradicted", reason="predicate-contradicted")
     else:
-        result["outcome"] = (
-            "established"
-            if value is True
-            else "contradicted"
-            if value is False
-            else "not-established"
-        )
+        result.update(outcome="not-established", reason="predicate-undecidable")
     return result

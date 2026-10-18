@@ -1,5 +1,14 @@
 {
+  "schema_version": "1.0",
   "id": "005-signed-args_digest-bare",
+  "context": {
+    "now": 160,
+    "max_age_seconds": 30,
+    "trusted_observer": "observer-1",
+    "executor_id": "executor-1",
+    "independence_required": true,
+    "predicate": "reachable"
+  },
   "inputs": {
     "bridge": {
       "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
@@ -82,6 +91,7 @@
   "expected": {
     "authorization_bound": false,
     "successor_bound": null,
-    "outcome": null
+    "outcome": null,
+    "reason": "pic-digest-syntax"
   }
 }

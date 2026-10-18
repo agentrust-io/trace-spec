@@ -1,6 +1,6 @@
 # Small current-contract PIC/TRACE successor boundary corpus
 
-Twelve deterministic synthetic examples against the separately signed successor
+Fifteen deterministic synthetic examples against the separately signed successor
 artifact introduced by #432, using `schema/pic-trace-successor-v1.json`.
 This is a smaller contribution invited in the closing comment on #363 and relates
 to #206. It preserves the case-003 distinction developed by Corey Shaffer and the
@@ -21,6 +21,8 @@ these supplied values, never independent verification of PIC policy or canonical
 | 004, affirmative contradictory observation | bound | bound | contradicted |
 | Four 005 signed/supplied bare-hex cases | refused | not evaluated | not evaluated |
 | 006 wrong authorization link, 007 substituted envelope, 008 invalid observer signature | bound | refused | not evaluated |
+| 009 valid signature and envelope under a relabeled observer | bound | refused | not evaluated |
+| 010 stale observation, 011 future observation | bound | bound | not-established |
 
 The exact pre-execution authorization is identical for 003/003a/003b/003c. No successor
 digest is put into that authorization. Each successor is separately signed over its
@@ -37,9 +39,20 @@ Ed25519 signatures before asserting the reference's digest-syntax failure.
 `independent.py` is a bounded checker of these published vectors, not a general PIC,
 TRACE, or hardware verifier. It imports no reference-library code. It shares RFC 8785,
 Ed25519 primitives, and committed schemas, so those dependencies are not independent.
-The reference adapter and bounded checker compare all three result fields for every
-JSON vector. Case labels describe local test conditions; no global reason-code registry
-or normative requirement is added.
+The reference adapter and bounded checker compare all three result fields and the
+surface-local `reason` code for every JSON vector. `case-v1.schema.json` validates
+the versioned outer contract (`schema_version`, `id`, `context`, `inputs`, `expected`)
+and rejects missing/unknown fields, malformed context, and unknown reason codes.
+The reason codes describe this corpus only; no global reason-code registry or
+normative requirement is added. The reference adapter maps actual exception/outcome
+messages to these codes and fails on unknown messages; it never reads the case ID
+to infer a rejection. The second checker derives codes from its own failed checks.
+
+Ancillary objects (keys, declarations, tool calls and transcripts) are trusted,
+deterministically generated harness inputs, not a general untrusted-input API.
+Their outer types and presence are checked by the case schema; bridge/successor
+artifact shapes are checked separately against the published artifact schemas.
+This schema is local to the examples and changes no protocol wire schema.
 
 Run from the repository root:
 
@@ -53,7 +66,11 @@ also check the signed/supplied digest cases reach the intended boundary, and pai
 valid authorization/link/signature controls with invalid ones. This is bounded
 regression evidence, not full-corpus certification or release acceptance.
 
-The bounded checker uses fixed verification time 160, maximum observation age 30,
-executor `executor-1`, trusted observer `observer-1`, and the Boolean `reachable`
-predicate. It makes no claim about other identities, policies, shapes or time settings.
+Each fixture carries verifier-owned `context`: time 160, maximum age 30, executor
+`executor-1`, trusted observer `observer-1`, independence required, and the Boolean
+`reachable` predicate. Runners supply this context from trusted test configuration;
+a production caller must never let the observed party choose its trust policy.
+Both checkers consume the fixture context. Paired tests change the observation time
+context or trusted identity to distinguish freshness and relabel refusal from signature
+or digest failure. There is no claim of general policy or untrusted-input validation.
 Its guards use explicit exceptions, including under optimized Python.
