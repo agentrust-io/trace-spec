@@ -310,6 +310,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 - `cnf.jwk` missing, of an unsupported key type, or carrying private key material (`d`): TR-SIG-004
 - Signature does not verify against `cnf.jwk`: TR-SIG-005
 - `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares: TR-POL-003. The malformed case is reported with or without a resolver: a reference the record got wrong needs no network to detect
+- `--expected-policy-hash` was supplied and names another policy, or it uses a different algorithm from `policy.bundle_hash` and the bundle needed to compare it could not be resolved: TR-POL-003. The second case is unverified rather than failed, and it fails the run from Level 0
 - `appraisal` is absent or not an object, or `appraisal.status` is not one of the four values the schema enumerates: TR-APR-001
 - `appraisal.verifier` is absent or is not an absolute URI: TR-APR-002
 - `appraisal.policy_ref` or `appraisal.timestamp` is present and malformed: TR-APR-003, TR-APR-004. Absent, either one is skipped rather than passed
@@ -419,6 +420,8 @@ Whether it fails the run is per code rather than one rule over all of them. Diff
 
 A code absent from this table fails from Level 1.
 
+One finding can fail earlier than its code's row, never later. TR-POL-003 does this when the verifier supplied `--expected-policy-hash` in a different algorithm from `policy.bundle_hash` and the bundle needed to compare the two could not be resolved: that finding fails the run from Level 0. The JSON report marks such a finding with `unverified_fails_from_level`.
+
 Technical detail: where the table lives
 
 That default is deliberate: a new code nobody registered still fails closed, and the registration guard turns red rather than the run turning quietly permissive. The table is `UNVERIFIED_FAILS_FROM_LEVEL` in `src/trace_tests/modules/unverified.py`, and `tests/test_docs_match_the_modules.py` fails if the two disagree.
@@ -510,11 +513,11 @@ Checks the record's link to the policy bundle, the file of rules the agent ran u
 
 ## Required at Level 0+
 
-| Test ID    | Description                                                                                                        | Positive Case                                                  | Negative Case                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| TR-POL-001 | `policy.bundle_hash` is a valid `sha256:` or `sha384:` digest                                                      | `sha256:` + 64 hex chars, `sha384:` + 96 hex chars             | missing, wrong prefix, wrong length                                                |
-| TR-POL-002 | `policy.enforcement_mode` is `enforce`, `advisory`, `silent`, or `declared`                                        | `enforce`                                                      | `strict`, `monitor`, absent                                                        |
-| TR-POL-003 | `policy.policy_uri` is an absolute URI, and the bundle it resolves to has the digest `policy.bundle_hash` declares | absent `policy_uri`; or a resolved bundle whose digest matches | relative reference, whitespace in the URI, resolved bundle with a different digest |
+| Test ID    | Description                                                                                                                                                                                             | Positive Case                                                  | Negative Case                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| TR-POL-001 | `policy.bundle_hash` is a valid `sha256:` or `sha384:` digest                                                                                                                                           | `sha256:` + 64 hex chars, `sha384:` + 96 hex chars             | missing, wrong prefix, wrong length                                                                                      |
+| TR-POL-002 | `policy.enforcement_mode` is `enforce`, `advisory`, `silent`, or `declared`                                                                                                                             | `enforce`                                                      | `strict`, `monitor`, absent                                                                                              |
+| TR-POL-003 | `policy.policy_uri` is an absolute URI, and the bundle it resolves to has the digest `policy.bundle_hash` declares; when the verifier supplies an expected policy hash, the declared policy is that one | absent `policy_uri`; or a resolved bundle whose digest matches | relative reference, whitespace in the URI, resolved bundle with a different digest, a policy other than the expected one |
 
 ## Resolving the bundle
 
@@ -524,7 +527,18 @@ TR-POL-003 needs somewhere to fetch the bundle from. The resolver is supplied by
 trace-tests verify --record record.json --policy-dir ./bundles
 ```
 
-Without it the resolution part of the check skips, so offline verification stays a first-class use rather than a degraded one.
+Without it the resolution part of the check skips, so offline verification stays a first-class use rather than a degraded one. An expected policy hash, if supplied, is still compared offline (see below).
+
+## Checking the expected policy
+
+A matching digest shows the resolved bundle is the one the record cited. It does not show that bundle is the policy the verifier expects, which is what specification §3.3 step 5 asks. That expectation is verifier context, like the resolver, and is supplied the same way:
+
+```
+trace-tests verify --record record.json --policy-dir ./bundles \
+    --expected-policy-hash sha256:<hex of the expected bundle>
+```
+
+TR-POL-003 then fails a record that declares any other policy, even one whose digest matches what `policy_uri` resolves to. Digests using the same algorithm are compared before resolution, even without `policy_uri`. When the algorithms differ, the comparison requires resolved bytes. If they cannot be had, because `policy_uri` is absent or null, no resolver was supplied, or the bundle could not be read, TR-POL-003 is unverified and fails the run at every level. That is not a finding that the record cites another policy. It says the comparison the verifier asked for did not happen, and a run that passed without it would answer a question the verifier did not ask. Without `--expected-policy-hash` the check behaves as it always has.
 
 **A malformed `policy_uri` is reported with or without a resolver.** A reference the record got wrong is a defect in the record, visible with no network at all, exactly like the digest shape TR-POL-001 tests. A referent that could not be fetched is not: that is reported as unverified, and only when a resolver was supplied and failed.
 
@@ -636,11 +650,11 @@ Look up a code from a failed or unverified check here: what it means and how to 
 
 ## TR-POL: Policy
 
-| Code       | Description                                                                                                                                                                                                                                                                    | How to fix                                                                                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TR-POL-001 | `policy.bundle_hash` is not a valid `sha256:` or `sha384:` digest                                                                                                                                                                                                              | Compute `sha256:` + 64 hex chars, or `sha384:` + 96 hex chars, over your policy bundle bytes. Both are accepted by the schema and by the module                            |
-| TR-POL-002 | `policy.enforcement_mode` is not `enforce`, `advisory`, `silent`, or `declared`                                                                                                                                                                                                | Replace `"strict"` or `"monitor"` with one of the four accepted values; `"declared"` is the honest value for a producer that binds a policy without evaluating it          |
-| TR-POL-003 | `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares. Unverified when a resolver was supplied and the bundle could not be read; skipped when no `policy_uri` is present or no resolver was supplied | Point `policy_uri` at the bundle whose bytes hash to `bundle_hash`. A record that cites a bundle it cannot be checked against is reported as unverified rather than passed |
+| Code       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | How to fix                                                                                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TR-POL-001 | `policy.bundle_hash` is not a valid `sha256:` or `sha384:` digest                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Compute `sha256:` + 64 hex chars, or `sha384:` + 96 hex chars, over your policy bundle bytes. Both are accepted by the schema and by the module                                     |
+| TR-POL-002 | `policy.enforcement_mode` is not `enforce`, `advisory`, `silent`, or `declared`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Replace `"strict"` or `"monitor"` with one of the four accepted values; `"declared"` is the honest value for a producer that binds a policy without evaluating it                   |
+| TR-POL-003 | `policy.policy_uri` is malformed, the resolved bytes disagree with `policy.bundle_hash`, or the expected-policy comparison finds a mismatch. A same-algorithm expectation can establish a mismatch without resolving the bundle, including when `policy_uri` is absent. An expectation in another algorithm that cannot be compared, because `policy_uri` is absent or null, no resolver was supplied, or the bundle could not be read, is unverified and fails every level. Otherwise an unreadable bundle is unverified, and absent `policy_uri` or an absent resolver skips resolution | Supply the expected policy hash as verifier context. Point `policy_uri` at bytes matching `bundle_hash`. Expectations using another algorithm require resolved bytes for comparison |
 
 ## TR-APR: Appraisal
 
@@ -1304,6 +1318,10 @@ The optional policy resolver is trusted in-process Python code supplied by the c
 # Changelog
 
 ## Unreleased
+
+### Added
+
+- `expected_policy_hash` runner input and `--expected-policy-hash` on `verify` and `report`: verifier context for TR-POL-003, which then fails a record declaring any policy other than the expected one, even when its `bundle_hash` matches the bundle `policy_uri` resolves to (trace-spec #280). Same-algorithm digests are compared before resolution, even without `policy_uri`. Across algorithms the comparison requires resolved bytes. An expectation that cannot be compared, because `policy_uri` is absent or null, no resolver was supplied, or the bundle could not be read, is unverified and fails every level, which a finding records with `unverified_fails_from_level`. Without it, TR-POL-003 is unchanged. Policy-resolution vectors 12 and 13 are the pass and fail pair.
 
 ### Changed
 
