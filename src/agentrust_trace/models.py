@@ -516,7 +516,7 @@ class Appraisal(_TraceModel):
 
 # Private/secret JWK members (RFC 7517 §4, RFC 7518 §6). A cnf.jwk is a public
 # proof-of-possession key and must never carry these.
-_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 class JWK(_TraceModel):
