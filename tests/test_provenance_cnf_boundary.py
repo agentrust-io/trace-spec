@@ -92,7 +92,7 @@ def test_valid_embedded_cnf_jwk_still_verifies() -> None:
 # remedy after the fact is to revoke the identity.
 # ---------------------------------------------------------------------------
 
-_PRIVATE_JWK_MEMBERS = ["d", "p", "q", "dp", "dq", "qi", "k"]
+_PRIVATE_JWK_MEMBERS = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"]
 
 
 def _jwk_schema():
@@ -101,7 +101,7 @@ def _jwk_schema():
 
     root = Path(__file__).resolve().parents[1]
     schema = json.loads((root / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
-    return schema["properties"]["cnf"]["properties"]["jwk"]
+    return {**schema["properties"]["cnf"]["properties"]["jwk"], "$defs": schema["$defs"]}
 
 
 @pytest.mark.parametrize("member", _PRIVATE_JWK_MEMBERS)

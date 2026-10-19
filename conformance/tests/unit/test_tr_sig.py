@@ -288,7 +288,7 @@ def test_number_spelling_vectors_match_expected_conformance_verdicts():
         assert (env_iat, apr_ts, sig) == expected_by_name[path.name], path.name
 
 
-@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "k"])
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
 def test_cmcp_runtime_private_key_material_in_cnf_jwk_fails(member: str) -> None:
     priv = Ed25519PrivateKey.generate()
     pub = priv.public_key()
@@ -313,7 +313,7 @@ def test_cmcp_runtime_private_key_material_in_cnf_jwk_fails(member: str) -> None
     assert secret not in findings[0].message
 
 
-@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "k"])
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
 def test_plain_trace_all_private_jwk_members_fail_tr_sig_004(member: str) -> None:
     priv = Ed25519PrivateKey.generate()
     pub = priv.public_key()

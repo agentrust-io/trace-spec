@@ -134,7 +134,7 @@ def test_missing_cnf_jwk_fails():
 # signed it passed the whole suite.
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "k"])
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
 def test_private_key_material_in_cnf_jwk_fails(member):
     trace = {**_VALID, "cnf": {"jwk": {**_VALID["cnf"]["jwk"], member: "SECRET"}}}
 

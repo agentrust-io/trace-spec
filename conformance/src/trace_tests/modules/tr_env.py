@@ -11,7 +11,7 @@ from trace_tests.result import Finding, Status
 _PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
 # RFC 7517/7518 private key members. Mirrors _JWK_PRIVATE_PARAMS in the
 # agentrust-trace reference model, which already refuses these.
-_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 # Applied with fullmatch: $ alone also matches before a trailing newline.
 _SUBJECT_RE = re.compile(r'^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$')

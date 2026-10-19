@@ -33,7 +33,7 @@ _ED25519_CRV = "Ed25519"
 _JCS_SAFE_INTEGER = 9007199254740991
 # RFC 7517/7518 private key members. Mirrors _JWK_PRIVATE_PARAMS in tr_env.py
 # and the agentrust-trace reference model.
-_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k"})
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 _B64URL_RE = re.compile(r"[A-Za-z0-9_-]*\Z")
