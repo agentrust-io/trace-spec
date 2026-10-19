@@ -40,10 +40,21 @@ def _by_code(findings: list[Finding]) -> dict[str, Finding]:
     [
         None,
         "https://",
+        "https://:443/rim",
+        "https://user@/rim",
+        "https://example.invalid:bad/rim",
         "https://ex ample.com/rim",
         "https://example.com/\x01",
     ],
-    ids=["explicit-null", "empty-host", "whitespace", "control-char"],
+    ids=[
+        "explicit-null",
+        "empty-host",
+        "port-only-netloc",
+        "userinfo-only-netloc",
+        "bad-port",
+        "whitespace",
+        "control-char",
+    ],
 )
 def test_tr_rte_003_rejects_null_and_malformed_https_uris(bad_rim_uri: str | None) -> None:
     base_runtime: dict[str, Any] = {
@@ -53,14 +64,13 @@ def test_tr_rte_003_rejects_null_and_malformed_https_uris(bad_rim_uri: str | Non
     assert _by_code(tr_rte.check({"runtime": dict(base_runtime)}))["TR-RTE-003"].status is (
         Status.SKIP
     )
-    assert (
-        _by_code(
-            tr_rte.check(
-                {"runtime": {**base_runtime, "rim_uri": "https://example.org/rim/v1"}}
-            )
-        )["TR-RTE-003"].status
-        is Status.PASS
-    )
+    for valid_uri in ("https://example.org/rim/v1", "https://[::1]/rim"):
+        assert (
+            _by_code(tr_rte.check({"runtime": {**base_runtime, "rim_uri": valid_uri}}))[
+                "TR-RTE-003"
+            ].status
+            is Status.PASS
+        )
 
     findings = tr_rte.check({"runtime": {**base_runtime, "rim_uri": bad_rim_uri}})
     assert _by_code(findings)["TR-RTE-003"].status is Status.FAIL
@@ -69,15 +79,22 @@ def test_tr_rte_003_rejects_null_and_malformed_https_uris(bad_rim_uri: str | Non
 @pytest.mark.parametrize(
     "bad_transparency",
     [
+        "https://:443/rim",
+        "https://user@/rim",
+        "https://example.invalid:bad/rim",
         "https://scitt.example.org/receipts/abc 123",
         "https://scitt.example.org/receipts/abc\n",
         "https://scitt.example.org/receipts/\x00",
     ],
-    ids=["space", "newline", "nul"],
+    ids=["port-only-netloc", "userinfo-only-netloc", "bad-port", "space", "newline", "nul"],
 )
 def test_tr_anc_001_rejects_https_uri_with_whitespace_or_control_chars(
     bad_transparency: str,
 ) -> None:
+    assert (
+        _by_code(tr_anc.check({"transparency": "https://[::1]/rim"}))["TR-ANC-001"].status
+        is Status.PASS
+    )
     findings = tr_anc.check({"transparency": bad_transparency})
     assert _by_code(findings)["TR-ANC-001"].status is Status.FAIL
 

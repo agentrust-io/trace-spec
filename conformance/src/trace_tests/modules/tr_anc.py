@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 from trace_tests.inclusion import InclusionError, parse_receipt, verify_inclusion
 from trace_tests.result import Finding, Status
 
+from ._https_uri import valid_https_uri
+
 
 def check(trace: dict[str, Any], receipt: dict[str, Any] | None = None) -> list[Finding]:
     """Return TR-ANC findings for the transparency claim.
@@ -40,27 +42,20 @@ def check(trace: dict[str, Any], receipt: dict[str, Any] | None = None) -> list[
         ]
 
     try:
-        parsed = urlparse(transparency)
+        urlparse(transparency)
     except Exception as exc:
-        return [
-            Finding(
-                "TR-ANC-001",
-                Status.FAIL,
-                f"TR-ANC-001: could not parse transparency URI: {exc}",
-            )
-        ]
+        return [Finding(
+            "TR-ANC-001", Status.FAIL,
+            f"TR-ANC-001: could not parse transparency URI: {exc}",
+        )]
 
-    if (
-        parsed.scheme != "https"
-        or not parsed.netloc
-        or any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in transparency)
-    ):
+    if not valid_https_uri(transparency):
         return [
             Finding(
                 "TR-ANC-001",
                 Status.FAIL,
                 "TR-ANC-001: transparency must be a valid https URI without whitespace or "
-                f"control characters, got {transparency!r} (scheme={parsed.scheme!r})",
+                f"control characters, got {transparency!r}",
             )
         ]
 

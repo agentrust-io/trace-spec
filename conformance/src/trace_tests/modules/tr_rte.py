@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import hmac
 import re
-from typing import Any, TypeGuard
-from urllib.parse import urlsplit
+from typing import Any
 
 from trace_tests.result import Finding, Status
+
+from ._https_uri import valid_https_uri as _valid_https_uri
 
 # Byte-equal to the schema pattern (test_digest_parity) and always applied with
 # fullmatch: Python's $ also matches before a trailing newline, ECMA-262's does not.
@@ -29,19 +30,6 @@ _VALID_PLATFORMS = frozenset(
 )
 # Platforms that provide no hardware attestation evidence. Valid only at Level 0.
 _DEV_PLATFORMS = frozenset({"software-only"})
-
-
-def _valid_https_uri(value: Any) -> TypeGuard[str]:
-    """Return True when *value* is a well-formed https URI without whitespace or control chars."""
-    if not isinstance(value, str):
-        return False
-    if any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in value):
-        return False
-    try:
-        parsed = urlsplit(value)
-    except ValueError:
-        return False
-    return parsed.scheme == "https" and bool(parsed.netloc)
 
 
 def check(
