@@ -38,6 +38,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   `layer-not-measured`, status `affirming`. Records do not change. Proposed and written by
   @revenue7-eng; carried by @imran-siddique as sponsoring maintainer.
 
+- **ES256 and ES384 revocation bundles verify in Python and TypeScript.** `check_bundle`
+  and `trust-record-verify`'s `checkRevocationBundle` now verify `ES256` (`P-256`) and
+  `ES384` (`P-384`) signatures on `TraceRevocationBundle/1.0` bundles over the fixed-width
+  IEEE P1363 `r || s` concatenation (64 and 96 bytes, stated on `sig.value` in
+  `schema/trace-revocation-bundle.json`), and `examples/revocation-bundle/` adds vectors
+  29 and 30 (#584, #448 items 1 and 10, by @drk-ram).
 - **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
   a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
   key verified, and a string was searched by substring. Both now raise

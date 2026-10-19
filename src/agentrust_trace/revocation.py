@@ -62,6 +62,8 @@ from typing import Any, Literal
 import jsonschema
 import referencing
 import referencing.jsonschema
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 from agentrust_trace.sign import TRACE_PROFILE_V0_2
 from agentrust_trace.citation import CitationCheck
@@ -212,6 +214,62 @@ def bundle_digest(bundle: dict[str, Any]) -> str:
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
+_EC_CURVES: dict[str, tuple[str, int, ec.EllipticCurve, hashes.HashAlgorithm]] = {
+    "ES256": ("P-256", 32, ec.SECP256R1(), hashes.SHA256()),
+    "ES384": ("P-384", 48, ec.SECP384R1(), hashes.SHA384()),
+}
+
+
+def _bundle_pubkey_from_jwk(jwk: dict[str, Any], alg: str) -> Any:
+    """Reconstruct a bundle-signing public key matching *alg* from *jwk*."""
+    if alg == "ed25519":
+        return _pubkey_from_jwk(jwk)
+    spec = _EC_CURVES.get(alg)
+    if spec is None:
+        raise ValueError(f"unsupported bundle signature algorithm {alg!r}")
+    expected_crv, coord_size, curve, _ = spec
+    kty = jwk.get("kty")
+    crv = jwk.get("crv")
+    if kty != "EC":
+        raise ValueError(f"unsupported JWK kty {kty!r}; expected 'EC' for {expected_crv}")
+    if crv != expected_crv:
+        raise ValueError(f"unsupported JWK crv {crv!r}; expected {expected_crv!r}")
+    coords: dict[str, int] = {}
+    for name in ("x", "y"):
+        raw_b64 = jwk.get(name)
+        if not raw_b64:
+            raise ValueError(f"JWK missing {name!r} field")
+        raw_bytes = _b64url_decode(raw_b64, field=f"JWK {name!r}")
+        if len(raw_bytes) != coord_size:
+            raise ValueError(
+                f"JWK {name!r} decodes to {len(raw_bytes)} bytes; "
+                f"a {expected_crv} coordinate is {coord_size} bytes"
+            )
+        coords[name] = int.from_bytes(raw_bytes, "big")
+    return ec.EllipticCurvePublicNumbers(coords["x"], coords["y"], curve).public_key()
+
+
+def _verify_bundle_signature(
+    pub: Any, alg: str, sig: bytes, msg: bytes
+) -> None:
+    """Verify a raw bundle *sig* over *msg* under *alg*."""
+    if alg == "ed25519":
+        pub.verify(sig, msg)
+        return
+    _, coord_size, _, hash_alg = _EC_CURVES[alg]
+    if len(sig) != coord_size * 2:
+        raise ValueError(
+            f"{alg} signature must be {coord_size * 2} bytes, got {len(sig)}"
+        )
+    r = int.from_bytes(sig[:coord_size], "big")
+    s = int.from_bytes(sig[coord_size:], "big")
+    pub.verify(
+        utils.encode_dss_signature(r, s),
+        msg,
+        ec.ECDSA(hash_alg),
+    )
+
+
 def _trusted_bundle_key(
     bundle_key_id: str, trusted_bundle_keys: Iterable[dict[str, Any]]
 ) -> dict[str, Any] | None:
@@ -323,11 +381,12 @@ def check_bundle(
         "max_bundle_age_seconds": max_bundle_age_seconds,
     }
 
-    # 3c. Who signed the set. Only Ed25519 can be verified here; the schema also
-    # admits ES256 and ES384, and those are reported as unsupported rather than
-    # skipped, because a signature nobody checked grounds nothing.
+    # 3c. Who signed the set. The schema admits ed25519, ES256 and ES384; an
+    # algorithm outside that set, or a trusted bundle key that is not a valid
+    # public key for the algorithm the bundle names, is reported as unsupported
+    # rather than skipped, because a signature nobody checked grounds nothing.
     alg = bundle["sig"]["alg"]
-    if alg != "ed25519":
+    if alg != "ed25519" and alg not in _EC_CURVES:
         return _unverified("bundle_signature_unsupported", {**base, "alg": alg})
     key = _trusted_bundle_key(bundle["bundle_key_id"], trusted_bundle_keys)
     if key is None:
@@ -335,7 +394,7 @@ def check_bundle(
             "bundle_key_untrusted", {**base, "bundle_key_id": bundle["bundle_key_id"]}
         )
     try:
-        public = _pubkey_from_jwk(key)
+        public = _bundle_pubkey_from_jwk(key, alg)
     except ValueError as exc:
         return _unverified(
             "bundle_signature_unsupported", {**base, "alg": alg, "key": str(exc)}
@@ -343,7 +402,7 @@ def check_bundle(
     unsigned = {k: v for k, v in bundle.items() if k != "sig"}
     try:
         signature = _b64url_decode(bundle["sig"]["value"], field="bundle sig.value")
-        public.verify(signature, _canonical_bytes(unsigned))
+        _verify_bundle_signature(public, alg, signature, _canonical_bytes(unsigned))
     except Exception:
         return _unverified(
             "bundle_signature_invalid", {**base, "bundle_key_id": bundle["bundle_key_id"]}
