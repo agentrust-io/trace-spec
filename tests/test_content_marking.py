@@ -308,13 +308,14 @@ def test_an_assertion_missing_a_required_field_does_not_accuse_the_server(field:
 
 
 @pytest.mark.parametrize("field", ["subject", "eat_profile"])
-def test_a_record_missing_a_required_field_is_a_record_mismatch(field: str) -> None:
-    """Here the URL really is serving something that is not a conformant record."""
+def test_a_hash_matching_record_missing_a_required_field_is_malformed(field: str) -> None:
+    """Matching bytes with missing fields are malformed, rather than substituted."""
     record = _record()
     del record[field]
     assertion, record_bytes = _pair(record)
-    with pytest.raises(RecordMismatch, match="required"):
+    with pytest.raises(ContentMarkingError, match="required") as excinfo:
         verify_assertion(assertion, record_bytes)
+    assert not isinstance(excinfo.value, RecordMismatch)
 
 
 def test_a_complete_pair_still_verifies() -> None:
