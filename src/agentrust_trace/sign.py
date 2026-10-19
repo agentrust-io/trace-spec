@@ -172,6 +172,14 @@ _THUMBPRINT_MEMBERS: dict[str, tuple[str, ...]] = {
     "RSA": ("e", "kty", "n"),
 }
 
+# RFC 7517 / RFC 7518 §6.2.2, §6.3.2, §6.4.2 / RFC 8037 §2 private and symmetric
+# key parameters. Every key this module thumbprints or verifies with is a public
+# verification key; an unredacted private or symmetric JWK is refused rather than
+# silently stripped to its public members.
+_JWK_PRIVATE_PARAMS: frozenset[str] = frozenset(
+    {"d", "p", "q", "dp", "dq", "qi", "oth", "k"}
+)
+
 
 def jwk_thumbprint(jwk: dict[str, Any]) -> str:
     """Return the RFC 7638 JWK Thumbprint of *jwk*: base64url SHA-256, no padding.
@@ -184,13 +192,20 @@ def jwk_thumbprint(jwk: dict[str, Any]) -> str:
     Member names are ASCII, so the RFC 8785 (JCS) serialization used here is
     byte-identical to the code-point ordering RFC 7638 §3.3 specifies.
 
-    Raises ``ValueError`` for an unknown ``kty`` or a missing required member.
+    Raises ``ValueError`` for an unknown ``kty``, a missing required member, or a
+    JWK carrying private key material.
     """
     if not isinstance(jwk, dict):
         raise ValueError(
             f"jwk must be a JSON object, got {type(jwk).__name__}. A JWK reaches this "
             "function from a peer, a key document or a record's own `cnf`, so its shape "
             "is not something the caller has already established."
+        )
+    private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private_members:
+        raise ValueError(
+            f"cannot compute a JWK thumbprint for a JWK containing private key "
+            f"material ({', '.join(repr(m) for m in private_members)})"
         )
     kty = jwk.get("kty")
     if not isinstance(kty, str) or kty not in _THUMBPRINT_MEMBERS:
@@ -581,9 +596,19 @@ def _pubkey_from_jwk(jwk: dict[str, Any]) -> Any:
     """Reconstruct an Ed25519 public key from a JWK, rejecting other key types.
 
     Asserts ``kty == "OKP"`` and ``crv == "Ed25519"`` before building the key so
-    that, for example, an EC key is never silently treated as Ed25519.
+    that, for example, an EC key is never silently treated as Ed25519, and refuses
+    any JWK carrying private key material.
     """
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    if not isinstance(jwk, dict):
+        raise ValueError(f"JWK must be a JSON object, got {type(jwk).__name__}")
+    private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private_members:
+        raise ValueError(
+            f"JWK contains private key material ({', '.join(repr(m) for m in private_members)}); "
+            "expected a public verification key"
+        )
 
     kty = jwk.get("kty")
     crv = jwk.get("crv")
