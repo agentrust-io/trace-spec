@@ -12,6 +12,44 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
+test("platform runtime copies retain every own JSON member without changing prototypes", async () => {
+  for (const value of [null, 7, "value", { flag: true }]) {
+    const runtime = JSON.parse('{"measurement":"m","__proto__":null,"nested":{"__proto__":7}}');
+    Object.defineProperty(runtime, "__proto__", { value, enumerable: true });
+    const before = JSON.stringify(runtime);
+    let observed;
+    const result = await checkPlatformMeasurement({ runtime }, (copy) => {
+      observed = copy;
+      return { measurement: "m", layers: { boot: "established" } };
+    });
+    assert.equal(result.outcome, "appraised");
+    assert.equal(Object.getPrototypeOf(observed), Object.prototype);
+    assert.equal(Object.hasOwn(observed, "__proto__"), true);
+    assert.equal(Object.hasOwn(observed.nested, "__proto__"), true);
+    assert.equal(JSON.stringify(observed), before);
+    assert.notEqual(observed.nested, runtime.nested);
+    assert.equal(JSON.stringify(runtime), before);
+  }
+});
+
+test("platform layer results retain legal own names in membership and serialization", async () => {
+  for (const name of ["boot", "__proto__", "constructor", "toString"]) {
+    for (const status of ["established", "layer_not_measured"]) {
+      const result = await checkPlatformMeasurement({ runtime: { measurement: "m" } }, () => ({
+        measurement: "m", layers: Object.fromEntries([[name, status]]),
+      }));
+      assert.equal(result.outcome, "appraised");
+      assert.equal(Object.hasOwn(result.layers, name), true);
+      const expected = status === "established"
+        ? { outcome: "established", cause: null }
+        : { outcome: "not_established", cause: status };
+      assert.deepEqual(result.layers[name], expected);
+      assert.deepEqual(JSON.parse(JSON.stringify(result.layers)), Object.fromEntries([[name, expected]]));
+      assert.equal(Object.getPrototypeOf(result.layers), Object.prototype);
+    }
+  }
+});
+
 import {
   ACCEPTED_PROFILES,
   checkCitations,

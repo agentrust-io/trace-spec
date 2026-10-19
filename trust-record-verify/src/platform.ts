@@ -120,7 +120,13 @@ function cloneValue(value: unknown, seen: WeakMap<object, unknown>): unknown {
     const copy: Record<string, unknown> = {};
     seen.set(value, copy);
     for (const key of Object.keys(value)) {
-      copy[key] = cloneValue(own(value, key), seen);
+      // Assignment would invoke Object.prototype's legacy __proto__ setter.
+      Object.defineProperty(copy, key, {
+        value: cloneValue(own(value, key), seen),
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     return copy;
   }
@@ -230,11 +236,14 @@ export async function checkPlatformMeasurement(
         returned: typeof status === "string" ? status : typeName(status),
       });
     }
-    checks[name] = Object.freeze(
-      status === "established"
-        ? { outcome: "established", cause: null }
-        : { outcome: "not_established", cause: status as LayerCause },
-    );
+    Object.defineProperty(checks, name, {
+      value: Object.freeze(
+        status === "established"
+          ? { outcome: "established", cause: null }
+          : { outcome: "not_established", cause: status as LayerCause },
+      ),
+      enumerable: true,
+    });
   }
 
   return Object.freeze({
