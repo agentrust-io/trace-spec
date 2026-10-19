@@ -12,6 +12,7 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
     _b64url_decode,
     _canonical_bytes,
     _integer_value,
@@ -301,7 +302,7 @@ def _bind_successor_observation(
         raise AuthorizationMismatch(
             "successor envelope does not match the expected digest binding"
         )
-    return after
+    return {**after, "observed_at": observed_at}
 
 
 def _decision(value: Any) -> str:
@@ -392,6 +393,7 @@ def verify_bridge(
     # By value, not by spelling (spec section 3.2.2): `100.0` is the timestamp 100, which
     # is what the signature above covers. A value outside the safe-integer range does
     # not get this far, because `_jcs` refused it before the signature was checked.
+    normalized_auth = dict(authorization)
     for field in ("authorized_at", "expires_at"):
         try:
             timestamp = _integer_value(authorization[field], f"authorization.{field}")
@@ -403,15 +405,18 @@ def verify_bridge(
             raise IntentBridgeError(
                 f"{field} must be a non-negative integer Unix timestamp: it is {timestamp}"
             )
+        normalized_auth[field] = timestamp
     invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
-    if invalid_now_type or (now is not None and now < 0):
-        raise IntentBridgeError("now must be a non-negative integer Unix timestamp")
+    if invalid_now_type or (now is not None and (now < 0 or now > JCS_SAFE_INTEGER)):
+        raise IntentBridgeError(
+            "now must be a non-negative integer Unix timestamp within the JCS safe-integer range"
+        )
     instant = int(time.time()) if now is None else now
-    if instant < authorization["authorized_at"]:
+    if instant < normalized_auth["authorized_at"]:
         raise IntentBridgeError("authorization is not yet valid")
-    if authorization["expires_at"] <= authorization["authorized_at"]:
+    if normalized_auth["expires_at"] <= normalized_auth["authorized_at"]:
         raise IntentBridgeError("expires_at must be after authorized_at")
-    if instant >= authorization["expires_at"]:
+    if instant >= normalized_auth["expires_at"]:
         raise IntentBridgeError("authorization has expired")
 
     scope = _object(authorization["scope"], "authorization.scope", {"tools", "impacts"})
@@ -468,4 +473,4 @@ def verify_bridge(
             _jcs(tool_call, "tool_call"),
         ):
             raise AuthorizationMismatch("transcript.before.tool_call does not match execution")
-    return authorization
+    return normalized_auth
