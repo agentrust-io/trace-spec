@@ -27,7 +27,7 @@ holds. The outcome names are not accepted normative text
 
 `transparency` appears in every record and every expected block shows it
 `not_attempted` with cause `surface_deferred`: its resolution is coordinated in
-[agentrust-io/trace-tests#92](https://github.com/agentrust-io/trace-tests/issues/92)
+[#547](https://github.com/agentrust-io/trace-spec/issues/547) (formerly trace-tests#92)
 and held by section 7 open question 3 of the specification. A consumer that reads it
 fails every vector in this set.
 
@@ -55,6 +55,16 @@ the entry for the URI, and raise `KeyError` when there is none. The cited object
 small ASCII documents (a policy stub, a RIM stub, an AIBOM stub) so a reader can decode
 them. Their content is irrelevant to the consumer, which hashes what it is handed and
 reads none of it.
+
+Why `expected.citations[*].evidence.exception` is `"KeyError"` in the `resolver_raised`
+vectors: the consumer records the class or type name of whatever exception the
+caller-supplied resolver raised (`type(exc).__name__` in Python), and the reference
+test harness's lookup-table resolver (`table[uri]`) raises Python's `KeyError` when a
+URI is absent from `context.resolutions`. `"KeyError"` is therefore an artifact of the
+harness lookup stub, not a TRACE protocol constant. A conformance runner in another
+language (such as Go, Rust, or TypeScript) either raises an error whose reported type
+name is `"KeyError"` from its vector-harness lookup stub or compares
+`evidence.exception` against the error type name its own harness stub raises.
 
 ## Outcomes and the vectors that carry them
 

@@ -1,0 +1,109 @@
+\section{Roles and Protocol}
+\label{sec:protocol}
+
+\subsection{Roles}
+
+TRACE instantiates the three RATS roles~\citep{rats2021}. The \emph{Attester} is the
+agent runtime: it holds the TEE-bound signing key, gathers Evidence (the platform
+measurement chain), and issues a Trust Record. The \emph{Verifier} appraises that
+Evidence against reference values and policy and emits an appraisal (the record's
+\texttt{appraisal} claim, in the EAR format). The \emph{Relying Party} (a
+downstream service, an auditor, or a partner) consumes the record and the
+appraisal to make a trust decision.
+
+TRACE follows the RATS \emph{passport} model: the Attester obtains its evidence and
+ships a self-contained Trust Record that travels with the workload. Any party
+verifies it offline, with no callback to the issuer and no vendor in the trust path
+beyond the silicon root and the transparency-log operator
+(Section~\ref{sec:verification}).
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  >={Stealth[round]},
+  role/.style={draw, rounded corners, align=center, minimum width=2.9cm, minimum height=2.6em},
+  note/.style={font=\scriptsize\itshape, text=black!70},
+]
+\node[role, fill=blue!5] (att) {Attester\\(agent runtime / TEE)};
+\node[role, fill=gray!8, right=2.6cm of att] (ver) {Verifier};
+\node[role, fill=green!6, below=1.1cm of att] (rp) {Relying Party};
+
+\draw[->] (att) -- node[note, above]{Evidence} (ver);
+\draw[->] (ver) to[out=250,in=20] node[note, right, pos=0.4]{appraisal (EAR)} (rp);
+\draw[->] (att) -- node[note, left]{Trust Record} (rp);
+\node[note, below=0.2cm of rp] {verifies offline, no issuer callback};
+\end{tikzpicture}
+\caption{TRACE in the RATS passport model. The Attester ships a self-contained
+Trust Record; the Verifier's appraisal travels in the record so the Relying Party
+appraises it without contacting the issuer.}
+\label{fig:roles}
+\end{figure}
+
+\subsection{Key hierarchy}
+
+Signing keys form a chain rooted in silicon:
+silicon root key (vendor-managed, hardware-bound) $\rightarrow$ platform attestation
+key (Intel TDX Quote-signing key, AMD VCEK/VLEK, NVIDIA NRAS) $\rightarrow$ workload
+attestation key (TEE-bound, ephemeral) $\rightarrow$ record-signing key (per
+workload, optionally per session). The record-signing key is the one named in
+\texttt{cnf}; workload-level keys SHOULD rotate at TEE-image boundaries, and
+verifiers MUST consult current revocation status at verification time.
+
+\subsection{Single-organization flow (Phase 1)}
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Startup attestation.} The runtime launches inside a TEE, derives its
+    record-signing key, and obtains a platform attestation report binding that key.
+  \item \textbf{Issuance.} For each governed execution (an invocation, or a session),
+    the runtime assembles a Trust Record (\texttt{model}, \texttt{runtime},
+    \texttt{policy}, \texttt{data\_class}, \texttt{tool\_transcript},
+    \texttt{build\_provenance}), signs it (Section~\ref{sec:model:sig}), and
+    optionally registers it on the transparency log, filling \texttt{transparency}.
+  \item \textbf{Appraisal and consumption.} A Verifier appraises the record and a
+    Relying Party acts on it, both offline.
+\end{enumerate}
+
+Issuance granularity is profile-defined: the cMCP profile issues one record per
+session, at session close, binding that session's audit chain; a profile that needs
+finer evidence may issue per invocation. In all cases the \texttt{subject} is the
+workload's SPIFFE identity~\citep{spiffe2018}, bound to the TEE measurement so the
+record names which agent acted.
+
+\subsection{Cross-organization flow (Phase 2)}
+
+When two runtimes in different trust domains participate (for example a gateway
+and an upstream server, each in its own TEE), each is an independent Attester. Each
+produces its own Trust Record, signed by its own \texttt{cnf} key and bound to its
+own platform attestation, and both carry the \emph{same} \texttt{subject}/session
+identifier. The shared identifier links the two records without sharing private key
+material; a Verifier confirms the linkage and appraises each record independently, so
+tampering with one does not affect the other. cMCP~\citep{cmcp2026} demonstrates this
+as a dual-TEE protocol at the MCP boundary.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  >={Stealth[round]},
+  tee/.style={draw, dashed, thick, rounded corners, align=center, minimum width=3.6cm, minimum height=3.0em, inner sep=6pt},
+  rec/.style={draw, rounded corners, fill=blue!5, align=center, minimum height=1.9em},
+  note/.style={font=\scriptsize\itshape, text=black!70},
+]
+\node[tee, draw=blue!55!black] (a) {\textbf{Org A: Gateway TEE}\\ \texttt{cnf}: $K_A$};
+\node[tee, draw=orange!75!black, right=3.0cm of a] (b) {\textbf{Org B: Server TEE}\\ \texttt{cnf}: $K_B$};
+\draw[<->, thick] (a.north) to[out=60,in=120] node[note, above]{shared session id $\sigma$} (b.north);
+\node[rec, below=0.8cm of a] (ra) {Trust Record\\(signed by $K_A$)};
+\node[rec, below=0.8cm of b] (rb) {Trust Record\\(signed by $K_B$)};
+\draw[->] (a) -- (ra);
+\draw[->] (b) -- (rb);
+\node[draw, rounded corners, fill=green!6, align=center, minimum height=1.9em,
+      below=0.8cm of $(ra)!0.5!(rb)$] (v) {Verifier: links via $\sigma$, appraises each independently};
+\draw[->] (ra.south) -- (v.north west);
+\draw[->] (rb.south) -- (v.north east);
+\end{tikzpicture}
+\caption{Cross-organization attestation. Two independent Attesters issue separately
+key-bound Trust Records carrying a shared session identifier; the Verifier links them
+without either side sharing key material.}
+\label{fig:crossorg}
+\end{figure}

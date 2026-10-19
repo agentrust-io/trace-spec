@@ -30,7 +30,7 @@ EXAMPLES = pathlib.Path(__file__).resolve().parents[1] / "examples"
 def _load(directory: str, outcome_of, codes_of, boundary_of=None) -> list[Vector]:
     out = []
     for path in sorted((EXAMPLES / directory).glob("*.json")):
-        expected = json.loads(path.read_text())["expected"]
+        expected = json.loads(path.read_text(encoding="utf-8"))["expected"]
         v = Vector(path.stem, outcome_of(expected), codes_of(expected))
         v.boundary = boundary_of(expected) if boundary_of else None
         out.append(v)
@@ -266,6 +266,9 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    "pic-successor-boundaries": "tests/test_pic_successor_boundaries.py, which executes "
+                                "every published vector on all three axes using reference "
+                                "and bounded independent checks",
     # Experimental profile, not a stable TRACE conformance corpus. The 14 original
     # vectors, also carried byte for byte as LEGACY-01 to LEGACY-14 in the set below.
     "verifier-token-profile": "tests/test_verifier_token_profile.py, which executes "
@@ -318,6 +321,12 @@ MEASURED_ELSEWHERE = {
     "observed-effect": "tests/test_observed_effect_fixtures.py, which recomputes every "
                        "verdict from the committed record and effect store instead of "
                        "reading expected.json, and re-runs the generator",
+    # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the assessment store beside them.
+    "applicability-assessment": "tests/test_applicability_assessment_fixtures.py, which "
+                                "recomputes every verdict from the committed record and "
+                                "assessment store instead of reading expected.json, and "
+                                "re-runs the generator",
 }
 
 

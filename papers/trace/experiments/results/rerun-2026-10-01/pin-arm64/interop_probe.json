@@ -1,0 +1,29 @@
+{
+  "ascii": {
+    "sdk_verify": true,
+    "trace_tests_TR_SIG_005": [
+      [
+        "TR-SIG-005",
+        "pass"
+      ]
+    ]
+  },
+  "non_ascii_subject": {
+    "sdk_verify": true,
+    "trace_tests_TR_SIG_005": [
+      [
+        "TR-SIG-005",
+        "fail"
+      ]
+    ]
+  },
+  "float_value": {
+    "sdk_verify": true,
+    "trace_tests_TR_SIG_005": [
+      [
+        "TR-SIG-005",
+        "pass"
+      ]
+    ]
+  }
+}

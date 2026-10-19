@@ -1,0 +1,13 @@
+{
+  "eat_profile": "tag:example.com,2024:wrong-profile",
+  "iat": 1748000000,
+  "subject": "spiffe://example.org/agent/test/001",
+  "model": {"provider": "anthropic", "model_id": "claude-sonnet-4-5"},
+  "runtime": {"platform": "intel-tdx", "measurement": "sha256:a3f8d2b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8"},
+  "policy": {"bundle_hash": "sha256:b4e1c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4", "enforcement_mode": "enforce"},
+  "data_class": "internal",
+  "build_provenance": {"slsa_level": 2, "digest": "sha256:c9f7a5b2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8"},
+  "appraisal": {"status": "affirming", "verifier": "https://verifier.example.org"},
+  "transparency": "https://scitt.example.org/receipts/xxx",
+  "cnf": {"jwk": {"kty": "EC"}}
+}

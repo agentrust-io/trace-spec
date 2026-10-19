@@ -2,9 +2,10 @@
 
 No module implements the reference yet, so the draft rule is stated here as a small reference
 checker. The record signature is verified first (§3.3 step 1); the manifest reference is then
-appraised by recomputing sha256 over the bytes the resolver returns for ``manifest.id``. A
-``manifest_verification_result`` the producer wrote is never read. Four wrong checkers must each
-be caught by at least one fixture.
+appraised by recomputing the digest the record declares (``sha256:`` or ``sha384:``, the two the
+v0.3 draft schema accepts) over the bytes the resolver returns for ``manifest.id``; any other
+algorithm is reported as unsupported, never as a mismatch. A ``manifest_verification_result`` the
+producer wrote is never read. Five wrong checkers must each be caught by at least one fixture.
 """
 
 import base64
@@ -19,13 +20,17 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 VECTOR_DIR = Path(__file__).parent / "vectors" / "manifest-ref-v0.3-draft"
-VECTORS = [json.loads(p.read_text()) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))]
+VECTORS = [
+    json.loads(p.read_text(encoding="utf-8")) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))
+]
 MUTANTS = (
     "trusts_asserted_result",
     "unresolved_is_pass",
     "manifest_before_signature",
     "rejects_record_on_unresolved",
+    "always_sha256",
 )
+HASHES = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
 
 
 def _b64u(s: str) -> bytes:
@@ -64,7 +69,10 @@ def check(vector: dict, mutant: str | None = None) -> dict:
         if mutant == "rejects_record_on_unresolved":
             return {"record": "manifest-unresolved", "manifest": "not-evaluated"}
         return {"record": "valid", "manifest": "manifest-unresolved"}
-    got = "sha256:" + hashlib.sha256(store[ref["id"]].encode("utf-8")).hexdigest()
+    alg = "sha256" if mutant == "always_sha256" else str(ref.get("digest", "")).partition(":")[0]
+    if alg not in HASHES:
+        return {"record": "valid", "manifest": "manifest-digest-unsupported"}
+    got = alg + ":" + HASHES[alg](store[ref["id"]].encode("utf-8")).hexdigest()
     return {
         "record": "valid",
         "manifest": "established" if got == ref.get("digest") else "manifest-digest-mismatch",
@@ -88,10 +96,26 @@ def test_editing_the_signed_digest_fails_the_signature():
     assert not _signature_ok(rec)
 
 
-def test_fixtures_are_reproducible():
+def _generator():
     spec = importlib.util.spec_from_file_location(
         "manifest_ref_generator", VECTOR_DIR / "generate.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.vectors() == VECTORS
+    return module
+
+
+def test_undeclared_algorithm_is_unsupported_not_mismatch():
+    # Not a fixture: the v0.3 draft schema rejects a sha512 digest, so the record is not
+    # schema-valid as signed. The digest is the correct sha512 of the manifest the record ran under,
+    # so a checker that hashes it anyway would report established, and one that only knows sha256
+    # or sha384 would report a mismatch. Neither is the draft rule.
+    g = _generator()
+    ref = {**g.REF, "digest": g.digest(g.M_RAN.encode(), "sha512")}
+    vector = {"record": g.sign(g.with_manifest(manifest=ref)), "resolver": {g.MID: g.M_RAN}}
+    assert _signature_ok(vector["record"])
+    assert check(vector) == {"record": "valid", "manifest": "manifest-digest-unsupported"}
+
+
+def test_fixtures_are_reproducible():
+    assert _generator().vectors() == VECTORS

@@ -1,0 +1,43 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1775014139,
+  "subject": "spiffe://example.org/agent/codex",
+  "model": {
+    "provider": "openai",
+    "model_id": "gpt-5"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce",
+    "version": "openshell-acs-v1"
+  },
+  "data_class": "internal",
+  "tool_transcript": {
+    "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "call_count": 1
+  },
+  "origin": {
+    "kind": "third-party-control-plane",
+    "producer": "nvidia-openshell/0.3.0",
+    "source_event_id": "sbx-123"
+  },
+  "build_provenance": {
+    "slsa_level": 0,
+    "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "nvidia-openshell/0.3.0"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+    }
+  }
+}

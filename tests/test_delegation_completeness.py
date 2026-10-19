@@ -386,7 +386,9 @@ def test_margins_have_not_thinned() -> None:
     current = {code: len(_margin(code)) for code in RULE_CODES}
 
     if not MARGINS_FILE.exists():
-        MARGINS_FILE.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
+        MARGINS_FILE.write_text(
+            json.dumps(current, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
         pytest.skip(f"recorded initial margins to {MARGINS_FILE.name}; re-run to enforce")
 
     recorded: dict[str, int] = json.loads(MARGINS_FILE.read_text(encoding="utf-8"))

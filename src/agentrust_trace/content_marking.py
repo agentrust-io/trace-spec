@@ -74,22 +74,77 @@ def _no_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return obj
 
 
+def _no_nonfinite_constant(value: str, what: str = "JSON") -> Any:
+    raise ContentMarkingError(f"{what} contains non-RFC-8259 numeric constant {value!r}")
+
+
+def _has_surrogate(value: Any) -> bool:
+    """Return True if *value* holds any UTF-16 surrogate code point (U+D800..U+DFFF).
+
+    A JSON surrogate-pair escape such as ``\\ud83d\\ude00`` is decoded by ``json.loads``
+    into the supplementary Unicode scalar ``U+1F600`` before this runs, so valid JSON
+    surrogate pairs pass. Any code point still in ``U+D800..U+DFFF`` after decoding, or
+    passed directly in a Python ``str`` (including two adjacent surrogate code points),
+    is not valid UTF-8 and is refused.
+    """
+    stack: list[Any] = [value]
+    seen: set[int] = set()
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in item):
+                return True
+        elif isinstance(item, dict):
+            oid = id(item)
+            if oid in seen:
+                continue
+            seen.add(oid)
+            stack.extend(item.keys())
+            stack.extend(item.values())
+        elif isinstance(item, (list, tuple)):
+            oid = id(item)
+            if oid in seen:
+                continue
+            seen.add(oid)
+            stack.extend(item)
+    return False
+
+
 def _loads(data: bytes | bytearray, what: str) -> Any:
+    if not isinstance(data, bytes | bytearray):
+        raise ContentMarkingError(
+            f"{what} must be bytes or bytearray, got {type(data).__name__}"
+        )
     try:
-        return json.loads(data, object_pairs_hook=_no_duplicate_members)
-    except ContentMarkingError as exc:
-        raise ContentMarkingError(f"{what} is not usable JSON: {exc}") from exc
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ContentMarkingError(f"{what} is not valid UTF-8: {exc}") from exc
+    if text.startswith("\ufeff"):
+        raise ContentMarkingError(
+            f"{what} must not start with a UTF-8 byte-order mark (RFC 8259 section 8.1)"
+        )
+    try:
+        parsed = json.loads(
+            text,
+            object_pairs_hook=_no_duplicate_members,
+            parse_constant=lambda value: _no_nonfinite_constant(value, what),
+        )
+    except ContentMarkingError:
+        raise
     except (ValueError, RecursionError) as exc:
         # RecursionError: nesting deeper than the interpreter stack. The bytes can
         # come from whoever serves the URL, so a caller written against
         # ContentMarkingError has to be able to refuse them.
         raise ContentMarkingError(f"{what} is not JSON: {exc}") from exc
+    if _has_surrogate(parsed):
+        raise ContentMarkingError(f"{what} contains an unpaired UTF-16 surrogate")
+    return parsed
 
 
-def _digest(data: bytes, alg: str) -> str:
+def _digest(data: bytes | bytearray, alg: str) -> str:
     if alg not in _ALGS:
         raise ContentMarkingError(f"unsupported digest algorithm {alg!r}; use sha256 or sha384")
-    return f"{alg}:{_ALGS[alg](data).hexdigest()}"
+    return f"{alg}:{_ALGS[alg](bytes(data)).hexdigest()}"
 
 
 def _record_url(value: Any) -> str:
@@ -141,7 +196,7 @@ def _record_url(value: Any) -> str:
 
 
 def build_assertion(
-    record_bytes: bytes,
+    record_bytes: bytes | bytearray,
     *,
     url: str,
     alg: str = "sha256",
@@ -149,6 +204,7 @@ def build_assertion(
 ) -> dict[str, Any]:
     """Build the assertion from the **exact bytes** that will be served at *url*.
 
+    Accepts bytes or bytearray and freezes one bytes snapshot for parsing and hashing.
     Takes bytes rather than a record object on purpose. A hash computed over a
     re-serialized dict is a hash of something nobody will ever fetch: key order,
     separators and escaping all change the bytes without changing the record, and
@@ -171,14 +227,19 @@ def build_assertion(
         raise ContentMarkingError(
             f"alg must be a digest algorithm name, got {type(alg).__name__}; use sha256 or sha384"
         )
-    if anchor is not None and (not isinstance(anchor, str) or not anchor):
-        # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
-        # caller who passed one got an assertion with no anchor and no error. Refuse it.
-        raise ContentMarkingError(
-            "anchor must be a non-empty registry entry URI string or None, got "
-            f"{anchor!r}"
-        )
+    if anchor is not None:
+        if not isinstance(anchor, str) or not anchor:
+            # `if anchor:` below used to drop a non-string or empty anchor on the floor, so a
+            # caller who passed one got an assertion with no anchor and no error. Refuse it.
+            raise ContentMarkingError(
+                "anchor must be a non-empty registry entry URI string or None, got "
+                f"{anchor!r}"
+            )
+        if _has_surrogate(anchor):
+            raise ContentMarkingError("anchor must not contain an unpaired UTF-16 surrogate")
 
+    # Hash and parse the same immutable snapshot of caller-owned mutable input.
+    record_bytes = bytes(record_bytes)
     record = _loads(record_bytes, "record_bytes")
     if not isinstance(record, dict):
         raise ContentMarkingError(
@@ -188,14 +249,14 @@ def build_assertion(
 
     subject = record.get("subject")
     profile = record.get("eat_profile")
-    if not _SUBJECT_RE.match(str(subject or "")):
+    if not isinstance(subject, str) or not _SUBJECT_RE.match(subject):
         raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
     if not isinstance(profile, str) or not profile:
         raise ContentMarkingError("the record declares no non-empty string eat_profile")
 
     data: dict[str, Any] = {
         "version": ASSERTION_VERSION,
-        "record": {"url": url, "hash": _digest(bytes(record_bytes), alg), "alg": alg},
+        "record": {"url": url, "hash": _digest(record_bytes, alg), "alg": alg},
         "subject": subject,
         "eat_profile": profile,
     }
@@ -204,11 +265,15 @@ def build_assertion(
     return {"label": ASSERTION_LABEL, "data": data}
 
 
-def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str, Any]:
+def verify_assertion(
+    assertion: dict[str, Any], record_bytes: bytes | bytearray
+) -> dict[str, Any]:
     """Check an assertion against the record bytes actually retrieved from its URL.
 
     *record_bytes* is not optional and has no default. The hash is the binding,
     and an assertion whose hash was never checked is a URL in a file.
+
+    Hashing and parsing use one immutable snapshot of bytes or bytearray input.
 
     Returns the parsed record on success. Raises :class:`ContentMarkingError` or
     :class:`RecordMismatch` otherwise.
@@ -248,6 +313,23 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
                 "establishes agreement rather than presence."
             )
 
+    subject = data.get("subject")
+    if not isinstance(subject, str) or not _SUBJECT_RE.match(subject):
+        raise ContentMarkingError("assertion subject must be a SPIFFE or DID URI")
+    profile = data.get("eat_profile")
+    if not isinstance(profile, str) or not profile:
+        raise ContentMarkingError("assertion eat_profile must be a non-empty string")
+    if "anchor" in data:
+        anchor = data.get("anchor")
+        if not isinstance(anchor, str) or not anchor:
+            raise ContentMarkingError("assertion anchor must be a non-empty string when present")
+        if _has_surrogate(anchor):
+            raise ContentMarkingError(
+                "assertion anchor must not contain an unpaired UTF-16 surrogate"
+            )
+    if _has_surrogate(assertion):
+        raise ContentMarkingError("assertion contains an unpaired UTF-16 surrogate")
+
     ref = data.get("record")
     if not isinstance(ref, dict):
         raise ContentMarkingError("assertion carries no record reference")
@@ -271,7 +353,9 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
             "somebody else's server and would be false."
         )
 
-    actual = _digest(bytes(record_bytes), alg)
+    # A caller may mutate a bytearray between hashing and JSON decoding.
+    record_bytes = bytes(record_bytes)
+    actual = _digest(record_bytes, alg)
     if actual != expected:
         raise RecordMismatch(
             f"the record at {url} does not match the assertion: computed {actual}, "
@@ -288,18 +372,28 @@ def verify_assertion(assertion: dict[str, Any], record_bytes: bytes) -> dict[str
         )
     for field in ("subject", "eat_profile"):
         if field not in record:
-            raise RecordMismatch(
+            raise ContentMarkingError(
                 f"the record at {url} has no {field}, which section 2 marks required, so "
                 "the assertion has nothing to be bound to. It matched the declared hash, "
                 "so this is what that URL is serving."
             )
-    if record.get("subject") != data.get("subject"):
+    record_subject = record.get("subject")
+    if not isinstance(record_subject, str) or not _SUBJECT_RE.match(record_subject):
+        raise ContentMarkingError("the record has no SPIFFE or DID subject to bind to")
+    record_profile = record.get("eat_profile")
+    if not isinstance(record_profile, str) or not record_profile:
+        raise ContentMarkingError("the record declares no non-empty string eat_profile")
+    if "anchor" in record and (
+        not isinstance(record["anchor"], str) or not record["anchor"]
+    ):
+        raise ContentMarkingError("the record anchor must be a non-empty string")
+    if record_subject != data.get("subject"):
         raise RecordMismatch(
             f"assertion names subject {data.get('subject')!r} and the record says "
-            f"{record.get('subject')!r}: the assertion describes a different record than it "
+            f"{record_subject!r}: the assertion describes a different record than it "
             "points at"
         )
-    if record.get("eat_profile") != data.get("eat_profile"):
+    if record_profile != data.get("eat_profile"):
         raise RecordMismatch(
             "assertion and record disagree about eat_profile, so the assertion describes a "
             "different record than it points at"

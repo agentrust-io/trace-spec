@@ -98,7 +98,7 @@ an optional one is outside what was signed.
 ## The differential harness
 
 ```
-python differential/generate_cases.py --external <trace-tests>/tests/vectors
+python differential/generate_cases.py --external differential/corpus/vectors-trace-tests-3af2b53
 python differential/oracle.py          # the Python implementation's verdicts
 node differential/run.mjs              # this implementation's verdicts
 python differential/compare.py --expect-external 12

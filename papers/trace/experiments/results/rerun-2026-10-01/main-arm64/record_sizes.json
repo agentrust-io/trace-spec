@@ -1,0 +1,26 @@
+{
+  "invalid_missing_runtime": {
+    "canonical_bytes": 614,
+    "pretty_bytes": 737
+  },
+  "invalid_wrong_profile": {
+    "canonical_bytes": 735,
+    "pretty_bytes": 877
+  },
+  "valid_cmcp_runtime": {
+    "canonical_bytes": 1616,
+    "pretty_bytes": 2099
+  },
+  "valid_level0": {
+    "canonical_bytes": 882,
+    "pretty_bytes": 1056
+  },
+  "valid_level0_with_transcript": {
+    "canonical_bytes": 1113,
+    "pretty_bytes": 1334
+  },
+  "synthetic_full_l2": {
+    "canonical_bytes": 1389,
+    "pretty_bytes": 1743
+  }
+}

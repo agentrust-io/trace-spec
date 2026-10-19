@@ -64,7 +64,7 @@ def child_env() -> dict[str, str]:
 def _replica_main() -> None:
     """JSON lines on stdin/stdout; one gate per process, rebuilt by ``store``."""
     name = sys.argv[1]
-    fixture_ = json.loads((VECTORS / "01-valid.json").read_text())
+    fixture_ = json.loads((VECTORS / "01-valid.json").read_text(encoding="utf-8"))
     ctx = context(fixture_)
     raw = unb64(fixture_["envelope_b64"])
     state: dict = {"gate": None, "sent": 0, "clock": g.NOW}
@@ -305,7 +305,8 @@ def call_action(call_id: str, session: str = SESSION) -> dict:
 
 
 def raw_token() -> bytes:
-    return unb64(json.loads((VECTORS / "01-valid.json").read_text())["envelope_b64"])
+    doc = json.loads((VECTORS / "01-valid.json").read_text(encoding="utf-8"))
+    return unb64(doc["envelope_b64"])
 
 
 def admit_on(replica: Replica, minted_by: Replica | None = None) -> None:

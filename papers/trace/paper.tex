@@ -1,0 +1,105 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{iftex}
+% mathptmx has no TU-encoded faces, so under XeTeX (Tectonic) earlier versions fell back
+% to Latin Modern regular and lost every bold and italic. Use Termes there.
+\ifPDFTeX\usepackage{mathptmx}\else\usepackage{fontspec}\setmainfont{texgyretermes}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]\fi
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usepackage{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{caption}
+
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  xleftmargin=2em,
+  framexleftmargin=1.5em,
+  backgroundcolor=\color{gray!8},
+}
+
+\title{\textbf{TRACE: Trust, Runtime Attestation, and Compliance Evidence}\\
+  \large A Portable Attestation Format for AI Agent Runtime Governance}
+
+\author{
+  Rishabh Poddar \quad Aaron Fulkerson \quad Imran Siddique \\
+  OPAQUE Systems \\[4pt]
+  \normalsize \url{https://github.com/agentrust-io/trace-spec}
+}
+
+\date{October 1, 2026 \\ \small Technical report, version 3}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+TRACE (Trust, Runtime Attestation, and Compliance Evidence) proposes a
+portable record for claims about AI agent runtimes: workload identity, model,
+policy, data class, tool transcript, build provenance, and appraisal. It composes
+RATS/EAT, signatures, and transparency evidence into a format that a relying party
+can evaluate against its own trust policy. A valid signature establishes integrity
+and possession of the signing key; hardware origin additionally requires verified
+attestation and a binding from that evidence to the key. This technical report
+describes the original design and preserves the recorded software evaluation of
+agentrust-trace (trace-spec revision 523f8cc, whose signing code is release
+0.3.0) and trace-tests 0.2.0. The evaluation measures
+canonicalization, Ed25519 signing and verification, record size, and fixture
+outcomes. It does not measure silicon certificate-chain appraisal or establish
+that the recorded runtime claims are true. The current normative specification
+and its implementation limits are maintained separately.
+\end{abstract}
+
+\paragraph{Scope of this edition.}
+This is an author-prepared technical report, not peer reviewed and not a
+normative specification. It revises a manuscript originally dated June 23, 2026;
+the recorded experiments include later runs and have not been rerun for this
+edition. Architectural requirements describe intended checks, not proof that
+the historical SDK implements every check. Consult the linked project
+specification and limitations before implementing the design.
+Version 3 (October 1, 2026) corrects the identification of the evaluated SDK, states that the
+evaluated vectors and checker use the v0.1 profile URI, narrows the
+conformance-module descriptions to what the evaluated checks do, fixes the
+install command, corrects five bibliography entries, replaces a vendor
+model name in the worked example, and restores bold and italic type that the
+Tectonic build had dropped; the recorded numbers are unchanged. Version
+2 corrected one sentence in the related-work discussion
+of transparency logs, which implied that log registration makes omitted events
+detectable.
+
+\tableofcontents
+\newpage
+
+\input{sections/01-intro}
+\input{sections/02-background}
+\input{sections/03-model}
+\input{sections/04-protocol}
+\input{sections/05-verification}
+\input{sections/06-profiles}
+\input{sections/conformance}
+\input{sections/evaluation}
+\input{sections/07-related}
+\input{sections/08-conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

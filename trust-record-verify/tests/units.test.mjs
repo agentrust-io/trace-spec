@@ -2,7 +2,10 @@
 // canonicalization, base64url, RFC 7638 thumbprints and the profile cutover.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 import {
@@ -215,3 +218,67 @@ test("a plain object is one whose prototype is null or a realm's Object.prototyp
   assert.throws(() => canonicalJson(Object.create({})), refused);
   assert.throws(() => canonicalJson(new (class Record {})()), refused);
 });
+
+const PRIVATE_JWK_MEMBERS = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
+const SECRET_SENTINEL = "super-secret-private-material-999";
+const FRESH_BUNDLE_VECTOR = JSON.parse(
+  readFileSync(
+    join(
+      dirname(dirname(dirname(fileURLToPath(import.meta.url)))),
+      "examples",
+      "revocation-bundle",
+      "01-fresh-well-inside-both-bounds.json",
+    ),
+    "utf8",
+  ),
+);
+
+test("jwkThumbprint and verifyRecord refuse private JWK members without echoing secret values", async () => {
+  const ctx = FRESH_BUNDLE_VECTOR.context;
+  const record = FRESH_BUNDLE_VECTOR.records[0];
+
+  for (const member of PRIVATE_JWK_MEMBERS) {
+    const leakedTrustedKey = { ...ctx.trusted_key, [member]: SECRET_SENTINEL };
+    await assert.rejects(jwkThumbprint(leakedTrustedKey), (error) => {
+      assert.ok(error instanceof TraceVerificationError);
+      assert.equal(error.code, "jwk_invalid");
+      assert.match(error.message, /private key material/);
+      assert.ok(error.message.includes(member));
+      assert.equal(error.message.includes(SECRET_SENTINEL), false);
+      return true;
+    });
+
+    await assert.rejects(
+      verifyRecord(record, { trustedKey: leakedTrustedKey, now: ctx.now }),
+      (error) => {
+        assert.ok(error instanceof TraceVerificationError);
+        assert.equal(error.code, "trusted_key_malformed");
+        assert.match(error.message, /private key material/);
+        assert.ok(error.message.includes(member));
+        assert.equal(error.message.includes(SECRET_SENTINEL), false);
+        return true;
+      },
+    );
+
+    const leakedBundleKey = { ...ctx.trusted_bundle_keys[0], [member]: SECRET_SENTINEL };
+    await assert.rejects(
+      verifyRecord(record, {
+        trustedKey: ctx.trusted_key,
+        now: ctx.now,
+        revocationBundle: ctx.bundle,
+        trustedBundleKeys: [leakedBundleKey],
+        maxBundleAgeSeconds: ctx.max_bundle_age_seconds,
+        maxFutureSkewSeconds: ctx.max_future_skew_seconds,
+      }),
+      (error) => {
+        assert.ok(error instanceof TraceVerificationError);
+        assert.equal(error.code, "invalid_argument");
+        assert.match(error.message, /private key material/);
+        assert.ok(error.message.includes(member));
+        assert.equal(error.message.includes(SECRET_SENTINEL), false);
+        return true;
+      },
+    );
+  }
+});
+

@@ -93,6 +93,30 @@ _ACCOUNTING_SPEC = ObligationSpec(
         BranchRule(
             "resolved_mismatch", ProducerRole.TARGET_COMPLETED, "TR-POL-003", (Status.FAIL,)
         ),
+        BranchRule(
+            "expected_policy_mismatch",
+            ProducerRole.TARGET_COMPLETED,
+            "TR-POL-003",
+            (Status.FAIL,),
+        ),
+        BranchRule(
+            "expected_policy_unevaluated_no_uri",
+            ProducerRole.NOT_ATTEMPTED,
+            "TR-POL-003",
+            (Status.UNVERIFIED,),
+        ),
+        BranchRule(
+            "expected_policy_unevaluated_no_resolver",
+            ProducerRole.NOT_ATTEMPTED,
+            "TR-POL-003",
+            (Status.UNVERIFIED,),
+        ),
+        BranchRule(
+            "expected_policy_unevaluated_unresolved",
+            ProducerRole.TARGET_ATTEMPTED_UNRESOLVED,
+            "TR-POL-003",
+            (Status.UNVERIFIED,),
+        ),
     ),
     _structural_sources(
         "/required/5",
@@ -128,8 +152,90 @@ def _not_absolute_uri(policy_uri: str) -> str | None:
     return None
 
 
+def validate_expected_policy_hash(expected_policy_hash: str | None) -> None:
+    """Refuse an expected policy hash the comparison could not use.
+
+    The value comes from the verifier, not the record, so a malformed one is a
+    caller error and raises rather than becoming a finding about the record.
+    """
+    if expected_policy_hash is None:
+        return
+    if not isinstance(expected_policy_hash, str) or not _DIGEST_RE.fullmatch(
+        expected_policy_hash
+    ):
+        raise ValueError(
+            "expected_policy_hash must match sha256:<64 lowercase hex> or "
+            f"sha384:<96 lowercase hex>, got {expected_policy_hash!r}"
+        )
+
+
+def _expected_mismatch(
+    bundle_hash: str, expected_policy_hash: str | None
+) -> Finding | None:
+    """Return a failure when the record declares a policy other than the expected one.
+
+    This compares the record's own declaration with verifier context, so like a
+    malformed reference it needs no network and runs before any resolver. It
+    decides only when both digests use the same algorithm; otherwise the
+    comparison is made over the resolved bytes, in `_resolution_finding`.
+    """
+    if expected_policy_hash is None or not _DIGEST_RE.fullmatch(bundle_hash):
+        return None
+    if expected_policy_hash.partition(":")[0] != bundle_hash.partition(":")[0]:
+        return None
+    if expected_policy_hash == bundle_hash:
+        return None
+    return _observe(
+        "TR-POL",
+        "expected_policy_mismatch",
+        Finding(
+            "TR-POL-003", Status.FAIL,
+            f"TR-POL-003: policy.bundle_hash declares {bundle_hash}, which is not the "
+            f"policy the verifier expects ({expected_policy_hash})",
+        ),
+    )
+
+
+def _needs_bytes(bundle_hash: str, expected_policy_hash: str | None) -> bool:
+    """Return True when the expected policy can only be compared over the bundle bytes.
+
+    That is the case when the verifier supplied an expectation in a different
+    digest algorithm from the record's own declaration.
+    """
+    if expected_policy_hash is None or not _DIGEST_RE.fullmatch(bundle_hash):
+        # A malformed declaration is TR-POL-001's failure; nothing is deferred.
+        return False
+    return expected_policy_hash.partition(":")[0] != bundle_hash.partition(":")[0]
+
+
+def _unevaluated(branch: str, expected_policy_hash: str, reason: str) -> Finding:
+    """Report an expected policy hash the verifier supplied that could not be compared.
+
+    The record has not been shown to cite another policy, so this is not a
+    failure of the record. But the verifier asked for the comparison, and a
+    result that reads as conformant without it would answer a question the
+    verifier did not ask. The finding is therefore unverified and fails the run
+    at every level, whatever the threshold registered for TR-POL-003, which
+    keeps governing callers that supplied no expectation.
+    """
+    return _observe(
+        "TR-POL",
+        branch,
+        Finding(
+            "TR-POL-003", Status.UNVERIFIED,
+            f"TR-POL-003: the expected policy hash {expected_policy_hash} uses a "
+            f"different algorithm from policy.bundle_hash and could only be compared "
+            f"over the policy bundle, which {reason}; the expected policy was not "
+            f"compared",
+            unverified_fails_from_level=0,
+        ),
+    )
+
+
 def _resolution_finding(
-    policy: dict[str, Any], policy_resolver: Callable[[str], bytes] | None
+    policy: dict[str, Any],
+    policy_resolver: Callable[[str], bytes] | None,
+    expected_policy_hash: str | None = None,
 ) -> Finding:
     """Return the TR-POL-003 finding for *policy*.
 
@@ -139,8 +245,22 @@ def _resolution_finding(
     referent that could not be fetched is weather. The malformed check therefore
     runs before the resolver is consulted: running an offline verification must
     not mean being blind to a defect the record carries on its face.
+
+    The expected policy hash follows the same rule. It is verifier context, never
+    read from the record, and a record that declares a different policy is
+    reported without a resolver, whether or not it carries a policy_uri.
     """
+    bundle_hash = str(policy.get("bundle_hash", ""))
     if "policy_uri" not in policy:
+        mismatch = _expected_mismatch(bundle_hash, expected_policy_hash)
+        if mismatch is not None:
+            return mismatch
+        if expected_policy_hash is not None and _needs_bytes(bundle_hash, expected_policy_hash):
+            return _unevaluated(
+                "expected_policy_unevaluated_no_uri",
+                expected_policy_hash,
+                "the record does not reference (policy.policy_uri is absent)",
+            )
         return _observe(
             "TR-POL",
             "policy_uri_absent",
@@ -151,6 +271,15 @@ def _resolution_finding(
         )
     policy_uri = policy.get("policy_uri")
     if policy_uri is None:
+        mismatch = _expected_mismatch(bundle_hash, expected_policy_hash)
+        if mismatch is not None:
+            return mismatch
+        if expected_policy_hash is not None and _needs_bytes(bundle_hash, expected_policy_hash):
+            return _unevaluated(
+                "expected_policy_unevaluated_no_uri",
+                expected_policy_hash,
+                "the record does not reference (policy.policy_uri is null)",
+            )
         return _observe(
             "TR-POL",
             "policy_uri_explicit_null",
@@ -180,7 +309,6 @@ def _resolution_finding(
             ),
         )
 
-    bundle_hash = str(policy.get("bundle_hash", ""))
     if not _DIGEST_RE.fullmatch(bundle_hash):
         return _observe(
             "TR-POL",
@@ -192,7 +320,17 @@ def _resolution_finding(
             ),
         )
 
+    mismatch = _expected_mismatch(bundle_hash, expected_policy_hash)
+    if mismatch is not None:
+        return mismatch
+
     if policy_resolver is None:
+        if expected_policy_hash is not None and _needs_bytes(bundle_hash, expected_policy_hash):
+            return _unevaluated(
+                "expected_policy_unevaluated_no_resolver",
+                expected_policy_hash,
+                "was not resolved because no resolver was supplied",
+            )
         return _observe(
             "TR-POL",
             "no_resolver",
@@ -209,6 +347,13 @@ def _resolution_finding(
         # the bundle could not be read, which is the same word for a withdrawn
         # referent and a mistyped path; without the reason the second is
         # indistinguishable from weather.
+        if expected_policy_hash is not None and _needs_bytes(bundle_hash, expected_policy_hash):
+            return _unevaluated(
+                "expected_policy_unevaluated_unresolved",
+                expected_policy_hash,
+                f"could not be resolved from policy.policy_uri {policy_uri!r} "
+                f"({type(exc).__name__}: {exc})",
+            )
         return _observe(
             "TR-POL",
             "resolver_exception",
@@ -221,6 +366,13 @@ def _resolution_finding(
         )
 
     if not isinstance(resolved, bytes):
+        if expected_policy_hash is not None and _needs_bytes(bundle_hash, expected_policy_hash):
+            return _unevaluated(
+                "expected_policy_unevaluated_unresolved",
+                expected_policy_hash,
+                f"the policy resolver did not return (it returned "
+                f"{type(resolved).__name__} rather than bytes for {policy_uri!r})",
+            )
         return _observe(
             "TR-POL",
             "resolver_non_bytes",
@@ -236,13 +388,33 @@ def _resolution_finding(
     algo = _DIGEST_ALGOS[f"{prefix}:"]
     actual = f"{prefix}:{algo(resolved).hexdigest().lower()}"
     if actual == bundle_hash.lower():
+        if expected_policy_hash is not None:
+            # Same-algorithm expectations were settled before the resolver ran. One
+            # in another algorithm can only be compared over the bytes just read.
+            exp_prefix, _, _ = expected_policy_hash.partition(":")
+            exp_algo = _DIGEST_ALGOS[f"{exp_prefix}:"]
+            resolved_as_expected = f"{exp_prefix}:{exp_algo(resolved).hexdigest()}"
+            if resolved_as_expected != expected_policy_hash:
+                return _observe(
+                    "TR-POL",
+                    "expected_policy_mismatch",
+                    Finding(
+                        "TR-POL-003", Status.FAIL,
+                        f"TR-POL-003: policy.policy_uri resolves to the bundle "
+                        f"policy.bundle_hash declares, but that bundle is not the policy "
+                        f"the verifier expects; resolved {resolved_as_expected}, "
+                        f"expected {expected_policy_hash}",
+                    ),
+                )
         return _observe(
             "TR-POL",
             "resolved_match",
             Finding(
                 "TR-POL-003", Status.PASS,
                 f"policy.policy_uri resolves to the bundle policy.bundle_hash declares "
-                f"({len(resolved)} bytes, {prefix})",
+                f"({len(resolved)} bytes, {prefix})"
+                + ("" if expected_policy_hash is None
+                   else ", and it is the policy the verifier expects"),
             ),
         )
     return _observe(
@@ -257,7 +429,10 @@ def _resolution_finding(
 
 
 def check(
-    trace: dict[str, Any], *, policy_resolver: Callable[[str], bytes] | None = None
+    trace: dict[str, Any],
+    *,
+    policy_resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> list[Finding]:
     """Return TR-POL findings for the policy bundle claim.
 
@@ -265,7 +440,14 @@ def check(
     record: a record that could name its own resolver could name one that
     agrees with it. When it is None the resolution check skips, so offline
     verification stays a first-class use rather than a degraded one.
+
+    *expected_policy_hash* is the digest of the policy the verifier expects,
+    also supplied by the caller. A matching ``bundle_hash`` shows the resolved
+    bytes are the ones the record cited, not that they are the expected policy,
+    so TR-POL-003 fails a record that declares any other policy. When it is
+    None, TR-POL-003 behaves exactly as before.
     """
+    validate_expected_policy_hash(expected_policy_hash)
     findings: list[Finding] = []
     policy = trace.get("policy")
 
@@ -299,6 +481,6 @@ def check(
             f"TR-POL-002: policy.enforcement_mode must be one of {sorted(_VALID_ENFORCEMENT)}, got {enforcement!r}",
         ))
 
-    findings.append(_resolution_finding(policy, policy_resolver))
+    findings.append(_resolution_finding(policy, policy_resolver, expected_policy_hash))
 
     return findings

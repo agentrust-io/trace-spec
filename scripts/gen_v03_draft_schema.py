@@ -1,15 +1,17 @@
 """Regenerate schema/trace-claim-v0.3-draft.json from schema/trace-claim.json.
 
-The draft declares that, outside the profile identifier and ``runtime.evidence``,
-its members are byte-identical to the canonical schema. Nothing enforced that,
-so it was forked once and drifted: it never received the private-key refusal in
-``cnf.jwk`` or the RSA branch (#368). This script is now the only way the draft
-changes outside its own members, and tests/test_v03_draft_schema.py fails when
-the committed file is not what it produces.
+The draft declares that, outside the profile identifier, ``runtime.evidence``,
+and ``manifest``, its members are byte-identical to the canonical schema.
+Nothing enforced that, so it was forked once and drifted: it never received the
+private-key refusal in ``cnf.jwk`` or the RSA branch (#368). This script is now
+the only way the draft changes outside its own members, and
+tests/test_v03_draft_schema.py fails when the committed file is not what it
+produces.
 
 The draft's own members, taken from the committed draft:
-``$id``, ``title``, ``description``, ``properties.eat_profile`` and
-``properties.runtime.properties.evidence``. Everything else comes from canonical.
+``$id``, ``title``, ``description``, ``properties.eat_profile``,
+``properties.runtime.properties.evidence``, and ``properties.manifest``.
+Everything else comes from canonical.
 
 Usage: python scripts/gen_v03_draft_schema.py [--check]
 """
@@ -47,19 +49,27 @@ def _insert_after(
     return out
 
 
+def _copy_member(
+    target: dict[str, Any], source: dict[str, Any], key: str
+) -> dict[str, Any]:
+    keys = list(source)
+    position = keys.index(key)
+    after = keys[position - 1] if position > 0 else None
+    return _insert_after(target, key, copy.deepcopy(source[key]), after)
+
+
 def build(canonical: dict[str, Any], draft: dict[str, Any]) -> dict[str, Any]:
     result = copy.deepcopy(canonical)
     for key in DRAFT_OWN_TOP_LEVEL:
         result[key] = draft[key]
     result["properties"]["eat_profile"] = copy.deepcopy(draft["properties"]["eat_profile"])
 
-    draft_runtime = draft["properties"]["runtime"]["properties"]
-    keys = list(draft_runtime)
-    position = keys.index("evidence")
-    after = keys[position - 1] if position > 0 else None
     runtime = result["properties"]["runtime"]
-    runtime["properties"] = _insert_after(
-        runtime["properties"], "evidence", copy.deepcopy(draft_runtime["evidence"]), after
+    runtime["properties"] = _copy_member(
+        runtime["properties"], draft["properties"]["runtime"]["properties"], "evidence"
+    )
+    result["properties"] = _copy_member(
+        result["properties"], draft["properties"], "manifest"
     )
     return result
 

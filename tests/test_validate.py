@@ -12,7 +12,7 @@ EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 def _load(name: str) -> dict:
     # Examples must validate exactly as published: no preprocessing.
-    return json.loads((EXAMPLES_DIR / name).read_text())
+    return json.loads((EXAMPLES_DIR / name).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])

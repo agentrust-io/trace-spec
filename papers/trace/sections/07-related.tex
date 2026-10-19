@@ -1,0 +1,34 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Attestation standards.}
+TRACE composes rather than replaces. It instantiates RATS~\citep{rats2021} and
+profiles EAT~\citep{eat2023} for the wire envelope; where platform SDKs (AMD
+SEV-SNP~\citep{amdsevsnp2023}, Intel TDX~\citep{inteltdx2023}, and GPU/cloud
+attestation services) each emit their own evidence shape, TRACE maps that evidence
+into one envelope and adds the governance, identity, and audit claims an agent
+runtime needs. Unlike a bare platform quote, a Trust Record answers \emph{what ran},
+\emph{under what policy}, \emph{on what data}, and \emph{invoking which tools}, not
+merely \emph{that the environment is genuine}.
+
+\paragraph{Supply-chain and identity.}
+TRACE references SLSA provenance for build-time integrity, SPIFFE~\citep{spiffe2018}
+for workload identity bound to the TEE measurement, and AIBOM formats (SPDX/CycloneDX)
+for component inventory, each by digest from the corresponding claim. The
+companion Agent Manifest specification~\citep{manifest2026} extends identity to the
+full set of agent-defining artifacts.
+
+\paragraph{Tamper-evident logs.}
+The audit commitment and the \texttt{transparency} receipt build on certificate
+transparency~\citep{ct2013}, secure audit logging~\citep{seclog2000}, and the SCITT
+append-only-log model. TRACE differs in scoping the per-session chain, binding its
+tip into a hardware-attested record, and registering the record on a transparency
+log, so a registered record cannot later be altered or replaced
+unnoticed. Registration alone does not reveal omitted events; that requires an
+independently expected event set or terminal boundary (Section~\ref{sec:conclusion}).
+
+\paragraph{Agent governance.}
+Output-filtering and guardrail frameworks constrain agent inputs and outputs but do
+not attest \emph{that} enforcement occurred or under which policy. AGT~\citep{agt2026}
+supplies the policy engine and identity layer; TRACE is the hardware-attested
+evidence those controls produce, verifiable by a third party after the fact.

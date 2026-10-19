@@ -140,9 +140,9 @@ def test_a_keyword_inside_a_code_fence_is_not_a_requirement(tmp_path: Path) -> N
     guard by rewording their examples, which is worse than not having it."""
     doc = tmp_path / "docs" / "sample.md"
     doc.parent.mkdir()
-    doc.write_text("```\nthis MUST not be scanned\n```\nordinary prose\n")
+    doc.write_text("```\nthis MUST not be scanned\n```\nordinary prose\n", encoding="utf-8")
     in_fence, hits = False, []
-    for line in doc.read_text().splitlines():
+    for line in doc.read_text(encoding="utf-8").splitlines():
         if line.strip().startswith("```"):
             in_fence = not in_fence
             continue

@@ -2402,7 +2402,7 @@ LEGACY_MAP = {
 def legacy() -> None:
     token, reqs = base()
     for number, (stem, (req, desc)) in enumerate(sorted(LEGACY_MAP.items()), start=1):
-        old = json.loads((LEGACY / (stem + ".json")).read_text())
+        old = json.loads((LEGACY / (stem + ".json")).read_text(encoding="utf-8"))
         text = old["envelope_b64"]
         raw = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
         code = old["expected"]

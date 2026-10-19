@@ -12,8 +12,10 @@ from agentrust_trace.content_marking import build_assertion, verify_assertion, C
 from agentrust_trace.models import DigestStr
 from pathlib import Path
 
-BASE = json.loads((Path(__file__).parents[1] /
-    "examples/canonicalization-boundary/01-non-ascii-values.json").read_text())["record"]
+BASE = json.loads(
+    (Path(__file__).parents[1] / "examples/canonicalization-boundary/01-non-ascii-values.json")
+    .read_text(encoding="utf-8")
+)["record"]
 
 
 def accepts(call):

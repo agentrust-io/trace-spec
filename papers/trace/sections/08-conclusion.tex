@@ -1,0 +1,26 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+TRACE gives AI agent runtimes a portable, hardware-attestable evidence record, the
+Trust Record, that a relying party can appraise offline, without trusting the
+operator. By instantiating the RATS roles and profiling EAT, it reuses established
+attestation machinery while adding the model, runtime, policy, data-class,
+tool-transcript, provenance, appraisal, and transparency claims an agent deployment
+must account for. A confirmation key identifies the signing key; verified attestation must bind
+that key to a hardware root before silicon provenance can be claimed. The signed
+body makes modification detectable. An inclusion proof establishes membership
+in a particular tree, not completeness of execution or absence of omitted events.
+Completeness requires an independently expected event set or terminal boundary.
+The historical fixture outcomes in Section~\ref{sec:eval} also show limits of
+the software conformance checks.
+
+\paragraph{Limitations and future work.}
+The base format is settled, but several pieces are deliberately staged. Silicon
+cert-chain appraisal (AMD KDS, Intel DCAP) is an online step a fully offline verifier
+reports as unverified rather than fatal. The external-execution-evidence receipt
+format (Section~\ref{sec:model}) is specified but not yet exercised by the conformance
+suite. Profile coverage is growing: cMCP is the reference profile at the MCP boundary,
+with A2A and additional platform profiles planned. As more profiles and vendor
+attestation surfaces are mapped in, the registry and conformance levels give the
+ecosystem a shared, testable definition of what a trustworthy agent execution record
+is.

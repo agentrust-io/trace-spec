@@ -158,7 +158,9 @@ def null_verifier(record: dict, trusted_jwk: dict) -> None:
 
 
 def _fixtures() -> dict[str, dict]:
-    out = {p.stem: json.loads(p.read_text()) for p in sorted(VECTORS.glob("*.json"))}
+    out = {
+        p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(VECTORS.glob("*.json"))
+    }
     assert out, "no fixtures loaded; this module would pass while measuring nothing"
     return out
 

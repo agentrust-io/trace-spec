@@ -26,6 +26,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   GOVERNANCE.md as a conformance level redefinition, so adoption needs the 30-day
   comment period and Project Lead sign-off. Reported by @solloek369-arch.
 
+- **`content_marking`: consumer field and strict UTF-8 / RFC 8259 JSON boundaries.**
+  `verify_assertion` now validates `subject` (SPIFFE or DID URI), `eat_profile` (non-empty
+  string), and optional `anchor` (non-empty string) on both the assertion and the resolved
+  record before comparing them, and `_loads` decodes `bytes | bytearray` as strict UTF-8
+  JSON without a leading byte-order mark, non-finite numeric constants (`NaN`, `Infinity`,
+  `-Infinity`), or unpaired UTF-16 surrogates (#555, #565, by @drk-ram).
+  Both public functions parse and hash one immutable snapshot of mutable record input.
+  Hash-matching records missing a required field now raise `ContentMarkingError`,
+  consistent with other malformed fields, rather than its `RecordMismatch` subclass.
+  Hash or well-formed field disagreements still raise `RecordMismatch`.
 - **Section 3.1.5: a layer is established by its event log or by a reference value
   (#279).** As merged, a layer was `established` only when its event log replayed to the
   quoted value, so a quote that equals signed reference values with no log could not be
@@ -281,6 +291,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   keeps the first. Tests in `tests/test_signature_spelling_is_canonical.py`.
 
 ### Added
+
+- **`applicability-assessment` is a registered `references` relation.** An auditor reading a Trust Record for a compliance review needs to know which legal duty the record is presented for, which turns on facts the record does not carry: the party's legal role, the jurisdiction, and the provision. `applicability-assessment` is an assessor's signed statement of whether a stated legal provision applies to a stated party, held in another system: the party and its role in the instrument's own term, the jurisdiction, the provision and the date of the text read, the basis, and the outcome in a closed vocabulary the object names, with an optional date from which the assessor states the provision applies. `docs/references-registry.md` defines the referenced object as facts rather than a wire format and bounds what a relying party may establish to the object, stating plainly that an `applies` outcome is the assessor's claim and nothing more, and never compliance evidence. `examples/applicability-assessment/` carries six signed records from a seeded generator against an assessment store covering `applies`, `does-not-apply`, and `undetermined` objects, an altered target, an unresolvable reference, and an unconfigured issuer key; `tests/test_applicability_assessment_fixtures.py` recomputes every finding from the committed bytes and re-runs the generator against them. Proposed by @smcd on #445; ruled on by @imran-siddique; implemented by @drk-ram. Informative: no requirement, schema shape or wire format changes; the schema's `rel` description gains the name.
 
 - **`observed-effect` is a registered `references` relation.** The four registered values cover what was asked, who approved, what the agent did and what a check found; none points at what actually changed. `observed-effect` is a signed record of the state change an observer outside the agent saw over one interval: the state root before and after, the paths observed and any part of them unseen, the digest of the authority change ran under, and a subject digest equal to the after-state root. `docs/references-registry.md` defines the referenced object as facts rather than a wire format and bounds what a relying party may establish to the object, as for `condition-appraisal`: an interval in which the observer and the observed party agree is not attested evidence that the agent's report was true, and one in which they disagree is not a finding against the record. `examples/observed-effect/` carries five signed records against an effect store whose two statements are copied byte for byte from the published observed-effect conformance corpus: verified, altered after issue, a disagreeing interval that verifies exactly as the agreeing one does, unresolvable, and an observer whose key the relying party does not hold; `tests/test_observed_effect_fixtures.py` recomputes every finding from the committed bytes and re-runs the generator against them. Each verdict names the state of the referenced observation (verified, digest mismatch, unresolved, unverified) and never the effect it reports, with resolution, digest match and signature verification kept as separate findings. Proposed on #402. Informative: no requirement, schema shape or wire format changes; the schema's `rel` description gains the name.
 

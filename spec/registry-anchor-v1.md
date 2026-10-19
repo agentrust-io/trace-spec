@@ -83,7 +83,7 @@ sha256:<64 lowercase hex characters>
 
 ## 4. Registry entry
 
-An anchor is recorded as one JSON object with exactly these fields:
+An anchor is recorded as one JSON object carrying these required fields:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -96,6 +96,8 @@ An anchor is recorded as one JSON object with exactly these fields:
 ```json
 {"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001"}
 ```
+
+An entry may also carry optional log-profile fields such as `canonicalization_id` (identifying the leaf canonicalization profile) and `mmr_checkpoint` (or other transparency-log checkpoint metadata). A verifier that does not consume optional entry fields ignores them rather than rejecting the entry.
 
 **Entries are append-only.** Lines are only ever added; existing entries are never rewritten. A registry MUST make that property checkable by an outside party rather than merely assert it. The reference registry uses git history as the tamper-evidence layer: any rewrite of a published entry diverges the commit hashes that auditors and mirrors have already observed, which is why non-fast-forward pushes to its default branch are refused at the platform level as well as in CI.
 

@@ -15,10 +15,10 @@ VECTORS_DIR = pathlib.Path(__file__).parent.parent / "vectors"
 
 @pytest.fixture
 def fresh_level0_path(tmp_path):
-    vector = json.loads((VECTORS_DIR / "valid_level0.json").read_text())
+    vector = json.loads((VECTORS_DIR / "valid_level0.json").read_text(encoding="utf-8"))
     vector["iat"] = int(time.time()) - 60
     p = tmp_path / "record.json"
-    p.write_text(json.dumps(vector))
+    p.write_text(json.dumps(vector), encoding="utf-8")
     return str(p)
 
 
@@ -52,19 +52,19 @@ def test_unsigned_record_level_0_reports_unverified(fresh_level0_path):
 
 
 def test_stale_record_fails(tmp_path):
-    vector = json.loads((VECTORS_DIR / "valid_level0.json").read_text())
+    vector = json.loads((VECTORS_DIR / "valid_level0.json").read_text(encoding="utf-8"))
     vector["iat"] = int(time.time()) - (25 * 3600)
     p = tmp_path / "stale.json"
-    p.write_text(json.dumps(vector))
+    p.write_text(json.dumps(vector), encoding="utf-8")
     result = CliRunner().invoke(main, ["verify", "--record", str(p), "--level", "0"])
     assert result.exit_code == 1, result.output
 
 
 def test_partial_cmcp_envelope_is_rejected(tmp_path):
-    vector = json.loads((VECTORS_DIR / "valid_cmcp_runtime.json").read_text())
+    vector = json.loads((VECTORS_DIR / "valid_cmcp_runtime.json").read_text(encoding="utf-8"))
     del vector["cmcp_version"]
     p = tmp_path / "partial.json"
-    p.write_text(json.dumps(vector))
+    p.write_text(json.dumps(vector), encoding="utf-8")
     result = CliRunner().invoke(main, ["verify", "--record", str(p), "--level", "0"])
     assert result.exit_code == 2, result.output
     assert "partial cmcp-runtime envelope" in result.output

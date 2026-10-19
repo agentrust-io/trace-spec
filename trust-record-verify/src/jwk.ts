@@ -20,16 +20,42 @@ const THUMBPRINT_MEMBERS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
+ * RFC 7517 / RFC 7518 section 6.2.2, 6.3.2, 6.4.2 / RFC 8037 section 2 private
+ * and symmetric key parameters. Every key this package thumbprints or imports
+ * is a public verification key.
+ */
+export const JWK_PRIVATE_MEMBERS: ReadonlySet<string> = new Set([
+  "d",
+  "p",
+  "q",
+  "dp",
+  "dq",
+  "qi",
+  "oth",
+  "k",
+]);
+
+/**
  * The RFC 7638 thumbprint of *jwk*: base64url SHA-256 of the required members,
  * serialized with RFC 8785 (their names are ASCII, so that is the member order
  * RFC 7638 section 3.3 specifies).
  *
- * Refuses, as `jwk_invalid`, a value that is not an object, an unknown `kty`,
- * and a required member that is absent, empty or not a string.
+ * Refuses, as `jwk_invalid`, a value that is not an object, a JWK carrying
+ * private key material, an unknown `kty`, and a required member that is absent,
+ * empty or not a string.
  */
 export async function jwkThumbprint(jwk: unknown): Promise<string> {
   if (!isPlainObject(jwk)) {
     fail("jwk_invalid", "a JWK must be a JSON object");
+  }
+  const privateMembers = Object.keys(jwk)
+    .filter((name) => JWK_PRIVATE_MEMBERS.has(name))
+    .sort();
+  if (privateMembers.length > 0) {
+    fail(
+      "jwk_invalid",
+      `a JWK carrying private key material (${privateMembers.join(", ")}) cannot be thumbprinted as a public key`,
+    );
   }
   const kty = own(jwk, "kty");
   const members = typeof kty === "string" && Object.hasOwn(THUMBPRINT_MEMBERS, kty)

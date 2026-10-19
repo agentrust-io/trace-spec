@@ -225,6 +225,18 @@ ANCHOR_MATCHES = {
     ),
 }
 
+ANCHOR_EXPECTED = {
+    "tier": 1,
+    "source": "agentrust-io/trace-spec spec/trace-v0.2.md 3.3",
+    "text": "5. Policy hash matches the policy bundle the verifier expects.",
+    "applies": (
+        "The expected bundle is verifier context, supplied to the runner as an "
+        "expected policy hash and never read from the record. A record whose "
+        "bundle_hash correctly describes the bundle at policy_uri still fails "
+        "when that bundle is not the one the verifier expects."
+    ),
+}
+
 ANCHOR_URI_FORM = {
     "tier": 2,
     "source": "schemas/trace-claim.json properties.policy.properties.policy_uri",
@@ -286,6 +298,7 @@ def main(out_dir: Path | None = None) -> int:
         digests[name] = sha256_of(raw[name])
 
     d_base = digests["policy-bundle-base.json"]
+    d_other = digests["policy-bundle-other.json"]
     d384_base = sha384_of(raw["policy-bundle-base.json"])
     d384_other = sha384_of(raw["policy-bundle-other.json"])
 
@@ -303,12 +316,20 @@ def main(out_dir: Path | None = None) -> int:
     # 10: absolute, well-schemed, and carrying a space in the path.
     uri_spaced = BASE_URI + "policy bundle base.json"
 
-    def ctx(cited: str, outcome: str, anchor: dict[str, object]) -> dict[str, object]:
-        return {
+    def ctx(
+        cited: str, outcome: str, anchor: dict[str, object], expected: str | None = None
+    ) -> dict[str, object]:
+        block: dict[str, object] = {
             "cited_uri": cited,
             "resolution": {"outcome": outcome},
             "anchor": anchor,
         }
+        if expected is not None:
+            # Verifier context: what the runner is told to expect. Kept beside
+            # the record, never inside it, because the record cannot name its
+            # own expectation.
+            block["expected_policy_hash"] = expected
+        return block
 
     vectors: list[tuple[str, dict[str, object]]] = [
         ("01-no-policy-uri.json", {
@@ -508,6 +529,47 @@ def main(out_dir: Path | None = None) -> int:
                     "The bundle could not be read, so the digest was never "
                     "compared. The finding carries the reason so this is "
                     "distinguishable from a URI nothing routes."
+                ),
+            },
+        }),
+        ("12-expected-policy-matches.json", {
+            "name": "expected-policy-matches",
+            "description": (
+                "The verifier supplies the digest of the policy it expects, and the "
+                "record declares that policy and resolves to it. The positive control "
+                "for the expected-policy comparison: supplying an expectation must not "
+                "reject the record it describes."
+            ),
+            "boundary": "accept",
+            "defect": "none - positive control with an expected policy hash",
+            "record": record_with(policy(d_base, uri_base)),
+            "context": ctx(uri_base, "resolved", ANCHOR_EXPECTED, d_base),
+            "expected": {
+                "tr_pol_003": "pass",
+                "reason": (
+                    "The resolved bytes hash to the declared digest, and that digest "
+                    "is the expected one."
+                ),
+            },
+        }),
+        ("13-expected-policy-differs.json", {
+            "name": "expected-policy-differs",
+            "description": (
+                "The record is internally consistent: bundle_hash is the correct "
+                "digest of the bundle policy_uri resolves to. That bundle is a "
+                "different policy from the one the verifier expects. Run without the "
+                "expected policy hash, this record passes TR-POL-003, so the "
+                "expectation is the only thing that fails it."
+            ),
+            "boundary": "contradicted",
+            "defect": "correct digest over a policy other than the expected one",
+            "record": record_with(policy(d_other, uri_other)),
+            "context": ctx(uri_other, "resolved", ANCHOR_EXPECTED, d_base),
+            "expected": {
+                "tr_pol_003": "fail",
+                "reason": (
+                    "A matching bundle_hash shows the resolved bytes are the ones the "
+                    "record cited, not that they are the policy the verifier expected."
                 ),
             },
         }),

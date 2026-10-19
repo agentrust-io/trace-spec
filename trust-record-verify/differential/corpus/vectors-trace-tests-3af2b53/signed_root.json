@@ -1,0 +1,34 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1785000000,
+  "subject": "spiffe://acme.example/agent/orchestrator",
+  "model": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "restricted",
+  "build_provenance": {
+    "slsa_level": 0,
+    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "appraisal": {
+    "status": "affirming",
+    "verifier": "https://verifier.example/v1"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+    }
+  },
+  "signature": "m3TAE_Z_chc0gs8HMh1KAN4NECFLP09kiqyQPBDz9w9G0_iYoQ5-I94gpptC1a4xiRloSFLyTdprEmr9CFD_DA"
+}

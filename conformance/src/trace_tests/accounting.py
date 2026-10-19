@@ -19,7 +19,7 @@ from types import MappingProxyType
 from typing import Any, NamedTuple, cast, overload
 
 from trace_tests.modules import unverified as _contribution_policy
-from trace_tests.result import Finding, Status
+from trace_tests.result import Finding, Status, finding_from_row, finding_row
 
 REGISTRY_ID = "agentrust-io/trace-tests/obligation-registry/pilot-1"
 REGISTRY_SCHEMA = "agentrust-io/trace-tests/obligation-registry/1"
@@ -173,6 +173,7 @@ class _FindingWitness(NamedTuple):
     code: str
     status: Status
     message: str
+    unverified_fails_from_level: int | None = None
 
 
 class _ProducerFact(NamedTuple):
@@ -227,7 +228,7 @@ class _Execution:
             if level in results:
                 raise ValueError("duplicate frozen execution level")
             results[level] = {
-                module: [Finding(code, Status(status), message) for code, status, message in items]
+                module: [finding_from_row(item) for item in items]
                 for module, items in modules
             }
         return results
@@ -461,7 +462,23 @@ def _registry_body(
 
 
 def _witness(finding: Finding) -> _FindingWitness:
-    return _FindingWitness(finding, finding.code, finding.status, finding.message)
+    return _FindingWitness(
+        finding,
+        finding.code,
+        finding.status,
+        finding.message,
+        finding.unverified_fails_from_level,
+    )
+
+
+def _from_witness(witness: _FindingWitness) -> Finding:
+    """Rebuild the finding from the witnessed fields, not the live object."""
+    return Finding(
+        witness.code,
+        witness.status,
+        witness.message,
+        unverified_fails_from_level=witness.unverified_fails_from_level,
+    )
 
 
 def _unchanged(witness: _FindingWitness, finding: Finding) -> bool:
@@ -470,6 +487,7 @@ def _unchanged(witness: _FindingWitness, finding: Finding) -> bool:
         and finding.code == witness.code
         and finding.status is witness.status
         and finding.message == witness.message
+        and finding.unverified_fails_from_level == witness.unverified_fails_from_level
     )
 
 
@@ -827,7 +845,7 @@ def _complete_execution(
                 level,
                 sum(
                     capture.contribution_policy.evaluate(
-                        Finding(witness.code, witness.status, witness.message), level
+                        _from_witness(witness), level
                     )
                     for witness in findings
                 ),
@@ -841,7 +859,7 @@ def _complete_execution(
                 [
                     module,
                     [
-                        [item.code, item.status.value, item.message]
+                        finding_row(_from_witness(item))
                         for item in capture.returned[(level, module)]
                     ],
                 ]
@@ -907,6 +925,12 @@ def _frozen_policy_counts(
         threshold = thresholds.get(finding.code, default)
         if type(threshold) is not int:
             raise ValueError("invalid frozen contribution policy")
+        override = finding.unverified_fails_from_level
+        if override is not None:
+            if type(override) is not int or override < 0:
+                raise ValueError("invalid finding contribution threshold")
+            # A finding may tighten its code's threshold, never relax it.
+            threshold = min(threshold, override)
         return level >= threshold
     return False
 

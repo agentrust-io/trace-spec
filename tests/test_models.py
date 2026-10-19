@@ -13,7 +13,7 @@ EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 def _load(name: str) -> dict:
     # Examples must validate exactly as published: no preprocessing.
-    return json.loads((EXAMPLES_DIR / name).read_text())
+    return json.loads((EXAMPLES_DIR / name).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("filename", ["intel-tdx.json", "amd-sev-snp.json", "nvidia-h100.json"])
@@ -175,14 +175,15 @@ def test_rsa_jwk_with_key_material_accepted() -> None:
     assert record.cnf.jwk.e is not None
 
 
-def test_jwk_with_private_key_material_rejected() -> None:
-    """A cnf.jwk is a public key; private params (d, p, q, ...) must be rejected (#70)."""
+@pytest.mark.parametrize("member", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
+def test_jwk_with_private_key_material_rejected(member: str) -> None:
+    """A cnf.jwk is a public key; private params (d, p, q, dp, dq, qi, oth, k) must be rejected."""
     data = _load("intel-tdx.json")
     data["cnf"]["jwk"] = {
         "kty": "OKP",
         "crv": "Ed25519",
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
-        "d": "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",  # private scalar: must not be stored
+        member: "nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A",
     }
     with pytest.raises(ValidationError):
         TrustRecord.model_validate(data)

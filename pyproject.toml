@@ -22,7 +22,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.13.5",
+    "pydantic>=2.14.1",
     "jsonschema>=4.26.0",
     # `jsonschema` treats `format` as an annotation unless a checker for that format is
     # installed. Without this, all eight `"format": "uri"` declarations in
@@ -35,18 +35,19 @@ dependencies = [
     # `revocation.py` resolves the bundle schema's statement `$ref` from the packaged
     # copy through a `referencing.Registry`, so validation never fetches. `referencing`
     # already arrives through `jsonschema`; it is declared because it is imported.
-    "referencing>=0.28",
+    "referencing>=0.28.4",
     "rfc8785>=0.1.4",
 ]
 
 [project.optional-dependencies]
-prototype = ["cbor2>=5.6,<7"]
+prototype = ["cbor2>=6.1.5,<7"]
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "ruff>=0.4",
-    "mypy>=1.10",
+    "ruff>=0.17.0",
+    "mypy>=2.4.0",
     "types-jsonschema",
+    "PyYAML>=6.0.3",
 ]
 
 [project.urls]

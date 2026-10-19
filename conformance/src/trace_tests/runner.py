@@ -64,6 +64,7 @@ def _run_core(
     receipt: dict[str, Any] | None,
     entry: dict[str, Any] | None,
     policy_resolver: Callable[[str], bytes] | None,
+    expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
     """Run one predecoded level through the shared public/accounting path."""
     env, sig, pol, apr, rte, sca, txn, anc = checkers
@@ -82,7 +83,12 @@ def _run_core(
 
     if "TR-POL" in active:
         results["TR-POL"] = invoke(
-            "TR-POL", lambda: pol(trace, policy_resolver=policy_resolver)
+            "TR-POL",
+            lambda: pol(
+                trace,
+                policy_resolver=policy_resolver,
+                expected_policy_hash=expected_policy_hash,
+            ),
         )
 
     if "TR-APR" in active:
@@ -116,10 +122,12 @@ def run(
     receipt: dict[str, Any] | None = None,
     entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
     """Run all modules required for *level* and return findings keyed by module ID."""
     if level not in _LEVEL_MODULES:
         raise ValueError(f"Unknown conformance level {level!r}; valid: 0, 1, 2")
+    tr_pol.validate_expected_policy_hash(expected_policy_hash)
     with accounting._without_capture():
         trace = extract_trace(record, fmt)
         return _run_core(
@@ -135,6 +143,7 @@ def run(
             receipt=receipt,
             entry=entry,
             policy_resolver=policy_resolver,
+            expected_policy_hash=expected_policy_hash,
         )
 
 
@@ -147,6 +156,7 @@ def _run_levels(
     receipt: dict[str, Any] | None = None,
     entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
     """Run one exact contiguous level set and return its atomic accounting value."""
     attempted = tuple(levels)
@@ -155,6 +165,7 @@ def _run_levels(
         or any(type(level) is not int for level in attempted)
     ):
         raise ValueError("attempted levels must be exactly (0,), (0, 1), or (0, 1, 2)")
+    tr_pol.validate_expected_policy_hash(expected_policy_hash)
 
     planned = tuple(
         (level, module) for level in attempted for module in _LEVEL_MODULES[level]
@@ -194,6 +205,7 @@ def _run_levels(
                 receipt=receipt,
                 entry=entry,
                 policy_resolver=policy_resolver,
+                expected_policy_hash=expected_policy_hash,
             )
             end(level)
         return complete(capture, results)

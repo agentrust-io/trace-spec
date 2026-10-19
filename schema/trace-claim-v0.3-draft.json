@@ -33,7 +33,7 @@
     }
   },
   "title": "TRACE Trust Record (v0.3 runtime-evidence draft)",
-  "description": "DRAFT. v0.3 profile boundary plus runtime.evidence. Binds nothing until docs/rfcs/runtime-evidence-profile.md is adopted. Outside the profile identifier and runtime.evidence, members are byte-identical to schema/trace-claim.json so the diff is reviewable.",
+  "description": "DRAFT. v0.3 profile boundary plus runtime.evidence and manifest. Binds nothing until docs/rfcs/runtime-evidence-profile.md and #483 are adopted. Outside the profile identifier, runtime.evidence, and manifest, members are byte-identical to schema/trace-claim.json so the diff is reviewable.",
   "type": "object",
   "required": [
     "eat_profile",
@@ -357,7 +357,7 @@
           "rel": {
             "type": "string",
             "minLength": 1,
-            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest. observed-effect: a signed record of the state change an observer outside the agent saw over one interval, with the state before and after, the paths observed and the authority change ran under."
+            "description": "Relationship type. The registered values are a registry that grows, so this is not a closed set. authorized-intent: an authorization decided before execution, held in another system. approval-outcome: an attributable human approval attached to a step-up or defer decision. behavior-trace: a behavioural record of what the agent did, of which this record is the environment evidence. condition-appraisal: an independent check's finding on whether a stated condition is established by a stated subject, bound to both by digest. observed-effect: a signed record of the state change an observer outside the agent saw over one interval, with the state before and after, the paths observed and the authority change ran under. applicability-assessment: an assessor's statement of whether a stated legal provision applies to a stated party, held in another system."
           },
           "id": {
             "type": "string",
@@ -863,6 +863,11 @@
               },
               {
                 "required": [
+                  "oth"
+                ]
+              },
+              {
+                "required": [
                   "k"
                 ]
               }
@@ -872,6 +877,33 @@
           "additionalProperties": {
             "$ref": "#/$defs/canonicalizableValue"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "description": "The agent manifest this execution ran under, by signed content-addressed reference (#483). Reference-only: the record names the manifest and commits to its digest under the record signature, leaving appraisal to the verifier. A producer-asserted verification result is not carried here.",
+      "required": [
+        "id",
+        "digest",
+        "media_type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the agent manifest this execution ran under."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$",
+          "description": "SHA-256 or SHA-384 digest of the manifest bytes this execution ran under, covered by the record signature and the target of runtime.evidence.binds when set to manifest-digest."
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Media type of the referenced manifest bytes (for example application/json or application/agent-manifest+cose)."
         }
       },
       "additionalProperties": false

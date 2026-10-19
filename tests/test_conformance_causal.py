@@ -22,7 +22,7 @@ import pytest
 from prototype import verifier_token as v
 from tests.test_conformance_corpus import CORPUS, NON_PORTABLE, REQUIREMENTS, load, outcome, vectors
 
-SOURCE = Path(v.__file__).read_text()
+SOURCE = Path(v.__file__).read_text(encoding="utf-8")
 _COUNTER = itertools.count()
 
 

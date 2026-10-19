@@ -23,6 +23,17 @@ MAX_AGE = 10**9
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = b"policy bundle"
 DIGEST = "sha256:" + hashlib.sha256(BUNDLE).hexdigest()
+#: The digest of a policy other than BUNDLE, supplied as verifier context.
+EXPECTED_OTHER = "sha256:" + hashlib.sha256(b"the policy the verifier expects").hexdigest()
+#: An expectation in the other algorithm, which only the bundle bytes can settle.
+EXPECTED_CROSS = "sha384:" + hashlib.sha384(BUNDLE).hexdigest()
+#: Verifier-supplied expected policy hash per branch; absent means none supplied.
+EXPECTED_BY_BRANCH = {
+    "expected_policy_mismatch": EXPECTED_OTHER,
+    "expected_policy_unevaluated_no_uri": EXPECTED_CROSS,
+    "expected_policy_unevaluated_no_resolver": EXPECTED_CROSS,
+    "expected_policy_unevaluated_unresolved": EXPECTED_CROSS,
+}
 A = accounting.Applicability.APPLICABLE
 NA = accounting.Applicability.NOT_APPLICABLE
 C = accounting.EvaluationState.COMPLETED
@@ -48,6 +59,16 @@ BRANCH_CASES = (
     ("TR-POL-003", 0, "resolver_non_bytes", A, U, None, Status.UNVERIFIED, False),
     ("TR-POL-003", 0, "resolved_match", A, C, None, Status.PASS, False),
     ("TR-POL-003", 0, "resolved_mismatch", A, C, None, Status.FAIL, True),
+    ("TR-POL-003", 0, "expected_policy_mismatch", A, C, None, Status.FAIL, True),
+    ("TR-POL-003", 0, "expected_policy_unevaluated_no_uri", A, N, None, Status.UNVERIFIED, True),
+    (
+        "TR-POL-003", 0, "expected_policy_unevaluated_no_resolver", A, N, None,
+        Status.UNVERIFIED, True,
+    ),
+    (
+        "TR-POL-003", 0, "expected_policy_unevaluated_unresolved", A, U, None,
+        Status.UNVERIFIED, True,
+    ),
     ("TR-SCA-002", 1, "build_provenance_missing", A, B, "TR-SCA-001", None, None),
     ("TR-SCA-002", 1, "build_provenance_not_object", A, B, "TR-SCA-001", None, None),
     ("TR-SCA-002", 1, "digest_valid", A, C, None, Status.PASS, False),
@@ -137,9 +158,15 @@ def _execute(
     record: dict[str, Any],
     levels: tuple[int, ...] = (0, 1, 2),
     resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
     return runner._run_levels(
-        record, "trace", levels, max_age_seconds=MAX_AGE, policy_resolver=resolver
+        record,
+        "trace",
+        levels,
+        max_age_seconds=MAX_AGE,
+        policy_resolver=resolver,
+        expected_policy_hash=expected_policy_hash,
     )
 
 
@@ -153,8 +180,9 @@ def _assert_public_and_report_compatibility(
     record: dict[str, Any],
     levels: tuple[int, ...] = (0, 1, 2),
     resolver: Callable[[str], bytes] | None = None,
+    expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
-    execution = _execute(copy.deepcopy(record), levels, resolver)
+    execution = _execute(copy.deepcopy(record), levels, resolver, expected_policy_hash)
     assert execution.compatibility_results == {
         level: runner.run(
             copy.deepcopy(record),
@@ -162,6 +190,7 @@ def _assert_public_and_report_compatibility(
             level,
             max_age_seconds=MAX_AGE,
             policy_resolver=resolver,
+            expected_policy_hash=expected_policy_hash,
         )
         for level in levels
     }
@@ -216,6 +245,9 @@ def _branch_input(
         "resolver_non_bytes",
         "resolved_match",
         "resolved_mismatch",
+        "expected_policy_mismatch",
+        "expected_policy_unevaluated_no_resolver",
+        "expected_policy_unevaluated_unresolved",
     }:
         record["policy"].update(policy_uri="https://p.example/x", bundle_hash=DIGEST)
     elif branch == "build_provenance_missing":
@@ -225,11 +257,11 @@ def _branch_input(
     elif branch == "digest_invalid":
         record["build_provenance"]["digest"] = "bad"
 
-    if branch == "resolver_exception":
+    if branch in {"resolver_exception", "expected_policy_unevaluated_unresolved"}:
         return record, lambda _uri: (_ for _ in ()).throw(OSError("offline"))
     if branch == "resolver_non_bytes":
         return record, lambda _uri: "wrong"  # type: ignore[return-value]
-    if branch == "resolved_match":
+    if branch in {"resolved_match", "expected_policy_mismatch"}:
         return record, lambda _uri: BUNDLE
     if branch == "resolved_mismatch":
         return record, lambda _uri: b"other"
@@ -251,6 +283,9 @@ def _role(branch: str) -> str:
         "no_resolver": "not_attempted",
         "resolver_exception": "target_attempted_unresolved",
         "resolver_non_bytes": "target_attempted_unresolved",
+        "expected_policy_unevaluated_no_uri": "not_attempted",
+        "expected_policy_unevaluated_no_resolver": "not_attempted",
+        "expected_policy_unevaluated_unresolved": "target_attempted_unresolved",
         "level0_scheduler_nonexecution": "scheduler_nonexecution_applicable",
     }.get(branch, "target_completed")
 
@@ -653,7 +688,7 @@ def test_cli_report_emits_accounting_from_one_execution(
     assert len(extension["rows"]) == 3
 
 
-def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
+def test_all_twenty_five_registered_branches_have_exact_integration_witnesses(
     valid_level0: dict[str, Any],
 ) -> None:
     projected = []
@@ -661,7 +696,7 @@ def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
         key, level, branch, applicability, state, prerequisite, status, contribution = case
         record, resolver = _branch_input(valid_level0, branch)
         execution = _assert_public_and_report_compatibility(
-            record, tuple(range(level + 1)), resolver
+            record, tuple(range(level + 1)), resolver, EXPECTED_BY_BRANCH.get(branch)
         )
         row = _row(execution, level, key)
         assert (
@@ -690,7 +725,7 @@ def test_all_twenty_one_registered_branches_have_exact_integration_witnesses(
         branch["branch"] for item in registry["obligations"] for branch in item["branches"]
     }
     witnessed = {row.producer_branch for row in projected}
-    assert len(BRANCH_CASES) == len(witnessed) == 21 and witnessed == registered
+    assert len(BRANCH_CASES) == len(witnessed) == 25 and witnessed == registered
     prerequisites = [row for row in projected if row.prerequisite_code is not None]
     assert len(prerequisites) == 5
     assert all(row.prerequisite_code != row.obligation_key for row in prerequisites)
@@ -1028,6 +1063,56 @@ def test_later_callback_cannot_mutate_an_earlier_finding(
     monkeypatch.setattr(tr_sca, "_observe", retaining)
     with pytest.raises(RuntimeError, match="mutated its Finding after earning it"):
         _execute(record, resolver=resolver)
+
+
+def test_later_callback_cannot_mutate_an_earlier_finding_threshold(
+    valid_level0: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = copy.deepcopy(valid_level0)
+    record["policy"].update(policy_uri="https://p.example/x", bundle_hash=DIGEST)
+    retained: list[Finding] = []
+    original = tr_sca._observe
+
+    def retaining(module: str, branch: str, finding: Finding | None = None) -> Finding | None:
+        observed = original(module, branch, finding)
+        if finding is not None:
+            retained.append(finding)
+        return observed
+
+    calls = 0
+
+    def resolver(_uri: str) -> bytes:
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            retained[0].unverified_fails_from_level = 0
+        return BUNDLE
+
+    monkeypatch.setattr(tr_sca, "_observe", retaining)
+    with pytest.raises(RuntimeError, match="mutated its Finding after earning it"):
+        _execute(record, resolver=resolver)
+
+
+def test_frozen_policy_lets_a_finding_tighten_but_never_relax_its_code() -> None:
+    policy = {
+        "unverified_fails_from_level": dict(unverified.UNVERIFIED_FAILS_FROM_LEVEL),
+        "default_fails_from_level": unverified.DEFAULT_FAILS_FROM_LEVEL,
+    }
+    looser = Finding("TR-SIG-005", Status.UNVERIFIED, "m", unverified_fails_from_level=2)
+    tighter = Finding("TR-POL-003", Status.UNVERIFIED, "m", unverified_fails_from_level=0)
+    assert [accounting._frozen_policy_counts(looser, lv, policy) for lv in (0, 1, 2)] == [
+        False, True, True,
+    ]
+    assert [accounting._frozen_policy_counts(tighter, lv, policy) for lv in (0, 1, 2)] == [
+        True, True, True,
+    ]
+    for bad in (-1, True, "0"):
+        broken = Finding(
+            "TR-POL-003", Status.UNVERIFIED, "m",
+            unverified_fails_from_level=bad,  # type: ignore[arg-type]
+        )
+        with pytest.raises(ValueError, match="contribution threshold"):
+            accounting._frozen_policy_counts(broken, 0, policy)
 
 
 @pytest.mark.parametrize("inner_raises", [False, True], ids=["returns", "raises"])
@@ -1465,9 +1550,12 @@ def test_prerequisite_row_requires_one_exact_blocking_same_run_finding(
     record.pop("policy")
 
     def hostile(
-        _trace: dict[str, Any], *, policy_resolver: Callable[[str], bytes] | None = None
+        _trace: dict[str, Any],
+        *,
+        policy_resolver: Callable[[str], bytes] | None = None,
+        expected_policy_hash: str | None = None,
     ) -> list[Finding]:
-        del policy_resolver
+        del policy_resolver, expected_policy_hash
         accounting._observe("TR-POL", "policy_missing")
         return list(returned)
 
