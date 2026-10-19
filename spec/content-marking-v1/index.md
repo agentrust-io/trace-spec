@@ -77,9 +77,9 @@ A verifier that checks only one has checked half. Checking the C2PA signature al
 
 1. Verify the C2PA manifest per C2PA 2.1. Failure here ends it.
 1. Read `com.agentrust-io.trace`. An unknown `version` is rejected, not best-effort parsed.
-1. Fetch `record.url` and check the bytes against `record.hash`. A mismatch means the record was changed after the asset was signed, and is the finding.
+1. Fetch `record.url` and check the bytes against `record.hash`. A mismatch means the record was changed after the asset was signed, and is the finding. The record bytes are decoded as strict UTF-8 JSON without a leading byte-order mark, non-finite numeric constants (`NaN`, `Infinity`, `-Infinity`), or unpaired UTF-16 surrogates.
 1. Verify the Trust Record per TRACE v0.2 §3.3, against a key you already trust.
-1. Check `subject` and `eat_profile` in the assertion match the fetched record. A mismatch means the assertion describes a different record than it points at.
+1. Check that both the assertion and the resolved record carry a valid SPIFFE or DID `subject`, a non-empty string `eat_profile`, and (when present) a non-empty string `anchor`, and that `subject` and `eat_profile` in the assertion match the fetched record. A mismatch means the assertion describes a different record than it points at.
 1. If `anchor` is present, verify inclusion per Anchor Format v1 §5.1.
 1. **Weigh the result by the record's conformance level.** A Level 0 record binds this asset to an unattested software execution. That is worth having and it is not hardware-rooted provenance, and a consumer that reports the two identically has lost the distinction the record exists to carry.
 
