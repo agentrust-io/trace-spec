@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "id": "003a-empty-envelope",
+  "context": {
+    "now": 160,
+    "max_age_seconds": 30,
+    "trusted_observer": "observer-1",
+    "executor_id": "executor-1",
+    "independence_required": true,
+    "predicate": "reachable"
+  },
+  "inputs": {
+    "bridge": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-bridge-v1",
+      "authorization": {
+        "authorization_id": "auth-003",
+        "decision": "allow",
+        "authorizer": "policy",
+        "authorizer_key_id": "auth-key",
+        "authorized_at": 100,
+        "expires_at": 200,
+        "scope": {
+          "tools": [
+            "commit"
+          ],
+          "impacts": [
+            "external-side-effect"
+          ]
+        },
+        "pic": {
+          "profile": "PIC-CJSON/1.0",
+          "intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "declaration_digest": "sha256:00950a9b93a3059094a42d1bdfec0bba1fd37f08204f8fe989a4168f47e57cd7",
+        "tool_call_digest": "sha256:ebf58fd4ffe9987d88f76d2513637368caeae6c264ea2d3eb4ba3a6dc1596282",
+        "transcript_required": true
+      },
+      "signature": "waVqjkzYRPpbQORONs4UcKH3X5BpcZjiZSTmt87NAFmoNvyT2PXolWBRpGS17B2QBW54LvdSUfsLwiVFwY1vBA"
+    },
+    "authorizer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "ADuswDTtKpqSMMYHDa4VbvE6DEYIk4WvfDANIXMH02I",
+      "kid": "auth-key"
+    },
+    "observer_jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "FvCgLprBamaJ-jO2aUT6Ht-tnoRE0x1VARvZ6wi4Wi0",
+      "kid": "observer-key"
+    },
+    "declaration": {
+      "impact": "external-side-effect"
+    },
+    "tool_call": {
+      "name": "commit",
+      "arguments": {
+        "commit": "abc123"
+      }
+    },
+    "transcript": {
+      "before": {
+        "tool_call": {
+          "name": "commit",
+          "arguments": {
+            "commit": "abc123"
+          }
+        }
+      }
+    },
+    "pic_intent_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "pic_args_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "successor": {
+      "profile": "tag:agentrust-io.com,2026:pic-trace-successor-v1",
+      "authorization_id": "auth-003",
+      "observer": "observer-1",
+      "observer_key_id": "observer-key",
+      "observed_at": 150,
+      "successor_observation_digest": "sha256:ce707e76e8160888ba4698dad02e385701e8f3c01f96e74d570374477d9545f7",
+      "signature": "lTVHRRbZOlfP80YKLHv-hamXUR7LJwZRrfDfIMJ-9wr6JEFBmUmbObh8tCX-TE7Id8dNhmgYI3y0t1eF0evUDQ"
+    },
+    "after": {}
+  },
+  "expected": {
+    "authorization_bound": true,
+    "successor_bound": false,
+    "outcome": null,
+    "reason": "successor-envelope-missing-fields"
+  }
+}
