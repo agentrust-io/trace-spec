@@ -79,12 +79,19 @@ def test_level2_trace_format_includes_txn_and_anc(valid_level0):
 
 
 def test_cmcp_runtime_level0_skips_sig_for_unsigned_vector(valid_cmcp_runtime):
-    # The test vector has a placeholder signature, so TR-SIG will fail.
-    # Check that all other modules run correctly.
+    # The fixture refreshes trace.iat after signing, so TR-SIG fails on the
+    # mutated copy while TR-ENV and the other Level 0 modules run cleanly.
     results = run(valid_cmcp_runtime, "cmcp-runtime", level=0)
     assert "TR-ENV" in results
     env_failures = [f for f in results["TR-ENV"] if f.failed()]
     assert not env_failures, env_failures
+
+
+def test_cmcp_runtime_vector_signature_verifies():
+    vector = load_vector("valid_cmcp_runtime.json")
+    results = run(vector, "cmcp-runtime", level=1)
+    sig_failures = [f for f in results["TR-SIG"] if f.failed()]
+    assert not sig_failures, sig_failures
 
 
 def test_invalid_level_raises():
