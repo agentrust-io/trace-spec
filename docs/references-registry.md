@@ -39,7 +39,7 @@ schema description, in `docs/schema.md`, or in this document.
 
 ## Registered values
 
-The five labels agreed so far, what each one points at, and where it is defined:
+The six labels agreed so far, what each one points at, and where it is defined:
 
 | `rel` | Referenced object | Defined in | Example |
 |---|---|---|---|
@@ -48,6 +48,7 @@ The five labels agreed so far, what each one points at, and where it is defined:
 | `behavior-trace` | A behavioural record of what the agent did, of which this record is the environment evidence | §3.1.2 | none committed |
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below | [`examples/condition-appraisal/`](../examples/condition-appraisal/) |
 | `observed-effect` | A signed record of the state change an observer outside the agent saw over one interval | This document, below | [`examples/observed-effect/`](../examples/observed-effect/) |
+| `applicability-assessment` | An assessor's statement of whether a stated legal provision applies to a stated party, held in another system | This document, below | [`examples/applicability-assessment/`](../examples/applicability-assessment/) |
 
 The first three were registered by the change that introduced the block (#197) and
 their referenced objects are defined to the extent the documents cited define them.
@@ -202,6 +203,83 @@ interval in which the observer and the observed party agree is not attested evid
 that the agent's report was true, and one in which they disagree is not a finding
 against the record. The example set holds an agreeing and a disagreeing interval side
 by side, and the two records verify identically.
+
+## `applicability-assessment`
+
+### Meaning
+
+The record points at an assessor's statement of whether a stated legal provision
+applies to a stated party. When an auditor examines a Trust Record for a compliance
+review, whether the record is relevant to a legal duty turns on facts the record itself
+does not carry: the party's legal role, the jurisdiction, and the provision. Under
+Regulation (EU) 2024/1689 (the EU AI Act), the same record can be presented beside a
+provider's assessment of the logging-capability duty in Article 12(1) through Article
+16(a), beside a deployer's assessment of the log-retention duty in Article 26(6), or
+beside an assessment that neither applies because the system is not high-risk. Those
+assessments belong in an external object that the record points at rather than in the
+signed execution facts. One assessment typically serves every record from a deployment;
+a revised assessment is a new object with a new digest.
+
+Two neighbours it is not. It is not `condition-appraisal`: a `condition-appraisal`
+reports whether a deliverable or subject digest met stated technical or review criteria
+in the checker's own vocabulary, whereas an auditor reading applicability assessments
+across assessors has to key on party role, jurisdiction, and provision as named facts.
+And it is not compliance evidence: §3.1.2 states for the whole `references` block that a
+pointer cannot carry compliance evidence, and pointing at an applicability assessment
+attests only that the record points at that statement, never that a legal obligation
+applies in law or was met.
+
+### The referenced object
+
+A signed, content-addressed statement. Its wire format belongs to the issuer, not to
+this specification; what registration fixes is the set of facts it carries and how the
+reference's `digest` is taken over it, so that two implementations resolve the same
+object and check the same bytes.
+
+| Fact | Carried as | Why it is required |
+|---|---|---|
+| The party | An identifier for the party assessed and its role in the instrument's own term (such as `provider`, `deployer`, `controller`, or `processor`) | Legal obligations attach to a party in a specific role, which is often not the workload `subject` |
+| The jurisdiction | An ISO 3166 code, or `EU` for Union law | Scopes the legal system under which the provision is read |
+| The provision | The instrument's official identifier (ELI or CELEX where one exists), the article, and the date of the text read | Identifies the exact legal duty assessed and the version of the text in force when read, since application dates and articles can be amended over time |
+| The basis | The provisions the outcome rests on, such as the scope article, the classification rule, and any amending provision | Makes explicit which rules connect the party and system to the stated outcome |
+| The outcome | A value in a closed vocabulary that the object names (for example `applies`, `does-not-apply`, or `undetermined`), and an optional date from which the assessor states the provision applies | States the assessor's conclusion and any deferred application date without embedding legal conclusions into the Trust Record |
+| The issuer | An identifier for the party that performed the assessment, and a reference to its verification key | §3.3.2's `issuer` and `issuer_key_id`, with the binding to a call replaced by the bindings above |
+| When | The time the issuer signed | Separates the assessment timestamp from the record's `iat` |
+| The signature | The issuer's signature over the RFC 8785 canonical form of the object with the signature member absent | §3.3.2 step 1, applied to this object |
+
+The reference's `digest` is over the RFC 8785 canonical form of the complete object,
+signature included, as the resolver retains it. `id` is the object's identifier within
+the resolver's system and `resolver` is the party obliged to keep it resolvable, as for
+every entry.
+
+The committed example,
+[`examples/applicability-assessment/`](../examples/applicability-assessment/), shows one
+concrete shape for these facts across `applies`, `does-not-apply`, and `undetermined`
+outcomes; a producer whose assessor emits another shape that carries them is within this
+definition.
+
+### What a verifier may conclude
+
+The same three findings as for `condition-appraisal`, each separable, all three
+reported:
+
+1. **Whether the reference resolves.** If not, the assessment is unresolved, which is a
+   different answer from "no assessment", and under rule 3 of §3.1.2 it is never a
+   reason to reject the record.
+2. **Whether the resolved bytes are the cited bytes.** A digest match establishes
+   identity; a mismatch establishes that what the resolver holds is not what the record
+   cited, which is a finding about the store, not about the record.
+3. **Whether the object verifies under its named issuer's key**, when the relying party
+   holds that key. An issuer key the verifier does not hold makes the object unverified,
+   not invalid.
+
+All three are findings about the object and none reaches the record. An `applies`
+outcome is the assessor's claim and nothing more: it is not attested evidence that the
+provision applies in law, and it is never evidence that the duty was met. Likewise, a
+`does-not-apply` or `undetermined` outcome is reported as the assessor stated it and is
+not a finding for or against the record. The example set holds `applies`,
+`does-not-apply`, and `undetermined` objects side by side, and the records citing them
+verify identically.
 
 ## Adding a name
 

@@ -1,0 +1,43 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1790845500,
+  "subject": "spiffe://trust.example.org/agent/recruitment-screener",
+  "model": {
+    "provider": "example",
+    "model_id": "example-model"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "confidential",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "-kptgb_jEJJIsFNwPEWCBbvQ6sapxCqcdTz4Jp2fDIk"
+    }
+  },
+  "references": [
+    {
+      "rel": "applicability-assessment",
+      "id": "assessment/9",
+      "resolver": "https://compliance.deployer-b.example/assessments/2026-10",
+      "digest": "sha256:f0044d09f430c4f48bed71dc8f389eabecd592764d0616a9d437b7790370d872",
+      "retention": "P1Y"
+    }
+  ],
+  "signature": "9fUefvem7iQ3wQw-LAbMfxS6tD_xxq_AXm2o4WvE1t7vYAyGjWJkHAAWuzWlnKKIRZ0f-WxR7pzo6xZV73iQAQ"
+}

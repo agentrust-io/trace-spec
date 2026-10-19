@@ -82,6 +82,7 @@ CASES: list[tuple[str, object, bool]] = [
     ("rel behavior-trace", [_entry(rel="behavior-trace")], True),
     ("rel condition-appraisal", [_entry(rel="condition-appraisal")], True),
     ("rel observed-effect", [_entry(rel="observed-effect")], True),
+    ("rel applicability-assessment", [_entry(rel="applicability-assessment")], True),
     ("sha384 digest", [_entry(digest="sha384:" + "b" * 96)], True),
     # rel is a registry rather than a closed set (spec 3.1.2, unlike 3.1.1 on kind),
     # so a value this schema has never heard of is accepted rather than rejected.
@@ -268,13 +269,13 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
     The enum is gone deliberately: section 3.1.2 calls these values a registry, and
     section 3.1.1 says of the neighbouring `kind` that it is closed *because* a verifier
     keys on it: a distinction the two sections draw on purpose. What replaces the
-    enum as a guard is that the three values cannot quietly stop being written down.
+    enum as a guard is that registered values cannot quietly stop being written down.
     """
     from agentrust_trace import SCHEMA
 
     registered = (
         "authorized-intent", "approval-outcome", "behavior-trace", "condition-appraisal",
-        "observed-effect",
+        "observed-effect", "applicability-assessment",
     )
     rel = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]
     assert "enum" not in rel, (
@@ -288,7 +289,10 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
     # The registry document is the place a value's referenced object is defined, so a
     # value it does not name is registered nowhere a second implementation can read.
     registry = (docs / "references-registry.md").read_text(encoding="utf-8")
+    spec = (docs.parent / "spec" / "trace-v0.2.md").read_text(encoding="utf-8")
+    spec_section = spec.split("#### 3.1.2 ", 1)[1].split("\n#### ", 1)[0]
     for value in registered:
+        assert f"- **`{value}`**." in spec_section, f"{value} is absent from spec section 3.1.2"
         assert value in rel["description"], f"{value} is not named in the schema description"
         assert value in section, f"{value} is not named in docs/schema.md"
         assert f"`{value}`" in registry, f"{value} is not named in docs/references-registry.md"
