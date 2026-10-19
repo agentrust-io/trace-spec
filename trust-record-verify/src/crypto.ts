@@ -6,6 +6,7 @@
 
 import { fail, type FailureCode } from "./errors.js";
 import { decodeBase64url } from "./base64url.js";
+import { JWK_PRIVATE_MEMBERS } from "./jwk.js";
 import { isPlainObject, own } from "./text.js";
 
 function subtle(): SubtleCrypto {
@@ -70,6 +71,12 @@ export async function importEd25519(
   }
   if (crv !== "Ed25519") {
     fail(unsupported, `${label} has crv ${show(crv)}; expected "Ed25519"`);
+  }
+  const privateMembers = Object.keys(jwk)
+    .filter((name) => JWK_PRIVATE_MEMBERS.has(name))
+    .sort();
+  if (privateMembers.length > 0) {
+    fail(malformed, `${label} contains private key material (${privateMembers.join(", ")})`);
   }
   if (x === undefined || x === null || x === "") {
     fail(malformed, `${label} has no "x" member`);

@@ -82,6 +82,7 @@ MESSAGE_CODES: list[tuple[str, str]] = [
 KEY_MESSAGES: list[tuple[str, str]] = [
     ("unsupported JWK kty", "unsupported"),
     ("unsupported JWK crv", "unsupported"),
+    ("JWK contains private key material", "malformed"),
     ("JWK missing 'x' field", "malformed"),
     ("JWK 'x' must be a base64url string", "malformed"),
     ("JWK 'x' is not valid base64url", "malformed"),
