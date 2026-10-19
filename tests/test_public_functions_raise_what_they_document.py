@@ -56,6 +56,11 @@ from agentrust_trace import (citation, content_marking, generate_key, intent_bri
                              platform_measurement, provenance, revocation, sign,
                              successor_observation, validate)
 
+try:
+    from agentrust_trace import delegation
+except ImportError:
+    delegation = None  # type: ignore[assignment]
+
 #: Values a caller can supply where an object, a string, a key or bytes is expected.
 #: The last five are the ones that separate a strict canonicalizer from a permissive
 #: one: JSON carries them, and RFC 8785 has no form for four of them.
@@ -69,6 +74,7 @@ JUNK: tuple[Any, ...] = (
 #: contract does not catch it.
 DOCUMENTED: dict[str, tuple[str, ...]] = {
     "citation": ("ValueError",),
+    "delegation": ("DelegationError",),
     "platform_measurement": ("ValueError",),
     "content_marking": ("ContentMarkingError", "RecordMismatch"),
     "intent_bridge": ("IntentBridgeError", "AuthorizationDenied", "AuthorizationMismatch"),
@@ -81,6 +87,21 @@ DOCUMENTED: dict[str, tuple[str, ...]] = {
     "adapters": ("ValueError", "ValidationError"),
 }
 
+_DELEG_VECTOR = json.loads(
+    (pathlib.Path(__file__).resolve().parents[1] / "examples" / "delegation-link"
+     / "01-valid-single-hop.json").read_text(encoding="utf-8")
+)
+_DELEG_CTX = _DELEG_VECTOR["context"]
+_DELEG_RECORDS = _DELEG_VECTOR["records"]
+_DELEG_LEAF = _DELEG_RECORDS[0]
+_DELEG_PARENT = _DELEG_RECORDS[1]
+
+
+def _call_delegation(fn_name: str, *args: Any, **kwargs: Any) -> Any:
+    if delegation is None:
+        pytest.fail("unimplemented")
+    return getattr(delegation, fn_name)(*args, **kwargs)
+
 _KEY = generate_key()
 _JWK = key_to_jwk(_KEY)
 _RECORD_BYTES = json.dumps(
@@ -91,6 +112,11 @@ _AUTHORIZATION = {"iss": "https://a.example", "sub": "urn:agent:x", "iat": int(t
 #: name -> a call varying only the first positional argument.
 CALLS: dict[str, Callable[[Any], Any]] = {
     "citation.check_citations": lambda v: citation.check_citations(v, None),
+    "delegation.parent_record_hash": lambda v: _call_delegation("parent_record_hash", v),
+    "delegation.verify_delegation_link":
+        lambda v: _call_delegation("verify_delegation_link", v, _DELEG_PARENT),
+    "delegation.verify_delegation_chain":
+        lambda v: _call_delegation("verify_delegation_chain", v, _DELEG_LEAF, _DELEG_CTX),
     "platform_measurement.check_platform_measurement":
         lambda v: platform_measurement.check_platform_measurement(v, None),
     "content_marking.build_assertion":
@@ -205,6 +231,25 @@ _TRUST_RECORD = _VECTOR["records"][0]
 KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] = {
     "citation.check_citations": (
         lambda: {"record": _TRUST_RECORD, "resolver": None}, ("resolver",),
+    ),
+    "delegation.parent_record_hash": (
+        lambda: {"record": _DELEG_PARENT, "algorithm": "sha256"}, ("algorithm",),
+    ),
+    "delegation.verify_delegation_link": (
+        lambda: {
+            "child": _DELEG_LEAF,
+            "parent": _DELEG_PARENT,
+            "supported_digest_algorithms": ("sha256",),
+        },
+        ("parent", "supported_digest_algorithms"),
+    ),
+    "delegation.verify_delegation_chain": (
+        lambda: {
+            "records": _DELEG_RECORDS,
+            "leaf": _DELEG_LEAF,
+            "context": _DELEG_CTX,
+        },
+        ("leaf", "context", "rules"),
     ),
     "platform_measurement.check_platform_measurement": (
         lambda: {"record": _TRUST_RECORD, "appraiser": None}, ("appraiser",),
@@ -353,6 +398,8 @@ def test_the_walk_finds_something_to_sweep() -> None:
 def test_every_public_function_is_either_swept_or_declared_unsweepable() -> None:
     """The coverage test. A new public function fails here until somebody decides
     which it is, which is the step that was skipped last time."""
+    if delegation is None:
+        pytest.fail("unimplemented")
     found = set(_public_functions())
     accounted = set(CALLS) | set(KEYWORD_CALLS) | NO_ARGUMENT_TO_SWEEP
     assert found == accounted, (
@@ -362,7 +409,10 @@ def test_every_public_function_is_either_swept_or_declared_unsweepable() -> None
 
 
 def _module_of(name: str) -> Any:
+    if name.startswith("delegation.") and delegation is None:
+        pytest.fail("unimplemented")
     return {"citation": citation, "content_marking": content_marking,
+            "delegation": delegation,
             "intent_bridge": intent_bridge, "platform_measurement": platform_measurement,
             "provenance": provenance, "revocation": revocation, "sign": sign,
             "successor_observation": successor_observation,
@@ -436,6 +486,9 @@ def test_no_keyword_argument_leaks_an_undocumented_exception(name: str, param: s
 #: come back as the documented refusal, so a clean sweep above means the call arrived.
 KEYWORD_REACHES: dict[str, tuple[str, Any, str]] = {
     "citation.check_citations": ("resolver", "a-string", "ValueError"),
+    "delegation.parent_record_hash": ("algorithm", 123, "DelegationError"),
+    "delegation.verify_delegation_link": ("parent", None, "DelegationError"),
+    "delegation.verify_delegation_chain": ("context", None, "DelegationError"),
     "platform_measurement.check_platform_measurement": ("appraiser", "a-string", "ValueError"),
     "content_marking.build_assertion": ("alg", 123, "ContentMarkingError"),
     "content_marking.verify_assertion": ("record_bytes", None, "ContentMarkingError"),
@@ -654,6 +707,9 @@ def test_no_public_function_raises_an_undocumented_exception(name: str) -> None:
 #: of the function rather than evidence the call is wired up. An explicit witness is.
 REACHES: dict[str, tuple[Any, str]] = {
     "citation.check_citations": (None, "ValueError"),
+    "delegation.parent_record_hash": (None, "DelegationError"),
+    "delegation.verify_delegation_link": (None, "DelegationError"),
+    "delegation.verify_delegation_chain": (None, "DelegationError"),
     "platform_measurement.check_platform_measurement": (None, "ValueError"),
     "content_marking.build_assertion": (None, "ContentMarkingError"),
     "content_marking.verify_assertion": (None, "ContentMarkingError"),
@@ -733,6 +789,8 @@ def test_the_report_tool_runs_over_the_same_tables(
     """The tool reads this file's tables rather than keeping its own, so it cannot drift
     from the assertions. This holds that it still loads them, reaches every function in
     both tables, and exits 0 while every known leak is filed."""
+    if delegation is None:
+        pytest.fail("unimplemented")
     tool = _load_tool()
     monkeypatch.setattr(tool, "_load_tables", lambda: sys.modules[__name__])
     assert tool.main(["--strict"]) == 0
@@ -750,6 +808,8 @@ def test_the_report_tool_goes_red_when_a_leak_is_not_filed(
     says nothing. The leak is planted rather than borrowed from ``LEAKS_FILED``, so this
     control still fires on the day the last real leak is fixed and that table is empty.
     Without ``--strict`` the report stays informational."""
+    if delegation is None:
+        pytest.fail("unimplemented")
 
     def leaks(value: Any) -> None:
         raise RuntimeError("planted: not a ProvenanceError")

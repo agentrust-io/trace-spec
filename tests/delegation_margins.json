@@ -3,6 +3,7 @@
   "credential_issuer_mismatch": 2,
   "credential_unknown": 2,
   "credential_window": 2,
+  "data_class_unknown": 2,
   "data_class_widened": 2,
   "depth_exceeded": 2,
   "digest_algorithm_unsupported": 2,
