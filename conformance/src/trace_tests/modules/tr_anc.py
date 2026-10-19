@@ -22,21 +22,47 @@ def check(trace: dict[str, Any], receipt: dict[str, Any] | None = None) -> list[
     transparency = trace.get("transparency")
 
     if not transparency:
-        return [Finding("TR-ANC-001", Status.FAIL, "TR-ANC-001: transparency field is required at Level 2")]
+        return [
+            Finding(
+                "TR-ANC-001",
+                Status.FAIL,
+                "TR-ANC-001: transparency field is required at Level 2",
+            )
+        ]
 
     if not isinstance(transparency, str):
-        return [Finding("TR-ANC-001", Status.FAIL, f"TR-ANC-001: transparency must be a string URI, got {type(transparency).__name__}")]
+        return [
+            Finding(
+                "TR-ANC-001",
+                Status.FAIL,
+                f"TR-ANC-001: transparency must be a string URI, got {type(transparency).__name__}",
+            )
+        ]
 
     try:
         parsed = urlparse(transparency)
     except Exception as exc:
-        return [Finding("TR-ANC-001", Status.FAIL, f"TR-ANC-001: could not parse transparency URI: {exc}")]
+        return [
+            Finding(
+                "TR-ANC-001",
+                Status.FAIL,
+                f"TR-ANC-001: could not parse transparency URI: {exc}",
+            )
+        ]
 
-    if parsed.scheme != "https" or not parsed.netloc:
-        return [Finding(
-            "TR-ANC-001", Status.FAIL,
-            f"TR-ANC-001: transparency must be an https URI, got scheme={parsed.scheme!r}",
-        )]
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in transparency)
+    ):
+        return [
+            Finding(
+                "TR-ANC-001",
+                Status.FAIL,
+                "TR-ANC-001: transparency must be a valid https URI without whitespace or "
+                f"control characters, got {transparency!r} (scheme={parsed.scheme!r})",
+            )
+        ]
 
     findings.append(Finding(
         "TR-ANC-001", Status.PASS,

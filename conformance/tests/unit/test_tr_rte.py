@@ -77,6 +77,39 @@ def test_http_rim_uri_fails():
     assert "TR-RTE-003" in codes, "plain http rim_uri must be rejected; https only"
 
 
+def test_explicit_null_rim_uri_fails():
+    trace = {"runtime": {**_VALID["runtime"], "rim_uri": None}}
+    codes = {f.code for f in check(trace) if f.failed()}
+    assert "TR-RTE-003" in codes
+
+
+@pytest.mark.parametrize(
+    "rim_uri",
+    [
+        "https://",
+        "https://ex ample.com/rim",
+        "https://example.com/rim\n",
+        "https://example.com/\x01",
+        "https://example.com/\x7f",
+        "https://[",
+    ],
+)
+def test_malformed_https_rim_uri_fails(rim_uri):
+    trace = {"runtime": {**_VALID["runtime"], "rim_uri": rim_uri}}
+    codes = {f.code for f in check(trace) if f.failed()}
+    assert "TR-RTE-003" in codes
+
+
+def test_non_string_measurement_with_digest_str_fails():
+    class _DigestLike:
+        def __str__(self) -> str:
+            return "sha256:" + "a" * 64
+
+    trace = {"runtime": {**_VALID["runtime"], "measurement": _DigestLike()}}
+    codes = {f.code for f in check(trace) if f.failed()}
+    assert "TR-RTE-002" in codes
+
+
 @pytest.mark.parametrize("level", [1, 2])
 def test_attested_levels_require_expected_nonce(level):
     trace = {"runtime": {**_VALID["runtime"], "nonce": "record-chosen"}}
@@ -90,3 +123,12 @@ def test_nonce_mismatch_fails_and_match_passes():
     assert any(f.code == "TR-RTE-004" and f.failed() for f in mismatch)
     match = check(trace, level=1, expected_nonce="signed-nonce")
     assert any(f.code == "TR-RTE-004" and f.passed() for f in match)
+
+
+@pytest.mark.parametrize("nonce", [None, "", 42])
+def test_missing_or_empty_nonce_at_level_1_fails(nonce):
+    runtime = dict(_VALID["runtime"])
+    if nonce is not None:
+        runtime["nonce"] = nonce
+    findings = check({"runtime": runtime}, level=1, expected_nonce="verifier-challenge")
+    assert any(f.code == "TR-RTE-004" and f.failed() for f in findings)
