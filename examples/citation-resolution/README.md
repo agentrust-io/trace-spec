@@ -56,6 +56,16 @@ small ASCII documents (a policy stub, a RIM stub, an AIBOM stub) so a reader can
 them. Their content is irrelevant to the consumer, which hashes what it is handed and
 reads none of it.
 
+Why `expected.citations[*].evidence.exception` is `"KeyError"` in the `resolver_raised`
+vectors: the consumer records the class or type name of whatever exception the
+caller-supplied resolver raised (`type(exc).__name__` in Python), and the reference
+test harness's lookup-table resolver (`table[uri]`) raises Python's `KeyError` when a
+URI is absent from `context.resolutions`. `"KeyError"` is therefore an artifact of the
+harness lookup stub, not a TRACE protocol constant. A conformance runner in another
+language (such as Go, Rust, or TypeScript) either raises an error whose reported type
+name is `"KeyError"` from its vector-harness lookup stub or compares
+`evidence.exception` against the error type name its own harness stub raises.
+
 ## Outcomes and the vectors that carry them
 
 Per consumed surface, five vectors; `policy-ref` is 01 to 05, `rim-uri` 06 to 10,
