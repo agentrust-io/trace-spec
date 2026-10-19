@@ -28,6 +28,8 @@ result.profile;                   // the record's eat_profile, accepted by this 
 result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
 result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
 result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
+result.citations;                 // per-surface citation resolution outcomes (section 3.1.2)
+result.platformMeasurement;       // platform measurement appraisal outcome
 ```
 
 A rejection is a `TraceVerificationError` carrying a stable `code`. A resolved result still
