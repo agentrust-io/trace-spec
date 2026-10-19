@@ -1,0 +1,77 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "-kptgb_jEJJIsFNwPEWCBbvQ6sapxCqcdTz4Jp2fDIk"
+  },
+  "resolver": "https://compliance.deployer-b.example/assessments/2026-10",
+  "issuer_keys": {
+    "noAJlJadNlkAwRvsReSgdW1dDmQkJw2gAVJsBkCkaSk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "oGD8AD5hkcuoW0fOFMGsZFUp2aVqzmpflXC7ikGhC_g"
+    }
+  },
+  "cases": {
+    "01-assessment-applies-verified.json": {
+      "store": "assessment-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": true,
+      "assessment_verifies": true,
+      "outcome": "applies",
+      "verdict": "assessment-verified"
+    },
+    "02-assessment-altered-after-issue.json": {
+      "store": "assessment-store-altered.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "issuer_key_configured": true,
+      "assessment_verifies": false,
+      "outcome": "applies",
+      "verdict": "assessment-digest-mismatch"
+    },
+    "03-outcome-is-does-not-apply.json": {
+      "store": "assessment-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": true,
+      "assessment_verifies": true,
+      "outcome": "does-not-apply",
+      "verdict": "assessment-verified"
+    },
+    "04-outcome-is-undetermined.json": {
+      "store": "assessment-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": true,
+      "assessment_verifies": true,
+      "outcome": "undetermined",
+      "verdict": "assessment-verified"
+    },
+    "05-reference-unresolvable.json": {
+      "store": "assessment-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "issuer_key_configured": null,
+      "assessment_verifies": null,
+      "outcome": null,
+      "verdict": "assessment-unresolved"
+    },
+    "06-issuer-key-not-configured.json": {
+      "store": "assessment-store.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "issuer_key_configured": false,
+      "assessment_verifies": null,
+      "outcome": "applies",
+      "verdict": "assessment-unverified"
+    }
+  }
+}

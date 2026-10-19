@@ -196,6 +196,7 @@ Registered `rel` values:
 - **`behavior-trace`**. A behavioural record of what the agent did, of which this record is the environment evidence.
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary.
 - **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under.
+- **`applicability-assessment`**. An assessor's statement of whether a stated legal provision applies to a stated party, held in another system: the party and its role in the instrument's own term, the jurisdiction, the provision and the date of the text read, the basis, and the outcome in a closed vocabulary the object names.
 - `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 - The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
 - A verifier MUST NOT reject a record because an entry in `references` cannot be resolved, and MUST NOT treat a resolved reference as attested evidence.
