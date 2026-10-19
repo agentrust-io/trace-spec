@@ -11,6 +11,21 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Registry Anchor Format v1 §1 states the five canonical JSON rules and excludes unpaired UTF-16 surrogates (#536, #448 items 3, 16, 19).**
+  `spec/registry-anchor-v1.md` §1 now states the five language-independent canonical JSON
+  serialization rules (recursive Unicode code-point key sorting, `","` and `":"` separators
+  with no whitespace, string and surrogate-pair escaping rules including `\u007f` for ASCII
+  DEL `U+007F`, integer zero `0` without a minus sign, and no trailing newline), excludes
+  unpaired UTF-16 surrogates (`U+D800` to `U+DFFF`) in strings and object keys from the
+  anchor-leaf profile alongside non-integer numbers and unsafe integers, and narrows §0's
+  equality boundary to ASCII other than DEL (`U+007F`). Both `agentrust_trace.sign.anchor_bytes`
+  (`UnanchorableValue`) and `trace_tests.inclusion.canonical_claim_bytes` (`InclusionError`)
+  now refuse unpaired UTF-16 surrogates in string values and object keys. Also updates
+  `examples/verifier-compatibility/README.md` to reflect that Obligations 2 and 3 of #116 are
+  normative in `spec/trace-v0.2.md` §3.3, and attributes external-evidence fields and
+  verification in `docs/crosswalks/acta-decision-receipts.md` to §3.3.2 and §3.3.3 (by
+  @drk-ram, with review companion from @dinakarjs).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`

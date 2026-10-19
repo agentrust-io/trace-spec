@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import importlib.util
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
+import rfc8785
 
 from agentrust_trace.sign import UnanchorableValue, anchor_bytes
 
@@ -16,18 +19,21 @@ _INCLUSION_SPEC = importlib.util.spec_from_file_location(
 assert _INCLUSION_SPEC is not None and _INCLUSION_SPEC.loader is not None
 _INCLUSION_MODULE = importlib.util.module_from_spec(_INCLUSION_SPEC)
 _INCLUSION_SPEC.loader.exec_module(_INCLUSION_MODULE)
-InclusionError = _INCLUSION_MODULE.InclusionError
-canonical_claim_bytes = _INCLUSION_MODULE.canonical_claim_bytes
+InclusionError = cast(type[ValueError], _INCLUSION_MODULE.InclusionError)
+canonical_claim_bytes = cast(
+    Callable[[dict[str, Any]], bytes], _INCLUSION_MODULE.canonical_claim_bytes
+)
 
-SERIALIZERS = (anchor_bytes, canonical_claim_bytes)
+Serializer = Callable[[dict[str, Any]], bytes]
+SERIALIZERS: tuple[Serializer, Serializer] = (anchor_bytes, canonical_claim_bytes)
 
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_1_recursive_code_point_key_sorting(serialize) -> None:
+def test_rule_1_recursive_code_point_key_sorting(serialize: Serializer) -> None:
     """Object keys are sorted lexicographically by Unicode code point, recursively."""
     # U+FFFD (65533) < U+10000 (65536) by code point, whereas in UTF-16 code units
     # U+10000 (\uD800\uDC00) precedes U+FFFD (\uFFFD).
-    claim = {
+    claim: dict[str, Any] = {
         "z": {"b": 1, "a": 2},
         "\U00010000": "supplementary",
         "\ufffd": "bmp",
@@ -39,7 +45,9 @@ def test_rule_1_recursive_code_point_key_sorting(serialize) -> None:
 
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_2_separators_and_rule_5_no_trailing_newline(serialize) -> None:
+def test_rule_2_separators_and_rule_5_no_trailing_newline(
+    serialize: Serializer,
+) -> None:
     """Separators are ',' and ':', with no whitespace and no trailing newline."""
     out = serialize({"b": [1, 2, 3], "a": {"k": "v"}})
     assert out == b'{"a":{"k":"v"},"b":[1,2,3]}'
@@ -59,17 +67,20 @@ def test_rule_2_separators_and_rule_5_no_trailing_newline(serialize) -> None:
         ("\f", b"\\f"),
         ("\r", b"\\r"),
         ("/", b"/"),
+        ("<>&", b"<>&"),
     ],
 )
 def test_rule_3_short_escapes_and_unescaped_slash(
-    serialize, char: str, escaped: bytes
+    serialize: Serializer, char: str, escaped: bytes
 ) -> None:
     """Mandatory two-character escapes and unescaped '/' (U+002F)."""
     assert serialize({"s": char}) == b'{"s":"' + escaped + b'"}'
 
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_3_remaining_control_characters_use_lowercase_hex(serialize) -> None:
+def test_rule_3_remaining_control_characters_use_lowercase_hex(
+    serialize: Serializer,
+) -> None:
     """Control characters U+0000..U+001F other than \\b, \\t, \\n, \\f, \\r use \\u00xx."""
     short = {0x08, 0x09, 0x0A, 0x0C, 0x0D}
     for cp in range(0x20):
@@ -81,7 +92,7 @@ def test_rule_3_remaining_control_characters_use_lowercase_hex(serialize) -> Non
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
 def test_rule_3_del_and_bmp_above_007f_use_lowercase_hex(
-    serialize,
+    serialize: Serializer,
 ) -> None:
     """U+007F (DELETE) and U+0080..U+FFFF use lowercase \\uXXXX escapes."""
     for cp, hex_escape in [
@@ -96,7 +107,9 @@ def test_rule_3_del_and_bmp_above_007f_use_lowercase_hex(
 
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_3_supplementary_plane_uses_lowercase_surrogate_pairs(serialize) -> None:
+def test_rule_3_supplementary_plane_uses_lowercase_surrogate_pairs(
+    serialize: Serializer,
+) -> None:
     """Supplementary-plane code points U+10000..U+10FFFF use lowercase surrogate pairs."""
     assert serialize({"s": "\U0001f600"}) == b'{"s":"\\ud83d\\ude00"}'
     assert serialize({"s": "\U00010000"}) == b'{"s":"\\ud800\\udc00"}'
@@ -104,7 +117,9 @@ def test_rule_3_supplementary_plane_uses_lowercase_surrogate_pairs(serialize) ->
 
 
 @pytest.mark.parametrize("serialize", SERIALIZERS)
-def test_rule_3_escaping_applies_to_object_keys_as_well_as_values(serialize) -> None:
+def test_rule_3_escaping_applies_to_object_keys_as_well_as_values(
+    serialize: Serializer,
+) -> None:
     """Object member names apply the same escaping rules as string values."""
     claim = {
         'a"b\\c/d\n\x00\x7f\u00e9\U0001f600': 1,
@@ -154,6 +169,10 @@ def test_registry_anchor_spec_documents_all_five_canonical_rules() -> None:
         'Separators `","` and `":"`, no whitespace.',
         r'`\"`, `\\`, `\b`, `\t`, `\n`, `\f`, and `\r`',
         "`/` (`U+002F`) is not escaped",
+        (
+            "every other character in `U+0020` to `U+007E` is written as itself, "
+            "including `<`, `>` and `&`"
+        ),
         "(`U+0000` to `U+001F`)",
         (
             "in `U+007F` to `U+D7FF` and `U+E000` to `U+FFFF` (including `U+007F`, "
@@ -174,7 +193,7 @@ def test_registry_anchor_spec_documents_all_five_canonical_rules() -> None:
 
 
 def test_verifier_compatibility_readme_and_acta_crosswalk_findings_closed() -> None:
-    """#448 items 3 and 16 remain closed in the documentation."""
+    """Profile declarations and external-evidence mappings cite their specifications."""
     readme = (
         REPO_ROOT / "examples" / "verifier-compatibility" / "README.md"
     ).read_text(encoding="utf-8")
@@ -186,5 +205,44 @@ def test_verifier_compatibility_readme_and_acta_crosswalk_findings_closed() -> N
     acta = (
         REPO_ROOT / "docs" / "crosswalks" / "acta-decision-receipts.md"
     ).read_text(encoding="utf-8")
-    assert "3.3.2" not in acta
-    assert "3.3.3" in acta
+    intro = acta.split("## Purpose", 1)[1].split(
+        "## What an Acta decision receipt is", 1
+    )[0]
+    assert "external-evidence verification rule in 3.3.2" in intro
+    row = next(
+        line for line in acta.splitlines() if line.startswith("| `receipt.evidence_hash`")
+    )
+    assert "external-evidence-by-digest role 3.3.2" in row
+    assert "3.3.3 builds on that rule" in row
+    assert "#332-external-execution-evidence-optional" in acta
+    assert "#333-action-receipts-for-embodied-workflows-informative" in acta
+
+
+@pytest.mark.parametrize("serialize", SERIALIZERS)
+@pytest.mark.parametrize(
+    ("claim", "jcs", "anchored"),
+    [
+        ({"s": "\x7f"}, b'{"s":"\x7f"}', b'{"s":"\\u007f"}'),
+        ({"\x7f": "v"}, b'{"\x7f":"v"}', b'{"\\u007f":"v"}'),
+    ],
+    ids=["value", "key"],
+)
+def test_ascii_del_distinguishes_signing_and_anchor_bytes(
+    serialize: Serializer, claim: dict[str, Any], jcs: bytes, anchored: bytes
+) -> None:
+    """DEL differs under RFC 8785 even though it is an ASCII code point."""
+    ascii_text = "".join(chr(cp) for cp in range(0x7F))
+    same: dict[str, Any] = {ascii_text: ascii_text, "n": 9007199254740991}
+    assert serialize(same) == rfc8785.dumps(same)
+    assert rfc8785.dumps(claim) == jcs
+    assert serialize(claim) == anchored
+    assert anchored != jcs
+
+
+def test_anchor_comparison_text_excludes_ascii_del() -> None:
+    """The equality shortcut must exclude the DEL boundary the runtime controls show."""
+    doc = (REPO_ROOT / "spec" / "registry-anchor-v1.md").read_text(encoding="utf-8")
+    section_0 = doc.split("## 0.", 1)[1].split("## 1.", 1)[0]
+    assert "ASCII other than DEL (`U+007F`)" in section_0
+    assert "JCS emits DEL itself" in section_0
+    assert "§1 emits `\\u007f`" in section_0
