@@ -14,7 +14,7 @@ SCHEMAS_DIR = pathlib.Path(__file__).parent.parent / "schemas"
 
 
 def load_vector(filename):
-    return json.loads((VECTORS_DIR / filename).read_text())
+    return json.loads((VECTORS_DIR / filename).read_text(encoding="utf-8"))
 
 
 @pytest.fixture(name="load_vector")
@@ -23,7 +23,7 @@ def load_vector_fixture():
 
 
 def load_schema():
-    return json.loads((SCHEMAS_DIR / "trace-claim.json").read_text())
+    return json.loads((SCHEMAS_DIR / "trace-claim.json").read_text(encoding="utf-8"))
 
 
 def _b64url(b: bytes) -> str:

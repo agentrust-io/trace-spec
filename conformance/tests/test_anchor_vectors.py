@@ -11,7 +11,9 @@ from trace_tests.inclusion import canonical_claim_bytes, parse_receipt, verify_i
 from trace_tests.modules import tr_anc
 
 VECTOR_DIR = Path(__file__).parent / "vectors" / "anchor-inclusion"
-VECTORS = [json.loads(p.read_text()) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))]
+VECTORS = [
+    json.loads(p.read_text(encoding="utf-8")) for p in sorted(VECTOR_DIR.glob("[0-9][0-9]-*.json"))
+]
 
 
 @pytest.mark.level2

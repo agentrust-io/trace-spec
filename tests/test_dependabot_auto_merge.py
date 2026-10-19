@@ -60,12 +60,16 @@ def _run_gate(tmp_path: Path, metadata: str, allowed: bool) -> None:
         pytest.skip("Bash/jq execution matches the workflow's Ubuntu runner")
     # Extract this workflow's literal script without adding a YAML dependency
     # to the reference library's development environment.
-    block = re.search(r"^        run: \|\n((?:          [^\n]*\n)+)", WORKFLOW.read_text(), re.M)
+    block = re.search(
+        r"^        run: \|\n((?:          [^\n]*\n)+)",
+        WORKFLOW.read_text(encoding="utf-8"),
+        re.M,
+    )
     assert block is not None, "auto-merge must retain its literal Bash block"
     script = textwrap.dedent(block[1])
     gh = tmp_path / "gh"
     output = tmp_path / "gh-args"
-    gh.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$AUDIT_GH_ARGS"\n')
+    gh.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$AUDIT_GH_ARGS"\n', encoding="utf-8")
     gh.chmod(0o755)
     head = "a" * 40
     url = "https://github.com/example/repo/pull/1"
@@ -88,7 +92,7 @@ def _run_gate(tmp_path: Path, metadata: str, allowed: bool) -> None:
     )
     assert output.exists() is allowed
     if allowed:
-        assert output.read_text().splitlines() == [
+        assert output.read_text(encoding="utf-8").splitlines() == [
             "pr",
             "merge",
             "--auto",
@@ -100,7 +104,7 @@ def _run_gate(tmp_path: Path, metadata: str, allowed: bool) -> None:
 
 
 def test_workflow_keeps_event_and_permission_boundaries() -> None:
-    source = WORKFLOW.read_text()
+    source = WORKFLOW.read_text(encoding="utf-8")
     assert re.search(
         r"^on:\n  pull_request:\n    types: \[opened, reopened, synchronize\]\n"
         r"    branches: \[main\]\n\npermissions:",

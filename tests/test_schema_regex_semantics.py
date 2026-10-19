@@ -11,8 +11,10 @@ import pytest
 from agentrust_trace import generate_key, key_to_jwk, sign_record, validate_json, verify_record
 from agentrust_trace.validate import SCHEMA, iter_errors
 
-BASE = json.loads((Path(__file__).parents[1] /
-    "examples/canonicalization-boundary/01-non-ascii-values.json").read_text())["record"]
+BASE = json.loads(
+    (Path(__file__).parents[1] / "examples/canonicalization-boundary/01-non-ascii-values.json")
+    .read_text(encoding="utf-8")
+)["record"]
 TERMINATORS = ["\n", "\r", "\u2028", "\u2029"]
 
 

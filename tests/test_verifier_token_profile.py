@@ -29,7 +29,7 @@ def unb64(text: str) -> bytes:
 
 @pytest.fixture
 def fixture():
-    return json.loads((VECTORS / "01-valid.json").read_text())
+    return json.loads((VECTORS / "01-valid.json").read_text(encoding="utf-8"))
 
 
 def context(f):
@@ -80,7 +80,7 @@ def test_independent_positive_signature_and_payload(fixture):
 
 @pytest.mark.parametrize("path", sorted(VECTORS.glob("*.json")), ids=lambda p: p.stem)
 def test_portable_vectors(path, fixture):
-    f = json.loads(path.read_text())
+    f = json.loads(path.read_text(encoding="utf-8"))
     raw = unb64(f["envelope_b64"])
     if f["expected"] == "valid":
         v.verify_token(raw, context(fixture), g.NOW)
@@ -467,7 +467,9 @@ def test_schema_contracts_reproduce_models(fixture):
         ("decision-receipt", v.Receipt),
     ]:
         schema = json.loads(
-            (ROOT / "schema" / ("trace-" + name + "-experimental-v1.json")).read_text()
+            (ROOT / "schema" / ("trace-" + name + "-experimental-v1.json")).read_text(
+                encoding="utf-8"
+            )
         )
         assert schema == model.model_json_schema()
         jsonschema.Draft202012Validator.check_schema(schema)
@@ -543,7 +545,9 @@ def test_concurrent_proof_has_one_winner(fixture):
     ],
 )
 def test_schema_rejects_without_model_gate(fixture, field, value):
-    schema = json.loads((ROOT / "schema/trace-token-experimental-v1.json").read_text())
+    schema = json.loads(
+        (ROOT / "schema/trace-token-experimental-v1.json").read_text(encoding="utf-8")
+    )
     token = copy.deepcopy(fixture["token"])
     token[field] = value
     with pytest.raises(jsonschema.ValidationError):

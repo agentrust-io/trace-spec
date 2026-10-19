@@ -23,9 +23,9 @@ from agentrust_trace.models import Appraisal, BuildProvenance
 
 ROOT = Path(__file__).resolve().parents[1]
 
-CANONICAL = json.loads((ROOT / "schema" / "trace-claim.json").read_text())
+CANONICAL = json.loads((ROOT / "schema" / "trace-claim.json").read_text(encoding="utf-8"))
 PACKAGED = json.loads(
-    (ROOT / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_text()
+    (ROOT / "src" / "agentrust_trace" / "schema" / "trace-v0.2.json").read_text(encoding="utf-8")
 )
 
 DEPTHS = ("surface", "builder", "transitive")
@@ -112,6 +112,6 @@ def test_claimed_and_verified_are_separate_fields() -> None:
 
 def test_docs_table_lists_both_fields() -> None:
     """docs/schema.md is the human copy of the same two fields; drift is silent otherwise."""
-    schema_doc = (ROOT / "docs" / "schema.md").read_text()
+    schema_doc = (ROOT / "docs" / "schema.md").read_text(encoding="utf-8")
     assert "`provenance_depth`" in schema_doc
     assert "`provenance_depth_verified`" in schema_doc

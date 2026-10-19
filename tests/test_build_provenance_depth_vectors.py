@@ -232,7 +232,7 @@ def verify(vector: dict[str, Any], depth: str, rules: Sequence[Rule] = RULES) ->
 
 
 def _load(path: Path) -> dict[str, Any]:
-    payload: dict[str, Any] = json.loads(path.read_text())
+    payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return payload
 
 

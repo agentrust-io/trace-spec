@@ -150,7 +150,7 @@ DIVERGENCES = {
 
 
 def load(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def unb64url(text: str) -> bytes:
@@ -245,7 +245,7 @@ def test_vector(path):
 
 def test_codes_are_the_published_list():
     codes = {c["code"] for c in load(CORPUS / "codes.json")["codes"]}
-    source = Path(v.__file__).read_text()
+    source = Path(v.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     raised = set()
     for node in ast.walk(tree):
@@ -384,7 +384,7 @@ def test_named_gateway_tests_exist():
     for requirement, row in coverage_from_vectors().items():
         for name in row["gateway_tests"]:
             file, function = name.split("::")
-            tree = ast.parse((ROOT / file).read_text())
+            tree = ast.parse((ROOT / file).read_text(encoding="utf-8"))
             names = {
                 node.name
                 for node in ast.walk(tree)
@@ -431,7 +431,7 @@ def write_coverage() -> None:
         "legacy": sorted(v["id"] for v in vectors() if v["id"].startswith("LEGACY-")),
         "divergences": DIVERGENCES,
     }
-    (CORPUS / "coverage.json").write_text(json.dumps(value, indent=1) + "\n")
+    (CORPUS / "coverage.json").write_text(json.dumps(value, indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
