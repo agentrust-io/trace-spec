@@ -65,6 +65,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 - `cnf.jwk` missing, of an unsupported key type, or carrying private key material (`d`): TR-SIG-004
 - Signature does not verify against `cnf.jwk`: TR-SIG-005
 - `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares: TR-POL-003. The malformed case is reported with or without a resolver: a reference the record got wrong needs no network to detect
+- `--expected-policy-hash` was supplied and names another policy, or it uses a different algorithm from `policy.bundle_hash` and the bundle needed to compare it could not be resolved: TR-POL-003. The second case is unverified rather than failed, and it fails the run from Level 0
 
 - `appraisal` is absent or not an object, or `appraisal.status` is not one of the four values the schema enumerates: TR-APR-001
 - `appraisal.verifier` is absent or is not an absolute URI: TR-APR-002
@@ -178,6 +179,12 @@ which that stops being tolerable is a property of the check.
 | TR-POL-003 | 2 |
 
 A code absent from this table fails from Level 1.
+
+One finding can fail earlier than its code's row, never later. TR-POL-003 does
+this when the verifier supplied `--expected-policy-hash` in a different
+algorithm from `policy.bundle_hash` and the bundle needed to compare the two
+could not be resolved: that finding fails the run from Level 0. The JSON report
+marks such a finding with `unverified_fails_from_level`.
 
 ??? info "Technical detail: where the table lives"
     That default is deliberate: a new code nobody registered still fails closed, and

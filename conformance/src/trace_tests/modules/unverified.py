@@ -61,5 +61,9 @@ def _finding_counts_as_level_failure(
     if finding.failed():
         return True
     if finding.unverified():
+        # A finding may tighten its code's threshold, never relax it.
+        override = finding.unverified_fails_from_level
+        if override is not None and level >= override:
+            return True
         return unverified_rule(finding.code, level)
     return False

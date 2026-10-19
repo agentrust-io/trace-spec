@@ -1,7 +1,7 @@
 """The policy-resolution set proves itself: digests, referents, and TR-POL-003.
 
-Every vector states one expected value — the status of the TR-POL-003 finding
-— and every test here obtains that status by running the module, never by
+Every vector states one expected value, the status of the TR-POL-003 finding,
+and every test here obtains that status by running the module, never by
 constructing a ``Finding`` by hand. A test that builds its own finding and
 hands it to the reporting layer tests whichever code it happened to name; it
 stays green while the thing under test is wrong.
@@ -53,15 +53,22 @@ def resolver(manifest):
     return _resolve
 
 
-def _pol003(record: dict, resolver, level: int = 0):
-    results = run(record, "trace", level, max_age_seconds=10**9, policy_resolver=resolver)
+def _pol003(record: dict, resolver, level: int = 0, expected_policy_hash: str | None = None):
+    results = run(
+        record,
+        "trace",
+        level,
+        max_age_seconds=10**9,
+        policy_resolver=resolver,
+        expected_policy_hash=expected_policy_hash,
+    )
     return next(f for f in results["TR-POL"] if f.code == "TR-POL-003")
 
 
 @pytest.mark.level0
 def test_the_set_has_the_vectors_its_readme_documents() -> None:
     readme = (VECTOR_DIR / "README.md").read_text(encoding="utf-8")
-    assert len(VECTOR_PATHS) == 11, "the set is eleven vectors, 01 through 11"
+    assert len(VECTOR_PATHS) == 13, "the set is thirteen vectors, 01 through 13"
     for path in VECTOR_PATHS:
         assert path.name in readme, f"{path.name} is not documented in the set's README"
 
@@ -132,10 +139,13 @@ def test_the_declared_resolution_matches_the_manifest(path: Path, manifest) -> N
 def test_the_module_produces_the_status_the_vector_expects(path: Path, resolver) -> None:
     """The load-bearing test: the module is run, and its finding is read."""
     vector = _load(path)
-    finding = _pol003(vector["record"], resolver)
+    finding = _pol003(
+        vector["record"], resolver,
+        expected_policy_hash=vector["context"].get("expected_policy_hash"),
+    )
     assert finding.status.value == vector["expected"]["tr_pol_003"], (
         f"{path.name}: expected {vector['expected']['tr_pol_003']}, "
-        f"got {finding.status.value} — {finding.message}"
+        f"got {finding.status.value}: {finding.message}"
     )
 
 
@@ -237,10 +247,62 @@ def test_the_declared_digests_are_the_digests_of_the_bytes_on_disk() -> None:
         prefix = declared.split(":")[0] + ":"
         body = (VECTOR_DIR / manifest[vector["context"]["cited_uri"]]).read_bytes()
         actual = prefix + algos[prefix](body).hexdigest()
-        expected_match = vector["expected"]["tr_pol_003"] == "pass"
+        # A vector carrying an expected policy hash is internally consistent by
+        # construction: whatever fails it, it is not the record's own binding.
+        expected_match = (
+            vector["expected"]["tr_pol_003"] == "pass"
+            or "expected_policy_hash" in vector["context"]
+        )
         assert (declared == actual) is expected_match, (
             f"{path.name}: the declared digest and the bytes on disk disagree with "
             f"the expected outcome"
         )
         checked += 1
     assert checked >= 5, "this check must not degrade into a pass over no work"
+
+
+@pytest.mark.level0
+def test_12_and_13_fail_only_on_the_expected_policy(resolver) -> None:
+    """13 must fail because of the expectation, and for no other reason.
+
+    Run without the expected policy hash, 13 passes: its digest describes the
+    bundle it cites. Supplied the digest 12 expects, it fails. And both expected
+    hashes are digests of a bundle on disk, not strings someone typed.
+    """
+    manifest = _load(MANIFEST)
+    twelve = _load(VECTOR_DIR / "12-expected-policy-matches.json")
+    thirteen = _load(VECTOR_DIR / "13-expected-policy-differs.json")
+    expected = thirteen["context"]["expected_policy_hash"]
+
+    assert expected == twelve["context"]["expected_policy_hash"]
+    base = (VECTOR_DIR / manifest[twelve["context"]["cited_uri"]]).read_bytes()
+    assert expected == "sha256:" + hashlib.sha256(base).hexdigest()
+
+    assert _pol003(thirteen["record"], resolver).status.value == "pass"
+    failed = _pol003(thirteen["record"], resolver, expected_policy_hash=expected)
+    assert failed.status.value == "fail"
+    assert "not the policy the verifier expects" in failed.message
+    assert _pol003(twelve["record"], resolver, expected_policy_hash=expected).status.value == (
+        "pass"
+    )
+
+
+@pytest.mark.level0
+@pytest.mark.parametrize("path", VECTOR_PATHS, ids=IDS)
+def test_vectors_without_an_expectation_are_unchanged_by_one(path: Path, resolver) -> None:
+    """Supplying the expectation 01 to 11 never had must not move them.
+
+    Each vector is run with the digest of the bundle its record declares. A
+    record already failing for its own reason keeps that status and reason
+    class, and none that passed starts failing.
+    """
+    vector = _load(path)
+    if "expected_policy_hash" in vector["context"]:
+        pytest.skip("this vector carries its own expectation")
+    declared = vector["record"]["policy"]["bundle_hash"]
+    plain = _pol003(vector["record"], resolver)
+    supplied = _pol003(vector["record"], resolver, expected_policy_hash=declared)
+    assert supplied.status == plain.status, (
+        f"{path.name}: expecting the declared policy changed {plain.status.value} "
+        f"to {supplied.status.value}"
+    )

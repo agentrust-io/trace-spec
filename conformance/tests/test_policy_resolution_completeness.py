@@ -78,7 +78,7 @@ def _status(vector: dict) -> str:
 
 @pytest.mark.level0
 def test_the_set_is_not_empty() -> None:
-    assert len(_vectors()) == 11, "the set is eleven vectors, 01 through 11"
+    assert len(_vectors()) == 13, "the set is thirteen vectors, 01 through 13"
 
 
 @pytest.mark.level0

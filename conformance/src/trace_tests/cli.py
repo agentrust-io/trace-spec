@@ -16,6 +16,7 @@ from trace_tests import __version__
 from trace_tests import report as report_mod
 from trace_tests.loader import LoadError, load_record, loads_strict
 from trace_tests.modules.tr_env import DEFAULT_MAX_AGE_SECONDS
+from trace_tests.modules.tr_pol import validate_expected_policy_hash
 from trace_tests.modules.unverified import finding_counts_as_level_failure
 from trace_tests.result import Status
 from trace_tests.runner import _run_levels, run
@@ -217,6 +218,17 @@ def main() -> None:
         "compare the bundle against policy.bundle_hash; without it that check skips."
     ),
 )
+@click.option(
+    "--expected-policy-hash",
+    "expected_policy_hash",
+    default=None,
+    help=(
+        "Digest of the policy bundle the verifier expects (sha256:<hex> or "
+        "sha384:<hex>). TR-POL-003 then fails a record that declares any other "
+        "policy, even when its bundle_hash matches the bundle policy_uri resolves to. "
+        "A digest in another algorithm is compared only over resolved bytes."
+    ),
+)
 def verify(
     record: str,
     level: int,
@@ -224,6 +236,7 @@ def verify(
     expected_nonce: str | None,
     receipt: str | None,
     policy_dir: str | None,
+    expected_policy_hash: str | None,
 ) -> None:
     """Verify a TRACE trust record against the conformance suite."""
     try:
@@ -234,6 +247,11 @@ def verify(
 
     receipt_data = _load_receipt(receipt)
     policy_resolver = _load_policy_resolver(policy_dir)
+    try:
+        validate_expected_policy_hash(expected_policy_hash)
+    except ValueError as exc:
+        click.echo(f"Error: --expected-policy-hash: {exc}", err=True)
+        sys.exit(2)
 
     results = run(
         data,
@@ -243,6 +261,7 @@ def verify(
         expected_nonce=expected_nonce,
         receipt=receipt_data,
         policy_resolver=policy_resolver,
+        expected_policy_hash=expected_policy_hash,
     )
     exit_code = _print_report(record, fmt, level, results)
     sys.exit(exit_code)
@@ -298,6 +317,17 @@ def verify(
     "path inside it. Required for TR-POL-003 to resolve the bundle; without it "
     "that check skips.",
 )
+@click.option(
+    "--expected-policy-hash",
+    "expected_policy_hash",
+    default=None,
+    help=(
+        "Digest of the policy bundle the verifier expects (sha256:<hex> or "
+        "sha384:<hex>). TR-POL-003 then fails a record that declares any other "
+        "policy, even when its bundle_hash matches the bundle policy_uri resolves to. "
+        "A digest in another algorithm is compared only over resolved bytes."
+    ),
+)
 def report(
     record: str,
     max_level: int,
@@ -309,6 +339,7 @@ def report(
     expected_nonce: str | None,
     receipt: str | None,
     policy_dir: str | None,
+    expected_policy_hash: str | None,
 ) -> None:
     """Produce a conformance report you can hand to someone else.
 
@@ -324,6 +355,11 @@ def report(
 
     receipt_data = _load_receipt(receipt)
     policy_resolver = _load_policy_resolver(policy_dir)
+    try:
+        validate_expected_policy_hash(expected_policy_hash)
+    except ValueError as exc:
+        click.echo(f"Error: --expected-policy-hash: {exc}", err=True)
+        sys.exit(2)
 
     execution = _run_levels(
         data,
@@ -333,6 +369,7 @@ def report(
         expected_nonce=expected_nonce,
         receipt=receipt_data,
         policy_resolver=policy_resolver,
+        expected_policy_hash=expected_policy_hash,
     )
 
     built = report_mod._build_from_execution(

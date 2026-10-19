@@ -13,8 +13,8 @@ check noticing.
 
 **One value: the status of the `TR-POL-003` finding.** That is narrower than a
 verdict on the whole record, deliberately. These records are unsigned, so they
-carry findings from other modules — `TR-SIG-005` has an opinion about every one
-of them — and grading at record level would blur the check under test with
+carry findings from other modules (`TR-SIG-005` has an opinion about every one
+of them), and grading at record level would blur the check under test with
 everything standing around it. Every claim about coverage in this file is a
 claim about that one finding.
 
@@ -64,6 +64,12 @@ ASCII-only.
 | 09 | `09-sha384-bound-to-other-referent.json` | contradicted | `fail` | tier 1 |
 | 10 | `10-policy-uri-carries-a-space.json` | malformed | `fail` | tier 2 |
 | 11 | `11-referent-unreachable-route-fails.json` | unresolvable | `unverified` | tier 0 |
+| 12 | `12-expected-policy-matches.json` | accept | `pass` | tier 1 |
+| 13 | `13-expected-policy-differs.json` | contradicted | `fail` | tier 1 |
+
+12 and 13 are run with an expected policy hash, which `context.expected_policy_hash`
+records beside the record and the runner takes as `expected_policy_hash`. 01 to 11
+carry none and are run without one.
 
 ## Why the set is paired the way it is
 
@@ -82,7 +88,7 @@ today declares no `policy_uri` and must keep verifying, or this set would be
 proposing a breaking change rather than describing a gap.
 
 **03 and 04 keep the contradicted boundary off a single vector.** 03 differs
-from the declared object in exactly one byte — the SLSA floor moves 2 → 3, which
+from the declared object in exactly one byte: the SLSA floor moves 2 → 3, which
 changes what the policy permits. 04 substitutes a different object of a different
 length. A verifier comparing lengths, or sampling a prefix, passes one and fails
 the other.
@@ -90,13 +96,13 @@ the other.
 **06 and 09 are the sha384 pair.** The schema admits `sha384:` as well as
 `sha256:`, so a verifier that hardcodes `sha256` is wrong rather than merely
 limited. Deleting sha384 support turns both to `skip`. A verifier that computes
-only `sha256` deviates 06 alone; one that accepts `sha384` without comparing —
-the fail-open shape — deviates 09 alone. 06 by itself would not catch the second.
+only `sha256` deviates 06 alone; one that accepts `sha384` without comparing,
+the fail-open shape, deviates 09 alone. 06 by itself would not catch the second.
 
 **08 and 10 are the malformed pair, and they are caught by different rules.** 08
 is a `uri-reference` where the schema asks for the absolute form: no authority,
 so nothing can dereference it. 10 is absolute and correctly schemed, with a raw
-space in the path — a transcription accident that survives a diff unnoticed.
+space in the path, a transcription accident that survives a diff unnoticed.
 Removing the character rule deviates 10 alone; removing the scheme rule deviates
 08 alone.
 
@@ -108,9 +114,25 @@ carries the resolver's exception text, so the two are distinguishable in a
 report even though they share a status.
 
 **07 is the one a well-formedness check passes.** The declared digest is a valid
-`sha256:` digest and is the true digest of a real object in this set — just not
+`sha256:` digest and is the true digest of a real object in this set, just not
 of the one `policy_uri` names. Both halves are individually valid; the pair is
 not.
+
+**12 and 13 separate record integrity from policy identity.** A matching
+`bundle_hash` shows the resolved bytes are the ones the record cited, not that
+they are the policy the verifier expected (trace-spec §3.3, step 5). 13 is
+internally consistent: its digest is the true digest of the bundle it cites, and
+run without the expected hash it passes. Supplied the hash of the baseline
+bundle, it fails, so the expectation is the only thing that fails it. 12 is the
+same expectation over a record that declares the baseline, and must still pass.
+A verifier that ignores the expectation deviates 13 alone. One that rejects any
+record run with an expectation deviates 12 alone.
+
+The expected hash comes from the verifier, never from the record, for the same
+reason the resolver does. When it uses the same algorithm as `bundle_hash`, the
+comparison needs no network and is made before any resolver. When the
+algorithms differ it is made over the resolved bytes, and a bundle that cannot
+be read leaves it uncompared, which the finding says.
 
 ## Malformed references are found offline
 
@@ -125,7 +147,7 @@ not mean being blind to a defect the record carries on its face.
 
 `resolutions.json` maps each cited URI to a path inside this directory. It is
 the single mapping: a vector cannot hold a private idea of what its URI
-resolves to. Two entries are deliberate holes — the URI cited by `05` is absent
+resolves to. Two entries are deliberate holes: the URI cited by `05` is absent
 from the manifest, and the one cited by `11` maps to a file that is not written.
 
 ```
@@ -137,7 +159,7 @@ The manifest is checked for *form* only when it loads: an object, string to
 string, relative paths, no parent traversal. **Whether a mapped file is there is
 not checked at load time.** Existence is a resolve-time fact, and a manifest that
 refused to load because one bundle had gone missing would be the manifest-level
-version of treating a lost referent as a wrong reference — the confusion this
+version of treating a lost referent as a wrong reference, the confusion this
 whole set exists to keep apart.
 
 ## Reproducing it
@@ -151,13 +173,13 @@ computed over the exact bytes of the sibling files under `policies/`, so anyone
 holding only this directory can recompute every number in the set.
 
 `tests/test_policy_resolution_reproduces.py` holds the generator to
-byte-reproduction by regenerating into a temporary directory and comparing —
+byte-reproduction by regenerating into a temporary directory and comparing,
 not in place, which would compare the files to themselves and agree regardless.
 
 The guard is **self-contained**. `agentrust-io/trace-spec#171` provides the
 equivalent for that repository's `examples/`, and `trace-tests` has no such
 registry; `agentrust-io/trace-tests#66` gives the reason not to reach across for
-one — *"a guard that needs another repository checked out is a guard that gets
+one: *"a guard that needs another repository checked out is a guard that gets
 skipped."*
 
 `.gitattributes` in this directory pins `eol=lf`. This is load-bearing rather
@@ -180,13 +202,13 @@ if the list changes without this file changing with it.
 
 ## Related
 
-- `agentrust-io/trace-tests#63` — the module proposal these cases were built for
-- `agentrust-io/trace-spec#66` — where the resolution gap was raised
-- `agentrust-io/trace-spec#190` — the open cross-surface question
-- `agentrust-io/trace-spec#186` — merged: the adequacy criteria this set was
+- `agentrust-io/trace-tests#63`: the module proposal these cases were built for
+- `agentrust-io/trace-spec#66`: where the resolution gap was raised
+- `agentrust-io/trace-spec#190`: the open cross-surface question
+- `agentrust-io/trace-spec#186`: merged: the adequacy criteria this set was
   built to. It grades trace-spec's `examples/`; this repository has no adequacy
   harness, so the standard is one this set chose, not one imposed on it
-- `agentrust-io/trace-tests#66` — merged: `tr_sig` canonicalizes with RFC 8785;
+- `agentrust-io/trace-tests#66`: merged: `tr_sig` canonicalizes with RFC 8785;
   source of the self-containment principle quoted above
-- `agentrust-io/trace-tests#74` — merged: the published error codes and record
+- `agentrust-io/trace-tests#74`: merged: the published error codes and record
   samples realigned with the modules, and the guard that keeps them that way
