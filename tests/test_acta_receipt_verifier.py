@@ -14,6 +14,12 @@ already made has a test here that fails when that rule is switched off:
   after a predecessor it does not link to:
   ``test_a_missing_link_after_a_known_predecessor_is_refused``.
 
+All eleven committed fixtures are checked here under the key and validity window
+that ``acta-keys.json`` publishes. Among them, 08 carries a ``sha256:`` link and 09
+a link to the hash of its predecessor's payload alone (Section 6.7), 10 carries a
+``signature`` member (Section 6.6), and 11 is dated before the key's
+``valid_from`` (Section 9.2).
+
 Receipts here are signed with a fixed test key, so the file needs nothing beyond
 rfc8785 and cryptography and runs on every Python version in the CI matrix.
 """
@@ -85,9 +91,28 @@ def _window(valid_from: str | None, valid_until: str | None) -> IssuerKey:
 # --- the committed fixtures --------------------------------------------------
 
 
+def _load(name: str) -> dict[str, Any]:
+    return json.loads((ACTA_DIR / name).read_text(encoding="utf-8"))
+
+
+def _committed_key(kid: str) -> IssuerKey:
+    """The key the committed key set publishes under ``kid`` (Section 5.3), window included."""
+    (jwk,) = [key for key in _load(EXPECTED["key_set"])["keys"] if key["kid"] == kid]
+    x = base64.urlsafe_b64decode(jwk["x"] + "=" * (-len(jwk["x"]) % 4))
+    return IssuerKey(
+        Ed25519PublicKey.from_public_bytes(x),
+        valid_from=_utc(jwk["valid_from"]),
+        valid_until=_utc(jwk["valid_until"]),
+    )
+
+
 def _fixture_verdict(result: dict[str, str]) -> tuple[str, str | None]:
+    if result["signing_input"] == "fail":
+        return "invalid", "signature_in_signing_input"
     if result["signature"] == "fail":
         return "invalid", "signature_invalid"
+    if result["key_window"] == "fail":
+        return "invalid", "key_outside_validity_window"
     if result["chain"] == "fail":
         return "invalid", "chain_link_mismatch"
     return "valid", None
@@ -95,18 +120,37 @@ def _fixture_verdict(result: dict[str, str]) -> tuple[str, str | None]:
 
 @pytest.mark.parametrize("name", sorted(EXPECTED["results"]))
 def test_every_fixture_gets_the_verdict_expected_json_declares(name: str) -> None:
-    """Signature and chain columns only: freshness and binding are the caller's comparisons."""
-    signer = IssuerKey(
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(EXPECTED["signer_public_key_hex"]))
-    )
-    envelope = json.loads((ACTA_DIR / name).read_text())
+    """The verdict and code each fixture's columns imply, freshness and binding aside.
+
+    Those two are the caller's comparisons. The key and its Section 9.2 window come
+    from the committed key set, found by the fixture's ``kid``.
+    """
+    envelope = _load(name)
     predecessor_name = EXPECTED["chain"].get(name)
-    predecessor = (
-        json.loads((ACTA_DIR / predecessor_name).read_text()) if predecessor_name else None
-    )
-    assert verify_envelope(envelope, signer, predecessor) == _fixture_verdict(
+    predecessor = _load(predecessor_name) if predecessor_name else None
+    key = _committed_key(envelope["signature"]["kid"])
+    assert verify_envelope(envelope, key, predecessor) == _fixture_verdict(
         EXPECTED["results"][name]
     )
+
+
+@pytest.mark.parametrize(
+    ("name", "taken_away"),
+    [("09-payload-only-chain-link.json", "predecessor"), ("11-outside-key-window.json", "window")],
+)
+def test_a_revision_03_negative_verifies_once_its_rule_has_nothing_to_check(
+    name: str, taken_away: str
+) -> None:
+    """With no predecessor to compare (09) or no window on the key (11), each verifies.
+
+    So the rule each one names is the only one that refuses it. 10 has no input like
+    this to take away: the Section 6.6 rule reads the payload itself.
+    """
+    envelope = _load(name)
+    key = _committed_key(envelope["signature"]["kid"])
+    if taken_away == "window":
+        key = IssuerKey(key.public_key)
+    assert verify_envelope(envelope, key) == ("valid", None)  # no predecessor passed
 
 
 # --- Section 6.6 -------------------------------------------------------------
@@ -272,6 +316,28 @@ def test_the_command_line_applies_the_key_sets_window(
     monkeypatch.delenv("AEV_RECEIPT_CONTEXT", raising=False)
     status, answer = _run(tmp_path, capsys, _sign(_payload()))
     assert (status, answer) == (1, {"verdict": "invalid", "code": "key_outside_validity_window"})
+
+
+@pytest.mark.parametrize(
+    ("name", "status", "code"),
+    [
+        ("07-valid-inside-key-window.json", 0, None),
+        ("11-outside-key-window.json", 1, "key_outside_validity_window"),
+    ],
+)
+def test_the_command_line_reads_the_committed_key_set(
+    name: str,
+    status: int,
+    code: str | None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``acta-keys.json`` works as published: its ``kid`` resolves and its window applies."""
+    monkeypatch.setenv("AEV_RECEIPT_JWKS", str(ACTA_DIR / EXPECTED["key_set"]))
+    monkeypatch.delenv("AEV_RECEIPT_CONTEXT", raising=False)
+    verdict = "valid" if code is None else "invalid"
+    assert _run(tmp_path, capsys, _load(name)) == (status, {"verdict": verdict, "code": code})
 
 
 def test_the_command_line_reads_the_predecessor_from_the_context(
