@@ -49,7 +49,7 @@ The seven labels agreed so far, what each one points at, and where it is defined
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below | [`examples/condition-appraisal/`](../examples/condition-appraisal/) |
 | `observed-effect` | A signed record of the state change an observer outside the agent saw over one interval | This document, below | [`examples/observed-effect/`](../examples/observed-effect/) |
 | `applicability-assessment` | An assessor's statement of whether a stated legal provision applies to a stated party, held in another system | This document, below | [`examples/applicability-assessment/`](../examples/applicability-assessment/) |
-| `position-commitment` | A commitment to a position in an externally ordered sequence, taken before the digest of this record exists | This document, below | none committed |
+| `position-commitment` | A commitment to a position in an externally ordered sequence, taken before the digest of this record exists | This document, below | [`examples/position-commitment/`](../examples/position-commitment/) |
 
 The first three were registered by the change that introduced the block (#197) and
 their referenced objects are defined to the extent the documents cited define them.
@@ -316,6 +316,17 @@ carry.
 This record's digest is the §3.1.3 preimage applied to this record: the RFC 8785
 canonical form of the complete record as published, `signature` member included.
 
+No resolver undertakes to retain the proof, which is why the entry names none. That
+removes the retention undertaking, not the need for the bytes: recomputing later still
+needs the proof, so a holder who wants the entry checked keeps the proof bytes, and a
+verifier handed none treats the entry as absent.
+
+The committed example, [`examples/position-commitment/`](../examples/position-commitment/),
+shows one concrete shape for these facts: a slot whose digest is the `id`, and a
+binding the committer signs once the record exists, which commits the slot and this
+record's digest. A producer whose sequence or committer emits another shape that
+carries these facts is within this definition.
+
 ### What a verifier may conclude
 
 Under v0.2, nothing beyond any other pointer. Recomputation is not a check v0.2
@@ -329,9 +340,18 @@ each reported separately:
 1. **The verifier does not hold the proof.** The entry is absent. That is not a
    finding against the record.
 2. **The recomputation agrees and the proof commits this record's digest.** The
-   position was taken for this record.
+   proof is consistent with this record. Whether the position was taken for this
+   record, and where it sits in the sequence, rests on trust the relying party
+   supplies itself: a committer key and a copy of the sequence it holds independently
+   of the proof. A proof checked under a key it carries for itself establishes
+   consistency, not an independently established ordering.
 3. **The recomputation runs and disagrees, or the proof commits another record's
    digest.** A contradiction in the record, never reported as an absence.
+
+The example set holds each of these apart: a proof that establishes the position
+under an independently held key and sequence, the same proof carried by another
+record, no proof held, a proof altered to an earlier position, and a proof whose only
+committer key is the one it carries. The records' signatures verify in every case.
 
 The second outcome is the property the producer gave up by omitting the entry under
 v0.2: telling a backdate from a late commit by a contradiction inside the record,

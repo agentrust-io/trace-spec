@@ -327,6 +327,13 @@ MEASURED_ELSEWHERE = {
                                 "recomputes every verdict from the committed record and "
                                 "assessment store instead of reading expected.json, and "
                                 "re-runs the generator",
+    # Not loadable here for the same reason: every record's signature verifies, and the
+    # cases differ only in the proof the holder presents and the trust the relying
+    # party supplies.
+    "position-commitment": "tests/test_position_commitment_fixtures.py, which recomputes "
+                           "every verdict from the committed records, proofs and "
+                           "relying-party trust instead of reading expected.json, and "
+                           "re-runs the generator",
 }
 
 

@@ -1,0 +1,64 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "4lYwTNnFrnAzuzGYnCjHgaKjy2cCsjf9e7QrQ4z-sP8"
+  },
+  "cases": {
+    "01-position-established.json": {
+      "proof": "proof-01.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": true,
+      "binds_this_record": true,
+      "committer_key_independent": true,
+      "signatures_verify": true,
+      "sequence_position_matches": true,
+      "verdict": "position-established"
+    },
+    "02-same-proof-other-record.json": {
+      "proof": "proof-01.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": true,
+      "binds_this_record": false,
+      "committer_key_independent": null,
+      "signatures_verify": null,
+      "sequence_position_matches": null,
+      "verdict": "contradiction-commits-another-record"
+    },
+    "03-proof-not-held.json": {
+      "proof": null,
+      "record_signature_verifies": true,
+      "proof_held": false,
+      "commitment_recomputes": null,
+      "binds_this_record": null,
+      "committer_key_independent": null,
+      "signatures_verify": null,
+      "sequence_position_matches": null,
+      "verdict": "position-absent"
+    },
+    "04-proof-altered.json": {
+      "proof": "proof-04-altered.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": false,
+      "binds_this_record": null,
+      "committer_key_independent": null,
+      "signatures_verify": null,
+      "sequence_position_matches": null,
+      "verdict": "contradiction-commitment-mismatch"
+    },
+    "05-committer-key-self-supplied.json": {
+      "proof": "proof-05.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": true,
+      "binds_this_record": true,
+      "committer_key_independent": false,
+      "signatures_verify": true,
+      "sequence_position_matches": true,
+      "verdict": "position-consistent-not-established"
+    }
+  }
+}
