@@ -585,17 +585,24 @@ An expired bundle is not a pass. A verifier whose newest bundle is older than th
 
 ### 3.3 Verification
 
-Any party, browser, CLI, in-cluster verifier, third-party auditor, verifies:
+Any party, browser, CLI, in-cluster verifier, or third-party auditor verifies the
+claims required by its target assurance level and relying-party policy. An
+unanchored base record can be structurally valid; it cannot pass an anchoring
+check, just as a software-only record cannot pass a hardware-evidence check.
+Absent evidence MUST NOT be reported as a pass for a claim that requires it.
+A conformance result about record structure and self-consistency is not by
+itself an authenticated verification pass under this section.
+<!-- CHANGED: #591 - scope evidence checks to claims and levels; preserve the no-receipt fallback -->
 
 <!-- CHANGED: #591 - distinguish key self-consistency from authenticated verification -->
 1. Obtain a signing-key trust anchor independently of the incoming record: an issuer key already trusted by the recipient, or a signature chain validated to an accepted root. Verify the record's signature binding (section 3.2.2) against that trusted key and confirm that it matches the key in `cnf`, BEFORE any other field is trusted. A check against only the record's own `cnf` key establishes internal consistency, not authenticated origin; a verifier with no independent trust anchor MUST NOT report authenticated origin or a §3.3 verification pass. A diagnostic signature check against the embedded key alone does not satisfy this step.
 2. The record is fresh: `iat` is neither older than the maximum age (default 24 hours) nor later than the current time plus the allowed clock skew (default 5 minutes), unless the deployment profile specifies different bounds. If the verifier issued a challenge nonce, `runtime.nonce` echoes it.
-3. Signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).
-4. Runtime measurements match published Reference Integrity Manifests (RIMs).
+3. For a hardware-backed claim, the signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).
+4. For a hardware-backed claim, runtime measurements match published Reference Integrity Manifests (RIMs).
 5. Policy hash matches the policy bundle the verifier expects.
-6. SCITT receipt resolves on the named transparency log.
-7. SLSA provenance resolves to a trusted builder.
-8. The record-signing key is not revoked as of the entry the record was logged at, per section 3.2.3. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
+6. For Level 2, or when the relying-party policy requires anchoring, the SCITT receipt resolves on the named transparency log and its inclusion proof is checked against independently authenticated log data. A URI or self-consistent receipt alone is insufficient. Below that requirement, an absent receipt is reported as unanchored, not as a successful anchoring check.
+7. Build provenance verifies to at least `surface` under section 3.3.1, and to any deeper depth the relying-party policy requires.
+8. Revocation is checked under section 3.2.3: when the record has a usable SCITT inclusion entry, the record-signing key is not revoked as of that entry; without one, the no-receipt binary fallback applies. A verifier holding no revocation bundle, or only an expired one, reports that rather than treating it as a pass.
 
 <!-- CHANGED: #116 - verifier profile declarations and verifier-result fields -->
 

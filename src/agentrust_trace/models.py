@@ -598,9 +598,9 @@ class TrustRecord(_TraceModel):
     model stricter than both the conformance suite and `schema/trace-claim.json`,
     which sets no minimum length.
 
-    Use `None` for an unanchored record rather than an empty string: `""` is not a
-    URI, and a field that looks populated but resolves to nothing is worse than an
-    absent one.
+    Use `None` when constructing an unanchored model; model serialization omits
+    that field from the wire record. An explicit JSON `null` or empty string is
+    not valid for the published schema.
     """
     cnf: ConfirmationKey
     signature: Annotated[
