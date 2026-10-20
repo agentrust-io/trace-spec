@@ -140,6 +140,10 @@ review. "Before a pull request is reviewed" says what is.
    measurement you act on before it enters the description. Then say what
    the reader found, what you changed, and what you did not change and why.
 
+The long form of this section, written so that an agent session can follow
+it and carrying the brief for that read, is
+[AGENT_CONTRIBUTING.md](https://github.com/agentrust-io/trace-spec/blob/main/AGENT_CONTRIBUTING.md).
+
 ## Using AI to contribute
 
 Use agents. A lot of this was built with them and saying otherwise would be dishonest.
