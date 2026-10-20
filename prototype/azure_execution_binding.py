@@ -36,6 +36,7 @@ EV_EFI_VARIABLE_DRIVER_CONFIG = 0x80000001
 EV_EFI_BOOT_SERVICES_APPLICATION = 0x80000003
 SNP_POLICY_DEBUG = 1 << 19
 _HEX64 = re.compile(r"[0-9a-f]{64}")
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 class ExecutionDenied(ValueError):
@@ -100,7 +101,7 @@ def _tpm2b(blob: bytes, offset: int) -> tuple[bytes, int]:
 
 
 def parse_quote(quote: bytes) -> Quote:
-    if quote[:6] != b"\xffTCG\x80\x18":
+    if not isinstance(quote, bytes) or quote[:6] != b"\xffTCG\x80\x18":
         raise ExecutionDenied("quote_type")
     _, offset = _tpm2b(quote, 6)  # qualified signer
     extra, offset = _tpm2b(quote, offset)
@@ -125,6 +126,12 @@ def parse_quote(quote: bytes) -> Quote:
 
 
 def verify_quote_signature(quote: bytes, signature: bytes, ak: rsa.RSAPublicKey) -> None:
+    if (
+        not isinstance(quote, bytes)
+        or not isinstance(signature, bytes)
+        or not isinstance(ak, rsa.RSAPublicKey)
+    ):
+        raise ExecutionDenied("quote_signature")
     if signature[:4] != b"\x00\x14\x00\x0b":
         raise ExecutionDenied("quote_signature_scheme")
     raw, end = _tpm2b(signature, 4)
@@ -149,13 +156,19 @@ class UefiEvent:
 
 def parse_uefi_log(log: bytes) -> list[UefiEvent]:
     """Parse a TCG2 crypto-agile log (SHA-1 format Spec ID header first)."""
+    if not isinstance(log, bytes) or len(log) < 32:
+        raise ExecutionDenied("uefi_log_truncated")
     try:
         pcr, etype = struct.unpack_from("<II", log, 0)
         (size,) = struct.unpack_from("<I", log, 28)
+        if 32 + size > len(log):
+            raise ExecutionDenied("uefi_log_truncated")
         header = log[32 : 32 + size]
         if etype != EV_NO_ACTION or not header.startswith(b"Spec ID Event03\x00"):
             raise ExecutionDenied("uefi_log_header")
         (count,) = struct.unpack_from("<I", header, 24)
+        if 28 + 4 * count > len(header):
+            raise ExecutionDenied("uefi_log_truncated")
         sizes = {}
         for i in range(count):
             alg, dsize = struct.unpack_from("<HH", header, 28 + 4 * i)
@@ -165,6 +178,8 @@ def parse_uefi_log(log: bytes) -> list[UefiEvent]:
         offset = 32 + size
         events = []
         while offset < len(log):
+            if offset + 12 > len(log):
+                raise ExecutionDenied("uefi_log_truncated")
             pcr, etype, ndigests = struct.unpack_from("<III", log, offset)
             offset += 12
             sha = None
@@ -177,6 +192,8 @@ def parse_uefi_log(log: bytes) -> list[UefiEvent]:
                     sha = value
                 offset += 2 + sizes[alg]
             (esize,) = struct.unpack_from("<I", log, offset)
+            if offset + 4 + esize > len(log):
+                raise ExecutionDenied("uefi_log_truncated")
             data = log[offset + 4 : offset + 4 + esize]
             if len(data) != esize or sha is None or len(sha) != 32:
                 raise ExecutionDenied("uefi_log_truncated")
@@ -228,16 +245,24 @@ class ImaEntry:
 
 def parse_ima_log(log: bytes) -> list[ImaEntry]:
     """Parse binary_runtime_measurements_sha256 (x86 little-endian, ima-ng)."""
+    if not isinstance(log, bytes):
+        raise ExecutionDenied("ima_log_truncated")
     entries = []
     offset = 0
     try:
         while offset < len(log):
+            if offset + 40 > len(log):
+                raise ExecutionDenied("ima_log_truncated")
             (pcr,) = struct.unpack_from("<I", log, offset)
             template_digest = log[offset + 4 : offset + 36]
             (name_len,) = struct.unpack_from("<I", log, offset + 36)
+            if offset + 40 + name_len + 4 > len(log):
+                raise ExecutionDenied("ima_log_truncated")
             name = log[offset + 40 : offset + 40 + name_len]
             offset += 40 + name_len
             (data_len,) = struct.unpack_from("<I", log, offset)
+            if offset + 4 + data_len > len(log):
+                raise ExecutionDenied("ima_log_truncated")
             data = log[offset + 4 : offset + 4 + data_len]
             offset += 4 + data_len
             if name != b"ima-ng" or len(data) != data_len:
@@ -309,6 +334,13 @@ def appraise_execution(
     Fails closed with ExecutionDenied. The relying party issues the challenge
     and consumes it on admission; this function keeps no replay state.
     """
+    if (
+        not isinstance(packet, dict)
+        or not isinstance(policy, ExecutionPolicy)
+        or not isinstance(ak, rsa.RSAPublicKey)
+        or not isinstance(expected_challenge, str)
+    ):
+        raise ExecutionDenied("packet_format")
     if not _HEX64.fullmatch(expected_challenge) or packet.get("challenge") != expected_challenge:
         raise ExecutionDenied("challenge")
     holder_hex = packet.get("holder_public_hex")
@@ -395,9 +427,15 @@ def authenticate_ak(
 
     ``trust_store`` must hold an operator-pinned AMD root, never one from the packet.
     """
-    from wcm._certificates import load_pem_certificate
-    from wcm._quote_verify import verify_cert_chain
-    from wcm.snp import extract_snp_report_from_hcl, parse_snp_report, verify_snp_report_signature
+    if not isinstance(packet, dict):
+        raise ExecutionDenied("platform_evidence_format")
+    from wcm._certificates import load_pem_certificate  # type: ignore[import-not-found]
+    from wcm._quote_verify import verify_cert_chain  # type: ignore[import-not-found]
+    from wcm.snp import (  # type: ignore[import-not-found]
+        extract_snp_report_from_hcl,
+        parse_snp_report,
+        verify_snp_report_signature,
+    )
 
     hcl = _b64(packet.get("hcl_b64"), "hcl")
     try:
@@ -429,11 +467,20 @@ def authenticate_ak(
         raise ExecutionDenied("hcl_runtime_binding")
     try:
         doc = json.loads(runtime_json)
-        keys = [k for k in doc["keys"] if k.get("kid") == "HCLAkPub"]
-        if len(keys) != 1:
-            raise ValueError("HCLAkPub count")
+        keys = [k for k in doc["keys"] if isinstance(k, dict) and k.get("kid") == "HCLAkPub"]
+        if len(keys) != 1 or _JWK_PRIVATE_PARAMS.intersection(keys[0]):
+            raise ValueError("HCLAkPub")
         n = keys[0]["n"]
-        modulus = int.from_bytes(base64.urlsafe_b64decode(n + "=" * (-len(n) % 4)), "big")
+        if not isinstance(n, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", n):
+            raise ValueError("HCLAkPub n")
+        n_bytes = base64.b64decode(n + "=" * (-len(n) % 4), altchars=b"-_", validate=True)
+        if (
+            not n_bytes
+            or n_bytes[0] == 0
+            or base64.urlsafe_b64encode(n_bytes).rstrip(b"=").decode("ascii") != n
+        ):
+            raise ValueError("HCLAkPub n encoding")
+        modulus = int.from_bytes(n_bytes, "big")
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
         raise ExecutionDenied("hcl_ak") from exc
     if modulus != ak.public_numbers().n:
