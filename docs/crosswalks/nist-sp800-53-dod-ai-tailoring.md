@@ -8,7 +8,7 @@ US federal and Department of Defense systems are authorized under the Risk Manag
 
 ## Purpose
 
-The Tailoring Guide supports control selection and tailoring for AI systems. Relevant entries include integrity (Table 2-2, printed p. 37), provenance (Table 1-2, p. 30), audit protection (Table 2-2, p. 32), and authorization-package evidence (§3.1.3, p. 16; §3.1.5, p. 21). This page suggests bounded TRACE evidence mappings; the assessor determines applicability and adequacy. Its mappings do not establish control implementation or authorization.
+The Tailoring Guide supports control selection and tailoring for AI systems. Relevant entries include integrity (Table 2-2, printed p. 37), provenance (Table 1-2, p. 30), audit protection (Table 2-2, p. 32), and authorization-package evidence (§3.1.3, p. 16; §3.1.5, p. 20). This page suggests bounded TRACE evidence mappings; the assessor determines applicability and adequacy. Its mappings do not establish control implementation or authorization.
 
 A Trust Record is evidence *for* a control, not an implementation *of* it. The assessor still judges whether the evidence is adequate for the system's impact level. Where a claim's assurance depends on verified attestation, the row says so: naming a TEE in `runtime.platform` does not itself establish hardware backing, and a `software-only` record (§3.1.1) carries software commitments without hardware evidence. See [trust levels](../trust-levels.md).
 
@@ -64,7 +64,7 @@ The parenthetical "inclusion proof verified" and the `appraisal.verifier` name a
 ## References
 
 - NIST SP 800-53 Rev 5, [*Security and Privacy Controls for Information Systems and Organizations*](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf), September 2020 (with updates). See SA-11(1), printed p. 277; SI-7(6), printed p. 346; and SI-7(17), printed p. 348, for the enhancement boundaries above.
-- DoD CIO, [*AI Cybersecurity Risk Management Tailoring Guide*](https://dodcio.defense.gov/Portals/0/Documents/Library/AI-CybersecurityRMTailoringGuide.pdf), version 2, 14 July 2025. Citations were checked against the [DMI-hosted copy](https://www.dmi-ida.org/download-pdf/pdf/AI-CybersecurityRMTailoringGuide.pdf). The official host returned HTTP 403 during review on 18 October 2026; byte identity with that host was not verified. Page numbers above are printed page numbers.
+- DoD CIO, [*AI Cybersecurity Risk Management Tailoring Guide*](https://dodcio.defense.gov/Portals/0/Documents/Library/AI-CybersecurityRMTailoringGuide.pdf), version 2, 14 July 2025. Citations were checked against the [DMI-hosted copy](https://www.dmi-ida.org/download-pdf/pdf/AI-CybersecurityRMTailoringGuide.pdf) on 18 October 2026, and the table, section and page references were re-checked against the copy on the official DoD CIO host on 20 October 2026. Byte identity of the two copies was not verified. Page numbers above are printed page numbers.
 - NIST SP 800-37 Rev 2, *Risk Management Framework for Information Systems and Organizations*.
 - OMB M-22-18, *Enhancing the Security of the Software Supply Chain through Secure Software Development Practices*.
 - TRACE v0.2, `spec/trace-v0.2.md`, §3.1 through §3.3.
