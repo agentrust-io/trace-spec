@@ -70,6 +70,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 - `appraisal` is absent or not an object, or `appraisal.status` is not one of the four values the schema enumerates: TR-APR-001
 - `appraisal.verifier` is absent or is not an absolute URI: TR-APR-002
 - `appraisal.policy_ref` or `appraisal.timestamp` is present and malformed: TR-APR-003, TR-APR-004. Absent, either one is skipped rather than passed
+- `appraisal.platform_measurement` is present but names a different `runtime.measurement`, or either measurement cannot be compared as a string: TR-APR-006. An absent result is skipped
 
 ---
 

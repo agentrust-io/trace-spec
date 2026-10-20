@@ -36,6 +36,10 @@ The current SDK accepts only `tag:agentrust-io.com,2026:trace-v0.2` and rejects 
 
 To appraise is to check each claim against outside evidence, instead of taking the record's word for it. Resolve and verify the evidence your policy requires: hardware reports, expected measurements, policy and transcript artifacts, build provenance, revocation state, and transparency proofs. The record's `appraisal.status` is itself a signed claim, not an independent appraisal performed by `verify_record`.
 
+`verify_record` rejects a signed `appraisal.platform_measurement.measurement`
+that differs from `runtime.measurement`. This checks that the appraisal claim is
+about this record; it does not independently appraise the platform evidence.
+
 | Claimed status | Interpretation |
 |---|---|
 | `affirming` | The issuer reports a successful appraisal; verify its authority, evidence, scope, and policy |

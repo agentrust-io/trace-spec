@@ -47,6 +47,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 | TR-APR-003 | `appraisal.policy_ref` is present and is not an absolute URI. Skipped when the field is absent, which is permitted | Point `policy_ref` at the appraisal policy with an absolute URI, or omit it. Only the shape of the name is checked; TR-APR never resolves it |
 | TR-APR-004 | `appraisal.timestamp` is present and is not an integer of epoch seconds, or is in the future. Skipped when the field is absent, which is permitted | Set `appraisal.timestamp` to the epoch second the appraisal was produced. An appraisal dated in the future asserts something that has not happened, on the same ground TR-ENV-002 applies to `iat` |
 | TR-APR-005 | `appraisal.status` is not `affirming` at Level 1 or above. Skipped at Level 0, where `docs/levels.md`'s own minimum conformant record carries `none` | Re-run the appraisal until it affirms, or check the record at Level 0 |
+| TR-APR-006 | A present `appraisal.platform_measurement` does not name the same measurement as `runtime.measurement`, or either value cannot be compared as a string. Skipped when the optional appraisal result is absent | Appraise the runtime measurement in this record and set `appraisal.platform_measurement.measurement` to that exact value; do not reuse a result from another run |
 
 ## TR-TXN: Transcript
 

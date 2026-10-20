@@ -262,7 +262,7 @@
     },
     "tool_transcript": {
       "type": "object",
-      "description": "Bound hash of the MCP/A2A tool-call transcript. OPTIONAL for Phase 1 records; REQUIRED for Phase 2+.",
+      "description": "Bound hash of the MCP/A2A tool-call transcript. Optional in the base record; required to satisfy Level 2 transcript checks. Omission makes no transcript commitment.",
       "required": [
         "hash"
       ],
@@ -873,7 +873,7 @@
               }
             ]
           },
-          "$comment": "RFC 8747 defines cnf as a confirmation key: the public half, present so a verifier can bind the record to the key that signed it. A private member here publishes the signing key inside the signed, self-authenticating, typically anchored record, and the only remedy afterwards is to revoke the identity. Mirrors _JWK_PRIVATE_PARAMS in the reference model, which already refuses these. A kty this schema does not name is not held to a key-material rule here: section 3.2.1 states signing algorithms per envelope context and fixes no set for the embedded-signature form of section 3.2.2, so an enum here would add a constraint the specification does not make, and such a key is refused later by the verifier. The n and e declarations are load-bearing rather than decorative: without them a non-string modulus reaches additionalProperties, which admits any canonicalizable value.",
+          "$comment": "RFC 8747 defines cnf as a confirmation key: the public half, present so a verifier can bind the record to the key that signed it. A private member here publishes the signing key inside the signed, typically anchored record, and the only remedy afterwards is to revoke the identity. Mirrors _JWK_PRIVATE_PARAMS in the reference model, which already refuses these. This structural schema accepts public key material for enveloping profiles as well as the base embedded form. Section 3.2.2 restricts the base embedded form to OKP/Ed25519; the verifier checks that algorithm and key binding, so a kty enum here would incorrectly reject keys used by separately defined enveloping profiles. The n and e declarations are load-bearing rather than decorative: without them a non-string modulus reaches additionalProperties, which admits any canonicalizable value.",
           "additionalProperties": {
             "$ref": "#/$defs/canonicalizableValue"
           }
@@ -910,7 +910,7 @@
     },
     "signature": {
       "type": "string",
-      "description": "OPTIONAL embedded signature: base64url (no padding) signature by the cnf key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema. An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or ES256) and MUST be canonically encoded per RFC 4648 section 3.5: its final character's unused bits MUST be zero, so it MUST end in A, Q, g, or w.",
+      "description": "OPTIONAL embedded signature: base64url (no padding) Ed25519 signature by the cnf OKP/Ed25519 key over the canonical JSON form of the record with only this field absent. Every Trust Record MUST be signature-bound per spec section 3.2.2, but enveloped profiles (e.g. JWS, cMCP RuntimeClaim) carry the signature outside the record, so this field is not required by the schema. The 86-character encoding of a 64-byte Ed25519 signature MUST be canonical per RFC 4648 section 3.5: its final character's unused bits MUST be zero, so it MUST end in A, Q, g, or w. The pattern checks encoding structure only; the verifier enforces the Ed25519 algorithm, decoded length, and signature validity. Other algorithms require a separately defined profile and are not implied by JWT-context algorithms.",
       "pattern": "^(?:[A-Za-z0-9_-]{1,85}|[A-Za-z0-9_-]{85}[AQgw]|[A-Za-z0-9_-]{87,})$"
     }
   },

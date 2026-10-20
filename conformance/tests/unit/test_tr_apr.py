@@ -1,12 +1,17 @@
 """Unit tests for TR-APR module."""
 
+import base64
+import copy
 import time
 
+import jsonschema
 import pytest
-
+import rfc8785
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from trace_tests.modules.tr_apr import _MAX_FUTURE_SKEW_SECONDS, _not_absolute_uri, check
 from trace_tests.modules.tr_pol import _not_absolute_uri as _tr_pol_not_absolute_uri
 from trace_tests.result import Status
+from trace_tests.runner import run
 
 _VALID = {
     "appraisal": {
@@ -231,6 +236,56 @@ def test_a_non_affirming_status_fails_from_level_one(status, level):
 @pytest.mark.parametrize("level", [1, 2])
 def test_an_affirming_status_passes_from_level_one(level):
     assert _by_code(check(_VALID, level))["TR-APR-005"].status is Status.PASS
+
+
+# --- TR-APR-006: signed platform appraisal matches this runtime -----------
+
+
+def test_signed_platform_appraisal_about_another_measurement_fails(
+    valid_level0, schema
+):
+    """A valid signature and schema shape cannot authorize a result about another digest."""
+    key = Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+    public_x = base64.urlsafe_b64encode(key.public_key().public_bytes_raw()).rstrip(b"=").decode()
+    runtime_measurement = "sha256:" + "a" * 64
+
+    def signed_record(appraised_measurement):
+        record = copy.deepcopy(valid_level0)
+        record["iat"] = int(time.time()) - 30
+        record["runtime"] = {
+            "platform": "tpm2",
+            "measurement": runtime_measurement,
+        }
+        record["appraisal"]["platform_measurement"] = {
+            "measurement": appraised_measurement,
+            "layers": {"pcr:0": {"outcome": "established"}},
+        }
+        record["cnf"]["jwk"] = {"kty": "OKP", "crv": "Ed25519", "x": public_x}
+        body = rfc8785.dumps(record)
+        record["signature"] = base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode()
+        key.public_key().verify(
+            base64.urlsafe_b64decode(record["signature"] + "=="), body
+        )
+        return record
+
+    matching = signed_record(runtime_measurement)
+    mismatched = signed_record("sha256:" + "b" * 64)
+    for record in (matching, mismatched):
+        jsonschema.validate(record, schema)
+
+    matching_findings = run(matching, "trace", 0)
+    mismatched_findings = run(mismatched, "trace", 0)
+    assert _by_code(matching_findings["TR-SIG"])["TR-SIG-005"].status is Status.PASS
+    assert _by_code(mismatched_findings["TR-SIG"])["TR-SIG-005"].status is Status.PASS
+    assert _by_code(matching_findings["TR-APR"])["TR-APR-006"].status is Status.PASS
+    mismatch = _by_code(mismatched_findings["TR-APR"])["TR-APR-006"]
+    assert mismatch.status is Status.FAIL
+    assert "must equal runtime.measurement" in mismatch.message
+    assert [f.code for findings in matching_findings.values() for f in findings if f.failed()] == []
+    mismatch_failures = [
+        f.code for findings in mismatched_findings.values() for f in findings if f.failed()
+    ]
+    assert mismatch_failures == ["TR-APR-006"]
 
 
 # --- the duplicated predicate ----------------------------------------------

@@ -1,4 +1,4 @@
-"""TR-TXN: Tool-call transcript checks (spec §3.1, Phase 2+ records)."""
+"""TR-TXN: Tool-call transcript checks (spec §3.1, Level 2)."""
 
 from __future__ import annotations
 

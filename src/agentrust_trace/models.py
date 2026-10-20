@@ -42,7 +42,8 @@ _DURATION_TIME = r"(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S)"
 _DURATION_DATE = r"(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
 _DURATION_RE = rf"^P(\d+W|{_DURATION_DATE}(T{_DURATION_TIME})?|T{_DURATION_TIME})$"
 # Base64url without padding, in its canonical spelling where the length leaves
-# unused bits. An 86-character value is a 64-byte signature (Ed25519 or ES256):
+# unused bits. An 86-character value is a 64-byte signature (Ed25519 in the base
+# embedded form):
 # its final character carries 2 signed bits and 4 unused ones, which RFC 4648
 # section 3.5 requires to be zero, so that character is one of A, Q, g, w. Other
 # lengths are matched as before. The same string as `schema/trace-claim.json` and
@@ -606,14 +607,13 @@ class TrustRecord(_TraceModel):
         str, Field(pattern=_SIGNATURE_RE),
         AfterValidator(partial(_require_pattern, pattern=_SIGNATURE_RE)),
     ] | None = None
-    """Optional embedded signature (base64url, no padding) by the cnf key over the
-    canonical JSON form of the record with only this field absent. Every Trust Record must
-    be signature-bound per spec section 3.2.2; enveloped profiles carry the signature
-    outside the record instead of in this field.
+    """Optional embedded signature (base64url, no padding) over the canonical
+    record with only this field absent. The base embedded form uses the cnf
+    OKP/Ed25519 key; enveloped profiles carry the signature outside this field.
 
-    An 86-character value is the base64url encoding of a 64-byte signature (Ed25519 or
-    ES256) and must be canonically encoded per RFC 4648 section 3.5: the final
-    character's unused bits must be zero, so it must end in A, Q, g, or w."""
+    This structural model checks canonical spelling of an 86-character value,
+    whose final unused bits must be zero per RFC 4648 section 3.5. It does not
+    establish the algorithm or signature validity; ``verify_record`` does."""
 
     @model_validator(mode="after")
     def _origin_cannot_claim_hardware(self) -> TrustRecord:
