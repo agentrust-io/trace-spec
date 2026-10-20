@@ -94,27 +94,33 @@ review. "Before a pull request is reviewed" says what is.
 
 4. One behaviour is stated in several places, and an edit leaves one of them
    stale. The suite pins the two packaged copies of `schema/trace-claim.json`
-   and `docs/schema.md` to it, so those turn red. For the rest, the README of
-   the example set you touched, the docs page that describes the behaviour,
-   `CHANGELOG.md` and the description, assume nothing checks them unless you
-   find the test, and read each after the last edit, counts and names first.
+   to it, one as parsed JSON and one byte for byte, so those turn red, and
+   holds `docs/schema.md` to a row per field, a mention per enum value and,
+   for two tables, the required flags. A wrong description stays green unless
+   it omits a digest algorithm its field's pattern admits. For the rest, the
+   README of the example set you touched, the docs page that describes the
+   behaviour, `CHANGELOG.md` and the description, assume nothing checks them
+   unless you find the test, and read each after the last edit, counts and
+   names first.
 
 5. For a sentence in the specification, a schema description or a docs page
    that says what the code does, find the code that implements it and run
-   that code against what the sentence now says. A few tests hold a page to
-   the code, as `tests/test_build_provenance_depth_doc.py` does for one page.
+   that code against what the sentence now says. Some tests hold a page to
+   the schema, as `tests/test_build_provenance_depth_doc.py` does for three
+   pages, or run its code blocks, as `tests/test_docs_quickstart.py` does.
    Unless one holds yours, nothing runs the sentence. If nothing implements
    it, say so in the description.
 
 6. For a check the change adds or touches, say what it reports when it
    cannot decide. The library has two answers, each documented where it is
-   used: fail closed, as `verify_record` and the revocation store do, or a
-   value of its own, with the cause where there is one, as
-   `unverified_for_revocation`, `no_check_performed` and a citation's
+   used, and one function can give both: the profile, trust-anchoring and
+   freshness checks of `sign.verify_record` fail closed, while its revocation
+   result is a value of its own, with the cause where there is one,
+   `unverified_for_revocation` or `no_check_performed`, as a citation's
    `unresolvable` or `not_attempted` are. Say which one the change gives, and
-   point at the test that pins it. Then name a class of input your tests did not feed.
-   `tools/sweep_public_surface.py` prints what each public parameter accepts
-   and is the place to start.
+   point at the test that pins it. Then name a class of input your tests did
+   not feed. `tools/sweep_public_surface.py` prints what each public parameter
+   accepts and is the place to start.
 
 7. A check that has never been seen to fail has not been verified. The
    mutation runner for the conformance modules,
@@ -125,14 +131,14 @@ review. "Before a pull request is reviewed" says what is.
 
 8. Keep reading until a read changes nothing. Then the read by someone who
    has seen none of your work, which "Before a pull request is reviewed"
-   asks for. Give them the diff, the description and the sources it cites,
-   and nothing of yours: notes and conclusions handed to a reader come back
-   as agreement. Ask for the strongest reply a reviewer could make to each
-   claim, every sentence that is false, imprecise or wider than what was
-   measured, and what a reviewer would attack first. What comes back is a
-   set of claims: re-run any measurement you act on before it enters the
-   description. Then say what the reader found, what you changed, and what
-   you did not change and why.
+   asks for. Give them the repository at the commit, the diff, the
+   description and the sources it cites, and nothing of yours: notes and
+   conclusions handed to a reader come back as agreement. Ask for the
+   strongest reply a reviewer could make to each claim, every sentence that
+   is false, imprecise or wider than what was measured, and what a reviewer
+   would attack first. What comes back is a set of claims: re-run any
+   measurement you act on before it enters the description. Then say what
+   the reader found, what you changed, and what you did not change and why.
 
 ## Using AI to contribute
 
