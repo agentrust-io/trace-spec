@@ -70,6 +70,70 @@ work, such as another contributor or a new AI agent session given the
 repository and the sources the description cites. Say in the description what
 that reader found and what you changed because of it.
 
+## Reviewing your own pull request
+
+In short: before you open it, read the change the way a reviewer will, and
+put what you found in the description. None of this is a condition for
+review. "Before a pull request is reviewed" says what is.
+
+1. Every number in the description was measured on the commit you are
+   opening, by a command you name, with its unit: tests or cases, lines or
+   occurrences. After an amend, measure again. Where a tool printed the
+   number, read what it counted. The Review bar job summary, for one, is
+   built from the tests the pull request itself supplies, as
+   `tools/review_bar.py` says.
+
+2. Write the inputs that were run, not the class they belong to. A list of
+   the values a check now rejects can be checked and cannot be wider than
+   what was run; "rejects malformed input" can be neither.
+
+3. An issue, pull request or discussion the description names is part of the
+   pull request. Read each one, and whatever it names as its own origin,
+   before writing the description: what it settled you are not reopening,
+   and what it asked for you are answering.
+
+4. One behaviour is stated in several places, and an edit leaves one of them
+   stale. The suite pins the two packaged copies of `schema/trace-claim.json`
+   and `docs/schema.md` to it, so those turn red. For the rest, the README of
+   the example set you touched, the docs page that describes the behaviour,
+   `CHANGELOG.md` and the description, assume nothing checks them unless you
+   find the test, and read each after the last edit, counts and names first.
+
+5. For a sentence in the specification, a schema description or a docs page
+   that says what the code does, find the code that implements it and run
+   that code against what the sentence now says. A few tests hold a page to
+   the code, as `tests/test_build_provenance_depth_doc.py` does for one page.
+   Unless one holds yours, nothing runs the sentence. If nothing implements
+   it, say so in the description.
+
+6. For a check the change adds or touches, say what it reports when it
+   cannot decide. The library has two answers, each documented where it is
+   used: fail closed, as `verify_record` and the revocation store do, or a
+   value of its own, with the cause where there is one, as
+   `unverified_for_revocation`, `no_check_performed` and a citation's
+   `unresolvable` or `not_attempted` are. Say which one the change gives, and
+   point at the test that pins it. Then name a class of input your tests did not feed.
+   `tools/sweep_public_surface.py` prints what each public parameter accepts
+   and is the place to start.
+
+7. A check that has never been seen to fail has not been verified. The
+   mutation runner for the conformance modules,
+   `conformance/measurement/scripts/mutate_modules.py`, refuses to report on
+   a baseline that is not green or on a rewrite that changed nothing, and
+   purges caches before every run. A check you write yourself needs the
+   same: see it fail once before you cite it.
+
+8. Keep reading until a read changes nothing. Then the read by someone who
+   has seen none of your work, which "Before a pull request is reviewed"
+   asks for. Give them the diff, the description and the sources it cites,
+   and nothing of yours: notes and conclusions handed to a reader come back
+   as agreement. Ask for the strongest reply a reviewer could make to each
+   claim, every sentence that is false, imprecise or wider than what was
+   measured, and what a reviewer would attack first. What comes back is a
+   set of claims: re-run any measurement you act on before it enters the
+   description. Then say what the reader found, what you changed, and what
+   you did not change and why.
+
 ## Using AI to contribute
 
 Use agents. A lot of this was built with them and saying otherwise would be dishonest.
