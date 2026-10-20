@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import ValidationError
 
@@ -97,13 +97,9 @@ def combine_requirements(
                 trusted.expected_observed_digest or declared.expected_observed_digest
             ),
         )
-    bindings_by_pair: dict[tuple[str, str, str], str] = {}
-    for existing in local.bindings:
-        pair: tuple[str, str, str] = (existing.source, existing.target, existing.relationship)
-        previous = bindings_by_pair.get(pair)
-        if previous is None or _METHOD_STRENGTH[existing.method] > _METHOD_STRENGTH[previous]:
-            bindings_by_pair[pair] = existing.method
-    declared_by_pair: dict[tuple[str, str, str], set[str]] = {}
+    bindings: dict[tuple[str, str, str, str], dict[str, Any]] = {
+        (b.source, b.target, b.relationship, b.method): b.model_dump() for b in local.bindings
+    }
     for declared_binding in verified.requirements.required_bindings:
         if (
             declared_binding.source not in local_by_id
@@ -122,33 +118,22 @@ def combine_requirements(
         ]
         if not accepted or len(accepted) != len(declared_binding.accepted_methods):
             raise v.ProfileError("manifest_requirement_untrusted")
+        method = max(accepted, key=lambda m: _METHOD_STRENGTH[m])
         pair = (
             declared_binding.source,
             declared_binding.target,
             declared_binding.relationship,
         )
-        if pair in declared_by_pair:
-            declared_by_pair[pair] &= set(accepted)
-        else:
-            declared_by_pair[pair] = set(accepted)
-        if not declared_by_pair[pair]:
-            raise v.ProfileError("manifest_requirement_untrusted")
-    for pair, accepted_set in declared_by_pair.items():
-        local_method = bindings_by_pair.get(pair)
-        min_strength = 0 if local_method is None else _METHOD_STRENGTH[local_method]
-        compatible = [m for m in accepted_set if _METHOD_STRENGTH[m] >= min_strength]
-        if not compatible:
-            raise v.ProfileError("manifest_requirement_untrusted")
-        bindings_by_pair[pair] = max(compatible, key=lambda m: _METHOD_STRENGTH[m])
-    bindings = {
-        (source, target, relationship, method): {
-            "source": source,
-            "target": target,
-            "relationship": relationship,
+        if (*pair, "same-evidence-v1") in bindings:
+            continue
+        if method == "same-evidence-v1" and (*pair, "same-instance-v1") in bindings:
+            del bindings[(*pair, "same-instance-v1")]
+        bindings[(*pair, method)] = {
+            "source": declared_binding.source,
+            "target": declared_binding.target,
+            "relationship": declared_binding.relationship,
             "method": method,
         }
-        for (source, target, relationship), method in bindings_by_pair.items()
-    }
     try:
         return v.Requirements.model_validate(
             {

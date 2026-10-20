@@ -161,10 +161,36 @@ def test_manifest_tightens_local_same_instance_binding_to_same_evidence(
     ]
 
 
-def test_manifest_cannot_weaken_local_same_evidence_binding(
+def test_local_same_evidence_and_dual_method_bindings_are_preserved(
     fixture: dict[str, Any],
 ) -> None:
     ctx = context(fixture)
+    local_both = ctx.requirements.model_copy(
+        update={
+            "bindings": [
+                v.BindingRequirement(
+                    source="runtime.cpu",
+                    target="runtime.accelerator.0",
+                    relationship="same-workload",
+                    method="same-instance-v1",
+                ),
+                v.BindingRequirement(
+                    source="runtime.cpu",
+                    target="runtime.accelerator.0",
+                    relationship="same-workload",
+                    method="same-evidence-v1",
+                ),
+            ]
+        }
+    )
+    merged_both = combine_requirements(
+        make_verified(local_both, ctx.policy, []), local_both, ctx.policy
+    )
+    assert [b.method for b in merged_both.bindings] == [
+        "same-evidence-v1",
+        "same-instance-v1",
+    ]
+
     local_strong = ctx.requirements.model_copy(
         update={
             "bindings": [
@@ -189,8 +215,8 @@ def test_manifest_cannot_weaken_local_same_evidence_binding(
             )
         ],
     )
-    with pytest.raises(v.ProfileError, match="^manifest_requirement_untrusted$"):
-        combine_requirements(verified, local_strong, ctx.policy)
+    merged_strong = combine_requirements(verified, local_strong, ctx.policy)
+    assert [b.method for b in merged_strong.bindings] == ["same-evidence-v1"]
 
 
 @pytest.mark.parametrize(
