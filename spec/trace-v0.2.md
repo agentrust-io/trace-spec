@@ -221,6 +221,7 @@ A `references` entry is a pointer, not evidence. What the signature attests is t
 | `resolver` | yes | Identifier of the party obliged to resolve `id`. |
 | `retention` | no | Period for which `resolver` undertakes to keep `id` resolvable, as an ISO 8601 duration. |
 | `digest` | no | Digest of the referenced object, when the producer holds it at issue time. |
+| `validation` | no | **v0.3 draft only.** How `id` is checked. Absent means by resolution through `resolver`, the only mode this version defines. `recompute` is defined under "Entries validated by recomputation" below. <!-- CHANGED: #321 - validation proposed for v0.3 --> |
 
 Registered `rel` values:
 
@@ -230,6 +231,7 @@ Registered `rel` values:
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
 - **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 - **`applicability-assessment`**. An assessor's statement of whether a stated legal provision applies to a stated party, held in another system: the party and its role in the instrument's own term, the jurisdiction, the provision and the date of the text read, the basis, and the outcome in a closed vocabulary the object names. <!-- CHANGED: #445 - applicability-assessment registered -->
+- **`position-commitment`**. A commitment to a position in an externally ordered sequence, taken before the digest of this record exists. `id` is the commitment to that position, validated by recomputation from a proof the holder carries and that commits this record, rather than by resolution. Under this version the entry earns nothing a pointer does not: recomputation is not a check this version defines, rule 3 governs, and `resolver` is still required, so a producer that retains nothing omits the entry. <!-- CHANGED: #321 - position-commitment registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
@@ -244,7 +246,25 @@ Rule 3 is what makes the block safe to add. A reference that could invalidate a 
 
 **`resolver` names who must retain, not who adjudicates.** The field is a retention undertaking: it identifies the party obliged to keep `id` resolvable, alongside `retention` as the period they undertake to keep it so. It is not a verification authority, and the two read as the same field until they are separated. The conformance suite refuses the opposite arrangement for a different field: TR-POL-003 takes its resolver from the caller and never derives it from the record, because a record that names its own checker can name one that agrees with it. Naming yourself as the party who must retain an artifact is ordinary and non-circular; naming yourself as the party who decides whether it is true is the circularity that rule refuses. An operator naming themselves as `resolver` for their own artifact is therefore within this section and would still be refused under TR-POL-003's rule, and both are correct. Rule 4 is aimed at a producer who can name no obliged party at all, not at one who is that party.
 
-**Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together.
+**Entries validated by recomputation (v0.3 draft).** <!-- CHANGED: #321 - recompute validation proposed for v0.3 -->
+
+Every rule above treats `id` as an address: something a party holds and a verifier fetches. When `id` is a digest the verifier recomputes from a proof the holder already carries, nothing is fetched, nothing is retained, and no party is obliged to do either. An entry marks that case with `validation: "recompute"`. The field is carried by `schema/trace-claim-v0.3-draft.json` and binds nothing until v0.3 is adopted. The v0.2 schema rejects an entry that carries it, which makes this a version gate rather than a patch: every existing record keeps validating, and a v0.2 verifier rejects a record that uses the field.
+
+It is a field and not a `rel` because how an entry is checked and what it relates to are separate questions. Putting the check into a relation's name would make the relation silently change the verification rule. Any relation, registered or not, may carry it.
+
+For an entry with `validation: "recompute"`:
+
+1. A verifier MUST validate `id` by recomputation from evidence it holds, never by resolution, and the recomputation MUST bind the entry to the record carrying it: the evidence MUST commit this record's digest. Establishing that the committed object exists is not enough. The evidence is public once presented, so any record could carry the same entry and pass a check that stops there. This record's digest is the one §3.1.3 defines for a parent record: SHA-256 (or SHA-384) of the RFC 8785 canonical form of the complete record as published, `signature` member included.
+2. No party is obliged to retain anything, so rule 4 does not apply, and `resolver` and `retention` MUST be absent. On this entry they would state an undertaking nobody has made.
+3. The two ways the check can end MUST be kept apart:
+   - The verifier cannot recompute because it does not hold the evidence. The entry is treated as absent. That is not a finding against the record, and rule 3 applies to it as it does to an entry that cannot be resolved.
+   - The recomputation runs and disagrees. That is a contradiction in the record, and a verifier MUST report it as one and MUST NOT report it as absent or unresolvable.
+
+   This is the distinction [`docs/rfcs/a2a-delegation-profile.md`](../docs/rfcs/a2a-delegation-profile.md) §4.3 draws on the delegation surface, where evidence that resolves and contradicts fails and evidence that cannot be read downgrades. One sentence covering both outcomes is how a verifier ends up reporting tampering as absence.
+
+Rules 1 and 2 hold unchanged. A recomputation that agrees establishes the binding its relation defines and nothing more: it does not change `runtime.platform`, and the second half of rule 3 still holds, so the entry is not attested evidence of what the execution did.
+
+**Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference checked by resolution is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together. An entry validated by recomputation, proposed above, sits outside this gap because it needs no retention at all.
 
 #### 3.1.3 `delegation.parent_record_hash`: what the digest covers
 
