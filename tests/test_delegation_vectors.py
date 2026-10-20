@@ -1,16 +1,15 @@
-"""Run the delegation-link corpus through a reference walk of the proposed A2A profile.
+"""Run the delegation-link corpus through `agentrust_trace.delegation`.
 
 The `delegation` block is normative in v0.2; what a verifier does with a chain of
-them is not, and `docs/rfcs/a2a-delegation-profile.md` is the proposal that would
-make it so. This module is that proposal executed: every rule below corresponds to
-one numbered requirement in the RFC, and every vector under
-`examples/delegation-link/` declares the outcome it expects before this code runs.
+them is proposed in `docs/rfcs/a2a-delegation-profile.md` and implemented in
+`agentrust_trace.delegation`. Every rule in `RULES` corresponds to one numbered
+requirement in the RFC, and every vector under `examples/delegation-link/`
+declares the outcome it expects before this code runs.
 
-The registry is the same shape as `test_action_receipt_fixtures.RULES`, for the
-same reason: a check that is not registered never runs, so it cannot exist quietly
-outside the inventory that `test_delegation_completeness.py` mutates. Nothing here
-is exported from `agentrust_trace`: the package gains no public API for rules
-that are not yet normative.
+The rule registry in `agentrust_trace.delegation` uses the same shape as
+`test_action_receipt_fixtures.RULES`, for the same reason: a check that is not
+registered never runs, so it cannot exist quietly outside the inventory that
+`test_delegation_completeness.py` mutates.
 
 Two orderings in the walk carry weight and are not incidental:
 
@@ -36,19 +35,15 @@ from typing import Any
 
 import pytest
 
-try:
-    from agentrust_trace.delegation import (
-        CLASSIFICATIONS,
-        RULES,
-        ChainResult,
-        Rule,
-        _jwk_key,
-        parent_record_hash as _digest,
-        verify_delegation_chain,
-    )
-except ImportError:
-    pytest.fail("unimplemented")
-
+from agentrust_trace.delegation import (
+    CLASSIFICATIONS,
+    RULES,
+    ChainResult,
+    Rule,
+    _jwk_key,
+    parent_record_hash as _digest,
+    verify_delegation_chain,
+)
 from agentrust_trace.sign import _canonical_bytes as _canonical
 from agentrust_trace.validate import iter_errors
 

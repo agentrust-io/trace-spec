@@ -10,15 +10,13 @@ with its ``signature`` member present:
 ``parent_record_hash`` and ``verify_delegation_link`` implement that single-hop
 commitment and mirror ``trust-record-verify/src/delegation.ts``.
 
-``verify_delegation_chain`` implements the ten-rule A2A delegation-link verification
-walk specified in ``docs/rfcs/a2a-delegation-profile.md`` and scored by the 24 test
+``verify_delegation_chain`` implements the eleven-rule A2A delegation-link verification
+walk specified in ``docs/rfcs/a2a-delegation-profile.md`` and scored by the 26 test
 vectors under ``examples/delegation-link/``.
 """
 
 from __future__ import annotations
 
-import base64
-import binascii
 import hashlib
 import hmac
 from collections.abc import Callable, Iterable, Sequence
@@ -28,8 +26,10 @@ from typing import Any
 import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from jsonschema import ValidationError
 
-from agentrust_trace.sign import _canonical_bytes
+from agentrust_trace.sign import _b64url_decode, _canonical_bytes, _integer_value
+from agentrust_trace.validate import validate_json
 
 DELEGATION_DIGEST_ALGORITHMS: tuple[str, ...] = ("sha256", "sha384")
 """Digest algorithms permitted for ``delegation.parent_record_hash`` (section 3.1.3)."""
@@ -177,17 +177,13 @@ def verify_delegation_link(
     )
 
 
-def _decode_b64u(value: str) -> bytes:
-    if not value or any(
-        ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-        for ch in value
-    ):
-        raise ValueError("invalid base64url characters")
-    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-
-
 def _signature_invalid(record: dict[str, Any]) -> bool:
-    """Return True when *record* fails verification under its advertised ``cnf.jwk``."""
+    """Does *record* fail verification under the key it advertises in ``cnf.jwk``?
+
+    The claimed key, not a trusted one: whether the key is trusted is a separate
+    question with its own rule, and merging them produces a verifier that cannot
+    tell "forged" from "signed by someone you have not heard of".
+    """
     cnf = record.get("cnf")
     jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
     if not isinstance(jwk, dict):
@@ -204,15 +200,16 @@ def _signature_invalid(record: dict[str, Any]) -> bool:
     body = {k: v for k, v in record.items() if k != "signature"}
     try:
         canonical_body = _canonical_bytes(body)
-        Ed25519PublicKey.from_public_bytes(_decode_b64u(jwk["x"])).verify(
-            _decode_b64u(signature), canonical_body
+        raw_x = _b64url_decode(jwk["x"], field="cnf.jwk.x")
+        raw_sig = _b64url_decode(signature, field="signature")
+        Ed25519PublicKey.from_public_bytes(raw_x).verify(
+            raw_sig, canonical_body
         )
     except (
         InvalidSignature,
         ValueError,
         TypeError,
         KeyError,
-        binascii.Error,
         rfc8785.CanonicalizationError,
     ):
         return True
@@ -304,7 +301,11 @@ def _credential_window(hop: Hop) -> bool:
     cred = hop.credential
     if cred is None:
         return False
-    return not bool(cred["not_before"] <= hop.record["iat"] <= cred["not_after"])
+    # Judged at the hop's own `iat`. A chain does not expire because it is being
+    # read late, and a verifier using its own clock reports a different answer
+    # every day for the same evidence.
+    iat = _integer_value(hop.record["iat"], "iat")
+    return not bool(cred["not_before"] <= iat <= cred["not_after"])
 
 
 def _data_class_unknown(hop: Hop) -> bool:
@@ -387,38 +388,16 @@ def _validate_record_shape(record: Any) -> dict[str, Any]:
         raise DelegationError(
             f"each record must be a JSON object, got {type(record).__name__}"
         )
-    if not isinstance(record.get("subject"), str) or not record["subject"]:
-        raise DelegationError("record must carry a non-empty string subject")
-    iat = record.get("iat")
-    if isinstance(iat, bool) or not isinstance(iat, int):
-        raise DelegationError("record must carry an integer iat")
-    if not isinstance(record.get("data_class"), str) or not record["data_class"]:
-        raise DelegationError("record must carry a non-empty string data_class")
-    cnf = record.get("cnf")
-    if not isinstance(cnf, dict) or not isinstance(cnf.get("jwk"), dict):
-        raise DelegationError("record must carry a cnf.jwk object")
-    if not isinstance(record.get("signature"), str) or not record["signature"]:
-        raise DelegationError("record must carry a non-empty string signature")
-    if "delegation" in record:
-        delegation = record["delegation"]
-        if not isinstance(delegation, dict) or set(delegation) != {
-            "parent_record_hash",
-            "credential_id",
-        }:
-            raise DelegationError(
-                "record delegation block must contain parent_record_hash and credential_id"
-            )
-        parent_hash = delegation.get("parent_record_hash")
-        cred_id = delegation.get("credential_id")
-        if (
-            not isinstance(parent_hash, str)
-            or ":" not in parent_hash
-            or not isinstance(cred_id, str)
-            or not cred_id
-        ):
-            raise DelegationError(
-                "record delegation block needs '<alg>:<hex>' parent_record_hash and credential_id"
-            )
+    try:
+        validate_json(record)
+    except ValidationError as exc:
+        raise DelegationError(
+            f"record does not conform to the TRACE v0.2 schema: {exc.message}"
+        ) from exc
+    try:
+        _integer_value(record.get("iat"), "iat")
+    except ValueError as exc:
+        raise DelegationError(str(exc)) from exc
     return record
 
 
@@ -513,10 +492,20 @@ def verify_delegation_chain(
 ) -> ChainResult:
     """Walk a delegation chain from *leaf* towards its root under *context*.
 
-    *records* is an unordered iterable of Trust Record dicts. *leaf* identifies
-    the record under appraisal either by its digest string (``"<alg>:<hex>"``) or
-    by passing the leaf record dict itself. Raises :class:`DelegationError` when
-    the caller's inputs (*records*, *leaf*, *context*, or *rules*) are malformed
+    The record set is a set: it arrives in no useful order, the leaf is named by
+    digest (or passed as the leaf record dict itself) rather than by position,
+    and a parent is found by looking its digest up rather than by taking the next
+    element. An implementation that reads ``records[0]`` as the root agrees with
+    this one on nothing.
+
+    No cycle check, deliberately. A cycle needs each record's delegation block to
+    carry a digest covering the block that names it back, which is a hash
+    collision; the reachable analogue is an unbounded chain, and that is what
+    ``depth_exceeded`` is for. The RFC states this rather than leaving a reader to
+    wonder which of the two was forgotten.
+
+    Raises :class:`DelegationError` when the caller's inputs (*records*, *leaf*,
+    *context*, or *rules*) are malformed, when any record fails schema validation,
     or when *leaf* is not present in *records* under a supported digest algorithm.
     """
     if isinstance(records, (str, bytes, bytearray, dict)) or not isinstance(
@@ -589,6 +578,19 @@ def verify_delegation_chain(
         failures += found
         warnings += warned
 
+        # Whether the walk can continue is a structural fact about the records,
+        # asked here directly. The registry says *why* a link could not be
+        # followed; it does not decide whether one was. Deriving the control flow
+        # from "did any rule fire" instead couples the walk to the registry's
+        # contents, and the completeness suite's whole method is to run this
+        # function with rules removed: under which that walk stepped off the end
+        # of the index and raised, rather than reporting a changed outcome.
+        # One reason only: the parent could not be resolved. The depth bound is
+        # deliberately *not* repeated here. Repeating it stops the walk at the same
+        # record whether or not `depth_exceeded` is registered, so a weakened bound
+        # never gets to walk further than a correct one, and the two depth vectors
+        # move together under every mutation: margin without independence, which
+        # is exactly what #124 says a second vector must not be.
         parent = None
         if hop.link_algorithm in supported:
             parent = index.get(current["delegation"]["parent_record_hash"])
@@ -600,6 +602,11 @@ def verify_delegation_chain(
         failures += found
         warnings += warned
 
+        # Not a conformance rule, and it cannot fire on a chain anyone can build:
+        # a cycle would need a record's delegation block to hold a digest of the
+        # block that names it back. It is here so that this function terminates on
+        # any input at all, including one hand-edited into a shape the hashes
+        # forbid, rather than terminating because the corpus happens to be honest.
         if id(parent) in visited:
             break
         visited.add(id(parent))

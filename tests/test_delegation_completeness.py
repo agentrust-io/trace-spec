@@ -43,18 +43,14 @@ from pathlib import Path
 import pytest
 import rfc8785
 
-try:
-    from agentrust_trace.delegation import (
-        CLASSIFICATIONS,
-        RULES,
-        Hop,
-        Rule,
-        _jwk_key,
-        _signature_invalid,
-    )
-except ImportError:
-    pytest.fail("unimplemented")
-
+from agentrust_trace.delegation import (
+    CLASSIFICATIONS,
+    RULES,
+    Hop,
+    Rule,
+    _jwk_key,
+    _signature_invalid,
+)
 from tests.test_delegation_vectors import (
     VECTOR_PATHS,
     verify_chain,
