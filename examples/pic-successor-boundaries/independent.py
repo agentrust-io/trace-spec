@@ -57,6 +57,12 @@ def check(data, context):
         for field in ["intent_digest", "args_digest"]:
             require(re.fullmatch(r"sha256:[0-9a-f]{64}", auth["pic"][field]), "pic-digest-syntax")
         jsonschema.validate(data["bridge"], schema)
+        # A valid signature under the trusted key is not enough: the signed key ID
+        # must also name that verifier-configured key.
+        require(
+            auth["authorizer_key_id"] == data["authorizer_jwk"].get("kid"),
+            "authorizer-key-mismatch",
+        )
         signature(data["bridge"], data["authorizer_jwk"])
         require(auth["decision"] == "allow")
         require(auth["authorized_at"] <= context["now"] < auth["expires_at"])
