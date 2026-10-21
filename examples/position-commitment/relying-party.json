@@ -1,0 +1,20 @@
+{
+  "note": "Supplied by the relying party, never read from a proof: the committer keys it trusts and its own copy of the ordered sequence.",
+  "committer_keys": {
+    "2pnANDR1rqwnBIQZzv2v7MTHnuhoFeCW0gMfcHvW8f0": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "3fbaE_Jek7CQEm8TCSZywsFrzwTY8aIgfXwOabciWbM"
+    }
+  },
+  "sequence": {
+    "id": "https://beacon.example.org/sequence/1",
+    "positions": {
+      "8700": "sha256:4328011aab180ac501467048cdbb54940307db1c061d2c66288a4b2434c38836",
+      "8812": "sha256:adda5fb5b1273925865f3a8c1b983f8a5e51d0126942000e45864cfa5096d321",
+      "8813": "sha256:f0a856a9f0bf5d131dbd8565ee677b1c021d43e5141bfcc7a3090cc599ce8296",
+      "8814": "sha256:37a2114c5c5c113efd550e5e7f13734551f9f57c882446260e6252d35599a114",
+      "8815": "sha256:19005d39bba5b2410fefc9eb68cebe70ab915233c40608c17691251470bd0051"
+    }
+  }
+}

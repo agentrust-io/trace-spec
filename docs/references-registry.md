@@ -39,7 +39,7 @@ schema description, in `docs/schema.md`, or in this document.
 
 ## Registered values
 
-The six labels agreed so far, what each one points at, and where it is defined:
+The seven labels agreed so far, what each one points at, and where it is defined:
 
 | `rel` | Referenced object | Defined in | Example |
 |---|---|---|---|
@@ -49,6 +49,7 @@ The six labels agreed so far, what each one points at, and where it is defined:
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below | [`examples/condition-appraisal/`](../examples/condition-appraisal/) |
 | `observed-effect` | A signed record of the state change an observer outside the agent saw over one interval | This document, below | [`examples/observed-effect/`](../examples/observed-effect/) |
 | `applicability-assessment` | An assessor's statement of whether a stated legal provision applies to a stated party, held in another system | This document, below | [`examples/applicability-assessment/`](../examples/applicability-assessment/) |
+| `position-commitment` | A commitment to a position in an externally ordered sequence, taken before the digest of this record exists | This document, below | [`examples/position-commitment/`](../examples/position-commitment/) |
 
 The first three were registered by the change that introduced the block (#197) and
 their referenced objects are defined to the extent the documents cited define them.
@@ -280,6 +281,81 @@ provision applies in law, and it is never evidence that the duty was met. Likewi
 not a finding for or against the record. The example set holds `applies`,
 `does-not-apply`, and `undetermined` objects side by side, and the records citing them
 verify identically.
+
+## `position-commitment`
+
+### Meaning
+
+The record points at a position it took in an externally ordered sequence before its
+own digest existed. The construction that prompted the registration (#321): an enclave
+allocates a slot before the record's digest exists, signs the slot record, and the
+not-before is an ordered sequence the producer does not operate. The slot record
+travels inside a proof the holder carries. Nothing is held anywhere for a verifier to
+fetch, so what the relation lets a relying party establish is when the position was
+taken relative to the sequence, which a timestamp inside the record cannot show
+because the producer writes it.
+
+Two neighbours it is not. It is not a transparency-log inclusion: an inclusion proof
+shows a record was logged after it existed, and this commitment is taken before. And
+it is not `origin`: the position says nothing about where the record's evidence came
+from.
+
+### The referenced object
+
+A proof the holder carries, not an object a resolver retains. Its wire format belongs
+to the sequence and the committing party; what registration fixes is what it must
+carry.
+
+| Fact | Carried as | Why it is required |
+|---|---|---|
+| The position | The commitment that is the entry's `id` | Recomputing it from the proof is the check |
+| The sequence | An identifier for the externally ordered sequence and the position within it | The not-before comes from a sequence the producer does not operate |
+| The record binding | This record's digest, committed by the proof | Without it the same proof passes for any record that carries it |
+| The committing party | An identifier and a reference to its verification key, where the slot record is signed | Lets a relying party check who allocated the slot |
+
+This record's digest is the §3.1.3 preimage applied to this record: the RFC 8785
+canonical form of the complete record as published, `signature` member included.
+
+No resolver undertakes to retain the proof, which is why the entry names none. That
+removes the retention undertaking, not the need for the bytes: recomputing later still
+needs the proof, so a holder who wants the entry checked keeps the proof bytes, and a
+verifier handed none treats the entry as absent.
+
+The committed example, [`examples/position-commitment/`](../examples/position-commitment/),
+shows one concrete shape for these facts: a slot whose digest is the `id`, and a
+binding the committer signs once the record exists, which commits the slot and this
+record's digest. A producer whose sequence or committer emits another shape that
+carries these facts is within this definition.
+
+### What a verifier may conclude
+
+Under v0.2, nothing beyond any other pointer. Recomputation is not a check v0.2
+defines, rule 3 of §3.1.2 governs, and `resolver` is still required, so a producer
+that retains nothing must omit the entry. The registration is useful under v0.2 only
+so that two implementations mean the same thing by the name.
+
+Under the v0.3 draft, an entry carrying `validation: "recompute"` has three outcomes,
+each reported separately:
+
+1. **The verifier does not hold the proof.** The entry is absent. That is not a
+   finding against the record.
+2. **The recomputation agrees and the proof commits this record's digest.** The
+   proof is consistent with this record. Whether the position was taken for this
+   record, and where it sits in the sequence, rests on trust the relying party
+   supplies itself: a committer key and a copy of the sequence it holds independently
+   of the proof. A proof checked under a key it carries for itself establishes
+   consistency, not an independently established ordering.
+3. **The recomputation runs and disagrees, or the proof commits another record's
+   digest.** A contradiction in the record, never reported as an absence.
+
+The example set holds each of these apart: a proof that establishes the position
+under an independently held key and sequence, the same proof carried by another
+record, no proof held, a proof altered to an earlier position, and a proof whose only
+committer key is the one it carries. The records' signatures verify in every case.
+
+The second outcome is the property the producer gave up by omitting the entry under
+v0.2: telling a backdate from a late commit by a contradiction inside the record,
+rather than bounding the commit by rule.
 
 ## Adding a name
 
