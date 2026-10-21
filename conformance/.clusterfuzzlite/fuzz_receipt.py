@@ -10,9 +10,9 @@ The receipt is the second untrusted file ``trace-tests verify`` reads
   root of the supplied entry and the claim is the one that root includes. Forging either takes a
   SHA-256 collision, so a PASS on anything else is a defect in the replay.
 
-Half the inputs are raw receipt bytes; the other half start from a genuine
-five-leaf receipt and mutate one field, which reaches the replay loop far more
-often than random JSON would.
+Half the inputs vary the receipt and half vary the registry entry. Each lane
+uses either raw JSON or a mutation of its genuine fixture. Entry parsing is
+exercised directly even when the entry cannot reach the inclusion replay.
 """
 import contextlib
 import hashlib
@@ -104,10 +104,37 @@ def _mutated(fdp: atheris.FuzzedDataProvider) -> object:
     return receipt
 
 
+def _mutated_entry(fdp: atheris.FuzzedDataProvider) -> object:
+    entry = dict(_ENTRY)
+    field = fdp.PickValueInList(sorted(entry))
+    kind = fdp.ConsumeIntInRange(0, 4)
+    if kind == 0:
+        del entry[field]
+    elif kind == 1:
+        entry[field] = fdp.ConsumeUnicode(80)
+    elif kind == 2:
+        entry[field] = fdp.ConsumeIntInRange(-2, 2**64)
+    elif kind == 3:
+        entry[field] = None
+    else:
+        entry[field] = fdp.ConsumeBool()
+    return entry
+
+
 def TestOneInput(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)
     claim = _CLAIMS[fdp.ConsumeIntInRange(0, len(_CLAIMS) - 1)]
+    entry = _ENTRY
     if fdp.ConsumeBool():
+        receipt = _RECEIPT
+        if fdp.ConsumeBool():
+            entry = _mutated_entry(fdp)
+        else:
+            try:
+                entry = loads_strict(fdp.ConsumeBytes(fdp.remaining_bytes()))
+            except LoadError:
+                return
+    elif fdp.ConsumeBool():
         receipt = _mutated(fdp)
     else:
         try:
@@ -116,15 +143,18 @@ def TestOneInput(data: bytes) -> None:
             return
 
     with contextlib.suppress(InclusionError):
+        parse_entry(entry)
+
+    with contextlib.suppress(InclusionError):
         verify_inclusion(claim, *parse_receipt(receipt))
 
     if not isinstance(receipt, dict):
         return
-    findings = tr_anc.check(claim, receipt=receipt, entry=_ENTRY)
+    findings = tr_anc.check(claim, receipt=receipt, entry=entry)
     if any(f.code == "TR-ANC-002" and f.passed() for f in findings):
         assert claim is _CLAIMS[_TARGET], f"inclusion proven for the wrong claim: {receipt!r}"
         index, path, _, _ = parse_proof(receipt)
-        root, count, _, _ = parse_entry(_ENTRY)
+        root, count, _, _ = parse_entry(entry)
         assert root == _ROOT, f"inclusion proven under another root: {receipt!r}"
         assert verify_inclusion(claim, index, path, count, root), (
             f"inclusion not reproduced against the supplied entry: {receipt!r}"
