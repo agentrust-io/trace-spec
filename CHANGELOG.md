@@ -53,6 +53,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   independently of the Python implementation, and a differential harness scores the two
   against each other on 1644 cases: 1643 agree, and the remaining one is listed in the
   harness's divergence ledger (#376, by @chernistry).
+- **`citationResolver` and `platformAppraiser` in `trust-record-verify/`.** `verifyRecord`
+  now accepts `citationResolver` (`result.citations`, `checkCitations`) and
+  `platformAppraiser` (`result.platformMeasurement`, `checkPlatformMeasurement`), matching
+  Python `verify_record` across all 16 `examples/citation-resolution/` and 16
+  `examples/platform-measurement/` conformance vectors (#569, #575, by @drk-ram; review and
+  own-member preservation fix by @dinakarjs).
 - **v0.3 draft fixtures for the manifest reference.** Six conformance fixtures under
   `conformance/tests/vectors/manifest-ref-v0.3-draft/` exercise the `manifest` object
   proposed in #483: a digest match, a mismatch, a mismatch beside an asserted `verified`,
