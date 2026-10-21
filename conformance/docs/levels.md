@@ -2,19 +2,19 @@
 
 This page explains what a record needs to reach each conformance level, and which failures stop it. Read it when a record lands at a lower level than you expected, or before you decide which level to aim for.
 
-TRACE defines three conformance levels. Level 0 is for development, Level 1 adds a claim about the secure hardware the agent ran on, and Level 2 adds a log of tool calls and proof that the record was entered in a public log. Each level runs everything the level below runs, plus more checks.
+TRACE defines three conformance levels. Level 0 is for development, Level 1 adds a claim about the secure hardware the agent ran on, and Level 2 adds a tool-call transcript commitment and an inclusion check against a supplied receipt. Authenticating the public log is a separate relying-party check. Each level runs everything the level below runs, plus more checks.
 
 | Level | Required Modules | Use Case |
 |-------|-----------------|----------|
 | **0** | TR-ENV, TR-SIG, TR-POL, TR-APR | Development and staging, no secure hardware |
 | **1** | Level 0 + TR-RTE, TR-SCA | Records that declare a TEE platform and measurement |
-| **2** | Level 1 + TR-TXN, TR-ANC | Full records with transparency anchoring |
+| **2** | Level 1 + TR-TXN, TR-ANC | Records with transcript and supplied anchor receipt checks |
 
 ## Level 0: Software-only
 
 Level 0 records are signed with a key kept in ordinary software rather than in secure hardware. The `runtime.platform` must be `"software-only"`. All-zero measurement is conventional for development use. The `appraisal` block (a verifier's verdict on the evidence) must be present and well formed, with a recognised `status` and a `verifier` that is an absolute URI, but Level 0 does not require the verdict to be positive.
 
-**Minimum conformant Level 0 record:**
+**Illustrative Level 0 field shape** (replace the sample timestamp, key, and signature with real values before checking a record):
 
 ```json
 {
@@ -43,7 +43,6 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
     "status": "none",
     "verifier": "https://verifier.example.org"
   },
-  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
   "cnf": {
     "jwk": {
       "kty": "OKP",
@@ -70,6 +69,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 - `appraisal` is absent or not an object, or `appraisal.status` is not one of the four values the schema enumerates: TR-APR-001
 - `appraisal.verifier` is absent or is not an absolute URI: TR-APR-002
 - `appraisal.policy_ref` or `appraisal.timestamp` is present and malformed: TR-APR-003, TR-APR-004. Absent, either one is skipped rather than passed
+- `appraisal.platform_measurement` is present but names a different `runtime.measurement`, or either measurement cannot be compared as a string: TR-APR-006. An absent result is skipped
 
 ---
 
@@ -79,7 +79,7 @@ Level 1 adds hardware attestation: the record names the TEE (trusted execution e
 
 `runtime.platform` must be a value from the `runtime.platform` enum in `schemas/trace-claim.json` other than `software-only`, which carries no hardware attestation evidence. `runtime.measurement` must be a valid `sha256:` or `sha384:` digest (TR-RTE-002 checks format only; all-zero values also match this check). `appraisal.status` must be `"affirming"` (TR-APR-005).
 
-**Minimum conformant Level 1 record** (changes from Level 0 in bold context):
+**Illustrative Level 1 field shape** (changes from Level 0; replace the sample timestamp, key, and signature before checking a record):
 
 ```json
 {
@@ -108,7 +108,6 @@ Level 1 adds hardware attestation: the record names the TEE (trusted execution e
     "status": "affirming",
     "verifier": "https://verifier.agentrust-io.com"
   },
-  "transparency": "https://registry.agentrust-io.com/claim/placeholder",
   "cnf": {
     "jwk": {
       "kty": "OKP",
@@ -133,7 +132,11 @@ Level 1 adds hardware attestation: the record names the TEE (trusted execution e
 
 ## Level 2: Transparency Anchoring
 
-Level 2 adds two things: a fingerprint of the log of tool calls the agent made, and proof that the record was entered in a public, append-only transparency log, so it cannot be quietly swapped later. SCITT is the standard format for such logs.
+Level 2 adds a fingerprint of the log of tool calls the agent made and a check of
+inclusion against a supplied transparency receipt. This suite does not
+authenticate the public log or its checkpoint; the recipient must do that
+separately before claiming independently verified anchoring. SCITT is the
+standard format for such logs.
 
 The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT receipt. The suite checks that it parses and that the scheme and host are present; it does not resolve the URI, and it does not recognise a placeholder value.
 

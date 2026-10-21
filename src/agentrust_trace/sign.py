@@ -1050,6 +1050,18 @@ def verify_record(
 
     pub.verify(sig_bytes, msg)  # raises InvalidSignature on failure
 
+    # JSON Schema cannot compare two fields, but section 3.1.5 requires a signed
+    # platform appraisal to describe this record's runtime measurement. The
+    # reference model enforces the same rule; the verifier must enforce it too.
+    signed_appraisal = record["appraisal"].get("platform_measurement")
+    if (
+        signed_appraisal is not None
+        and signed_appraisal["measurement"] != record["runtime"]["measurement"]
+    ):
+        raise ValueError(
+            "appraisal.platform_measurement.measurement must equal runtime.measurement"
+        )
+
     # Last, after the signature verified: a record that fails verification
     # drives no resolution.
     citations = check_citations(record, citation_resolver)

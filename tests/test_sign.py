@@ -9,7 +9,13 @@ import types
 import pytest
 import rfc8785
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.utils import (
+    decode_dss_signature,
+    encode_dss_signature,
+)
 
 from agentrust_trace import (
     DEFAULT_ACCEPTED_PROFILES,
@@ -20,6 +26,7 @@ from agentrust_trace import (
     jwk_thumbprint,
     key_to_jwk,
     sign_record,
+    validate_json,
     verify_record,
 )
 from agentrust_trace.sign import _TRACE_PROFILE_V0_1
@@ -577,6 +584,47 @@ def test_verify_record_rejects_non_okp_jwk():
     ec_jwk = {"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"}
     with pytest.raises(ValueError, match="kty"):
         verify_record(record, ec_jwk)
+
+
+def test_base_embedded_form_rejects_genuine_es256_signature():
+    """JWT ES256 support does not define an ES256 top-level embedded form."""
+    ed25519_key = generate_key()
+    ed25519_record = sign_record(_fresh_record(), ed25519_key)
+    verify_record(ed25519_record, key_to_jwk(ed25519_key), now=ed25519_record["iat"])
+
+    ec_key = ec.generate_private_key(ec.SECP256R1())
+    public = ec_key.public_key().public_numbers()
+
+    def b64url(raw: bytes) -> str:
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+    ec_jwk = {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": b64url(public.x.to_bytes(32, "big")),
+        "y": b64url(public.y.to_bytes(32, "big")),
+    }
+    record = _fresh_record()
+    record["cnf"] = {"jwk": ec_jwk}
+    body = rfc8785.dumps(record)
+    r, s = decode_dss_signature(ec_key.sign(body, ec.ECDSA(hashes.SHA256())))
+    record["signature"] = b64url(r.to_bytes(32, "big") + s.to_bytes(32, "big"))
+
+    # The ES256 JWK and raw JOSE r||s signature are genuine and structurally valid.
+    raw_signature = _b64url_decode(record["signature"])
+    assert len(raw_signature) == 64
+    ec_key.public_key().verify(
+        encode_dss_signature(
+            int.from_bytes(raw_signature[:32], "big"),
+            int.from_bytes(raw_signature[32:], "big"),
+        ),
+        body,
+        ec.ECDSA(hashes.SHA256()),
+    )
+    validate_json(record)
+
+    with pytest.raises(ValueError, match="kty"):
+        verify_record(record, ec_jwk, now=record["iat"])
 
 
 def test_verify_record_nonce_match():

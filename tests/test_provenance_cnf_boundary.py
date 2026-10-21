@@ -88,7 +88,7 @@ def test_valid_embedded_cnf_jwk_still_verifies() -> None:
 # the schema rather than the model, and the schema's jwk block carried no
 # constraint on private members. No attacker is involved; this is a producer
 # mistake the format did not defend against, and the consequence is durable:
-# the record is signed, self-authenticating and typically anchored, so the only
+# the record is signed and typically anchored, so the only
 # remedy after the fact is to revoke the identity.
 # ---------------------------------------------------------------------------
 

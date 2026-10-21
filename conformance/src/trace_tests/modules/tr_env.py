@@ -80,7 +80,7 @@ def check(trace: dict[str, Any], max_age_seconds: int = DEFAULT_MAX_AGE_SECONDS)
     # TR-ENV-005 (GHSA-vc4p-h84j-7qxj). RFC 8747 makes cnf a confirmation key:
     # the public half, so a verifier can bind the record to the key that signed
     # it. A private member here publishes the signing key inside a record that
-    # is signed, self-authenticating and usually anchored, and the only remedy
+    # is signed and usually anchored, and the only remedy
     # afterwards is to revoke the identity. TR-ENV-004 checks kty is present,
     # so a record carrying `d` passed the whole suite.
     if isinstance(cnf, dict) and isinstance(cnf.get("jwk"), dict):

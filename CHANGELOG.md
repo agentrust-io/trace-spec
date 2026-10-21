@@ -11,6 +11,18 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Proposed TRACE v0.2 verifier corrections (#591).** Clarify that `tool_transcript` and
+  `transparency` are optional in the base record and needed for Level 2 checks;
+  authenticated verification needs a trust anchor independent of `cnf`; and
+  the base embedded signature uses Ed25519, while enveloping profiles may
+  define other algorithms. `verify_record` now rejects a signed platform
+  appraisal about a different runtime measurement; conformance TR-APR checks
+  the same signed cross-field condition. Schema descriptions and verifier
+  regressions are aligned with these four findings. Compatibility: producers
+  using a non-Ed25519 top-level embedded signature must move to a separately
+  defined profile or enveloping form; JWT and other defined envelope algorithms
+  are unchanged. This normative algorithm clarification remains subject to the
+  repository's breaking-change review process.
 - **`content_marking`: consumer field and strict UTF-8 / RFC 8259 JSON boundaries.**
   `verify_assertion` now validates `subject` (SPIFFE or DID URI), `eat_profile` (non-empty
   string), and optional `anchor` (non-empty string) on both the assertion and the resolved

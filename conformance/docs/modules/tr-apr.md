@@ -13,6 +13,7 @@ issued it, which policy it was issued under, and when.
 | TR-APR-002 | `appraisal.verifier` is an absolute URI | `https://verifier.example.org` | `nvidia-openshell/0.3.0` (no scheme), a URI carrying whitespace or a control character, absent |
 | TR-APR-003 | `appraisal.policy_ref`, when present, is an absolute URI | `https://policies.example.org/appraisal/v3`; absent (optional, skipped) | `./policies/v1`, `ht tp://x` |
 | TR-APR-004 | `appraisal.timestamp`, when present, is an integer of epoch seconds (decided by mathematical value within the RFC 8785 safe-integer range per §3.2.2) and is not in the future | a past epoch second (`1748000042` or `1748000042.0`); absent (optional, skipped) | `"1748000042"` (string), a fractional number (`1748000042.5`), a number outside `[-9007199254740991, 9007199254740991]`, a boolean, an epoch second in the future |
+| TR-APR-006 | When present, `appraisal.platform_measurement.measurement` equals this record's `runtime.measurement` | matching measurement strings; absent result (optional, skipped) | a signed appraisal for a different runtime measurement, a malformed result, or a measurement that is not a string |
 
 ## Required at Level 1+
 
@@ -26,7 +27,7 @@ record is not asked to affirm.
 
 ## Absent optional fields skip, and a skip is not a pass
 
-`policy_ref` and `timestamp` are optional. When either is absent TR-APR reports
+`policy_ref`, `timestamp`, and `platform_measurement` are optional. When one is absent TR-APR reports
 a skip, which says the check was not performed. Reporting a pass would say the
 field was examined and found sound, and nothing was examined.
 
@@ -36,6 +37,10 @@ field was examined and found sound, and nothing was examined.
 filesystem access, and it takes no resolver. TR-APR-003 checks the *shape of the
 name* of the appraisal policy; it does not fetch that policy and does not
 compare it against anything.
+
+TR-APR-006 checks that a present signed platform appraisal is about the runtime
+measurement in the same record. It does not check the hardware evidence or the
+appraiser's authority.
 
 Resolving a cited object against a declared digest is TR-POL-003's work, on a
 different field: `policy.policy_uri` resolved against `policy.bundle_hash`. The
