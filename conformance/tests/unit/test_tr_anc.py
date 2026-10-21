@@ -62,6 +62,20 @@ def test_non_uri_scheme_fails():
     assert any(f.code == "TR-ANC-001" for f in failed)
 
 
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://scitt.example.org/receipts/abc 123",
+        "https://scitt.example.org/receipts/abc\n",
+        "https://scitt.example.org/receipts/\x00",
+        "https://scitt.example.org/receipts/\x7f",
+    ],
+)
+def test_transparency_with_whitespace_or_control_characters_fails(uri: str):
+    failed = [f for f in check({"transparency": uri}) if f.failed()]
+    assert any(f.code == "TR-ANC-001" for f in failed)
+
+
 def test_unparseable_transparency_uri_fails():
     """A URI that raises during parsing, rather than parsing to a wrong scheme.
 

@@ -59,11 +59,23 @@ def check(trace: dict[str, Any]) -> list[Finding]:
 
     if prov is None:
         _observe("TR-SCA", "build_provenance_missing")
-        return [Finding("TR-SCA-001", Status.FAIL, "TR-SCA-001: build_provenance is required at Level 1+")]
+        return [
+            Finding(
+                "TR-SCA-001",
+                Status.FAIL,
+                "TR-SCA-001: build_provenance is required at Level 1+",
+            )
+        ]
 
     if not isinstance(prov, dict):
         _observe("TR-SCA", "build_provenance_not_object")
-        return [Finding("TR-SCA-001", Status.FAIL, "TR-SCA-001: build_provenance must be an object")]
+        return [
+            Finding(
+                "TR-SCA-001",
+                Status.FAIL,
+                "TR-SCA-001: build_provenance must be an object",
+            )
+        ]
 
     slsa_level = prov.get("slsa_level")
     # JSON booleans are not integers, although Python makes bool an int subclass.
@@ -74,7 +86,13 @@ def check(trace: dict[str, Any]) -> list[Finding]:
         and not isinstance(slsa_level, bool)
         and slsa_level in _SLSA_LEVELS
     ):
-        findings.append(Finding("TR-SCA-001", Status.PASS, f"build_provenance.slsa_level is valid ({slsa_level})"))
+        findings.append(
+            Finding(
+                "TR-SCA-001",
+                Status.PASS,
+                f"build_provenance.slsa_level is valid ({slsa_level})",
+            )
+        )
     else:
         findings.append(Finding(
             "TR-SCA-001", Status.FAIL,
@@ -82,7 +100,7 @@ def check(trace: dict[str, Any]) -> list[Finding]:
         ))
 
     digest = prov.get("digest", "")
-    if _DIGEST_RE.fullmatch(str(digest)):
+    if isinstance(digest, str) and _DIGEST_RE.fullmatch(digest):
         findings.append(_observe(
             "TR-SCA", "digest_valid",
             Finding(

@@ -8,6 +8,8 @@ from typing import Any
 
 from trace_tests.result import Finding, Status
 
+from ._https_uri import valid_https_uri as _valid_https_uri
+
 # Byte-equal to the schema pattern (test_digest_parity) and always applied with
 # fullmatch: Python's $ also matches before a trailing newline, ECMA-262's does not.
 _DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
@@ -80,8 +82,8 @@ def check(
             )
         )
 
-    measurement = runtime.get("measurement", "")
-    if _DIGEST_RE.fullmatch(str(measurement)):
+    measurement = runtime.get("measurement")
+    if isinstance(measurement, str) and _DIGEST_RE.fullmatch(measurement):
         findings.append(
             Finding("TR-RTE-002", Status.PASS, "runtime.measurement has valid digest format")
         )
@@ -96,11 +98,11 @@ def check(
         )
 
     rim_uri = runtime.get("rim_uri")
-    if rim_uri is None:
+    if "rim_uri" not in runtime:
         findings.append(
             Finding("TR-RTE-003", Status.SKIP, "runtime.rim_uri not present (optional)")
         )
-    elif isinstance(rim_uri, str) and rim_uri.startswith("https://"):
+    elif _valid_https_uri(rim_uri):
         findings.append(
             Finding("TR-RTE-003", Status.PASS, f"runtime.rim_uri is an https URI ({rim_uri[:60]})")
         )
@@ -109,7 +111,7 @@ def check(
             Finding(
                 "TR-RTE-003",
                 Status.FAIL,
-                f"TR-RTE-003: runtime.rim_uri must be an https URI, got {rim_uri!r}",
+                f"TR-RTE-003: runtime.rim_uri must be a valid https URI, got {rim_uri!r}",
             )
         )
 
