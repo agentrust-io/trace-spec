@@ -212,7 +212,7 @@ def test_duplicate_member_cannot_ride_a_valid_signature(tmp_path: pathlib.Path) 
     assert "duplicate" in result.output
 
 
-@pytest.mark.parametrize("option", ["--receipt", "--policy-dir"])
+@pytest.mark.parametrize("option", ["--receipt", "--entry", "--policy-dir"])
 @pytest.mark.parametrize(
     "content",
     [b"\xff\xfe{\x00}\x00", b"[" * 100_000, b'{"a": "x.json", "a": "y.json"}'],
@@ -222,8 +222,8 @@ def test_cli_side_inputs_exit_2_not_traceback(
     tmp_path: pathlib.Path, option: str, content: bytes
 ) -> None:
     record = VECTORS / "valid_level0.json"
-    if option == "--receipt":
-        side = tmp_path / "receipt.json"
+    if option in ("--receipt", "--entry"):
+        side = tmp_path / "side.json"
         arg = str(side)
     else:
         side = tmp_path / "resolutions.json"
@@ -244,6 +244,17 @@ def _single_leaf_receipt(claim: dict[str, Any]) -> dict[str, Any]:
     return {"leaf_index": 0, "leaf_count": 1, "audit_path": [], "merkle_root": "sha256:" + root}
 
 
+def _entry_for(receipt: dict[str, Any]) -> dict[str, Any]:
+    """The registry entry the receipt commits to (registry-anchor-v1 section 4)."""
+    return {
+        "ts": "2026-10-15T00:00:00Z",
+        "merkle_root": receipt["merkle_root"],
+        "leaf_count": receipt["leaf_count"],
+        "producer": "hardening/1.0.0",
+        "batch_id": "hardening-1",
+    }
+
+
 @pytest.mark.parametrize(
     "value",
     [1.5, 2**53, -(2**53), float("nan"), float("inf"), [{"x": 0.1}]],
@@ -256,7 +267,8 @@ def test_claim_outside_the_anchor_profile_is_not_proven(value: Any) -> None:
     proof over them proves inclusion of bytes only Python's json.dumps writes.
     """
     claim = {"transparency": "https://log.example.com/e/1", "extra": value}
-    findings = tr_anc.check(claim, receipt=_single_leaf_receipt(claim))
+    receipt = _single_leaf_receipt(claim)
+    findings = tr_anc.check(claim, receipt=receipt, entry=_entry_for(receipt))
     assert _status(findings, "TR-ANC-002") is Status.FAIL
 
 
@@ -268,7 +280,8 @@ def test_claim_inside_the_anchor_profile_is_proven() -> None:
         "ok": True,
         "none": None,
     }
-    findings = tr_anc.check(claim, receipt=_single_leaf_receipt(claim))
+    receipt = _single_leaf_receipt(claim)
+    findings = tr_anc.check(claim, receipt=receipt, entry=_entry_for(receipt))
     assert _status(findings, "TR-ANC-002") is Status.PASS
 
 

@@ -62,6 +62,7 @@ def _run_core(
     max_age_seconds: int,
     expected_nonce: str | None,
     receipt: dict[str, Any] | None,
+    entry: dict[str, Any] | None,
     policy_resolver: Callable[[str], bytes] | None,
     expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
@@ -106,7 +107,7 @@ def _run_core(
 
     if "TR-ANC" in active:
         results["TR-ANC"] = invoke(
-            "TR-ANC", lambda: anc(trace, receipt=receipt)
+            "TR-ANC", lambda: anc(trace, receipt=receipt, entry=entry, subject=record)
         )
 
     return results
@@ -119,6 +120,7 @@ def run(
     max_age_seconds: int = tr_env.DEFAULT_MAX_AGE_SECONDS,
     expected_nonce: str | None = None,
     receipt: dict[str, Any] | None = None,
+    entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
     expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
@@ -139,6 +141,7 @@ def run(
             max_age_seconds=max_age_seconds,
             expected_nonce=expected_nonce,
             receipt=receipt,
+            entry=entry,
             policy_resolver=policy_resolver,
             expected_policy_hash=expected_policy_hash,
         )
@@ -151,6 +154,7 @@ def _run_levels(
     max_age_seconds: int = tr_env.DEFAULT_MAX_AGE_SECONDS,
     expected_nonce: str | None = None,
     receipt: dict[str, Any] | None = None,
+    entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
     expected_policy_hash: str | None = None,
 ) -> accounting._Execution:
@@ -199,6 +203,7 @@ def _run_levels(
                 max_age_seconds=max_age_seconds,
                 expected_nonce=expected_nonce,
                 receipt=receipt,
+                entry=entry,
                 policy_resolver=policy_resolver,
                 expected_policy_hash=expected_policy_hash,
             )

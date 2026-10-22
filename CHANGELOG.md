@@ -11,6 +11,21 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
+  following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
+  the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
+  must equal the entry's or the anchor is refused, and a verifier that does not hold
+  the entry does not report Level 2. Before this, the conformance suite judged the
+  proof against a root and count the receipt supplied, so a passing TR-ANC-002 tied the
+  record to no entry at all. Nothing yet identifies an entry from the `transparency`
+  value, so a verifier states that this link was not checked; it is tracked as finding
+  21 of #448. What breaks: a Level 2 result produced from a receipt alone no longer
+  passes. What implementers do: keep the registry entry with the record and its proof,
+  as the anchoring tutorial already says, and pass it with `--entry`. Records, the
+  receipt shape and the entry shape do not change. Classified breaking under
+  GOVERNANCE.md as a conformance level redefinition, so adoption needs the 30-day
+  comment period and Project Lead sign-off. Reported by @solloek369-arch.
+
 - **`content_marking`: consumer field and strict UTF-8 / RFC 8259 JSON boundaries.**
   `verify_assertion` now validates `subject` (SPIFFE or DID URI), `eat_profile` (non-empty
   string), and optional `anchor` (non-empty string) on both the assertion and the resolved
