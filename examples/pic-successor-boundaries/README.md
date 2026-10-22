@@ -1,6 +1,6 @@
 # Small current-contract PIC/TRACE successor boundary corpus
 
-Fifteen deterministic synthetic examples against the separately signed successor
+Sixteen deterministic synthetic examples against the separately signed successor
 artifact introduced by #432, using `schema/pic-trace-successor-v1.json`.
 This is a smaller contribution invited in the closing comment on #363 and relates
 to #206. It preserves the case-003 distinction developed by Corey Shaffer and the
@@ -23,6 +23,7 @@ these supplied values, never independent verification of PIC policy or canonical
 | 006 wrong authorization link, 007 substituted envelope, 008 invalid observer signature | bound | refused | not evaluated |
 | 009 valid signature and envelope under a relabeled observer | bound | refused | not evaluated |
 | 010 stale observation, 011 future observation | bound | bound | not-established |
+| 012 validly re-signed authorization naming another authorizer key ID | refused | not evaluated | not evaluated |
 
 The exact pre-execution authorization is identical for 003/003a/003b/003c. No successor
 digest is put into that authorization. Each successor is separately signed over its
@@ -35,6 +36,16 @@ Native PIC emits bare lowercase hex. The TRACE bridge surface carries `sha256:<h
 The four bare-hex vectors test that representation boundary only. Both signed cases
 are re-signed after changing the digest, and the tests independently verify their
 Ed25519 signatures before asserting the reference's digest-syntax failure.
+
+012 changes only the signed `authorizer_key_id` of 003 and re-signs it with the same
+test key; the verifier-supplied trusted JWK, its `kid` included, is unchanged. Its
+signature verifies, so the refusal is about key identity, not cryptography. Like the
+reference, the bounded checker compares the signed key ID with the trusted `kid`
+before checking the signature; noah-ing identified that comparison as missing from
+this checker in review of #566. The tests pair it with two controls: restoring the
+signed key ID and re-signing reproduces 003 and its result, and with a matching key
+ID a single altered signature byte fails as an invalid signature, a different
+refusal. That signature control is tested directly and is not a published vector.
 
 `independent.py` is a bounded checker of these published vectors, not a general PIC,
 TRACE, or hardware verifier. It imports no reference-library code. It shares RFC 8785,
