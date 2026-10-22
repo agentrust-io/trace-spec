@@ -155,7 +155,7 @@ The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT r
 - `tool_transcript.hash` missing or not a valid `sha256:` or `sha384:` digest: TR-TXN-001
 - `tool_transcript.call_count` negative or not an integer: TR-TXN-002
 - `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host: TR-ANC-001
-- no anchor receipt was supplied, the receipt is malformed, or its inclusion proof does not reproduce the committed `merkle_root`: TR-ANC-002. A record cannot reach Level 2 on a URI alone: pass the receipt with `--receipt`
+- no anchor receipt or no registry entry was supplied, either is malformed, the receipt's `merkle_root` or `leaf_count` differs from the entry's, or the inclusion proof does not reproduce the committed `merkle_root`: TR-ANC-002. A record cannot reach Level 2 on a URI alone: pass the receipt with `--receipt` and the entry with `--entry`
 - `policy.policy_uri` is present, a resolver was supplied with `--policy-dir`, and the bundle could not be read: TR-POL-003. Unverified rather than failed, and unverified fails the run from Level 2
 
 ______________________________________________________________________
