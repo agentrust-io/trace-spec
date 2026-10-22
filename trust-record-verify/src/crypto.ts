@@ -127,3 +127,93 @@ export async function verifyEd25519(
     return false;
   }
 }
+
+/**
+ * Import an ECDSA public key on P-256 or P-384 from a JWK, refusing every other key type or curve.
+ */
+export async function importEcdsa(
+  jwk: unknown,
+  curve: "P-256" | "P-384",
+  role: "bundle_key",
+): Promise<CryptoKey> {
+  const code: FailureCode = "invalid_argument";
+  const label = role === "bundle_key" ? "bundle key" : "key";
+  const coordinateBytes = curve === "P-256" ? 32 : 48;
+
+  if (!isPlainObject(jwk)) {
+    fail(code, `${label} must be a JWK object`);
+  }
+  const kty = own(jwk, "kty");
+  const crv = own(jwk, "crv");
+  const x = own(jwk, "x");
+  const y = own(jwk, "y");
+  if (kty !== "EC") {
+    fail(code, `${label} has kty ${show(kty)}; expected "EC" for ${curve}`);
+  }
+  if (crv !== curve) {
+    fail(code, `${label} has crv ${show(crv)}; expected ${JSON.stringify(curve)}`);
+  }
+  for (const [coordName, coordValue] of [
+    ["x", x],
+    ["y", y],
+  ] as const) {
+    if (coordValue === undefined || coordValue === null || coordValue === "") {
+      fail(code, `${label} has no "${coordName}" member`);
+    }
+    if (typeof coordValue !== "string") {
+      fail(code, `${label} "${coordName}" must be a base64url string`);
+    }
+    const raw = decodeBase64url(coordValue);
+    if (raw === null) {
+      fail(code, `${label} "${coordName}" is not canonical unpadded base64url`);
+    }
+    if (raw.length !== coordinateBytes) {
+      fail(
+        code,
+        `${label} "${coordName}" decodes to ${raw.length} bytes; a ${curve} coordinate is ${coordinateBytes} bytes`,
+      );
+    }
+  }
+  try {
+    return await subtle().importKey(
+      "jwk",
+      { kty: "EC", crv: curve, x: x as string, y: y as string },
+      { name: "ECDSA", namedCurve: curve },
+      false,
+      ["verify"],
+    );
+  } catch (error) {
+    if (isNotSupported(error)) {
+      fail("crypto_unavailable", `this runtime's WebCrypto does not implement ECDSA on ${curve}`, {
+        cause: error,
+      });
+    }
+    fail(code, `${label} is not a ${curve} public key this runtime accepts`, {
+      cause: error,
+    });
+  }
+}
+
+/** ECDSA (IEEE P1363 r || s) verification. Any refusal by the platform counts as a signature that does not verify. */
+export async function verifyEcdsa(
+  key: CryptoKey,
+  hash: "SHA-256" | "SHA-384",
+  signature: Uint8Array,
+  message: Uint8Array,
+): Promise<boolean> {
+  try {
+    return await subtle().verify(
+      { name: "ECDSA", hash },
+      key,
+      signature as Uint8Array<ArrayBuffer>,
+      message as Uint8Array<ArrayBuffer>,
+    );
+  } catch (error) {
+    if (isNotSupported(error)) {
+      fail("crypto_unavailable", `this runtime's WebCrypto does not implement ECDSA with ${hash}`, {
+        cause: error,
+      });
+    }
+    return false;
+  }
+}
