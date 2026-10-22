@@ -11,6 +11,17 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`tdx_collateral` and `snp_collateral`: TCB status convergence, minimal DER integer
+  decoding, and policy input validation.** `tdx_collateral._converge` now folds
+  `ConfigurationNeeded`, `OutOfDateConfigurationNeeded`, `SWHardeningNeeded`, and
+  `ConfigurationAndSWHardeningNeeded` TDX Module and QE statuses into the platform TCB
+  status instead of leaving an `UpToDate` platform at `UpToDate`, and `tdx_collateral`
+  rejects non-minimal DER length and integer encodings in PCK SGX extensions.
+  `snp_collateral._der_uint` now rejects negative, non-minimal, and out-of-range (`> 255`)
+  DER integers in VCEK TCB extensions, and `TcbFloor`, `CollateralPolicy`,
+  `appraise_collateral`, and `tcb_component` validate their input types and fail closed
+  with `CollateralDenied` (#603, by @drk-ram).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`

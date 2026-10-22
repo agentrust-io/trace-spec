@@ -21,17 +21,26 @@ from cryptography.x509.oid import NameOID
 from prototype import tdx_collateral as t
 
 CLOUD = Path(__file__).resolve().parents[2] / "cloud-20260929"
-if not (CLOUD / "gcp-platform-run" / "evidence.bin").is_file():
-    pytest.skip("saved TDX quote and collateral are absent", allow_module_level=True)
+_HAS_CLOUD = (CLOUD / "gcp-platform-run" / "evidence.bin").is_file()
 APPRAISAL = CLOUD / "collateral-appraisal"
-QUOTE = (CLOUD / "gcp-platform-run" / "evidence.bin").read_bytes()
-ROOT = x509.load_pem_x509_certificate((CLOUD / "intel-root.pem").read_bytes())
+QUOTE = (CLOUD / "gcp-platform-run" / "evidence.bin").read_bytes() if _HAS_CLOUD else b""
+ROOT = (
+    x509.load_pem_x509_certificate((CLOUD / "intel-root.pem").read_bytes())
+    if _HAS_CLOUD
+    else None
+)
 STANDARD = t.CollateralPolicy("standard", 20)
 EARLY = t.CollateralPolicy("early", 22)
 AUTHORITY = "spiffe://example.test/tdx-appraiser"
 
 
+def _require_cloud():
+    if not _HAS_CLOUD:
+        pytest.skip("saved TDX quote and collateral are absent")
+
+
 def packet(name):
+    _require_cloud()
     return t.load_packet(APPRAISAL / name)
 
 
@@ -68,6 +77,7 @@ def collateral_with(p, name, change):
 
 
 def test_intel_root_is_the_independently_downloaded_pin():
+    _require_cloud()
     pin = json.loads((CLOUD / "trust-root.json").read_text(encoding="utf-8"))["intel"]
     der = ROOT.public_bytes(serialization.Encoding.DER)
     assert hashlib.sha256(der).hexdigest() == pin["der_sha256"]
@@ -191,6 +201,7 @@ def test_non_ok_results_deny_by_default(code, reason):
 
 
 def test_ten_year_expired_offline_replay_denies():
+    _require_cloud()
     replay = json.loads(
         (APPRAISAL / "offline" / "offline-replay.json").read_text(encoding="utf-8")
     )
@@ -209,6 +220,7 @@ def test_ten_year_expired_offline_replay_denies():
 
 
 def test_historical_offline_replay_reproduces_the_saved_verdict():
+    _require_cloud()
     replay = json.loads(
         (APPRAISAL / "offline" / "offline-replay.json").read_text(encoding="utf-8")
     )
@@ -244,6 +256,7 @@ def test_saved_future_expired_case_is_the_same_signal():
 
 
 def test_other_quote_bytes_deny():
+    _require_cloud()
     changed = bytearray(QUOTE)
     changed[100] ^= 1  # the byte qvl_capture.py flips for its tampered_quote case
     denied("quote_mismatch", run, packet("standard"), STANDARD, quote=bytes(changed))
@@ -324,6 +337,7 @@ def test_nonzero_status_with_consistent_strict_flag_denies():
 
 
 def test_duplicate_json_keys_deny(tmp_path):
+    _require_cloud()
     for name in ("qvl-appraisal.json", "intel-collateral.json", "sgx_default_qcnl.conf"):
         (tmp_path / name).write_bytes((APPRAISAL / "standard" / name).read_bytes())
     raw = (tmp_path / "qvl-appraisal.json").read_text(encoding="utf-8")
@@ -528,3 +542,165 @@ def test_runtime_component_rejects_an_old_record():
         now=at(s),
         max_age=0,
     )
+
+
+# ------------------------------------ TCB convergence and DER boundaries
+
+
+def _der_tlv(tag: int, body: bytes) -> bytes:
+    length = len(body)
+    if length < 0x80:
+        header = bytes([tag, length])
+    elif length <= 0xFF:
+        header = bytes([tag, 0x81, length])
+    else:
+        header = bytes([tag, 0x82, length >> 8, length & 0xFF])
+    return header + body
+
+
+def _der_oid(dotted: str) -> bytes:
+    parts = [int(p) for p in dotted.split(".")]
+    out = bytearray([40 * parts[0] + parts[1]])
+    for part in parts[2:]:
+        if part == 0:
+            out.append(0)
+            continue
+        chunks: list[int] = []
+        while part:
+            chunks.append(part & 0x7F)
+            part >>= 7
+        chunks.reverse()
+        for idx, chunk in enumerate(chunks):
+            out.append(chunk | (0x80 if idx < len(chunks) - 1 else 0))
+    return _der_tlv(0x06, bytes(out))
+
+
+def _build_pck_cert_with_sgx_ext(
+    *,
+    svn1_bytes: bytes = b"\x01",
+    pcesvn_bytes: bytes = b"\x0b",
+    fmspc: bytes = bytes.fromhex("00806f050000"),
+    pceid: bytes = b"\x00\x00",
+) -> x509.Certificate:
+    base = t._SGX_EXTENSION.dotted_string
+    tcb_entries = [_der_tlv(0x30, _der_oid(f"{base}.2.1") + _der_tlv(0x02, svn1_bytes))]
+    for i in range(2, 17):
+        tcb_entries.append(_der_tlv(0x30, _der_oid(f"{base}.2.{i}") + _der_tlv(0x02, b"\x01")))
+    tcb_entries.append(_der_tlv(0x30, _der_oid(f"{base}.2.17") + _der_tlv(0x02, pcesvn_bytes)))
+    tcb_seq = _der_tlv(0x30, b"".join(tcb_entries))
+    top_seq = _der_tlv(
+        0x30,
+        _der_tlv(0x30, _der_oid(f"{base}.2") + tcb_seq)
+        + _der_tlv(0x30, _der_oid(f"{base}.3") + _der_tlv(0x04, pceid))
+        + _der_tlv(0x30, _der_oid(f"{base}.4") + _der_tlv(0x04, fmspc)),
+    )
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Intel SGX PCK Certificate")])
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(datetime(2030, 1, 1, tzinfo=UTC))
+        .add_extension(
+            x509.UnrecognizedExtension(t._SGX_EXTENSION, top_seq),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256())
+    )
+
+
+def test_converge_folds_all_non_uptodate_module_and_qe_statuses():
+    expected = {
+        ("UpToDate", "UpToDate"): "UpToDate",
+        ("UpToDate", "ConfigurationNeeded"): "ConfigurationNeeded",
+        ("UpToDate", "OutOfDate"): "OutOfDate",
+        ("UpToDate", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
+        ("UpToDate", "SWHardeningNeeded"): "SWHardeningNeeded",
+        (
+            "UpToDate",
+            "ConfigurationAndSWHardeningNeeded",
+        ): "ConfigurationAndSWHardeningNeeded",
+        ("ConfigurationNeeded", "ConfigurationNeeded"): "ConfigurationNeeded",
+        ("ConfigurationNeeded", "SWHardeningNeeded"): "ConfigurationAndSWHardeningNeeded",
+        (
+            "ConfigurationNeeded",
+            "ConfigurationAndSWHardeningNeeded",
+        ): "ConfigurationAndSWHardeningNeeded",
+        ("ConfigurationNeeded", "OutOfDate"): "OutOfDateConfigurationNeeded",
+        ("ConfigurationNeeded", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
+        ("SWHardeningNeeded", "SWHardeningNeeded"): "SWHardeningNeeded",
+        (
+            "SWHardeningNeeded",
+            "ConfigurationAndSWHardeningNeeded",
+        ): "ConfigurationAndSWHardeningNeeded",
+        ("SWHardeningNeeded", "OutOfDate"): "OutOfDate",
+        ("SWHardeningNeeded", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
+        (
+            "ConfigurationAndSWHardeningNeeded",
+            "ConfigurationAndSWHardeningNeeded",
+        ): "ConfigurationAndSWHardeningNeeded",
+        ("ConfigurationAndSWHardeningNeeded", "OutOfDate"): "OutOfDateConfigurationNeeded",
+        (
+            "ConfigurationAndSWHardeningNeeded",
+            "OutOfDateConfigurationNeeded",
+        ): "OutOfDateConfigurationNeeded",
+        ("OutOfDate", "OutOfDate"): "OutOfDate",
+        ("OutOfDate", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
+        (
+            "OutOfDateConfigurationNeeded",
+            "OutOfDateConfigurationNeeded",
+        ): "OutOfDateConfigurationNeeded",
+    }
+    for (left, right), want in expected.items():
+        assert t._converge(left, right) == want
+        assert t._converge(right, left) == want
+    for status in t._STATUS_TO_QV:
+        assert t._converge(status, "Revoked") == "Revoked"
+        assert t._converge("Revoked", status) == "Revoked"
+
+
+def test_converge_rejects_unknown_or_non_string_status():
+    assert t._converge("UpToDate", "UpToDate") == "UpToDate"
+    for bad in ("Unknown", "", None, 0, ["UpToDate"], {"status": "UpToDate"}):
+        denied("tcb_status_unknown", t._converge, bad, "UpToDate")
+        denied("tcb_status_unknown", t._converge, "UpToDate", bad)
+
+
+def test_der_rejects_non_minimal_length_encodings():
+    assert t._der(b"\x04\x05hello", 0) == (0x04, b"hello", 7)
+    long_128 = b"\x04\x81\x80" + b"a" * 0x80
+    assert t._der(long_128, 0) == (0x04, b"a" * 0x80, 3 + 0x80)
+    long_256 = b"\x04\x82\x01\x00" + b"a" * 0x100
+    assert t._der(long_256, 0) == (0x04, b"a" * 0x100, 4 + 0x100)
+
+    for bad_blob in (
+        b"\x04\x81\x00",
+        b"\x04\x81\x05hello",
+        b"\x04\x81\x7f" + b"a" * 0x7F,
+        b"\x04\x82\x00\x80" + b"a" * 0x80,
+        b"\x04\x83\x00\x01\x00" + b"a" * 0x100,
+    ):
+        denied("pck_extension", t._der, bad_blob, 0)
+
+
+def test_pck_extension_rejects_non_minimal_and_negative_der_integers():
+    valid_cert = _build_pck_cert_with_sgx_ext(svn1_bytes=b"\x00\x80", pcesvn_bytes=b"\x01\x00")
+    parsed = t._pck_extension(valid_cert)
+    assert parsed["sgx_svns"][0] == 128 and parsed["pcesvn"] == 256
+
+    for bad_int in (b"\x00\x05", b"\x00\x00", b"\x00\x7f", b"\x00\x00\x80", b"\x80"):
+        denied(
+            "pck_extension",
+            t._pck_extension,
+            _build_pck_cert_with_sgx_ext(svn1_bytes=bad_int),
+        )
+        denied(
+            "pck_extension",
+            t._pck_extension,
+            _build_pck_cert_with_sgx_ext(pcesvn_bytes=bad_int),
+        )
+

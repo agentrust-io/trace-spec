@@ -236,7 +236,7 @@ def replay_record(
         chosen = dict(cases[case])
         if cases["historical"] != base["cases"]["current_collateral"]:
             raise CollateralDenied("replay_inconsistent")
-        record = json.loads(json.dumps(base))
+        record: dict[str, Any] = json.loads(json.dumps(base))
     except (KeyError, TypeError, ValueError) as exc:
         if isinstance(exc, CollateralDenied):
             raise
@@ -351,7 +351,7 @@ def _cn(cert: x509.Certificate) -> str:
 
 
 def _chain(raw: bytes, root: x509.Certificate, at: datetime, name: str) -> list[x509.Certificate]:
-    from wcm._quote_verify import TrustStore, verify_cert_chain
+    from wcm._quote_verify import TrustStore, verify_cert_chain  # type: ignore[import-not-found]
 
     try:
         certs = x509.load_pem_x509_certificates(raw)
@@ -413,7 +413,9 @@ def _crl(
         crl = x509.load_der_x509_crl(raw)
     except ValueError as exc:
         raise CollateralDenied(f"{name}_format") from exc
-    if crl.issuer != issuer.subject or not crl.is_signature_valid(issuer.public_key()):
+    if crl.issuer != issuer.subject or not crl.is_signature_valid(
+        issuer.public_key()  # type: ignore[arg-type]
+    ):
         raise CollateralDenied(f"{name}_signature")
     if crl.next_update_utc is None or not (
         crl.last_update_utc.timestamp() <= at < crl.next_update_utc.timestamp()
@@ -431,14 +433,16 @@ def _window(document: dict[str, Any], at: int, name: str) -> int:
 
 
 def _der(blob: bytes, offset: int) -> tuple[int, bytes, int]:
-    if offset + 2 > len(blob):
+    if type(blob) is not bytes or type(offset) is not int or offset < 0 or offset + 2 > len(blob):
         raise CollateralDenied("pck_extension")
     tag, length, offset = blob[offset], blob[offset + 1], offset + 2
     if length & 0x80:
         count = length & 0x7F
-        if not 1 <= count <= 3 or offset + count > len(blob):
+        if not 1 <= count <= 3 or offset + count > len(blob) or blob[offset] == 0:
             raise CollateralDenied("pck_extension")
         length, offset = int.from_bytes(blob[offset : offset + count], "big"), offset + count
+        if length < 0x80:
+            raise CollateralDenied("pck_extension")
     end = offset + length
     if end > len(blob):
         raise CollateralDenied("pck_extension")
@@ -484,6 +488,8 @@ def _pck_extension(cert: x509.Certificate) -> dict[str, Any]:
             raise CollateralDenied("pck_extension")
         name = _oid(pair[0][1])
         if name == base + ".2":
+            if pair[1][0] != 0x30:
+                raise CollateralDenied("pck_extension")
             for inner_tag, inner in _sequence(pair[1][1]):
                 sub = _sequence(inner) if inner_tag == 0x30 else []
                 if len(sub) != 2 or sub[0][0] != 0x06:
@@ -494,7 +500,13 @@ def _pck_extension(cert: x509.Certificate) -> dict[str, Any]:
 
     def integer(oid: str) -> int:
         tag, raw = values.get(oid, (0, b""))
-        if tag != 0x02 or not raw or raw[0] & 0x80 or len(raw) > 3:
+        if (
+            tag != 0x02
+            or not raw
+            or raw[0] & 0x80
+            or (len(raw) > 1 and raw[0] == 0 and raw[1] & 0x80 == 0)
+            or len(raw) > 3
+        ):
             raise CollateralDenied("pck_extension")
         return int.from_bytes(raw, "big")
 
@@ -538,6 +550,8 @@ def _isvsvn_status(levels: Any, isvsvn: int, name: str) -> dict[str, Any]:
     if not isinstance(levels, list):
         raise CollateralDenied(f"{name}_format")
     for level in levels:
+        if not isinstance(level, dict):
+            raise CollateralDenied(f"{name}_format")
         try:
             floor = level["tcb"]["isvsvn"]
         except (KeyError, TypeError) as exc:
@@ -549,18 +563,39 @@ def _isvsvn_status(levels: Any, isvsvn: int, name: str) -> dict[str, Any]:
     raise CollateralDenied(f"{name}_tcb_unsupported")
 
 
-def _converge(platform: str, other: str) -> str:
+def _converge(platform: Any, other: Any) -> str:
     """Fold a QE or TDX module status into the platform status, as QVL does."""
-    if other == "Revoked":
-        return "Revoked"
-    if other == "OutOfDate":
-        if platform in ("UpToDate", "SWHardeningNeeded"):
-            return "OutOfDate"
-        if platform in ("ConfigurationNeeded", "ConfigurationAndSWHardeningNeeded"):
-            return "OutOfDateConfigurationNeeded"
-    if other != "UpToDate" and other not in _STATUS_TO_QV:
+    if (
+        not isinstance(platform, str)
+        or not isinstance(other, str)
+        or platform not in _STATUS_TO_QV
+        or other not in _STATUS_TO_QV
+    ):
         raise CollateralDenied("tcb_status_unknown")
-    return platform
+    if platform == "Revoked" or other == "Revoked":
+        return "Revoked"
+    if other == "UpToDate":
+        return platform
+    pair = {platform, other}
+    out_of_date = bool(pair & {"OutOfDate", "OutOfDateConfigurationNeeded"})
+    config_needed = bool(
+        pair
+        & {
+            "ConfigurationNeeded",
+            "OutOfDateConfigurationNeeded",
+            "ConfigurationAndSWHardeningNeeded",
+        }
+    )
+    sw_hardening = bool(pair & {"SWHardeningNeeded", "ConfigurationAndSWHardeningNeeded"})
+    if out_of_date:
+        return "OutOfDateConfigurationNeeded" if config_needed else "OutOfDate"
+    if config_needed and sw_hardening:
+        return "ConfigurationAndSWHardeningNeeded"
+    if config_needed:
+        return "ConfigurationNeeded"
+    if sw_hardening:
+        return "SWHardeningNeeded"
+    return "UpToDate"
 
 
 def appraise_collateral(
@@ -571,7 +606,7 @@ def appraise_collateral(
     `trust_root` must be the operator-pinned Intel SGX Root CA, never one taken
     from the collateral or the quote.
     """
-    from wcm.tdx import parse_tdx_quote, verify_tdx_quote
+    from wcm.tdx import parse_tdx_quote, verify_tdx_quote  # type: ignore[import-not-found]
 
     from wcm._quote_verify import QuoteFormatError, TrustStore
 
@@ -707,7 +742,7 @@ def appraise_collateral(
     if level is None:
         raise CollateralDenied("tcb_level_unsupported")
     status = level.get("tcbStatus")
-    if status not in _STATUS_TO_QV:
+    if not isinstance(status, str) or status not in _STATUS_TO_QV:
         raise CollateralDenied("tcb_status_unknown")
 
     module_status = None
