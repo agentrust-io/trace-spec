@@ -126,6 +126,18 @@ def test_verify_delegation_link_refuses_absent_malformed_unsupported_or_mismatch
     with pytest.raises(delegation.DelegationError, match="does not digest"):
         delegation.verify_delegation_link(vec05["records"][0], vec05["records"][1])
 
+    for algorithm, width in (("sha256", 64), ("sha384", 96)):
+        for bad_char in ("\u00e9", "\ud800"):
+            non_ascii_child = {
+                **leaf,
+                "delegation": {
+                    **leaf["delegation"],
+                    "parent_record_hash": f"{algorithm}:{bad_char}{'0' * (width - 1)}",
+                },
+            }
+            with pytest.raises(delegation.DelegationError, match="does not digest"):
+                delegation.verify_delegation_link(non_ascii_child, parent)
+
 
 @pytest.mark.parametrize("path", VECTOR_PATHS, ids=lambda p: p.stem)
 def test_verify_delegation_chain_matches_every_vector(path: Path) -> None:
@@ -185,6 +197,8 @@ def test_verify_delegation_chain_refuses_malformed_caller_inputs() -> None:
         ("supported_digest_algorithms", "sha256"),
         ("data_class_lattice", "public"),
         ("trusted_root_keys", "not-a-list"),
+        ("trusted_root_keys", [{"kty": "OKP", "crv": "Ed25519", "x": ["not-a-str"]}]),
+        ("trusted_root_keys", [{}]),
         ("credentials", "not-a-dict"),
     ):
         bad_ctx = copy.deepcopy(context)

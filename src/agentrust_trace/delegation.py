@@ -1,18 +1,19 @@
 """Delegation-link digest, single-hop verification, and A2A chain appraisal.
 
-Section 3.1.3 of ``spec/trace-v0.2.md`` defines the single-hop delegation commitment:
-a child Trust Record's ``delegation.parent_record_hash`` is the ``sha256`` or ``sha384``
-digest over the complete RFC 8785 (JCS) canonical form of the parent Trust Record,
-with its ``signature`` member present:
+Section 3.1.3 of ``spec/trace-v0.2.md`` defines the normative single-hop delegation
+commitment: a child Trust Record's ``delegation.parent_record_hash`` is the
+``sha256`` or ``sha384`` digest over the complete RFC 8785 (JCS) canonical form of
+the parent Trust Record, with its ``signature`` member present:
 
     delegation.parent_record_hash = "<alg>:" + hex(H(JCS(parent_record)))
 
-``parent_record_hash`` and ``verify_delegation_link`` implement that single-hop
-commitment and mirror ``trust-record-verify/src/delegation.ts``.
+``parent_record_hash`` and ``verify_delegation_link`` implement that normative
+single-hop link digest and mirror ``trust-record-verify/src/delegation.ts``.
 
-``verify_delegation_chain`` implements the eleven-rule A2A delegation-link verification
-walk specified in ``docs/rfcs/a2a-delegation-profile.md`` and scored by the 26 test
-vectors under ``examples/delegation-link/``.
+``verify_delegation_chain`` executes the eleven-rule A2A delegation-link verification
+walk from the draft profile in ``docs/rfcs/a2a-delegation-profile.md`` (which is
+informative and binds no implementation yet), scored by the 26 test vectors under
+``examples/delegation-link/``.
 """
 
 from __future__ import annotations
@@ -166,7 +167,7 @@ def verify_delegation_link(
             f"digest algorithm {algorithm!r} is not one this build can compute"
         )
     computed = parent_record_hash(parent, algorithm)
-    if not hmac.compare_digest(computed, stated):
+    if not (stated.isascii() and hmac.compare_digest(computed, stated)):
         raise DelegationError(
             "the candidate parent record does not digest to the value the child commits to"
         )
@@ -453,6 +454,17 @@ def _validate_context(context: Any) -> dict[str, Any]:
         raise DelegationError(
             "context.trusted_root_keys must contain only JWK objects"
         )
+    for jwk in trusted_list:
+        for member in ("kty", "crv", "x"):
+            val = jwk.get(member)
+            if not isinstance(val, str) or not val:
+                raise DelegationError(
+                    f"context.trusted_root_keys entry must carry non-empty string {member!r}"
+                )
+        if "y" in jwk and (not isinstance(jwk["y"], str) or not jwk["y"]):
+            raise DelegationError(
+                "context.trusted_root_keys entry 'y' must be a non-empty string when present"
+            )
 
     credentials = context["credentials"]
     if not isinstance(credentials, dict):
