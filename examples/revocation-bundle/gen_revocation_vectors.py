@@ -47,7 +47,8 @@ from pathlib import Path
 from typing import Any
 
 import rfc8785
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 OUT = Path("examples/revocation-bundle")
@@ -88,9 +89,35 @@ def jwk_for(role: str, *, kid: str | None = None) -> dict[str, str]:
     return jwk
 
 
+def ec_key_for(role: str, crv: str) -> ec.EllipticCurvePrivateKey:
+    if crv == "P-256":
+        d = int.from_bytes(hashlib.sha256(SEED + b"|" + role.encode()).digest(), "big")
+        return ec.derive_private_key(d, ec.SECP256R1())
+    if crv == "P-384":
+        d = int.from_bytes(hashlib.sha384(SEED + b"|" + role.encode()).digest(), "big")
+        return ec.derive_private_key(d, ec.SECP384R1())
+    raise ValueError(f"unsupported curve {crv!r}")
+
+
+def ec_jwk_for(role: str, crv: str, *, kid: str | None = None) -> dict[str, str]:
+    size = 32 if crv == "P-256" else 48
+    numbers = ec_key_for(role, crv).public_key().public_numbers()
+    jwk = {
+        "kty": "EC",
+        "crv": crv,
+        "x": b64u(numbers.x.to_bytes(size, "big")),
+        "y": b64u(numbers.y.to_bytes(size, "big")),
+    }
+    if kid is not None:
+        jwk["kid"] = kid
+    return jwk
+
+
 def thumbprint(jwk: dict[str, str]) -> str:
-    """RFC 7638 for an OKP key: crv, kty, x, in that order, JCS bytes, sha256."""
+    """RFC 7638 for an OKP or EC key: required members, in order, JCS bytes, sha256."""
     members = {"crv": jwk["crv"], "kty": jwk["kty"], "x": jwk["x"]}
+    if jwk["kty"] == "EC":
+        members["y"] = jwk["y"]
     return b64u(hashlib.sha256(rfc8785.dumps(members)).digest())
 
 
@@ -148,6 +175,35 @@ def bundle(
     }
     value = b64u(key_for(sign_key).sign(rfc8785.dumps(body)))
     return {**body, "sig": {"alg": "ed25519", "value": value}}
+
+
+def ec_bundle(
+    *,
+    alg: str,
+    issued_at: int,
+    valid_until: int,
+    statements: list[dict[str, Any]] | None = None,
+    sign_key: str,
+    key_id: str | None = None,
+) -> dict[str, Any]:
+    crv = "P-256" if alg == "ES256" else "P-384"
+    size = 32 if alg == "ES256" else 48
+    hash_alg = hashes.SHA256() if alg == "ES256" else hashes.SHA384()
+    jwk = ec_jwk_for(sign_key, crv)
+    body = {
+        "type": "TraceRevocationBundle/1.0",
+        "log_id": LOG,
+        "issued_at": issued_at,
+        "valid_until": valid_until,
+        "statements": statements or [],
+        "bundle_key_id": key_id or thumbprint(jwk),
+    }
+    der = ec_key_for(sign_key, crv).sign(
+        rfc8785.dumps(body), ec.ECDSA(hash_alg, deterministic_signing=True)
+    )
+    r, s = utils.decode_dss_signature(der)
+    value = b64u(r.to_bytes(size, "big") + s.to_bytes(size, "big"))
+    return {**body, "sig": {"alg": alg, "value": value}}
 
 
 def bundle_digest(b: dict[str, Any]) -> str:
@@ -416,6 +472,28 @@ def main() -> None:
         "future-dated bundle vouches for nothing it is silent about, but what it "
         "says was signed by a trusted bundle key: rejected.",
         b=b28, outcome=None, codes=["key_revoked", "statement_outlives_bundle"], rejected=True))
+
+    # EC bundle signatures (ES256 on P-256, ES384 on P-384).
+    es256_jwk = ec_jwk_for("bundler-es256", "P-256")
+    b29 = ec_bundle(
+        alg="ES256", issued_at=NOW - HOUR, valid_until=NOW + DAY, sign_key="bundler-es256"
+    )
+    out.append(vector(29, "es256-bundle-verified",
+        "A fresh bundle signed with ES256 by a trusted P-256 EC bundle key. The fixed-width "
+        "64-byte IEEE P1363 signature verifies over the canonical unsigned bundle.",
+        b=b29, outcome="verified", codes=[],
+        evidence=fresh_evidence(b29, statements_count=0),
+        trusted_bundle_keys=[es256_jwk]))
+    es384_jwk = ec_jwk_for("bundler-es384", "P-384")
+    b30 = ec_bundle(
+        alg="ES384", issued_at=NOW - HOUR, valid_until=NOW + DAY, sign_key="bundler-es384"
+    )
+    out.append(vector(30, "es384-bundle-verified",
+        "A fresh bundle signed with ES384 by a trusted P-384 EC bundle key. The fixed-width "
+        "96-byte IEEE P1363 signature verifies over the canonical unsigned bundle.",
+        b=b30, outcome="verified", codes=[],
+        evidence=fresh_evidence(b30, statements_count=0),
+        trusted_bundle_keys=[es384_jwk]))
 
     OUT.mkdir(parents=True, exist_ok=True)
     for name, doc in sorted(out):
