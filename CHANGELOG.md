@@ -64,6 +64,14 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   key verified, and a string was searched by substring. Both now raise
   `ValueError`, as does a non-bool `allow_embedded_key`, which was read for truthiness (#511,
   by @drk-ram).
+- **`provenance.verify_record` validates both JWKs before revocation and thumbprint comparison.**
+  `trusted_jwk` is now validated with `_pubkey_from_jwk` before consulting `revocation` or
+  comparing thumbprints, and `record["cnf"]["jwk"]` is validated with `_pubkey_from_jwk`
+  before computing its thumbprint, so a `trusted_jwk` rejected by `_pubkey_from_jwk` is
+  reported as `trusted_jwk is unusable` rather than blamed on the record's embedded key or
+  passed to `revocation`, and a `cnf.jwk` rejected by `_pubkey_from_jwk` is reported as
+  `the record's embedded key is unusable` rather than `not the trusted key` when compared
+  against a valid `trusted_jwk`. Nothing that was rejected now passes (#602, by @drk-ram).
 - **`verify_bridge` reports the real reason.** A key-id mismatch or an unusable trusted JWK
   is now reported as itself rather than as an invalid signature; `verify_successor_artifact`
   gets the same JWK check. Nothing that was rejected now passes (#510, by @drk-ram).
