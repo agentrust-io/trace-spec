@@ -59,6 +59,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   IEEE P1363 `r || s` concatenation (64 and 96 bytes, stated on `sig.value` in
   `schema/trace-revocation-bundle.json`), and `examples/revocation-bundle/` adds vectors
   29 and 30 (#584, #448 items 1 and 10, by @drk-ram).
+- **Revocation bundle EC key, ECMA-262 regex, and integer-by-value timestamp parity.**
+  `revocation._bundle_pubkey_from_jwk` and `trust-record-verify`'s `importEcdsa` now reject
+  EC bundle-signing JWKs carrying private or symmetric parameters (`d`, `p`, `q`, `dp`, `dq`,
+  `qi`, `oth`, `k`), matching `ed25519` key import under GHSA-vc4p-h84j-7qxj;
+  `revocation._bundle_validator()` enforces ECMA-262 `$` (`\Z`) pattern semantics on
+  `trace-revocation-bundle.json` and `trace-revocation.json` so trailing newlines in
+  `sig.value` are rejected as `bundle_malformed` in Python just as in `trust-record-verify`;
+  and `revocation.check_bundle` normalizes whole-float `issued_at` and `valid_until` values
+  to `int` via `_integer_value` before storing them in `RevocationCheck.evidence` (#604, by
+  @drk-ram).
 - **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
   a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
   key verified, and a string was searched by substring. Both now raise
