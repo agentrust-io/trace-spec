@@ -11,6 +11,15 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **Acta receipt verifier: JWK, signature hex, and JSON input hardening.**
+  `tools/acta_receipt_verifier.py` now rejects JWKs carrying private or symmetric key
+  parameters (`d`, `p`, `q`, `dp`, `dq`, `qi`, `oth`, `k`) or non-canonical unpadded
+  base64url `x` values in `issuer_key` (`malformed_key_set`), requires `signature.sig`
+  in `signature_verifies` to be 128 lowercase hex characters without whitespace
+  (`signature_invalid`), rejects duplicate JSON object keys and catches `RecursionError`
+  in `_read_json` (`malformed`), and handles uncanonicalizable or deeply nested payloads
+  and predecessors in `signature_verifies` and `chain_link_matches` (#605, by @drk-ram).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
