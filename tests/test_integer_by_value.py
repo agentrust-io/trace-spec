@@ -1003,6 +1003,6 @@ def test_the_javascript_side_agrees() -> None:
         pytest.skip("the JavaScript test runs on Node.js 20 or later")
     result = subprocess.run(
         [node, "--test", str(VECTORS / "spelling.test.mjs")],
-        capture_output=True, text=True, cwd=ROOT,
+        capture_output=True, text=True, encoding="utf-8", cwd=ROOT,
     )
     assert result.returncode == 0, result.stdout + result.stderr
