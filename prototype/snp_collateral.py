@@ -58,9 +58,15 @@ class TcbFloor:
 
     def __post_init__(self) -> None:
         values = (self.bootloader, self.tee, self.snp, self.microcode)
-        if any(type(v) is not int or not 0 <= v <= 255 for v in values) or not self.source:
+        if (
+            any(type(v) is not int or not 0 <= v <= 255 for v in values)
+            or not isinstance(self.source, str)
+            or not self.source
+        ):
             raise CollateralDenied("policy_floor")
-        if self.os_mitigation_bit is not None and not 0 <= self.os_mitigation_bit < 64:
+        if self.os_mitigation_bit is not None and (
+            type(self.os_mitigation_bit) is not int or not 0 <= self.os_mitigation_bit < 64
+        ):
             raise CollateralDenied("policy_floor")
 
 
@@ -79,10 +85,30 @@ class CollateralPolicy:
     limits: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if not self.floors or set(self.floors) - set(PRODUCTS):
+        if (
+            not isinstance(self.floors, dict)
+            or not self.floors
+            or any(not isinstance(k, str) for k in self.floors)
+            or set(self.floors) - set(PRODUCTS)
+        ):
             raise CollateralDenied("policy_products")
+        if any(not isinstance(v, TcbFloor) for v in self.floors.values()):
+            raise CollateralDenied("policy_floor")
+        if not isinstance(self.arks, dict) or any(
+            not isinstance(k, str) or not isinstance(v, x509.Certificate)
+            for k, v in self.arks.items()
+        ):
+            raise CollateralDenied("policy_arks")
+        if not isinstance(self.crls, dict) or any(
+            not isinstance(k, str) or type(v) is not bytes for k, v in self.crls.items()
+        ):
+            raise CollateralDenied("policy_crls")
         if type(self.accept_unproven_os_mitigation) is not bool:
             raise CollateralDenied("policy_os_mitigation")
+        if not isinstance(self.limits, list) or any(
+            not isinstance(x, str) for x in self.limits
+        ):
+            raise CollateralDenied("policy_limits")
 
 
 def _tcb(value: bytes) -> dict[str, int]:
@@ -90,9 +116,19 @@ def _tcb(value: bytes) -> dict[str, int]:
 
 
 def _der_uint(der: bytes) -> int:
-    if len(der) < 3 or der[0] != 0x02 or der[1] != len(der) - 2:
+    if (
+        type(der) is not bytes
+        or len(der) < 3
+        or der[0] != 0x02
+        or der[1] != len(der) - 2
+        or der[2] & 0x80 != 0
+        or (len(der) > 3 and der[2] == 0x00 and (der[3] & 0x80) == 0)
+    ):
         raise CollateralDenied("vcek_extension_encoding")
-    return int.from_bytes(der[2:], "big")
+    val = int.from_bytes(der[2:], "big")
+    if not 0 <= val <= 255:
+        raise CollateralDenied("vcek_extension_encoding")
+    return val
 
 
 def _cn(name: x509.Name) -> str:
@@ -139,8 +175,25 @@ def appraise_collateral(
     platform below a floor returns status "contraindicated" with reasons, so an
     issuer can state it honestly rather than omit it.
     """
-    from wcm._certificates import load_pem_certificate
-    from wcm.snp import extract_snp_report_from_hcl
+    if not isinstance(policy, CollateralPolicy):
+        raise CollateralDenied("policy_inputs")
+    if (
+        not isinstance(now, datetime)
+        or now.tzinfo is None
+        or now.tzinfo.utcoffset(now) is None
+    ):
+        raise CollateralDenied("clock_or_age")
+    if (
+        not isinstance(packet, dict)
+        or not isinstance(packet.get("hcl_b64"), str)
+        or not isinstance(packet.get("vcek_pem"), str)
+        or not isinstance(packet.get("intermediates_pem"), list)
+        or not all(isinstance(p, str) for p in packet["intermediates_pem"])
+    ):
+        raise CollateralDenied("platform_evidence_format")
+
+    from wcm._certificates import load_pem_certificate  # type: ignore[import-not-found]
+    from wcm.snp import extract_snp_report_from_hcl  # type: ignore[import-not-found]
 
     try:
         report = extract_snp_report_from_hcl(base64.b64decode(packet["hcl_b64"], validate=True))
@@ -267,21 +320,36 @@ def tcb_component(
 
     if type(now) is not int or now < 0 or type(max_age) is not int or not 1 <= max_age <= 86400:
         raise CollateralDenied("clock_or_age")
-    return Component(
-        component_id="runtime.cpu",
-        component_type="runtime",
-        profile=PROFILE,
-        authority=authority,
-        instance=instance,
-        status=appraisal["status"],
-        appraised_at=now,
-        fresh_until=now + max_age,
-        evidence_refs=[
-            EvidenceRef(
-                profile=PROFILE,
-                media_type="application/vnd.agentrust.azure-snp-execution+json",
-                digest=canonical_digest(packet),
-            )
-        ],
-        reasons=appraisal["reasons"],
-    )
+    if (
+        not isinstance(appraisal, dict)
+        or not isinstance(appraisal.get("status"), str)
+        or not isinstance(appraisal.get("reasons"), list)
+        or any(not isinstance(r, str) for r in appraisal["reasons"])
+        or not isinstance(packet, dict)
+        or not isinstance(instance, str)
+        or not instance
+        or not isinstance(authority, str)
+        or not authority
+    ):
+        raise CollateralDenied("component_inputs")
+    try:
+        return Component(
+            component_id="runtime.cpu",
+            component_type="runtime",
+            profile=PROFILE,
+            authority=authority,
+            instance=instance,
+            status=appraisal["status"],
+            appraised_at=now,
+            fresh_until=now + max_age,
+            evidence_refs=[
+                EvidenceRef(
+                    profile=PROFILE,
+                    media_type="application/vnd.agentrust.azure-snp-execution+json",
+                    digest=canonical_digest(packet),
+                )
+            ],
+            reasons=appraisal["reasons"],
+        )
+    except (ValueError, TypeError) as exc:
+        raise CollateralDenied("component_inputs") from exc
