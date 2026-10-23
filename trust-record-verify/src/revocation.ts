@@ -80,6 +80,9 @@ function unverified(cause: RevocationCause, evidence: Record<string, unknown>): 
 
 /** The bundle's identity: `sha256:` and the hex SHA-256 of its RFC 8785 form, signature included. */
 export async function bundleDigest(bundle: unknown): Promise<string> {
+  if (!isPlainObject(bundle)) {
+    fail("invalid_argument", "bundle must be a JSON object");
+  }
   return `sha256:${hex(await digest("SHA-256", canonicalize(bundle)))}`;
 }
 

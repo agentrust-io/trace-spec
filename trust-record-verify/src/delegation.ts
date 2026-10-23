@@ -47,6 +47,9 @@ export async function parentRecordHash(
   record: unknown,
   algorithm: DelegationDigestAlgorithm = "sha256",
 ): Promise<string> {
+  if (!isPlainObject(record)) {
+    fail("record_not_object", "a Trust Record is a JSON object");
+  }
   if (typeof algorithm !== "string" || !Object.hasOwn(WEBCRYPTO_NAME, algorithm)) {
     fail(
       "delegation_algorithm_unsupported",
@@ -99,7 +102,7 @@ export async function verifyDelegationLink(
     fail("invalid_argument", "supportedDigestAlgorithms must be an array of algorithm names");
   }
   const supported: readonly string[] = configured ?? DELEGATION_DIGEST_ALGORITHMS;
-  if (!isPlainObject(child)) {
+  if (!isPlainObject(child) || !isPlainObject(parent)) {
     fail("record_not_object", "a Trust Record is a JSON object");
   }
   const delegation = own(child, "delegation");

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 import {
+  bundleDigest,
   canonicalJson,
   checkRevocationBundle,
   decodeBase64url,
@@ -112,6 +113,21 @@ test("verifyDelegationLink takes a plain options object, as verifyRecord does", 
   class Options {}
   for (const options of [[], new Date(0), new Options(), Object.create({ supportedDigestAlgorithms: [] }), null, "sha256", 1]) {
     await rejects(verifyDelegationLink({}, {}, options), "invalid_argument");
+  }
+});
+
+test("parentRecordHash, verifyDelegationLink and bundleDigest refuse non-object inputs", async () => {
+  const validChild = {
+    delegation: {
+      parent_record_hash: "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+      credential_id: "cred-1",
+    },
+  };
+  for (const bad of [null, undefined, 123, true, false, "record", [1, 2], new Date(0)]) {
+    await rejects(parentRecordHash(bad), "record_not_object");
+    await rejects(verifyDelegationLink(bad, {}), "record_not_object");
+    await rejects(verifyDelegationLink(validChild, bad), "record_not_object");
+    await rejects(bundleDigest(bad), "invalid_argument");
   }
 });
 
