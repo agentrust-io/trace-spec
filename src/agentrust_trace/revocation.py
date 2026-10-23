@@ -54,10 +54,11 @@ from __future__ import annotations
 import hashlib
 import importlib.resources
 import json
-from collections.abc import Iterable
+import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import jsonschema
 import referencing
@@ -69,8 +70,10 @@ from agentrust_trace.sign import TRACE_PROFILE_V0_2
 from agentrust_trace.citation import CitationCheck
 from agentrust_trace.platform_measurement import NOT_ATTEMPTED, PlatformMeasurementCheck
 from agentrust_trace.sign import (
+    _JWK_PRIVATE_PARAMS,
     _b64url_decode,
     _canonical_bytes,
+    _integer_value,
     _key_identifiers,
     _pubkey_from_jwk,
 )
@@ -171,6 +174,23 @@ def _check_seconds(name: str, value: Any) -> None:
         raise ValueError(f"{name} must be non-negative, got {value}")
 
 
+_BUNDLE_PATTERNS: dict[str, re.Pattern[str]] = {
+    "^[A-Za-z0-9_-]+$": re.compile(r"^[A-Za-z0-9_-]+\Z"),
+}
+
+
+def _ecma_bundle_pattern(
+    validator: Any, pattern: str, instance: Any, schema: Any
+) -> Iterator[jsonschema.ValidationError]:
+    if validator.is_type(instance, "string") and not _BUNDLE_PATTERNS[pattern].search(instance):
+        yield jsonschema.ValidationError(f"{instance!r} does not match {pattern!r}")
+
+
+_BundleValidator = jsonschema.validators.extend(  # type: ignore[no-untyped-call]
+    jsonschema.Draft202012Validator, {"pattern": _ecma_bundle_pattern}
+)
+
+
 @lru_cache(maxsize=1)
 def _bundle_validator() -> jsonschema.Draft202012Validator:
     """A validator for the bundle schema that resolves its statement ``$ref`` locally.
@@ -188,11 +208,13 @@ def _bundle_validator() -> jsonschema.Draft202012Validator:
         (pkg / "trace-revocation-bundle.json").read_text(encoding="utf-8")
     )
     statement_schema = json.loads((pkg / "trace-revocation.json").read_text(encoding="utf-8"))
+    statement_schema.pop("$schema", None)
     resource = referencing.Resource.from_contents(
         statement_schema, default_specification=referencing.jsonschema.DRAFT202012
     )
-    return jsonschema.Draft202012Validator(
-        bundle_schema, registry=resource @ referencing.Registry()
+    return cast(
+        jsonschema.Draft202012Validator,
+        _BundleValidator(bundle_schema, registry=resource @ referencing.Registry()),
     )
 
 
@@ -227,6 +249,14 @@ def _bundle_pubkey_from_jwk(jwk: dict[str, Any], alg: str) -> Any:
     spec = _EC_CURVES.get(alg)
     if spec is None:
         raise ValueError(f"unsupported bundle signature algorithm {alg!r}")
+    if not isinstance(jwk, dict):
+        raise ValueError(f"JWK must be a JSON object, got {type(jwk).__name__}")
+    private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private_members:
+        raise ValueError(
+            f"JWK contains private key material ({', '.join(repr(m) for m in private_members)}); "
+            "expected a public verification key"
+        )
     expected_crv, coord_size, curve, _ = spec
     kty = jwk.get("kty")
     crv = jwk.get("crv")
@@ -363,8 +393,8 @@ def check_bundle(
                 "error": f"statement names log {statement['log_id']!r}; bundle is for {log_id!r}",
             })
 
-    issued_at = bundle["issued_at"]
-    valid_until = bundle["valid_until"]
+    issued_at = _integer_value(bundle["issued_at"], "issued_at")
+    valid_until = _integer_value(bundle["valid_until"], "valid_until")
     try:
         digest = bundle_digest(bundle)
     except ValueError as exc:

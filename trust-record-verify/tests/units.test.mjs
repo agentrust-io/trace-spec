@@ -20,6 +20,7 @@ import {
   verifyDelegationLink,
   verifyRecord,
 } from "../dist/index.js";
+import { importEcdsa } from "../dist/crypto.js";
 
 async function rejects(promise, code) {
   await assert.rejects(promise, (error) => {
@@ -326,5 +327,70 @@ test("checkRevocationBundle verifies ES256 and ES384 bundles and rejects mismatc
     });
     assert.equal(unsupported.outcome, "unverified_for_revocation");
     assert.equal(unsupported.cause, "bundle_signature_unsupported");
+  }
+});
+
+test("importEcdsa and checkRevocationBundle refuse EC JWKs carrying private key material", async () => {
+  const examples = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "examples", "revocation-bundle");
+  const v29 = JSON.parse(readFileSync(join(examples, "29-es256-bundle-verified.json"), "utf8"));
+  const v30 = JSON.parse(readFileSync(join(examples, "30-es384-bundle-verified.json"), "utf8"));
+  const v11 = JSON.parse(
+    readFileSync(join(examples, "11-statement-names-trusted-key-by-thumbprint.json"), "utf8"),
+  );
+
+  for (const [vec, curve] of [
+    [v29, "P-256"],
+    [v30, "P-384"],
+  ]) {
+    const ecJwk = vec.context.trusted_bundle_keys[0];
+    assert.ok(await importEcdsa(ecJwk, curve, "bundle_key"));
+
+    for (const member of PRIVATE_JWK_MEMBERS) {
+      const leaked = { ...ecJwk, [member]: SECRET_SENTINEL };
+      await assert.rejects(importEcdsa(leaked, curve, "bundle_key"), (error) => {
+        assert.ok(error instanceof TraceVerificationError);
+        assert.equal(error.code, "invalid_argument");
+        assert.match(error.message, /private key material/);
+        assert.ok(error.message.includes(member));
+        assert.equal(error.message.includes(SECRET_SENTINEL), false);
+        return true;
+      });
+
+      await assert.rejects(
+        checkRevocationBundle(vec.context.bundle, {
+          trustedKeyIdentifiers: ["issuer-key-2026"],
+          trustedBundleKeys: [leaked],
+          now: vec.context.now,
+          maxBundleAgeSeconds: vec.context.max_bundle_age_seconds,
+          maxFutureSkewSeconds: vec.context.max_future_skew_seconds,
+        }),
+        (error) => {
+          assert.ok(error instanceof TraceVerificationError);
+          assert.equal(error.code, "invalid_argument");
+          assert.match(error.message, /private key material/);
+          assert.ok(error.message.includes(member));
+          assert.equal(error.message.includes(SECRET_SENTINEL), false);
+          return true;
+        },
+      );
+    }
+  }
+
+  for (const [mutator, expectedPath] of [
+    [(b) => { b.sig.value += "\n"; }, "sig/value"],
+    [(b) => { b.statements[0].sig.value += "\n"; }, "statements/0/sig/value"],
+  ]) {
+    const mutated = structuredClone(v11.context.bundle);
+    mutator(mutated);
+    const check = await checkRevocationBundle(mutated, {
+      trustedKeyIdentifiers: ["issuer-key-2026"],
+      trustedBundleKeys: v11.context.trusted_bundle_keys,
+      now: v11.context.now,
+      maxBundleAgeSeconds: v11.context.max_bundle_age_seconds,
+      maxFutureSkewSeconds: v11.context.max_future_skew_seconds,
+    });
+    assert.equal(check.outcome, "unverified_for_revocation");
+    assert.equal(check.cause, "bundle_malformed");
+    assert.equal(check.evidence.path, expectedPath);
   }
 });
