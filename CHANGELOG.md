@@ -11,6 +11,15 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`adapters`: validate `data_class`, policy/appraisal/SLSA fields, URI formats, and
+  UTF-8 string boundaries in `TraceAGTAdapter`, `TraceSandboxAdapter`, and
+  `SandboxAttestation`.** Both adapters now reject empty, non-string, or lone-surrogate
+  `data_class` and string configuration values, validate `PolicyInfo`, `Appraisal`, and
+  `BuildProvenance` at both `__init__` and `build_trust_record`, and enforce RFC 3986
+  URI format (matching `validate_json`) on `transparency`, `appraisal_verifier`,
+  `appraisal_policy_ref`, `build_provenance_uri`, `policy_uri`, and
+  `SandboxAttestation.rim_uri` (#615, by @drk-ram).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
