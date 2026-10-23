@@ -11,20 +11,21 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
-- **Registry Anchor Format v1 §1 states the five canonical JSON rules and excludes unpaired UTF-16 surrogates (#536, #448 items 3, 16, 19).**
-  `spec/registry-anchor-v1.md` §1 now states the five language-independent canonical JSON
-  serialization rules (recursive Unicode code-point key sorting, `","` and `":"` separators
-  with no whitespace, string and surrogate-pair escaping rules including `\u007f` for ASCII
-  DEL `U+007F`, integer zero `0` without a minus sign, and no trailing newline), excludes
-  unpaired UTF-16 surrogates (`U+D800` to `U+DFFF`) in strings and object keys from the
-  anchor-leaf profile alongside non-integer numbers and unsafe integers, and narrows §0's
-  equality boundary to ASCII other than DEL (`U+007F`). Both `agentrust_trace.sign.anchor_bytes`
-  (`UnanchorableValue`) and `trace_tests.inclusion.canonical_claim_bytes` (`InclusionError`)
-  now refuse unpaired UTF-16 surrogates in string values and object keys. Also updates
-  `examples/verifier-compatibility/README.md` to reflect that Obligations 2 and 3 of #116 are
-  normative in `spec/trace-v0.2.md` §3.3, and attributes external-evidence fields and
-  verification in `docs/crosswalks/acta-decision-receipts.md` to §3.3.2 and §3.3.3 (by
-  @drk-ram, with review companion from @dinakarjs).
+- **`prototype.gate_store` and `prototype.cmcp_gate`: binary store secrets, canonical
+  base64url/JSON frames, `GateStoreUnavailable` response wrapping, and `CMCPTraceGate`
+  entry checks.** `GateStoreServer` and `RemoteGateStore` now both require a `bytes`
+  secret of at least 16 bytes and authenticate `_b64(secret)` across the wire so
+  non-UTF-8 binary secrets do not raise `UnicodeDecodeError`, and `python -m
+  prototype.gate_store` also accepts `TRACE_GATE_STORE_SECRET_B64` for binary secrets.
+  `gate_store._unb64` requires canonical unpadded base64url, `gate_store._recv` rejects
+  duplicate JSON keys, UTF-8 BOMs, non-finite JSON constants, and deep recursion as
+  `ValueError`, and `RemoteGateStore` validates response shapes and `sha256:<64 hex>`
+  digest strings and wraps malformed store responses in `GateStoreUnavailable` instead
+  of leaking `ValueError` (`binascii.Error`), `TypeError`, or `IndexError`.
+  `CMCPTraceGate` validates `context`, `gateway_key`, `gateway_issuer`, `clock`,
+  `database`, and `store` at initialization and checks `session_id`, `call_id`,
+  `reason`, `handle`, and `isinstance(action, dict)` before JCS canonicalization (#606,
+  by @drk-ram).
 
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
@@ -74,11 +75,29 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   IEEE P1363 `r || s` concatenation (64 and 96 bytes, stated on `sig.value` in
   `schema/trace-revocation-bundle.json`), and `examples/revocation-bundle/` adds vectors
   29 and 30 (#584, #448 items 1 and 10, by @drk-ram).
+- **Revocation bundle EC key, ECMA-262 regex, and integer-by-value timestamp parity.**
+  `revocation._bundle_pubkey_from_jwk` and `trust-record-verify`'s `importEcdsa` now reject
+  EC bundle-signing JWKs carrying private or symmetric parameters (`d`, `p`, `q`, `dp`, `dq`,
+  `qi`, `oth`, `k`), matching `ed25519` key import under GHSA-vc4p-h84j-7qxj;
+  `revocation._bundle_validator()` enforces ECMA-262 `$` (`\Z`) pattern semantics on
+  `trace-revocation-bundle.json` and `trace-revocation.json` so trailing newlines in
+  `sig.value` are rejected as `bundle_malformed` in Python just as in `trust-record-verify`;
+  and `revocation.check_bundle` normalizes whole-float `issued_at` and `valid_until` values
+  to `int` via `_integer_value` before storing them in `RevocationCheck.evidence` (#604, by
+  @drk-ram).
 - **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
   a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
   key verified, and a string was searched by substring. Both now raise
   `ValueError`, as does a non-bool `allow_embedded_key`, which was read for truthiness (#511,
   by @drk-ram).
+- **`provenance.verify_record` validates both JWKs before revocation and thumbprint comparison.**
+  `trusted_jwk` is now validated with `_pubkey_from_jwk` before consulting `revocation` or
+  comparing thumbprints, and `record["cnf"]["jwk"]` is validated with `_pubkey_from_jwk`
+  before computing its thumbprint, so a `trusted_jwk` rejected by `_pubkey_from_jwk` is
+  reported as `trusted_jwk is unusable` rather than blamed on the record's embedded key or
+  passed to `revocation`, and a `cnf.jwk` rejected by `_pubkey_from_jwk` is reported as
+  `the record's embedded key is unusable` rather than `not the trusted key` when compared
+  against a valid `trusted_jwk`. Nothing that was rejected now passes (#602, by @drk-ram).
 - **`verify_bridge` reports the real reason.** A key-id mismatch or an unusable trusted JWK
   is now reported as itself rather than as an invalid signature; `verify_successor_artifact`
   gets the same JWK check. Nothing that was rejected now passes (#510, by @drk-ram).
