@@ -177,6 +177,23 @@ out.checks.badCitationResolver = await codeOf(() =>
 out.checks.badPlatformAppraiser = await codeOf(() =>
   trace.verifyRecord({}, { platformAppraiser: 123 })
 );
+out.checks.nonObjectParentRecordHash = await codeOf(() =>
+  trace.parentRecordHash(123)
+);
+out.checks.nonObjectParentDelegationLink = await codeOf(() =>
+  trace.verifyDelegationLink(
+    {
+      delegation: {
+        parent_record_hash: "sha256:" + "a".repeat(64),
+        credential_id: "c1",
+      },
+    },
+    123,
+  )
+);
+out.checks.nonObjectBundleDigest = await codeOf(() =>
+  trace.bundleDigest(123)
+);
 
 process.stdout.write(JSON.stringify(out));
 """
@@ -209,3 +226,11 @@ def test_ts_platform_measurement_vector(path: pathlib.Path, ts_results: dict[str
 def test_ts_invalid_callback_options_rejected_at_entry(ts_results: dict[str, Any]) -> None:
     assert ts_results["checks"]["badCitationResolver"] == "invalid_argument"
     assert ts_results["checks"]["badPlatformAppraiser"] == "invalid_argument"
+
+
+def test_ts_non_object_inputs_rejected_in_delegation_and_bundle_digest(
+    ts_results: dict[str, Any],
+) -> None:
+    assert ts_results["checks"]["nonObjectParentRecordHash"] == "record_not_object"
+    assert ts_results["checks"]["nonObjectParentDelegationLink"] == "record_not_object"
+    assert ts_results["checks"]["nonObjectBundleDigest"] == "invalid_argument"
