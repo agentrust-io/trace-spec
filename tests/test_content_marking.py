@@ -323,3 +323,52 @@ def test_a_complete_pair_still_verifies() -> None:
     record = _record()
     assertion = build_assertion(_bytes(record), url=URL)
     assert verify_assertion(assertion, _bytes(record)) == record
+
+
+@pytest.mark.parametrize(
+    ("declared_alg", "hash_alg"),
+    [("sha256", "sha384"), ("sha384", "sha256")],
+)
+def test_mismatched_record_alg_and_hash_prefix_is_content_marking_error_not_mismatch(
+    declared_alg: str, hash_alg: str
+) -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL, alg=hash_alg)
+    a["data"]["record"]["alg"] = declared_alg
+    with pytest.raises(ContentMarkingError, match="does not use declared record.alg") as excinfo:
+        verify_assertion(a, raw)
+    assert type(excinfo.value) is ContentMarkingError
+
+
+def test_unsupported_alg_in_verify_assertion_is_rejected_before_record_bytes() -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL)
+    a["data"]["record"]["alg"] = "md5"
+    with pytest.raises(ContentMarkingError, match="unsupported digest algorithm") as excinfo:
+        verify_assertion(a, b"")
+    assert type(excinfo.value) is ContentMarkingError
+
+
+@pytest.mark.parametrize("surface", ["top", "data", "record"])
+def test_verify_assertion_rejects_unknown_fields(surface: str) -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL)
+    if surface == "top":
+        a["extra"] = True
+    elif surface == "data":
+        a["data"]["extra"] = True
+    else:
+        a["data"]["record"]["extra"] = True
+    with pytest.raises(ContentMarkingError, match="unknown fields") as excinfo:
+        verify_assertion(a, raw)
+    assert type(excinfo.value) is ContentMarkingError
+
+
+def test_verify_assertion_detects_anchor_disagreement_with_record() -> None:
+    rec = _record(anchor="https://registry.example/entries/2")
+    raw = _bytes(rec)
+    a = build_assertion(raw, url=URL, anchor="https://registry.example/entries/1")
+    with pytest.raises(RecordMismatch, match="disagree about anchor"):
+        verify_assertion(a, raw)
+    matching = build_assertion(raw, url=URL, anchor="https://registry.example/entries/2")
+    assert verify_assertion(matching, raw) == rec
