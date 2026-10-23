@@ -613,61 +613,52 @@ def _build_pck_cert_with_sgx_ext(
     )
 
 
-def test_converge_folds_all_non_uptodate_module_and_qe_statuses():
-    expected = {
-        ("UpToDate", "UpToDate"): "UpToDate",
-        ("UpToDate", "ConfigurationNeeded"): "ConfigurationNeeded",
-        ("UpToDate", "OutOfDate"): "OutOfDate",
-        ("UpToDate", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
-        ("UpToDate", "SWHardeningNeeded"): "SWHardeningNeeded",
-        (
-            "UpToDate",
-            "ConfigurationAndSWHardeningNeeded",
-        ): "ConfigurationAndSWHardeningNeeded",
-        ("ConfigurationNeeded", "ConfigurationNeeded"): "ConfigurationNeeded",
-        ("ConfigurationNeeded", "SWHardeningNeeded"): "ConfigurationAndSWHardeningNeeded",
-        (
-            "ConfigurationNeeded",
-            "ConfigurationAndSWHardeningNeeded",
-        ): "ConfigurationAndSWHardeningNeeded",
-        ("ConfigurationNeeded", "OutOfDate"): "OutOfDateConfigurationNeeded",
-        ("ConfigurationNeeded", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
-        ("SWHardeningNeeded", "SWHardeningNeeded"): "SWHardeningNeeded",
-        (
-            "SWHardeningNeeded",
-            "ConfigurationAndSWHardeningNeeded",
-        ): "ConfigurationAndSWHardeningNeeded",
-        ("SWHardeningNeeded", "OutOfDate"): "OutOfDate",
-        ("SWHardeningNeeded", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
-        (
-            "ConfigurationAndSWHardeningNeeded",
-            "ConfigurationAndSWHardeningNeeded",
-        ): "ConfigurationAndSWHardeningNeeded",
-        ("ConfigurationAndSWHardeningNeeded", "OutOfDate"): "OutOfDateConfigurationNeeded",
-        (
-            "ConfigurationAndSWHardeningNeeded",
-            "OutOfDateConfigurationNeeded",
-        ): "OutOfDateConfigurationNeeded",
-        ("OutOfDate", "OutOfDate"): "OutOfDate",
-        ("OutOfDate", "OutOfDateConfigurationNeeded"): "OutOfDateConfigurationNeeded",
-        (
-            "OutOfDateConfigurationNeeded",
-            "OutOfDateConfigurationNeeded",
-        ): "OutOfDateConfigurationNeeded",
-    }
-    for (left, right), want in expected.items():
-        assert t._converge(left, right) == want
-        assert t._converge(right, left) == want
-    for status in t._STATUS_TO_QV:
-        assert t._converge(status, "Revoked") == "Revoked"
-        assert t._converge("Revoked", status) == "Revoked"
+def _intel_qvl_converge_tcb_statuses(
+    tcb_level_status: str, status_vec: list[str]
+) -> str:
+    """Transcription of Intel DCAP QVL convergeTcbStatuses.
+
+    Source: confidential-computing.tee.dcap.qvl
+    d12717e3f1f2ab81313f88001fd902b5ef5f9c8c,
+    Src/AttestationLibrary/src/Verifiers/Checks/EvaluateTcb.cpp:187-225
+    (pinned by DCAP 72f800e9696f382464bc8ef243311edf8bd7dc13).
+    """
+    effective = tcb_level_status
+    if any(status == "OutOfDate" for status in status_vec):
+        if effective in ("UpToDate", "SWHardeningNeeded"):
+            effective = "OutOfDate"
+        if effective in ("ConfigurationNeeded", "ConfigurationAndSWHardeningNeeded"):
+            effective = "OutOfDateConfigurationNeeded"
+    if any(status == "Revoked" for status in status_vec):
+        effective = "Revoked"
+    return effective
+
+
+def test_converge_matches_intel_qvl_converge_tcb_statuses_across_all_pairs_and_triples():
+    statuses = tuple(t._STATUS_TO_QV)
+    assert len(statuses) == 7
+    pairs = [(p, o) for p in statuses for o in statuses]
+    assert len(pairs) == 49
+    for platform, other in pairs:
+        assert t._converge(platform, other) == _intel_qvl_converge_tcb_statuses(
+            platform, [other]
+        )
+
+    triples = [(p, m, q) for p in statuses for m in statuses for q in statuses]
+    assert len(triples) == 343
+    for platform, module_status, qe_status in triples:
+        folded = t._converge(t._converge(platform, module_status), qe_status)
+        assert folded == _intel_qvl_converge_tcb_statuses(
+            platform, [module_status, qe_status]
+        )
 
 
 def test_converge_rejects_unknown_or_non_string_status():
     assert t._converge("UpToDate", "UpToDate") == "UpToDate"
-    for bad in ("Unknown", "", None, 0, ["UpToDate"], {"status": "UpToDate"}):
-        denied("tcb_status_unknown", t._converge, bad, "UpToDate")
-        denied("tcb_status_unknown", t._converge, "UpToDate", bad)
+    for valid in ("UpToDate", "OutOfDate", "Revoked", "ConfigurationNeeded"):
+        for bad in ("Unknown", "", None, 0, ["UpToDate"], {"status": "UpToDate"}):
+            denied("tcb_status_unknown", t._converge, bad, valid)
+            denied("tcb_status_unknown", t._converge, valid, bad)
 
 
 def test_der_rejects_non_minimal_length_encodings():
@@ -703,4 +694,3 @@ def test_pck_extension_rejects_non_minimal_and_negative_der_integers():
             t._pck_extension,
             _build_pck_cert_with_sgx_ext(pcesvn_bytes=bad_int),
         )
-

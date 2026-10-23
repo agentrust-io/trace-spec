@@ -11,16 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
-- **`tdx_collateral` and `snp_collateral`: TCB status convergence, minimal DER integer
-  decoding, and policy input validation.** `tdx_collateral._converge` now folds
-  `ConfigurationNeeded`, `OutOfDateConfigurationNeeded`, `SWHardeningNeeded`, and
-  `ConfigurationAndSWHardeningNeeded` TDX Module and QE statuses into the platform TCB
-  status instead of leaving an `UpToDate` platform at `UpToDate`, and `tdx_collateral`
-  rejects non-minimal DER length and integer encodings in PCK SGX extensions.
-  `snp_collateral._der_uint` now rejects negative, non-minimal, and out-of-range (`> 255`)
-  DER integers in VCEK TCB extensions, and `TcbFloor`, `CollateralPolicy`,
-  `appraise_collateral`, and `tcb_component` validate their input types and fail closed
-  with `CollateralDenied` (#603, by @drk-ram).
+- **`tdx_collateral` and `snp_collateral`: TCB status validation, minimal DER integer
+  decoding, and policy input validation.** `tdx_collateral._converge` now validates both
+  `platform` and `other` against `_STATUS_TO_QV` while preserving Intel DCAP QVL's
+  `convergeTcbStatuses` (`EvaluateTcb.cpp:187-225` at `d12717e3`) convergence semantics,
+  and `tdx_collateral` rejects non-minimal DER length and integer encodings in PCK SGX
+  extensions. `snp_collateral._der_uint` now rejects negative, non-minimal, and
+  out-of-range (`> 255`) DER integers in VCEK TCB extensions, and `TcbFloor`,
+  `CollateralPolicy`, `appraise_collateral`, and `tcb_component` validate their input
+  types and fail closed with `CollateralDenied` (#603, #610, by @drk-ram; review by
+  @dinakarjs and @lywinged).
 
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on

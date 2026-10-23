@@ -574,28 +574,12 @@ def _converge(platform: Any, other: Any) -> str:
         raise CollateralDenied("tcb_status_unknown")
     if platform == "Revoked" or other == "Revoked":
         return "Revoked"
-    if other == "UpToDate":
-        return platform
-    pair = {platform, other}
-    out_of_date = bool(pair & {"OutOfDate", "OutOfDateConfigurationNeeded"})
-    config_needed = bool(
-        pair
-        & {
-            "ConfigurationNeeded",
-            "OutOfDateConfigurationNeeded",
-            "ConfigurationAndSWHardeningNeeded",
-        }
-    )
-    sw_hardening = bool(pair & {"SWHardeningNeeded", "ConfigurationAndSWHardeningNeeded"})
-    if out_of_date:
-        return "OutOfDateConfigurationNeeded" if config_needed else "OutOfDate"
-    if config_needed and sw_hardening:
-        return "ConfigurationAndSWHardeningNeeded"
-    if config_needed:
-        return "ConfigurationNeeded"
-    if sw_hardening:
-        return "SWHardeningNeeded"
-    return "UpToDate"
+    if other == "OutOfDate":
+        if platform in ("UpToDate", "SWHardeningNeeded"):
+            return "OutOfDate"
+        if platform in ("ConfigurationNeeded", "ConfigurationAndSWHardeningNeeded"):
+            return "OutOfDateConfigurationNeeded"
+    return platform
 
 
 def appraise_collateral(

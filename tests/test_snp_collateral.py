@@ -499,4 +499,3 @@ def test_tcb_component_validates_appraisal_packet_and_identifiers():
                 authority=bad_id,  # type: ignore[arg-type]
                 now=now,
             )
-
