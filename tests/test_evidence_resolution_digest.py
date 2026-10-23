@@ -28,3 +28,15 @@ def test_er01_canonical_identity_survives_encoding_but_not_member_change(encoded
     assert canonical_digest(changed) == "sha256:" + hashlib.sha256(changed_canonical).hexdigest()
     assert canonical_digest(changed) != expected
     assert canonical_digest(packet) == expected
+
+
+@pytest.mark.parametrize(("packet", "canonical"), [
+    ({"\ue000": 1, "\U0001f600": 2}, '{"\U0001f600":2,"\ue000":1}'.encode()),
+    ({"small": 1e-7}, b'{"small":1e-7}'),
+], ids=["utf16-key-order", "exponent-spelling"])
+def test_er01_pins_jcs_beyond_sorted_json(packet, canonical):
+    # Both cases distinguish JCS from sorted JSON even after integral-float normalization.
+    expected = "sha256:" + hashlib.sha256(canonical).hexdigest()
+    assert canonical_digest(packet) == expected
+    sorted_json = json.dumps(packet, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert "sha256:" + hashlib.sha256(sorted_json.encode()).hexdigest() != expected

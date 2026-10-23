@@ -296,6 +296,8 @@ The checks behind all of this can be run from a checkout: `node tools/independen
 Informative proposal for [#441](https://github.com/agentrust-io/trace-spec/issues/441).
 No resolver, wire field or appraisal outcome is implemented by this text.
 Maintainers still select the profile and local comparison representation.
+If this slice is adopted, section 9's first non-goal would change to reflect the
+new resolution and re-appraisal scope.
 
 #### Claim and trust boundary
 
@@ -316,21 +318,21 @@ A digest mismatch is a binding failure, not proof that the asserted content is f
 
 #### Proposed processing obligations
 
-1. Retain the received bytes in the declared private store. Parse unambiguously,
+1. The resolver retains the received bytes in the declared private store and parses unambiguously,
    including duplicate-member refusal, before canonicalization.
-2. Check the reference against the existing `canonical_digest(packet)` contract
+2. The resolver checks the reference against the existing `canonical_digest(packet)` contract
    in `prototype/verifier_token.py`: RFC 8785 canonical JSON and the named digest.
    Whitespace differences alone do not change that object digest. Arbitrary
    downloaded text hashes are not interchangeable with it [R2].
-3. Independently supply holder/challenge context, execution policy, accepted
+3. The relying party independently supplies holder/challenge context, execution policy, accepted
    roots, platform collateral, TCB floors and evaluation instant.
-4. Reuse the authenticated execution path before collateral appraisal.
+4. The appraiser reuses the authenticated execution path before collateral appraisal.
    `prototype/snp_collateral.py::appraise_collateral` explicitly assumes an
    already-authenticated packet; calling it alone is insufficient.
-5. Retain execution and collateral results separately. Compare eligible local
+5. The relying party retains execution and collateral results separately and compares eligible local
    results with the original signed components without rewriting those components.
    Shared evidence identity does not imply that both appraisals occurred.
-6. Preserve original observation/appraisal times. Fetching or serializing the
+6. The resolver preserves original observation/appraisal times. Fetching or serializing the
    packet today does not create new freshness.
 
 The existing historical packet can legitimately fall below the selected vendor
@@ -346,7 +348,7 @@ boundary, including genuine signatures for semantic-binding cases.
 
 | ID | Controlled pair | Required distinction |
 | --- | --- | --- |
-| ER01 (executed) | Same synthetic object, changed whitespace and member order / changed member | Same canonical digest / different digest, checked against a pinned canonical preimage |
+| ER01 (executed) | Same synthetic object, changed whitespace, member order and number spelling / changed member; UTF-16 key order and exponent spelling controls | Same canonical digest / different digest, checked against a pinned canonical preimage |
 | ER02 | Available packet / missing, denied or deleted packet | Appraisal attempted / unavailable evidence |
 | ER03 | Authenticated expected packet / wrong AK or root | Eligible appraisal / authentication failure |
 | ER04 | Correct holder and challenge / validly signed wrong context | Correct binding / no applicable appraisal |
@@ -358,7 +360,9 @@ boundary, including genuine signatures for semantic-binding cases.
 
 ER01 checks the existing helper only: three JSON encodings parse to the same
 synthetic object and match the SHA-256 of explicitly pinned canonical bytes.
-Changing one nested member changes the expected digest. It neither resolves a
+Changing one nested member changes the expected digest. Two additional cases pin
+UTF-16 key ordering and exponent spelling, distinguishing JCS from sorted JSON
+even if whole-valued floats are first normalized to integers. It neither resolves a
 reference nor authenticates or appraises a platform packet. Run
 `python -m pytest -q tests/test_evidence_resolution_digest.py`.
 
@@ -408,7 +412,7 @@ These dependencies cannot be marked complete by accepting this informative text.
 #### Literature and its application
 
 - R1: [RFC 9334, RATS Architecture (2023), sections 8 and 10](https://www.rfc-editor.org/rfc/rfc9334.html).
-  Roles, appraisal policies and freshness inform the trust boundary.
+  Conceptual messages, appraisal policies and freshness inform the trust boundary.
 - R2: [RFC 8785, JSON Canonicalization Scheme (2020)](https://www.rfc-editor.org/rfc/rfc8785.html).
   Defines the canonicalization antecedent; existing repository code determines
   this packet's preimage contract.
