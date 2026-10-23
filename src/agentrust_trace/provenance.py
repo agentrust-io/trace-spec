@@ -544,9 +544,6 @@ def verify_record(
             f"max_age_seconds={max_age_seconds}"
         )
 
-    # Revocation, before the signature rather than after. A signature made by a
-    # revoked key stays cryptographically valid for ever, so the verifier is the
-    # only place the fact can be applied.
     if isinstance(trusted_jwk, dict):
         private = sorted(_JWK_PRIVATE_PARAMS.intersection(trusted_jwk))
         if private:
@@ -554,6 +551,15 @@ def verify_record(
                 f"trusted_jwk must not contain private key material: found {', '.join(private)}. "
                 "trusted_jwk must be a public confirmation key."
             )
+    try:
+        pub = _pubkey_from_jwk(trusted_jwk)
+    except ValueError as exc:
+        raise ProvenanceError(f"trusted_jwk is unusable: {exc}") from exc
+    trusted_thumbprint = jwk_thumbprint(trusted_jwk)
+
+    # Revocation, before the signature rather than after. A signature made by a
+    # revoked key stays cryptographically valid for ever, so the verifier is the
+    # only place the fact can be applied.
     if revocation is not None:
         try:
             _check_not_revoked(trusted_jwk, revocation)
@@ -584,19 +590,14 @@ def verify_record(
     from hmac import compare_digest
 
     try:
-        matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+        _pubkey_from_jwk(embedded)
     except ValueError as exc:
         raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
-    if not matched:
+    if not compare_digest(jwk_thumbprint(embedded), trusted_thumbprint):
         raise ProvenanceError(
             "the record's embedded key is not the trusted key. A record signed by "
             "some other key is a record about a server somebody else is describing."
         )
-
-    try:
-        pub = _pubkey_from_jwk(trusted_jwk)
-    except ValueError as exc:
-        raise ProvenanceError(f"trusted_jwk is unusable: {exc}") from exc
     try:
         body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
     except rfc8785.CanonicalizationError as exc:
