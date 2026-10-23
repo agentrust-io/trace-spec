@@ -11,6 +11,22 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`prototype.gate_store` and `prototype.cmcp_gate`: binary store secrets, canonical
+  base64url/JSON frames, `GateStoreUnavailable` response wrapping, and `CMCPTraceGate`
+  entry checks.** `GateStoreServer` and `RemoteGateStore` now both require a `bytes`
+  secret of at least 16 bytes and authenticate `_b64(secret)` across the wire so
+  non-UTF-8 binary secrets do not raise `UnicodeDecodeError`, and `python -m
+  prototype.gate_store` also accepts `TRACE_GATE_STORE_SECRET_B64` for binary secrets.
+  `gate_store._unb64` requires canonical unpadded base64url, `gate_store._recv` rejects
+  duplicate JSON keys, UTF-8 BOMs, non-finite JSON constants, and deep recursion as
+  `ValueError`, and `RemoteGateStore` validates response shapes and `sha256:<64 hex>`
+  digest strings and wraps malformed store responses in `GateStoreUnavailable` instead
+  of leaking `ValueError` (`binascii.Error`), `TypeError`, or `IndexError`.
+  `CMCPTraceGate` validates `context`, `gateway_key`, `gateway_issuer`, `clock`,
+  `database`, and `store` at initialization and checks `session_id`, `call_id`,
+  `reason`, `handle`, and `isinstance(action, dict)` before JCS canonicalization (#606,
+  by @drk-ram).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
