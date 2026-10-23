@@ -153,6 +153,12 @@ export async function importEcdsa(
   if (crv !== curve) {
     fail(code, `${label} has crv ${show(crv)}; expected ${JSON.stringify(curve)}`);
   }
+  const privateMembers = Object.keys(jwk)
+    .filter((name) => JWK_PRIVATE_MEMBERS.has(name))
+    .sort();
+  if (privateMembers.length > 0) {
+    fail(code, `${label} contains private key material (${privateMembers.join(", ")})`);
+  }
   for (const [coordName, coordValue] of [
     ["x", x],
     ["y", y],

@@ -20,11 +20,41 @@ from threading import RLock
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from pydantic import TypeAdapter
 
 import rfc8785
 
 from . import verifier_token as v
 from .gate_store import GateStore, SQLiteGateStore
+
+_IDENTIFIER: TypeAdapter[str] = TypeAdapter(v.Identifier)
+_STORE_METHODS = (
+    "mint_challenge",
+    "consume_challenge",
+    "bump_admission",
+    "admission",
+    "receipted",
+    "reserve_call",
+    "receipt_head",
+    "append_receipt",
+    "receipts",
+)
+
+
+def _check_id(value: object) -> str:
+    try:
+        return _IDENTIFIER.validate_python(value, strict=True)
+    except (ValueError, TypeError) as exc:
+        raise v.ProfileError("input_invalid") from exc
+
+
+def _action_bytes(action: object) -> bytes:
+    if not isinstance(action, dict):
+        raise v.ProfileError("input_invalid")
+    try:
+        return rfc8785.dumps(action)
+    except (ValueError, TypeError, OverflowError, RecursionError) as exc:
+        raise v.ProfileError("input_invalid") from exc
 
 
 @dataclass(frozen=True)
@@ -55,6 +85,24 @@ class CMCPTraceGate:
         """Exactly one of ``database`` (default SQLite store) or ``store``."""
         if (database is None) == (store is None):
             raise v.ProfileError("gate_store_configuration_invalid")
+        if database is not None and (
+            not isinstance(database, (str, Path)) or not str(database)
+        ):
+            raise v.ProfileError("gate_store_configuration_invalid")
+        if store is not None and not all(
+            callable(getattr(store, name, None)) for name in _STORE_METHODS
+        ):
+            raise v.ProfileError("gate_store_configuration_invalid")
+        if (
+            not isinstance(context, v.VerificationContext)
+            or not isinstance(gateway_key, Ed25519PrivateKey)
+            or not callable(clock)
+        ):
+            raise v.ProfileError("gate_configuration_invalid")
+        try:
+            _IDENTIFIER.validate_python(gateway_issuer, strict=True)
+        except (ValueError, TypeError) as exc:
+            raise v.ProfileError("gate_configuration_invalid") from exc
         self.context = context
         self._database = None if database is None else str(database)
         self._key = gateway_key
@@ -100,10 +148,11 @@ class CMCPTraceGate:
     def challenge(
         self, token_bytes: bytes, *, session_id: str, action: dict[str, Any]
     ) -> dict[str, Any]:
+        _check_id(session_id)
+        action_hash = v.digest(_action_bytes(action))
         now = self.now()
         token = v.verify_token(token_bytes, self.context, now)
         nonce = secrets.token_urlsafe(32)
-        action_hash = v.canonical_digest(action)
         expiry = min(now + 30, token.exp)
         self._store.mint_challenge(
             issuer=token.iss,
@@ -129,6 +178,8 @@ class CMCPTraceGate:
     def _prove(
         self, raw: bytes, credentials: object, *, session_id: str, action: dict[str, Any]
     ) -> v.Token:
+        _check_id(session_id)
+        action_hash = v.digest(_action_bytes(action))
         now = self.now()
         token = v.verify_token(raw, self.context, now)
         if not isinstance(credentials, dict) or set(credentials) != {"nonce", "proof"}:
@@ -148,7 +199,7 @@ class CMCPTraceGate:
             record.expires,
         )
         # Consumption commits before proof evaluation: invalid guesses burn a nonce.
-        if row[:3] != (v.digest(raw), session_id, v.canonical_digest(action)):
+        if row[:3] != (v.digest(raw), session_id, action_hash):
             raise v.ProfileError("challenge_action_or_session")
         v.verify_proof(
             proof,
@@ -172,6 +223,7 @@ class CMCPTraceGate:
         return token
 
     def admit(self, token_bytes: bytes, credentials: object, *, session_id: str) -> dict[str, Any]:
+        _check_id(session_id)
         with self._lock:
             action = {"domain": "cmcp:trace-admission:experimental-v1", "session_id": session_id}
             token = self._prove(token_bytes, credentials, session_id=session_id, action=action)
@@ -191,6 +243,10 @@ class CMCPTraceGate:
         call_id: str,
         policy_digest: str,
     ) -> tuple[CallAdmission, dict[str, Any]]:
+        _check_id(session_id)
+        _check_id(call_id)
+        action_bytes = _action_bytes(action)
+        action_hash = v.digest(action_bytes)
         with self._lock:
             admitted = self._store.admission(session_id)
             reused = self._store.receipted(session_id, call_id)
@@ -202,9 +258,9 @@ class CMCPTraceGate:
                 raise v.ProfileError("call_id_reused")
             if policy_digest != self._gateway_policy_digest:
                 raise v.ProfileError("gateway_policy_changed")
-            if not self._store.reserve_call(session_id, call_id, v.canonical_digest(action)):
+            if not self._store.reserve_call(session_id, call_id, action_hash):
                 raise v.ProfileError("call_id_reused")
-            handle = CallAdmission(raw, rfc8785.dumps(action), generation, session_id, call_id)
+            handle = CallAdmission(raw, action_bytes, generation, session_id, call_id)
             return handle, {
                 "token_digest": v.digest(raw),
                 "token_id": token.jti,
@@ -218,11 +274,16 @@ class CMCPTraceGate:
             }
 
     def recheck(self, handle: CallAdmission, *, action: dict[str, Any], policy_digest: str) -> None:
+        if not isinstance(handle, CallAdmission):
+            raise v.ProfileError("input_invalid")
+        _check_id(handle.session_id)
+        _check_id(handle.call_id)
+        action_bytes = _action_bytes(action)
         with self._lock:
             current = self._store.admission(handle.session_id)
             if current != (handle.token_bytes, handle.generation):
                 raise v.ProfileError("trace_generation_changed")
-            if rfc8785.dumps(action) != handle.action_bytes:
+            if action_bytes != handle.action_bytes:
                 raise v.ProfileError("accepted_action_changed")
             if policy_digest != self._gateway_policy_digest:
                 raise v.ProfileError("gateway_policy_changed")
@@ -236,6 +297,11 @@ class CMCPTraceGate:
         An allow never rides on another receipt already recorded for this call
         (for example a concurrent replay's refusal): that fails closed.
         """
+        if not isinstance(handle, CallAdmission) or type(allowed) is not bool:
+            raise v.ProfileError("input_invalid")
+        _check_id(handle.session_id)
+        _check_id(handle.call_id)
+        _check_id(reason)
         with self._lock:
             token = (
                 v.read_payload(v.unpack(handle.token_bytes, v.PROFILE)[1], v.Token)
@@ -282,10 +348,13 @@ class CMCPTraceGate:
         )
 
     def refusal(self, *, action: dict[str, Any], session_id: str, call_id: str) -> None:
+        _check_id(session_id)
+        _check_id(call_id)
+        action_bytes = _action_bytes(action)
         with self._lock:
             admitted = self._store.admission(session_id)
             raw, generation = admitted or (b"", 0)
-            handle = CallAdmission(raw, rfc8785.dumps(action), generation, session_id, call_id)
+            handle = CallAdmission(raw, action_bytes, generation, session_id, call_id)
             self.receipt(handle, allowed=False, reason="trace_refused")
 
     def receipts(self) -> list[bytes]:
