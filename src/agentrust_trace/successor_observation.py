@@ -7,6 +7,7 @@ to produce the surface-local three-state evidence result defined by #338.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -125,7 +126,7 @@ def evaluate_successor_observation(
                 "independent observation is required but observer is the executor"
             )
 
-    result = predicate(observation)
+    result = predicate(copy.deepcopy(observation))
     if result is True:
         return SuccessorOutcome(
             "established",

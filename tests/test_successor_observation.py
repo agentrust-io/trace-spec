@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from agentrust_trace.intent_bridge import digest_jcs
@@ -202,3 +204,25 @@ def test_executor_identity_shape_is_validated() -> None:
     after = _after()
     with pytest.raises(SuccessorObservationError, match="executor_id"):
         _evaluate(after, executor_id="")
+
+
+def test_predicate_receives_deep_copy_and_cannot_mutate_after_observation() -> None:
+    after = _after(
+        {
+            "commit": "abc123",
+            "reachable": True,
+            "nested": {"checks": ["ci", "lint"]},
+        }
+    )
+    snapshot = copy.deepcopy(after)
+
+    def mutating_predicate(obs: dict) -> bool:
+        obs["reachable"] = False
+        obs["nested"]["checks"].append("tampered")
+        obs["injected"] = True
+        return True
+
+    outcome = _evaluate(after, predicate=mutating_predicate)
+    assert outcome.status == "established"
+    assert after == snapshot
+
