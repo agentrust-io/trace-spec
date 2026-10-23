@@ -12,6 +12,7 @@ from agentrust_trace.intent_bridge import (
     AuthorizationDenied,
     AuthorizationMismatch,
     IntentBridgeError,
+    _bind_successor_observation,
     digest_jcs,
     sign_bridge,
     sign_successor_artifact,
@@ -757,4 +758,184 @@ def test_verify_successor_artifact_reports_unusable_trusted_observer_jwk(
 def test_sign_bridge_requires_authorization_to_be_a_json_object(bad_auth: object) -> None:
     with pytest.raises(IntentBridgeError, match="authorization must be a JSON object"):
         sign_bridge(bad_auth, Ed25519PrivateKey.generate())  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "bad_jwk",
+    [
+        {"kty": "RSA", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "X25519", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "!!!", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "d": "secret-private-key", "kid": "wrong-kid"},
+    ],
+)
+def test_verify_bridge_rejects_unusable_trusted_authorizer_jwk_before_kid_mismatch(
+    bad_jwk: dict,
+) -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    if "d" in bad_jwk:
+        bad_jwk = {**key_to_jwk(key), "d": "secret-private-key", "kid": "wrong-kid"}
+    with pytest.raises(IntentBridgeError, match="trusted_authorizer_jwk is unusable") as excinfo:
+        verify_bridge(
+            bridge,
+            bad_jwk,
+            declaration=declaration,
+            pic_intent_digest=intent,
+            pic_args_digest=args,
+            tool_call=tool_call,
+            transcript=transcript,
+            now=150,
+        )
+    assert "secret-private-key" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize("bad_jwk", [None, "not-a-jwk", 123, ["kid"]])
+def test_verify_successor_artifact_rejects_non_object_trusted_observer_jwk(
+    bad_jwk: object,
+) -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-other", after, "observer-key-1", observer_key)
+    with pytest.raises(
+        IntentBridgeError, match="trusted_observer_jwk must be an object"
+    ) as excinfo:
+        verify_successor_artifact(
+            successor,
+            bad_jwk,  # type: ignore[arg-type]
+            trusted_observer="observer-1",
+            authorization_id="auth-7",
+            after=after,
+        )
+    assert not isinstance(excinfo.value, AuthorizationMismatch)
+
+
+@pytest.mark.parametrize(
+    "bad_jwk",
+    [
+        {"kty": "RSA", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "X25519", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "!!!", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "kid": "wrong-kid"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AA", "d": "secret-private-key", "kid": "wrong-kid"},
+    ],
+)
+def test_verify_successor_artifact_rejects_unusable_jwk_before_kid_or_link_mismatch(
+    bad_jwk: dict,
+) -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-other", after, "observer-key-1", observer_key)
+    if "d" in bad_jwk:
+        bad_jwk = {**key_to_jwk(observer_key), "d": "secret-private-key", "kid": "wrong-kid"}
+    with pytest.raises(IntentBridgeError, match="trusted_observer_jwk is unusable") as excinfo:
+        verify_successor_artifact(
+            successor,
+            bad_jwk,
+            trusted_observer="other-observer",
+            authorization_id="auth-7",
+            after=after,
+        )
+    assert not isinstance(excinfo.value, AuthorizationMismatch)
+    assert "secret-private-key" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    ("param", "bad_value", "expected_match"),
+    [
+        ("trusted_observer", "", "trusted_observer must be a non-empty string"),
+        ("trusted_observer", None, "trusted_observer must be a non-empty string"),
+        ("authorization_id", "", "authorization_id must be a non-empty string"),
+        ("authorization_id", None, "authorization_id must be a non-empty string"),
+    ],
+)
+def test_verify_successor_artifact_validates_caller_options_at_entry(
+    param: str, bad_value: object, expected_match: str
+) -> None:
+    observer_key = Ed25519PrivateKey.generate()
+    after = _after()
+    successor = sign_successor_artifact("auth-other", after, "observer-key-1", observer_key)
+    wrong_profile = {**successor, "profile": "tag:example.com,2026:other"}
+    for candidate in (successor, wrong_profile):
+        kwargs: dict[str, object] = {
+            "trusted_observer": "observer-1",
+            "authorization_id": "auth-7",
+            "after": after,
+        }
+        kwargs[param] = bad_value
+        with pytest.raises(IntentBridgeError, match=expected_match) as excinfo:
+            verify_successor_artifact(
+                candidate,
+                {**key_to_jwk(observer_key), "kid": "observer-key-1"},
+                **kwargs,  # type: ignore[arg-type]
+            )
+        assert not isinstance(excinfo.value, AuthorizationMismatch)
+
+
+@pytest.mark.parametrize(
+    ("param", "bad_value", "expected_match"),
+    [
+        ("now", -1, "now must be a non-negative integer"),
+        ("now", True, "now must be a non-negative integer"),
+        ("now", 150.0, "now must be a non-negative integer"),
+        ("declaration", "not-a-dict", "declaration must be an object"),
+        (
+            "declaration",
+            {"impact": "external-side-effect", "bad": float("nan")},
+            "no RFC 8785 canonical form",
+        ),
+        ("tool_call", 123, "tool_call must be an object"),
+        (
+            "tool_call",
+            {"name": "send_invoice", "bad": float("nan")},
+            "no RFC 8785 canonical form",
+        ),
+        ("pic_intent_digest", "not-a-digest", "intent_digest must be a sha256 digest"),
+        (
+            "pic_args_digest",
+            "sha256:xyz",
+            "args_digest must contain 64 lowercase hexadecimal characters",
+        ),
+    ],
+)
+def test_verify_bridge_validates_caller_options_before_signature_and_denial(
+    param: str, bad_value: object, expected_match: str
+) -> None:
+    bridge, key, declaration, intent, args, tool_call, transcript = _fixture()
+    trusted = {**key_to_jwk(key), "kid": "key-7"}
+
+    denied_auth = copy.deepcopy(bridge["authorization"])
+    denied_auth["decision"] = "deny"
+    denied_bridge = sign_bridge(denied_auth, key)
+
+    bad_sig_bridge = copy.deepcopy(bridge)
+    head = bad_sig_bridge["signature"][0]
+    bad_sig_bridge["signature"] = ("B" if head == "A" else "A") + bad_sig_bridge["signature"][1:]
+
+    for candidate_bridge in (denied_bridge, bad_sig_bridge):
+        kwargs: dict[str, object] = {
+            "declaration": declaration,
+            "pic_intent_digest": intent,
+            "pic_args_digest": args,
+            "tool_call": tool_call,
+            "transcript": transcript,
+            "now": 150,
+        }
+        kwargs[param] = bad_value
+        with pytest.raises(IntentBridgeError, match=expected_match) as excinfo:
+            verify_bridge(
+                candidate_bridge,
+                trusted,
+                **kwargs,  # type: ignore[arg-type]
+            )
+        assert not isinstance(excinfo.value, (AuthorizationDenied, AuthorizationMismatch))
+
+
+def test_bind_successor_observation_validates_expected_digest_before_envelope() -> None:
+    with pytest.raises(IntentBridgeError, match="expected_successor_digest") as excinfo:
+        _bind_successor_observation("not-an-envelope", "not-a-digest")
+    assert not isinstance(excinfo.value, AuthorizationMismatch)
+
 

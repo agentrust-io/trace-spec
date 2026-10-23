@@ -11,6 +11,16 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **`intent_bridge` and `successor_observation`: entry validation and observation isolation.**
+  `verify_bridge` and `verify_successor_artifact` now validate `trusted_authorizer_jwk`
+  and `trusted_observer_jwk` with `_pubkey_from_jwk` and validate caller options (`now`,
+  `declaration`, `tool_call`, `pic_intent_digest`, `pic_args_digest`, `trusted_observer`,
+  `authorization_id`) at entry before comparing key identifiers, checking signatures, or
+  classifying a signed `deny` as `AuthorizationDenied`; `_bind_successor_observation`
+  validates `expected_successor_digest` before inspecting `after`; and
+  `evaluate_successor_observation` passes `copy.deepcopy(observation)` to `predicate` so
+  a caller predicate cannot mutate `after["observation"]` in place (#617, by @drk-ram).
+
 - **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
   following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
   the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
