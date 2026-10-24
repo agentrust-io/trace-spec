@@ -61,7 +61,7 @@ and compares bytes on every run, with no entry in its `NOT_GENERATED` ledger.
 
 ## Coverage
 
-Ten rules, two load-bearing vectors each, and for every rule at least one declared
+Eleven rules, two load-bearing vectors each, and for every rule at least one declared
 implementation defect that one of its vectors catches and the other misses.
 `tests/test_delegation_completeness.py` enforces all three, and records the margins so they
 cannot silently thin.
@@ -69,8 +69,9 @@ cannot silently thin.
 The pairs are not two views of the same mistake. They are built around a specific shortcut a
 real implementation takes — verifying the leaf only, anchoring on any trusted key it finds,
 an off-by-one bound, case-insensitive lookup of an opaque identifier, issuer and holder
-compared to the wrong ends of the hop, half a validity window, narrowing checked at one hop,
-the link algorithm read once and assumed uniform.
+compared to the wrong ends of the hop, half a validity window, checking only the child's
+data class against the lattice, narrowing checked at one hop, the link algorithm read once
+and assumed uniform.
 
 Vector 05 is the one to read first. It is a complete, correctly signed chain whose only
 defect is which bytes its link was computed over, and it is the whole of the difference

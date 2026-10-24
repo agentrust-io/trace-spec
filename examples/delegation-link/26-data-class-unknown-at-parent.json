@@ -1,0 +1,134 @@
+{
+  "id": "TRACE-DELEG-026",
+  "name": "data-class-unknown-at-parent",
+  "description": "The parent declares `top-secret`, absent from `data_class_lattice`, while the leaf declares `confidential`, which is in the lattice. Narrowing compares both ends of the hop: a verifier that checks only whether the child's class is in the lattice passes this chain as `verified` while catching vector 25.",
+  "spec": "docs/rfcs/a2a-delegation-profile.md",
+  "profile": "trace.a2a.delegation-link.v0",
+  "context": {
+    "leaf": "sha256:7a1b046fe79faafc8e9515c90afc26da3a2e05d0eb0a0090b06599fba7127141",
+    "now": 1785000000,
+    "max_depth": 4,
+    "supported_digest_algorithms": [
+      "sha256"
+    ],
+    "data_class_lattice": [
+      "public",
+      "internal",
+      "confidential",
+      "restricted"
+    ],
+    "trusted_root_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+      }
+    ],
+    "credentials": {
+      "cred:orchestrator-to-planner": {
+        "issuer": "spiffe://acme.example/agent/orchestrator",
+        "holder": "spiffe://acme.example/agent/planner",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:planner-to-executor": {
+        "issuer": "spiffe://acme.example/agent/planner",
+        "holder": "spiffe://acme.example/agent/executor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:executor-to-courier": {
+        "issuer": "spiffe://acme.example/agent/executor",
+        "holder": "spiffe://acme.example/agent/courier",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      },
+      "cred:courier-to-auditor": {
+        "issuer": "spiffe://acme.example/agent/courier",
+        "holder": "spiffe://acme.example/agent/auditor",
+        "not_before": 1784913600,
+        "not_after": 1785086400
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/planner",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "confidential",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "delegation": {
+        "parent_record_hash": "sha256:e075b86c9588fb5addd9380646ec063f6f85a453ecf0b49aeaaaca4cc55caabb",
+        "credential_id": "cred:orchestrator-to-planner"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "W2BsRtHZW8BVdiCsCxrNxvv4LOfgBhuS_2v7TU7TyHU"
+        }
+      },
+      "signature": "PkPQBkfZzYGVDa9O6fj4bwmAUK6VfbZ5bg8qkdEt_WVONX6W5Tu2QO88m_LyxF6HKuxiZflJOZBiPdKHU5__DA"
+    },
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1785000000,
+      "subject": "spiffe://acme.example/agent/orchestrator",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "top-secret",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "pNTZUXlAITEWbtVbHk6zGRwVD73s0BEakqkKKaFQyZ4"
+        }
+      },
+      "signature": "SovhFNqtpvIkmDdgLtW4Tsrb_KLzjiQ1gbiI3bxgUh5GwFNYr18ZQ7YZOwqM6rhSIocskYJNj6zVwuJjzgXZCg"
+    }
+  ],
+  "expected": {
+    "classification": "unverifiable",
+    "codes": [
+      "data_class_unknown"
+    ]
+  }
+}
