@@ -1,6 +1,7 @@
 """Every published current-contract vector through reference and independent checks."""
 
 from __future__ import annotations
+import base64
 import importlib.util
 import json
 import copy
@@ -9,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 import pytest
+from cryptography.exceptions import InvalidSignature
 from agentrust_trace.intent_bridge import (
     IntentBridgeError,
     verify_bridge,
@@ -28,6 +30,7 @@ def _module(name, path):
 
 
 independent = _module("pic_successor_independent", DIR / "independent.py")
+generator = _module("pic_successor_generate", DIR / "generate.py")
 
 
 def _reason(exc):
@@ -37,6 +40,7 @@ def _reason(exc):
     if message.startswith("successor envelope is missing successor fields:"):
         return "successor-envelope-missing-fields"
     return {
+        "authorizer_key_id does not identify the trusted key": "authorizer-key-mismatch",
         "successor artifact does not name the authorization that was verified": (
             "successor-authorization-mismatch"
         ),
@@ -120,7 +124,7 @@ def test_each_vector_agrees_on_all_three_axes(path):
 
 
 def test_corpus_is_nonempty_and_three_axis_case003_split_is_present():
-    assert len(CASES) == 15
+    assert len(CASES) == 16
     cases = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in CASES}
     assert {
         name: {k: v for k, v in cases[name]["expected"].items() if k != "reason"}
@@ -260,7 +264,7 @@ spec = importlib.util.spec_from_file_location("bounded", root / "independent.py"
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 paths = sorted(root.glob("0*.json"))
-if len(paths) != 15:
+if len(paths) != 16:
     raise RuntimeError("missing vectors")
 for path in paths:
     case = json.loads(path.read_text(encoding="utf-8"))
@@ -326,9 +330,109 @@ def test_freshness_refusal_is_not_a_binding_failure(name, reason):
     assert independent.check(data, fresh)["reason"] == "predicate-satisfied"
 
 
-def test_reason_mismatch_is_visible_even_with_identical_axes():
-    case = json.loads((DIR / "006-wrong-authorization.json").read_text(encoding="utf-8"))
+@pytest.mark.parametrize(
+    "name,wrong_reason",
+    [
+        ("006-wrong-authorization", "successor-signature-invalid"),
+        # 005 refusals share all three axes with 012, so only the reason tells them apart.
+        ("012-authorizer-key-mismatch", "pic-digest-syntax"),
+    ],
+)
+def test_reason_mismatch_is_visible_even_with_identical_axes(name, wrong_reason):
+    case = json.loads((DIR / (name + ".json")).read_text(encoding="utf-8"))
     wrong = copy.deepcopy(case["expected"])
-    wrong["reason"] = "successor-signature-invalid"
+    wrong["reason"] = wrong_reason
     assert _reference(case["inputs"], case["context"]) != wrong
     assert independent.check(case["inputs"], case["context"]) != wrong
+
+
+def _verify_bridge(data):
+    return verify_bridge(
+        data["bridge"],
+        data["authorizer_jwk"],
+        declaration=data["declaration"],
+        pic_intent_digest=data["pic_intent_digest"],
+        pic_args_digest=data["pic_args_digest"],
+        tool_call=data["tool_call"],
+        transcript=data["transcript"],
+        now=160,
+    )
+
+
+def _resign_bridge(data, authorizer_key_id):
+    body = copy.deepcopy({k: v for k, v in data["bridge"].items() if k != "signature"})
+    body["authorization"]["authorizer_key_id"] = authorizer_key_id
+    return {**data, "bridge": generator.sign(body, generator.AUTH)}
+
+
+def test_signed_key_id_naming_another_key_is_refused_despite_a_valid_signature():
+    case = json.loads((DIR / "012-authorizer-key-mismatch.json").read_text(encoding="utf-8"))
+    data, context = case["inputs"], case["context"]
+    positive = json.loads(CASES[0].read_text(encoding="utf-8"))["inputs"]
+    # Only the signed key ID and its re-signature differ from 003; the verifier's
+    # trusted JWK, its kid and public key included, is unchanged.
+    assert {k for k in data.keys() | positive.keys() if data.get(k) != positive.get(k)} == {
+        "bridge"
+    }
+    authorization, original = data["bridge"]["authorization"], positive["bridge"]["authorization"]
+    assert {
+        k for k in authorization.keys() | original.keys() if authorization.get(k) != original.get(k)
+    } == {"authorizer_key_id"}
+    assert data["bridge"].keys() == positive["bridge"].keys()
+    assert data["bridge"]["profile"] == positive["bridge"]["profile"]
+    assert authorization["authorizer_key_id"] != data["authorizer_jwk"]["kid"]
+    # The signature verifies, so a signature failure cannot stand in for this refusal.
+    independent.signature(data["bridge"], data["authorizer_jwk"])
+    message = "^authorizer_key_id does not identify the trusted key$"
+    with pytest.raises(IntentBridgeError, match=message):
+        _verify_bridge(data)
+    expected = {
+        "authorization_bound": False,
+        "successor_bound": None,
+        "outcome": None,
+        "reason": "authorizer-key-mismatch",
+    }
+    assert case["expected"] == expected
+    assert _reference(data, context) == expected
+    assert independent.check(data, context) == expected
+
+
+def test_restoring_the_signed_key_id_restores_binding_under_the_same_trusted_key():
+    case = json.loads((DIR / "012-authorizer-key-mismatch.json").read_text(encoding="utf-8"))
+    restored = _resign_bridge(case["inputs"], case["inputs"]["authorizer_jwk"]["kid"])
+    baseline = json.loads(CASES[0].read_text(encoding="utf-8"))
+    assert restored == baseline["inputs"]
+    assert _reference(restored, case["context"]) == baseline["expected"]
+    assert independent.check(restored, case["context"]) == baseline["expected"]
+
+
+def _alter_signature(data):
+    signature = data["bridge"]["signature"]
+    raw = bytearray(base64.urlsafe_b64decode(signature + "=" * (-len(signature) % 4)))
+    raw[0] ^= 0x01  # Always changes the byte; re-encoding keeps the canonical form.
+    altered = base64.urlsafe_b64encode(bytes(raw)).rstrip(b"=").decode()
+    assert altered != signature
+    data["bridge"]["signature"] = altered
+    with pytest.raises(InvalidSignature):
+        independent.signature(data["bridge"], data["authorizer_jwk"])
+
+
+def test_matching_key_id_with_an_altered_signature_is_a_signature_failure():
+    data = json.loads(CASES[0].read_text(encoding="utf-8"))["inputs"]
+    assert data["bridge"]["authorization"]["authorizer_key_id"] == data["authorizer_jwk"]["kid"]
+    _alter_signature(data)
+    with pytest.raises(IntentBridgeError, match="^authorization signature is invalid$"):
+        _verify_bridge(data)
+
+
+def test_key_id_is_compared_before_the_authorization_signature():
+    # Wrong key ID and an invalid signature together: a guard placed after the
+    # signature check would report the signature failure instead.
+    case = json.loads((DIR / "012-authorizer-key-mismatch.json").read_text(encoding="utf-8"))
+    data, context = case["inputs"], case["context"]
+    _alter_signature(data)
+    message = "^authorizer_key_id does not identify the trusted key$"
+    with pytest.raises(IntentBridgeError, match=message):
+        _verify_bridge(data)
+    assert _reference(data, context) == case["expected"]
+    assert independent.check(data, context) == case["expected"]

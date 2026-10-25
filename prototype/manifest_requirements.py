@@ -1,15 +1,64 @@
 """RFC-0003 bridge: signed intent can tighten, never authorize, local policy."""
 
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from agent_manifest.evidence_requirements import VerifiedRequirements
+from collections.abc import Sequence
+from typing import Any, Protocol
+
+from pydantic import ValidationError
 
 from . import verifier_token as v
 
+_METHOD_STRENGTH: dict[str, int] = {
+    "same-instance-v1": 1,
+    "same-evidence-v1": 2,
+}
+
+
+class _DeclaredComponent(Protocol):
+    @property
+    def component_id(self) -> str: ...
+    @property
+    def component_type(self) -> str: ...
+    @property
+    def required(self) -> bool: ...
+    @property
+    def accepted_profiles(self) -> Sequence[str]: ...
+    @property
+    def accepted_appraisal_authorities(self) -> Sequence[str]: ...
+    @property
+    def maximum_age_seconds(self) -> int: ...
+    @property
+    def expected_observed_digest(self) -> str | None: ...
+
+
+class _DeclaredBinding(Protocol):
+    @property
+    def source(self) -> str: ...
+    @property
+    def target(self) -> str: ...
+    @property
+    def relationship(self) -> str: ...
+    @property
+    def accepted_methods(self) -> Sequence[str]: ...
+
+
+class _DeclaredRequirements(Protocol):
+    @property
+    def combination_policy_ref(self) -> str: ...
+    @property
+    def components(self) -> Sequence[_DeclaredComponent]: ...
+    @property
+    def required_bindings(self) -> Sequence[_DeclaredBinding]: ...
+
+
+class _VerifiedRequirements(Protocol):
+    @property
+    def requirements(self) -> _DeclaredRequirements: ...
+
 
 def combine_requirements(
-    verified: "VerifiedRequirements", local: v.Requirements, policy: v.Policy
+    verified: _VerifiedRequirements, local: v.Requirements, policy: v.Policy
 ) -> v.Requirements:
     """Intersect profile/authority permissions and retain both required sets.
 
@@ -48,22 +97,50 @@ def combine_requirements(
                 trusted.expected_observed_digest or declared.expected_observed_digest
             ),
         )
-    bindings = {
+    bindings: dict[tuple[str, str, str, str], dict[str, Any]] = {
         (b.source, b.target, b.relationship, b.method): b.model_dump() for b in local.bindings
     }
-    for declared in verified.requirements.required_bindings:
-        for method in declared.accepted_methods:
-            key = (declared.source, declared.target, declared.relationship, method)
-            bindings[key] = {
-                "source": declared.source,
-                "target": declared.target,
-                "relationship": declared.relationship,
-                "method": method,
-            }
-    return v.Requirements.model_validate(
-        {
-            "components": [merged[k] for k in sorted(merged)],
-            "bindings": [bindings[k] for k in sorted(bindings)],
-            "allow_warnings": local.allow_warnings,
+    for declared_binding in verified.requirements.required_bindings:
+        if (
+            declared_binding.source not in local_by_id
+            or declared_binding.target not in local_by_id
+        ):
+            raise v.ProfileError("manifest_component_unconfigured")
+        if (
+            declared_binding.source == declared_binding.target
+            or declared_binding.relationship != "same-workload"
+        ):
+            raise v.ProfileError("binding_endpoint")
+        accepted = [
+            m
+            for m in declared_binding.accepted_methods
+            if isinstance(m, str) and m in _METHOD_STRENGTH
+        ]
+        if not accepted or len(accepted) != len(declared_binding.accepted_methods):
+            raise v.ProfileError("manifest_requirement_untrusted")
+        method = max(accepted, key=lambda m: _METHOD_STRENGTH[m])
+        pair = (
+            declared_binding.source,
+            declared_binding.target,
+            declared_binding.relationship,
+        )
+        if (*pair, "same-evidence-v1") in bindings:
+            continue
+        if method == "same-evidence-v1" and (*pair, "same-instance-v1") in bindings:
+            del bindings[(*pair, "same-instance-v1")]
+        bindings[(*pair, method)] = {
+            "source": declared_binding.source,
+            "target": declared_binding.target,
+            "relationship": declared_binding.relationship,
+            "method": method,
         }
-    )
+    try:
+        return v.Requirements.model_validate(
+            {
+                "components": [merged[k] for k in sorted(merged)],
+                "bindings": [bindings[k] for k in sorted(bindings)],
+                "allow_warnings": local.allow_warnings,
+            }
+        )
+    except ValidationError as exc:
+        raise v.ProfileError("input_invalid") from exc

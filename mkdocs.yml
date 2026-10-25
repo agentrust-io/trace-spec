@@ -247,6 +247,7 @@ nav:
           - Acta decision receipts: docs/crosswalks/acta-decision-receipts.md
           - CHAP review decisions: docs/crosswalks/chap-review-decisions.md
           - N'KEMBA institutional reconstruction: docs/crosswalks/nkemba-institutional-reconstruction.md
+          - NIST SP 800-53 and DoD AI Tailoring Guide: docs/crosswalks/nist-sp800-53-dod-ai-tailoring.md
   - Guides:
       - Tutorials:
           - Sign your first trust record: docs/tutorials/signing-your-first-trust-record.md

@@ -556,7 +556,7 @@ def derive_composite(
         raise ProfileError("component_expired")
     order: tuple[Status, ...] = ("contraindicated", "missing", "unverifiable", "not-appraised")
     overall: Status = next((s for s in order if s in statuses), "affirming")
-    if overall == "affirming" and "warning" in statuses:
+    if "warning" in statuses and (overall == "affirming" or not requirements.allow_warnings):
         overall = "warning" if requirements.allow_warnings else "contraindicated"
     composite = token.composite_appraisal
     if (

@@ -38,10 +38,16 @@
  */
 
 import { decodeBase64url } from "./base64url.js";
+import { checkCitations, type CitationCheck, type CitationResolver } from "./citation.js";
 import { importEd25519, verifyEd25519 } from "./crypto.js";
 import { fail, TraceVerificationError } from "./errors.js";
 import { canonicalize } from "./jcs.js";
 import { keyIdentifiers } from "./jwk.js";
+import {
+  checkPlatformMeasurement,
+  type PlatformAppraiser,
+  type PlatformMeasurementCheck,
+} from "./platform.js";
 import { checkRevocationBundle, NO_CHECK, type RevocationCheck } from "./revocation.js";
 import { recordSchemaViolations } from "./schema.js";
 import { isPlainObject, isSet, own, timingSafeEqual } from "./text.js";
@@ -96,6 +102,16 @@ export interface VerifyOptions {
   readonly trustedBundleKeys?: readonly unknown[];
   /** Maximum bundle age in seconds, measured from `issued_at`. Default 86400. */
   readonly maxBundleAgeSeconds?: number;
+  /**
+   * Caller-supplied citation resolver (section 3.1.2). Called after signature
+   * verification for `appraisal.policy_ref`, `runtime.rim_uri`, and `model.aibom_uri`.
+   */
+  readonly citationResolver?: CitationResolver | null;
+  /**
+   * Caller-supplied platform measurement appraiser. Called after signature
+   * verification with a deep copy of `record.runtime`.
+   */
+  readonly platformAppraiser?: PlatformAppraiser | null;
 }
 
 export interface VerificationResult {
@@ -109,6 +125,10 @@ export interface VerificationResult {
   readonly trustedKeyThumbprint: string;
   /** `caller` for a pinned key, `record` when `allowEmbeddedKey` trusted `cnf.jwk`. */
   readonly trustedKeySource: "caller" | "record";
+  /** Per-surface citation resolution outcomes (section 3.1.2). */
+  readonly citations: Readonly<Record<string, CitationCheck>>;
+  /** What the platform measurement appraiser reported about `runtime.measurement`. */
+  readonly platformMeasurement: PlatformMeasurementCheck;
 }
 
 const DEFAULT_MAX_AGE_SECONDS = 86400;
@@ -136,6 +156,8 @@ interface Settings {
   revocationBundle: unknown;
   trustedBundleKeys: readonly unknown[];
   maxBundleAgeSeconds: number;
+  citationResolver: CitationResolver | null;
+  platformAppraiser: PlatformAppraiser | null;
 }
 
 function settings(options: unknown): Settings {
@@ -172,6 +194,22 @@ function settings(options: unknown): Settings {
   if (bundleKeys !== undefined && bundleKeys !== null && !Array.isArray(bundleKeys)) {
     fail("invalid_argument", "trustedBundleKeys must be an array of JWK objects");
   }
+  const citationResolver = own(o as Record<string, unknown>, "citationResolver");
+  if (
+    citationResolver !== undefined &&
+    citationResolver !== null &&
+    typeof citationResolver !== "function"
+  ) {
+    fail("invalid_argument", "citationResolver must be a function or null");
+  }
+  const platformAppraiser = own(o as Record<string, unknown>, "platformAppraiser");
+  if (
+    platformAppraiser !== undefined &&
+    platformAppraiser !== null &&
+    typeof platformAppraiser !== "function"
+  ) {
+    fail("invalid_argument", "platformAppraiser must be a function or null");
+  }
   const bundle = own(o as Record<string, unknown>, "revocationBundle");
   return {
     trustedKey: own(o as Record<string, unknown>, "trustedKey"),
@@ -192,6 +230,8 @@ function settings(options: unknown): Settings {
       own(o as Record<string, unknown>, "maxBundleAgeSeconds"),
       DEFAULT_MAX_BUNDLE_AGE_SECONDS,
     ),
+    citationResolver: (citationResolver ?? null) as CitationResolver | null,
+    platformAppraiser: (platformAppraiser ?? null) as PlatformAppraiser | null,
   };
 }
 
@@ -380,11 +420,16 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("signature_invalid", "the signature does not verify over the record's RFC 8785 form");
   }
 
+  const citations = await checkCitations(record, s.citationResolver);
+  const platformMeasurement = await checkPlatformMeasurement(record, s.platformAppraiser);
+
   return {
     profile,
     acceptedProfiles: ACCEPTED_PROFILES,
     revocation,
     trustedKeyThumbprint: trustedIds[0] as string,
     trustedKeySource,
+    citations,
+    platformMeasurement,
   };
 }

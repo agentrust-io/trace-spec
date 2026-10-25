@@ -61,7 +61,7 @@
         "value": {
           "type": "string",
           "pattern": "^[A-Za-z0-9_-]+$",
-          "description": "base64url, no padding."
+          "description": "base64url, no padding. For ES256 and ES384, the fixed-width IEEE P1363 raw r || s concatenation (64 bytes for ES256, 96 bytes for ES384)."
         }
       }
     }

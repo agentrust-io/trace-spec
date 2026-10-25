@@ -6,7 +6,10 @@ ASCII receipts. The normative source is
 
 Each numbered JSON file supplies `claim`, `receipt`, and `expected.tr_anc_002`.
 The receipt combines the proof's index/path with the entry's count/root, as
-accepted by `trace-tests --receipt`. Expected results concern **only inclusion**,
+accepted by `trace-tests --receipt`; `tests/test_anchor_vectors.py` supplies a
+matching registry entry, so the receipt-to-entry binding (trace-spec#464, tested in
+`tests/test_tr_anc_entry_binding.py`) holds and only the replay is under test.
+Expected results concern **only inclusion**,
 not the whole record's conformance level. Claims are deliberately small objects;
 `signature` is an opaque fixture string, not a cryptographically valid signature.
 Inclusion does not authenticate signatures or assert anything about their truth.
