@@ -44,7 +44,7 @@ prototype = ["cbor2>=6.1.5,<7"]
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "ruff>=0.17.0",
+    "ruff>=0.17.2",
     "mypy>=2.4.0",
     "types-jsonschema",
     "PyYAML>=6.0.3",
