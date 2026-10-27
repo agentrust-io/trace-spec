@@ -5,6 +5,8 @@ already made has a test here that fails when that rule is switched off:
 
 * Section 6.6, a ``signature`` member in the payload:
   ``test_a_payload_carrying_a_signature_member_is_refused``;
+* Section 6.6, a ``signature.sig`` that is not 128 lowercase hex characters:
+  ``test_a_non_canonical_signature_hex_is_refused``;
 * Section 9.2, the key's validity window:
   ``test_issued_at_before_valid_from_is_refused`` and
   ``test_issued_at_at_valid_until_is_refused``;
@@ -12,7 +14,14 @@ already made has a test here that fails when that rule is switched off:
   a link naming another algorithm:
   ``test_a_link_naming_another_algorithm_is_refused``; and a receipt presented
   after a predecessor it does not link to:
-  ``test_a_missing_link_after_a_known_predecessor_is_refused``.
+  ``test_a_missing_link_after_a_known_predecessor_is_refused``;
+* Section 5.3, JWK Set resolution:
+  ``test_a_jwk_carrying_private_key_material_is_refused`` and
+  ``test_a_jwk_with_non_canonical_base64url_x_is_refused``;
+* JSON input and JCS hardening:
+  ``test_duplicate_json_keys_are_undecidable``,
+  ``test_deeply_nested_json_is_undecidable``, and
+  ``test_an_uncanonicalizable_predecessor_or_deep_payload_does_not_crash``.
 
 All eleven committed fixtures are checked here under the key and validity window
 that ``acta-keys.json`` publishes. Among them, 08 carries a ``sha256:`` link and 09
@@ -43,9 +52,12 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from tools.acta_receipt_verifier import (
     IssuerKey,
+    Undecidable,
     envelope_hash,
+    issuer_key,
     jcs,
     main,
+    signature_verifies,
     verify_envelope,
 )
 
@@ -173,6 +185,34 @@ def test_a_signature_over_the_prehashed_payload_does_not_verify() -> None:
 def test_a_payload_altered_after_signing_does_not_verify() -> None:
     envelope = _sign(_payload())
     envelope["payload"]["decision"] = "deny"
+    assert verify_envelope(envelope, KEY) == ("invalid", "signature_invalid")
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        "uppercase",
+        "mixed_case",
+        "leading_space",
+        "trailing_newline",
+        "internal_space",
+        "uppercase_and_whitespace",
+    ],
+)
+def test_a_non_canonical_signature_hex_is_refused(transform: str) -> None:
+    """``bytes.fromhex`` accepts uppercase hex and whitespace; ``signature_verifies`` must not."""
+    envelope = _sign(_payload())
+    sig = envelope["signature"]["sig"]
+    forms = {
+        "uppercase": sig.upper(),
+        "mixed_case": sig[0].upper() + sig[1:],
+        "leading_space": "  " + sig,
+        "trailing_newline": sig + "\n",
+        "internal_space": sig[:64] + " " + sig[64:],
+        "uppercase_and_whitespace": "  " + sig.upper() + "\n",
+    }
+    envelope["signature"]["sig"] = forms[transform]
+    assert not signature_verifies(envelope, KEY.public_key)
     assert verify_envelope(envelope, KEY) == ("invalid", "signature_invalid")
 
 
@@ -373,3 +413,155 @@ def test_no_key_set_is_undecidable(
     monkeypatch.delenv("AEV_RECEIPT_JWKS", raising=False)
     status, answer = _run(tmp_path, capsys, _sign(_payload()))
     assert (status, answer) == (2, {"verdict": "undecidable", "code": "no_key_set"})
+
+
+# --- Section 5.3 JWK hardening and JSON/JCS input hardening ------------------
+
+
+CANONICAL_X = (
+    base64.urlsafe_b64encode(KEY.public_key.public_bytes(Encoding.Raw, PublicFormat.Raw))
+    .rstrip(b"=")
+    .decode("ascii")
+)
+
+
+def _public_jwk(**extra: Any) -> dict[str, Any]:
+    return {"kty": "OKP", "crv": "Ed25519", "kid": KID, "x": CANONICAL_X, **extra}
+
+
+@pytest.mark.parametrize("param", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
+def test_a_jwk_carrying_private_key_material_is_refused(param: str) -> None:
+    """RFC 7517 / RFC 7518 / RFC 8037 private or symmetric key parameters are refused."""
+    with pytest.raises(Undecidable, match=r"^malformed_key_set\Z"):
+        issuer_key({"keys": [_public_jwk(**{param: "secret"})]}, KID)
+
+
+@pytest.mark.parametrize(
+    "bad_x",
+    [
+        CANONICAL_X + "=",
+        CANONICAL_X + "====",
+        "+" + CANONICAL_X[1:],
+        CANONICAL_X.replace("_", "/"),
+        "    " + CANONICAL_X,
+        CANONICAL_X + "   \n",
+        CANONICAL_X + "....",
+        CANONICAL_X[:-1] + "h",
+        CANONICAL_X[:-1] + "i",
+        CANONICAL_X[:-1] + "j",
+    ],
+)
+def test_a_jwk_with_non_canonical_base64url_x_is_refused(bad_x: str) -> None:
+    """Padded, standard-alphabet, whitespace/ignored, or non-zero-trailing-bit ``x`` is refused."""
+    with pytest.raises(Undecidable, match=r"^malformed_key_set\Z"):
+        issuer_key({"keys": [_public_jwk(x=bad_x)]}, KID)
+
+
+@pytest.mark.parametrize("target", ["receipt_payload", "receipt_envelope", "jwks", "context"])
+def test_duplicate_json_keys_are_undecidable(
+    target: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Duplicate JSON object keys in the receipt, key set, or context are refused as malformed."""
+    jwks_path = _jwks(tmp_path)
+    monkeypatch.setenv("AEV_RECEIPT_JWKS", str(jwks_path))
+    monkeypatch.delenv("AEV_RECEIPT_CONTEXT", raising=False)
+    envelope = _sign(_payload())
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps(envelope), encoding="utf-8")
+
+    if target == "receipt_payload":
+        payload_body = json.dumps(envelope["payload"])[1:]
+        dup_payload = '{"decision": "deny", ' + payload_body
+        sig_json = json.dumps(envelope["signature"])
+        raw = '{"payload": ' + dup_payload + ', "signature": ' + sig_json + "}"
+        receipt_path.write_text(raw, encoding="utf-8")
+    elif target == "receipt_envelope":
+        raw = (
+            '{"payload": {}, "payload": '
+            + json.dumps(envelope["payload"])
+            + ', "signature": '
+            + json.dumps(envelope["signature"])
+            + "}"
+        )
+        receipt_path.write_text(raw, encoding="utf-8")
+    elif target == "jwks":
+        jwk_json = json.dumps(_public_jwk())
+        jwks_path.write_text('{"keys": [], "keys": [' + jwk_json + "]}", encoding="utf-8")
+    elif target == "context":
+        first = _sign(_payload())
+        second = _sign(_payload(previousReceiptHash="sha256:" + envelope_hash(first)))
+        receipt_path.write_text(json.dumps(second), encoding="utf-8")
+        first_path = tmp_path / "first.json"
+        first_path.write_text(json.dumps(first), encoding="utf-8")
+        context_path = tmp_path / "context.json"
+        chain_json = json.dumps([str(first_path)])
+        context_path.write_text('{"chain": [], "chain": ' + chain_json + "}", encoding="utf-8")
+        monkeypatch.setenv("AEV_RECEIPT_CONTEXT", str(context_path))
+
+    status = main([str(receipt_path)])
+    last = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert (status, last) == (2, {"verdict": "undecidable", "code": "malformed"})
+
+
+@pytest.mark.parametrize("target", ["receipt", "jwks", "context"])
+def test_deeply_nested_json_is_undecidable(
+    target: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Deeply nested JSON raising ``RecursionError`` in ``json.loads`` is refused as malformed."""
+    jwks_path = _jwks(tmp_path)
+    monkeypatch.setenv("AEV_RECEIPT_JWKS", str(jwks_path))
+    monkeypatch.delenv("AEV_RECEIPT_CONTEXT", raising=False)
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps(_sign(_payload())), encoding="utf-8")
+    deep_json = "[" * 200_000 + "]" * 200_000
+
+    if target == "receipt":
+        receipt_path.write_text(deep_json, encoding="utf-8")
+    elif target == "jwks":
+        jwks_path.write_text(deep_json, encoding="utf-8")
+    elif target == "context":
+        context_path = tmp_path / "context.json"
+        context_path.write_text(deep_json, encoding="utf-8")
+        monkeypatch.setenv("AEV_RECEIPT_CONTEXT", str(context_path))
+
+    status = main([str(receipt_path)])
+    last = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert (status, last) == (2, {"verdict": "undecidable", "code": "malformed"})
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "deep_payload",
+        "unsafe_int_predecessor",
+        "nan_predecessor",
+        "surrogate_predecessor",
+        "deep_predecessor",
+    ],
+)
+def test_an_uncanonicalizable_predecessor_or_deep_payload_does_not_crash(kind: str) -> None:
+    """``verify_envelope`` handles ``RecursionError`` and ``CanonicalizationError`` cleanly."""
+    deep: Any = "leaf"
+    for _ in range(1500):
+        deep = {"a": deep}
+
+    if kind == "deep_payload":
+        envelope = _sign(_payload())
+        envelope["payload"]["nested"] = deep
+        assert verify_envelope(envelope, KEY) == ("invalid", "signature_invalid")
+        return
+
+    second = _sign(_payload(previousReceiptHash="sha256:" + "0" * 64))
+    predecessors: dict[str, Any] = {
+        "unsafe_int_predecessor": {"payload": {"n": 2**53}, "signature": {}},
+        "nan_predecessor": {"payload": {"n": float("nan")}, "signature": {}},
+        "surrogate_predecessor": {"payload": {"s": "\ud800"}, "signature": {}},
+        "deep_predecessor": deep,
+    }
+    assert verify_envelope(second, KEY, predecessors[kind]) == ("invalid", "chain_link_mismatch")
