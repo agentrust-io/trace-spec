@@ -2,7 +2,75 @@
 
 from __future__ import annotations
 
+from ipaddress import IPv6Address
+import re
+
+import jsonschema
+
 from agentrust_trace.models import JCS_SAFE_INTEGER
+
+_URI_FORMAT_CHECKER = jsonschema.FormatChecker(formats=["uri"])
+_AUTHORITY_RE = re.compile(r"^[^:]+://([^/?#]*)")
+
+
+def _is_valid_uri(value: str) -> bool:
+    if not value or any(c in value for c in "\n\r\u2028\u2029"):
+        return False
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    if not _URI_FORMAT_CHECKER.conforms(value, "uri"):
+        return False
+    authority = _AUTHORITY_RE.match(value)
+    if authority is not None:
+        host = authority[1].rsplit("@", 1)[-1]
+        if host.startswith("["):
+            if "]" not in host:
+                return False
+            literal = host[1 : host.index("]")]
+            if not literal.startswith(("v", "V")):
+                try:
+                    IPv6Address(literal)
+                except ValueError:
+                    return False
+    return True
+
+
+def _check_uri(value: object, field: str, *, optional: bool = True) -> None:
+    if value is None:
+        if optional:
+            return
+        raise ValueError(f"{field} must be a valid RFC 3986 URI string, got None")
+    if not isinstance(value, str) or not _is_valid_uri(value):
+        qual = " or None" if optional else ""
+        raise ValueError(
+            f"{field} must be a valid RFC 3986 URI string{qual}, got {value!r}"
+        )
+
+
+def _check_utf8_str(
+    value: object,
+    field: str,
+    *,
+    optional: bool = False,
+) -> None:
+    if value is None and optional:
+        return
+    qual = " or None" if optional else ""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string{qual}, got {value!r}")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(
+            f"{field} must be a non-empty string{qual} without lone surrogates, "
+            f"got {value!r}"
+        ) from exc
+
+
+def _check_data_class(value: object) -> None:
+    _check_utf8_str(value, "data_class")
 
 
 def _check_policy_bundle_bytes(value: object) -> None:
@@ -28,5 +96,4 @@ def _check_call_count(value: object) -> None:
 
 
 def _check_transparency(value: object) -> None:
-    if value is not None and (not isinstance(value, str) or not value):
-        raise ValueError("transparency must be a non-empty URI string or None")
+    _check_uri(value, "transparency", optional=True)
