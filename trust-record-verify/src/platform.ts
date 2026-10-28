@@ -160,7 +160,7 @@ export async function checkPlatformMeasurement(
     return FIELD_ABSENT;
   }
   const measurement = own(runtime, "measurement");
-  if (measurement === undefined || measurement === null) {
+  if (typeof measurement !== "string" || measurement === "") {
     return FIELD_ABSENT;
   }
 
