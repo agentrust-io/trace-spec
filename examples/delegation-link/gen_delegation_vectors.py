@@ -689,6 +689,39 @@ def main() -> None:
         classification="verified", codes=[], credentials=WELL_FORMED,
     ))
 
+    # -- data_class_unknown -----------------------------------------------------
+
+    add("25-data-class-unknown-at-leaf.json", vector(
+        "TRACE-DELEG-025", "data-class-unknown-at-leaf",
+        "The leaf declares `top-secret`, which is schema-valid and absent from "
+        "the verifier's `data_class_lattice`. Because a class outside the "
+        "supplied ordering cannot be compared against its parent, the hop's "
+        "narrowing is `unverifiable` rather than silently accepted as `verified`.",
+        build_chain([
+            {"role": "orchestrator", "data_class": "restricted"},
+            {"role": "planner", "data_class": "top-secret",
+             "credential_id": CRED_PLANNER[0]},
+        ]),
+        classification="unverifiable", codes=["data_class_unknown"],
+        credentials=WELL_FORMED,
+    ))
+
+    add("26-data-class-unknown-at-parent.json", vector(
+        "TRACE-DELEG-026", "data-class-unknown-at-parent",
+        "The parent declares `top-secret`, absent from `data_class_lattice`, "
+        "while the leaf declares `confidential`, which is in the lattice. "
+        "Narrowing compares both ends of the hop: a verifier that checks only "
+        "whether the child's class is in the lattice passes this chain as "
+        "`verified` while catching vector 25.",
+        build_chain([
+            {"role": "orchestrator", "data_class": "top-secret"},
+            {"role": "planner", "data_class": "confidential",
+             "credential_id": CRED_PLANNER[0]},
+        ]),
+        classification="unverifiable", codes=["data_class_unknown"],
+        credentials=WELL_FORMED,
+    ))
+
     for name, doc in sorted(out):
         (OUT / name).write_text(
             json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
