@@ -22,9 +22,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   invalid `build_provenance_slsa_level`, now raises `pydantic.ValidationError` from the
   constructor instead of from `build_trust_record`, which repeats the adapter's checks,
   so a value changed after construction is still refused. `transparency`,
-  `appraisal_verifier` (required), `appraisal_policy_ref`, `build_provenance_uri`, the
-  sandbox adapter's `policy_uri` and `SandboxAttestation.rim_uri` must be RFC 3986 URIs
-  by the check `validate.is_uri` makes, and must encode as UTF-8 (#615, #619, by
+  `appraisal_verifier` (never `None`), `appraisal_policy_ref`, `build_provenance_uri`,
+  the sandbox adapter's `policy_uri` and `SandboxAttestation.rim_uri` must be RFC 3986
+  URIs by the check `validate.is_uri` makes, and must encode as UTF-8 (#615, #619, by
   @drk-ram).
 
 - **`tdx_collateral` and `snp_collateral`: TCB status validation, minimal DER integer
@@ -44,9 +44,9 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   base64url `x` values in `issuer_key` (`malformed_key_set`), requires `signature.sig`
   in `signature_verifies` to be 128 lowercase hex characters without whitespace
   (`signature_invalid`), rejects duplicate JSON object keys and catches `RecursionError`
-  in `_read_json` (`malformed`), and handles uncanonicalizable or deeply nested payloads
-  and predecessors in `signature_verifies` and `chain_link_matches` (#605, #608, by
-  @drk-ram).
+  in `_read_json` (`malformed`), and handles deeply nested payloads in
+  `signature_verifies` and uncanonicalizable or deeply nested predecessors in
+  `chain_link_matches` (#605, #608, by @drk-ram).
 
 - **`prototype.gate_store` and `prototype.cmcp_gate`: binary store secrets, canonical
   base64url/JSON frames, `GateStoreUnavailable` response wrapping, and `CMCPTraceGate`
