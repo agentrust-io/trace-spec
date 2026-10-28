@@ -131,6 +131,11 @@ JWK_CASES = [
     ),
     pytest.param({"kty": "EC", "crv": "P-256", "x": "f83OJ3D2"}, False, id="ec-without-y"),
     pytest.param({"kty": "RSA", "n": "0vx7ag", "e": "AQAB"}, True, id="rsa-complete"),
+    pytest.param(
+        {"kty": "RSA", "n": "0vx7ag", "e": "AQAB", "oth": [{"r": "a", "d": "b", "t": "c"}]},
+        False,
+        id="rsa-with-oth-private-primes",
+    ),
     pytest.param({"kty": "RSA"}, False, id="rsa-bare"),
     pytest.param({"kty": "RSA", "n": "0vx7ag"}, False, id="rsa-without-e"),
     pytest.param({"kty": "RSA", "e": "AQAB"}, False, id="rsa-without-n"),

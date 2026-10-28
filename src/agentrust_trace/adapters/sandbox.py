@@ -80,8 +80,11 @@ from typing import Any, Literal, get_args
 
 from agentrust_trace.adapters._validation import (
     _check_call_count,
+    _check_data_class,
     _check_policy_bundle_bytes,
     _check_transparency,
+    _check_uri,
+    _check_utf8_str,
 )
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
@@ -144,6 +147,12 @@ def _check_sandbox_id(value: object) -> None:
             "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
             "It becomes the record subject, which is what a verifier keys on."
         )
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(
+            "sandbox_id must be valid UTF-8 without lone surrogates"
+        ) from exc
 
 
 def _check_image_digest(value: object) -> None:
@@ -244,6 +253,11 @@ class SandboxAttestation:
                 "sha384: digest. It must be the measurement the platform reported, not a "
                 "value computed by this process."
             )
+        _check_uri(self.rim_uri, "SandboxAttestation.rim_uri", optional=True)
+        _check_utf8_str(
+            self.firmware_version, "SandboxAttestation.firmware_version", optional=True
+        )
+        _check_utf8_str(self.nonce, "SandboxAttestation.nonce", optional=True)
 
 
 def _check_attestation(value: object) -> None:
@@ -354,15 +368,44 @@ class TraceSandboxAdapter:
             build_provenance_slsa_level: Defaults to 0, meaning no provenance claim. Raise
                 it only when a builder genuinely produced the attested level.
         """
+        _check_utf8_str(model_provider, "model_provider")
+        _check_utf8_str(model_id, "model_id")
+        _check_utf8_str(model_version, "model_version", optional=True)
+        _check_data_class(data_class)
+        _check_utf8_str(policy_version, "policy_version", optional=True)
+        _check_uri(policy_uri, "policy_uri", optional=True)
+        _check_utf8_str(
+            build_provenance_builder, "build_provenance_builder", optional=True
+        )
+        _check_uri(build_provenance_uri, "build_provenance_uri", optional=True)
+        _check_uri(appraisal_verifier, "appraisal_verifier", optional=False)
+        _check_uri(appraisal_policy_ref, "appraisal_policy_ref", optional=True)
         _check_transparency(transparency)
         self._model = ModelInfo(
             provider=model_provider, model_id=model_id, version=model_version
+        )
+        PolicyInfo(
+            bundle_hash="sha256:" + "0" * 64,
+            enforcement_mode=enforcement_mode,
+            version=policy_version,
+            policy_uri=policy_uri,
+        )
+        provenance = BuildProvenance(
+            slsa_level=build_provenance_slsa_level,
+            digest="sha256:" + "0" * 64,
+            builder=build_provenance_builder,
+            provenance_uri=build_provenance_uri,
+        )
+        Appraisal(
+            status=appraisal_status,
+            verifier=appraisal_verifier,
+            policy_ref=appraisal_policy_ref,
         )
         self._data_class = data_class
         self._enforcement_mode = enforcement_mode
         self._policy_version = policy_version
         self._policy_uri = policy_uri
-        self._slsa_level = build_provenance_slsa_level
+        self._slsa_level = provenance.slsa_level
         self._builder = build_provenance_builder
         self._provenance_uri = build_provenance_uri
         self._appraisal_verifier = appraisal_verifier
@@ -401,8 +444,27 @@ class TraceSandboxAdapter:
         _check_attestation(session.attestation)
         _check_call_count(session.call_count)
         _check_iat(session.iat)
+        if not isinstance(self._model, ModelInfo):
+            raise ValueError(
+                f"model must be a ModelInfo, got {type(self._model).__name__}"
+            )
+        _check_utf8_str(self._model.provider, "model_provider")
+        _check_utf8_str(self._model.model_id, "model_id")
+        _check_utf8_str(self._model.version, "model_version", optional=True)
+        _check_data_class(self._data_class)
+        _check_utf8_str(self._policy_version, "policy_version", optional=True)
+        _check_uri(self._policy_uri, "policy_uri", optional=True)
+        _check_utf8_str(self._builder, "build_provenance_builder", optional=True)
+        _check_uri(self._provenance_uri, "build_provenance_uri", optional=True)
+        _check_uri(self._appraisal_verifier, "appraisal_verifier", optional=False)
+        _check_uri(self._appraisal_policy_ref, "appraisal_policy_ref", optional=True)
         _check_transparency(self._transparency)
 
+        model = ModelInfo(
+            provider=self._model.provider,
+            model_id=self._model.model_id,
+            version=self._model.version,
+        )
         bundle_hash = self.bundle_hash(session.policy_bundle_bytes)
         runtime = self._runtime(session, bundle_hash)
 
@@ -410,7 +472,7 @@ class TraceSandboxAdapter:
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
             "iat": session.iat,
             "subject": session.sandbox_id,
-            "model": self._model.model_dump(exclude_none=True),
+            "model": model.model_dump(exclude_none=True),
             "runtime": runtime.model_dump(exclude_none=True),
             "policy": PolicyInfo(
                 bundle_hash=bundle_hash,

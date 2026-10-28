@@ -12,7 +12,56 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-import { ACCEPTED_PROFILES, parentRecordHash, TRACE_PROFILE_V0_2, TraceVerificationError, verifyRecord } from "../dist/index.js";
+test("platform runtime copies retain every own JSON member without changing prototypes", async () => {
+  for (const value of [null, 7, "value", { flag: true }]) {
+    const runtime = JSON.parse('{"measurement":"m","__proto__":null,"nested":{"__proto__":7}}');
+    Object.defineProperty(runtime, "__proto__", { value, enumerable: true });
+    const before = JSON.stringify(runtime);
+    let observed;
+    const result = await checkPlatformMeasurement({ runtime }, (copy) => {
+      observed = copy;
+      return { measurement: "m", layers: { boot: "established" } };
+    });
+    assert.equal(result.outcome, "appraised");
+    assert.equal(Object.getPrototypeOf(observed), Object.prototype);
+    assert.equal(Object.hasOwn(observed, "__proto__"), true);
+    assert.equal(Object.hasOwn(observed.nested, "__proto__"), true);
+    assert.equal(JSON.stringify(observed), before);
+    assert.notEqual(observed.nested, runtime.nested);
+    assert.equal(JSON.stringify(runtime), before);
+  }
+});
+
+test("platform layer results retain legal own names in membership and serialization", async () => {
+  for (const name of ["boot", "__proto__", "constructor", "toString"]) {
+    for (const status of ["established", "layer_not_measured"]) {
+      const result = await checkPlatformMeasurement({ runtime: { measurement: "m" } }, () => ({
+        measurement: "m", layers: Object.fromEntries([[name, status]]),
+      }));
+      assert.equal(result.outcome, "appraised");
+      assert.equal(Object.hasOwn(result.layers, name), true);
+      const expected = status === "established"
+        ? { outcome: "established", cause: null }
+        : { outcome: "not_established", cause: status };
+      assert.deepEqual(result.layers[name], expected);
+      assert.deepEqual(JSON.parse(JSON.stringify(result.layers)), Object.fromEntries([[name, expected]]));
+      assert.equal(Object.getPrototypeOf(result.layers), Object.prototype);
+    }
+  }
+});
+
+import {
+  ACCEPTED_PROFILES,
+  checkCitations,
+  checkPlatformMeasurement,
+  LAYER_STATUSES,
+  NOT_ATTEMPTED,
+  parentRecordHash,
+  SURFACES,
+  TRACE_PROFILE_V0_2,
+  TraceVerificationError,
+  verifyRecord,
+} from "../dist/index.js";
 
 const EXAMPLES = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "examples");
 
@@ -271,4 +320,197 @@ test("an inherited member does not stand in for an absent one, at any depth", as
     const result = await verifyRecord(own, options);
     assert.equal(result.profile, TRACE_PROFILE_V0_2);
   });
+});
+
+test("citation-resolution vectors", async (t) => {
+  const items = vectors("citation-resolution");
+  assert.equal(items.length, 16);
+  for (const { name, vector } of items) {
+    await t.test(name, async () => {
+      const context = vector.context;
+      let citationResolver = null;
+      if (Object.hasOwn(context, "resolutions")) {
+        const table = context.resolutions;
+        citationResolver = (uri) => {
+          if (!Object.hasOwn(table, uri)) {
+            const err = new Error(uri);
+            err.name = "KeyError";
+            throw err;
+          }
+          return new Uint8Array(Buffer.from(table[uri].bytes_base64, "base64"));
+        };
+      }
+      const got = await outcome(
+        verifyRecord(vector.records[0], {
+          trustedKey: context.trusted_key,
+          now: context.now,
+          maxAgeSeconds: context.max_age_seconds,
+          maxFutureSkewSeconds: context.max_future_skew_seconds,
+          citationResolver,
+        }),
+      );
+      assert.equal(got.rejected, vector.expected.rejected);
+      const citations = got.result.citations;
+      assert.deepEqual(Object.keys(citations), Object.keys(vector.expected.citations));
+      for (const [surface, expectedRow] of Object.entries(vector.expected.citations)) {
+        assert.equal(citations[surface].outcome, expectedRow.outcome, `${surface}.outcome`);
+        assert.equal(citations[surface].cause, expectedRow.cause, `${surface}.cause`);
+        assert.deepEqual(citations[surface].evidence, expectedRow.evidence, `${surface}.evidence`);
+      }
+      assert.deepEqual(got.result.platformMeasurement, NOT_ATTEMPTED);
+    });
+  }
+});
+
+test("platform-measurement vectors", async (t) => {
+  const items = vectors("platform-measurement");
+  assert.equal(items.length, 16);
+  for (const { name, vector } of items) {
+    await t.test(name, async () => {
+      const context = vector.context;
+      let platformAppraiser = null;
+      if (Object.hasOwn(context, "appraisals")) {
+        const table = context.appraisals;
+        platformAppraiser = (runtime) => {
+          if (!Object.hasOwn(table, runtime.measurement)) {
+            const err = new Error(runtime.measurement);
+            err.name = "KeyError";
+            throw err;
+          }
+          return structuredClone(table[runtime.measurement]);
+        };
+      }
+      const got = await outcome(
+        verifyRecord(vector.records[0], {
+          trustedKey: context.trusted_key,
+          now: context.now,
+          maxAgeSeconds: context.max_age_seconds,
+          maxFutureSkewSeconds: context.max_future_skew_seconds,
+          platformAppraiser,
+        }),
+      );
+      assert.equal(got.rejected, vector.expected.rejected);
+      const expected = vector.expected.platform_measurement;
+      const pm = got.result.platformMeasurement;
+      assert.equal(pm.outcome, expected.outcome);
+      assert.equal(pm.cause, expected.cause);
+      assert.deepEqual(pm.evidence, expected.evidence);
+      assert.deepEqual(pm.layers, expected.layers);
+    });
+  }
+});
+
+test("citationResolver and platformAppraiser run only after signature and freshness checks", async () => {
+  const { vector } = vectors("citation-resolution").find(({ name }) => name === "16-all-three-resolved.json");
+  const context = vector.context;
+  const record = vector.records[0];
+  const calls = [];
+  const citationResolver = (uri) => {
+    calls.push(["citation", uri]);
+    return new Uint8Array([1, 2, 3]);
+  };
+  const platformAppraiser = (runtime) => {
+    calls.push(["platform", runtime.measurement]);
+    return { measurement: runtime.measurement, layers: { "pcr:0": "established" } };
+  };
+
+  const tampered = {
+    ...record,
+    signature: `${record.signature[0] === "A" ? "B" : "A"}${record.signature.slice(1)}`,
+  };
+  assert.deepEqual(
+    await outcome(
+      verifyRecord(tampered, {
+        trustedKey: context.trusted_key,
+        now: context.now,
+        citationResolver,
+        platformAppraiser,
+      }),
+    ),
+    { rejected: true, code: "signature_invalid" },
+  );
+  assert.deepEqual(
+    await outcome(
+      verifyRecord(record, {
+        trustedKey: context.trusted_key,
+        now: context.now + 10 * 86400,
+        maxAgeSeconds: 86400,
+        citationResolver,
+        platformAppraiser,
+      }),
+    ),
+    { rejected: true, code: "record_stale" },
+  );
+  assert.deepEqual(calls, []);
+
+  const verified = await verifyRecord(record, {
+    trustedKey: context.trusted_key,
+    now: context.now,
+    citationResolver,
+    platformAppraiser,
+  });
+  assert.equal(verified.platformMeasurement.outcome, "appraised");
+  assert.equal(calls.length, 4);
+  assert.equal(calls[3][0], "platform");
+});
+
+test("citationResolver and platformAppraiser validate arguments and isolate caller state", async () => {
+  const { vector } = vectors("platform-measurement").find(({ name }) => name === "15-rc13-layer-not-measured.json");
+  const context = vector.context;
+  const record = vector.records[0];
+
+  for (const bad of ["not-a-fn", 123, true, {}, []]) {
+    assert.deepEqual(await outcome(verifyRecord({}, { citationResolver: bad })), {
+      rejected: true,
+      code: "invalid_argument",
+    });
+    assert.deepEqual(await outcome(verifyRecord({}, { platformAppraiser: bad })), {
+      rejected: true,
+      code: "invalid_argument",
+    });
+    assert.deepEqual(await outcome(checkCitations(record, bad)), {
+      rejected: true,
+      code: "invalid_argument",
+    });
+    assert.deepEqual(await outcome(checkPlatformMeasurement(record, bad)), {
+      rejected: true,
+      code: "invalid_argument",
+    });
+  }
+
+  for (const badRecord of [null, undefined, "str", 1, [], true]) {
+    assert.deepEqual(await outcome(checkCitations(badRecord, null)), {
+      rejected: true,
+      code: "record_not_object",
+    });
+    assert.deepEqual(await outcome(checkPlatformMeasurement(badRecord, null)), {
+      rejected: true,
+      code: "record_not_object",
+    });
+  }
+
+  // Deep-copy isolation: mutating runtime inside platformAppraiser does not mutate record.runtime.
+  const copy = structuredClone(record);
+  const before = structuredClone(record);
+  const pm = await checkPlatformMeasurement(copy, (runtime) => {
+    const m = runtime.measurement;
+    runtime.measurement = "sha256:" + "f".repeat(64);
+    return structuredClone(context.appraisals[m]);
+  });
+  assert.equal(pm.outcome, "appraised");
+  assert.deepEqual(copy, before);
+
+  // Cross-realm Uint8Array is accepted by checkCitations, and non-bytes is reported as an outcome.
+  const foreignBytes = vm.runInNewContext("new Uint8Array([97, 98, 99])");
+  const cited = { appraisal: { policy_ref: "https://policy.example/v1" } };
+  const resolved = await checkCitations(cited, () => foreignBytes);
+  assert.equal(resolved["appraisal.policy_ref"].outcome, "resolved");
+  assert.equal(resolved["appraisal.policy_ref"].evidence.bytes, 3);
+
+  const nonBytes = await checkCitations(cited, () => "not-bytes");
+  assert.equal(nonBytes["appraisal.policy_ref"].outcome, "unresolvable");
+  assert.equal(nonBytes["appraisal.policy_ref"].cause, "resolver_returned_non_bytes");
+
+  assert.equal(SURFACES.length, 4);
+  assert.equal(LAYER_STATUSES.length, 4);
 });

@@ -11,6 +11,84 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **The AGT and sandbox adapters validate `data_class`, string and URI fields, and the
+  policy and appraisal enums, when they are constructed and again in
+  `build_trust_record`.** `data_class`, `model_provider` and `model_id`, and when given
+  `model_version`, `build_provenance_builder` and the sandbox adapter's
+  `policy_version`, must be non-empty strings without lone surrogates, raising
+  `ValueError`, and the agent DID and sandbox ID checks refuse lone surrogates too;
+  `SandboxAttestation` holds its `firmware_version` and `nonce` to the same rule. An
+  invalid `enforcement_mode` or `appraisal_status`, and in the sandbox adapter an
+  invalid `build_provenance_slsa_level`, now raises `pydantic.ValidationError` from the
+  constructor instead of from `build_trust_record`, which repeats the adapter's checks,
+  so a value changed after construction is still refused. `transparency`,
+  `appraisal_verifier` (never `None`), `appraisal_policy_ref`, `build_provenance_uri`,
+  the sandbox adapter's `policy_uri` and `SandboxAttestation.rim_uri` must be RFC 3986
+  URIs by the check `validate.is_uri` makes, and must encode as UTF-8 (#615, #619, by
+  @drk-ram).
+
+- **`tdx_collateral` and `snp_collateral`: TCB status validation, minimal DER integer
+  decoding, and policy input validation.** `tdx_collateral._converge` now validates both
+  `platform` and `other` against `_STATUS_TO_QV` while preserving Intel DCAP QVL's
+  `convergeTcbStatuses` (`EvaluateTcb.cpp:187-225` at `d12717e3`) convergence semantics,
+  and `tdx_collateral` rejects non-minimal DER length and integer encodings in PCK SGX
+  extensions. `snp_collateral._der_uint` now rejects negative, non-minimal, and
+  out-of-range (`> 255`) DER integers in VCEK TCB extensions, and `TcbFloor`,
+  `CollateralPolicy`, `appraise_collateral`, and `tcb_component` validate their input
+  types and fail closed with `CollateralDenied` (#603, #610, by @drk-ram; review by
+  @dinakarjs and @lywinged).
+
+- **Acta receipt verifier: JWK, signature hex, and JSON input hardening.**
+  `tools/acta_receipt_verifier.py` now rejects JWKs carrying private or symmetric key
+  parameters (`d`, `p`, `q`, `dp`, `dq`, `qi`, `oth`, `k`) or non-canonical unpadded
+  base64url `x` values in `issuer_key` (`malformed_key_set`), requires `signature.sig`
+  in `signature_verifies` to be 128 lowercase hex characters without whitespace
+  (`signature_invalid`), rejects duplicate JSON object keys and catches `RecursionError`
+  in `_read_json` (`malformed`), and handles deeply nested payloads in
+  `signature_verifies` and uncanonicalizable or deeply nested predecessors in
+  `chain_link_matches` (#605, #608, by @drk-ram).
+
+- **`prototype.gate_store` and `prototype.cmcp_gate`: binary store secrets, canonical
+  base64url/JSON frames, `GateStoreUnavailable` response wrapping, and `CMCPTraceGate`
+  entry checks.** `GateStoreServer` and `RemoteGateStore` now both require a `bytes`
+  secret of at least 16 bytes and authenticate `_b64(secret)` across the wire so
+  non-UTF-8 binary secrets do not raise `UnicodeDecodeError`, and `python -m
+  prototype.gate_store` also accepts `TRACE_GATE_STORE_SECRET_B64` for binary secrets.
+  `gate_store._unb64` requires canonical unpadded base64url, `gate_store._recv` rejects
+  duplicate JSON keys, UTF-8 BOMs, non-finite JSON constants, and deep recursion as
+  `ValueError`, and `RemoteGateStore` validates response shapes and `sha256:<64 hex>`
+  digest strings and wraps malformed store responses in `GateStoreUnavailable` instead
+  of leaking `ValueError` (`binascii.Error`), `TypeError`, or `IndexError`.
+  `CMCPTraceGate` validates `context`, `gateway_key`, `gateway_issuer`, `clock`,
+  `database`, and `store` at initialization and checks `session_id`, `call_id`,
+  `reason`, `handle`, and `isinstance(action, dict)` before JCS canonicalization (#606,
+  by @drk-ram).
+
+- **Breaking, proposed: a Level 2 anchor verdict requires the registry entry (#464,
+  following trace-tests#92).** Registry Anchor Format §6 now says the verdict rests on
+  the entry itself, the third input of §5.1: a receipt's `merkle_root` and `leaf_count`
+  must equal the entry's or the anchor is refused, and a verifier that does not hold
+  the entry does not report Level 2. Before this, the conformance suite judged the
+  proof against a root and count the receipt supplied, so a passing TR-ANC-002 tied the
+  record to no entry at all. Nothing yet identifies an entry from the `transparency`
+  value, so a verifier states that this link was not checked; it is tracked as finding
+  21 of #448. What breaks: a Level 2 result produced from a receipt alone no longer
+  passes. What implementers do: keep the registry entry with the record and its proof,
+  as the anchoring tutorial already says, and pass it with `--entry`. Records, the
+  receipt shape and the entry shape do not change. Classified breaking under
+  GOVERNANCE.md as a conformance level redefinition, so adoption needs the 30-day
+  comment period and Project Lead sign-off. Reported by @solloek369-arch.
+
+- **`content_marking`: consumer field and strict UTF-8 / RFC 8259 JSON boundaries.**
+  `verify_assertion` now validates `subject` (SPIFFE or DID URI), `eat_profile` (non-empty
+  string), and optional `anchor` (non-empty string) on both the assertion and the resolved
+  record before comparing them, and `_loads` decodes `bytes | bytearray` as strict UTF-8
+  JSON without a leading byte-order mark, non-finite numeric constants (`NaN`, `Infinity`,
+  `-Infinity`), or unpaired UTF-16 surrogates (#555, #565, by @drk-ram).
+  Both public functions parse and hash one immutable snapshot of mutable record input.
+  Hash-matching records missing a required field now raise `ContentMarkingError`,
+  consistent with other malformed fields, rather than its `RecordMismatch` subclass.
+  Hash or well-formed field disagreements still raise `RecordMismatch`.
 - **Section 3.1.5: a layer is established by its event log or by a reference value
   (#279).** As merged, a layer was `established` only when its event log replayed to the
   quoted value, so a quote that equals signed reference values with no log could not be
@@ -28,11 +106,35 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   `layer-not-measured`, status `affirming`. Records do not change. Proposed and written by
   @revenue7-eng; carried by @imran-siddique as sponsoring maintainer.
 
+- **ES256 and ES384 revocation bundles verify in Python and TypeScript.** `check_bundle`
+  and `trust-record-verify`'s `checkRevocationBundle` now verify `ES256` (`P-256`) and
+  `ES384` (`P-384`) signatures on `TraceRevocationBundle/1.0` bundles over the fixed-width
+  IEEE P1363 `r || s` concatenation (64 and 96 bytes, stated on `sig.value` in
+  `schema/trace-revocation-bundle.json`), and `examples/revocation-bundle/` adds vectors
+  29 and 30 (#584, #448 items 1 and 10, by @drk-ram).
+- **Revocation bundle EC key, ECMA-262 regex, and integer-by-value timestamp parity.**
+  `revocation._bundle_pubkey_from_jwk` and `trust-record-verify`'s `importEcdsa` now reject
+  EC bundle-signing JWKs carrying private or symmetric parameters (`d`, `p`, `q`, `dp`, `dq`,
+  `qi`, `oth`, `k`), matching `ed25519` key import under GHSA-vc4p-h84j-7qxj;
+  `revocation._bundle_validator()` enforces ECMA-262 `$` (`\Z`) pattern semantics on
+  `trace-revocation-bundle.json` and `trace-revocation.json` so trailing newlines in
+  `sig.value` are rejected as `bundle_malformed` in Python just as in `trust-record-verify`;
+  and `revocation.check_bundle` normalizes whole-float `issued_at` and `valid_until` values
+  to `int` via `_integer_value` before storing them in `RevocationCheck.evidence` (#604, by
+  @drk-ram).
 - **Revocation store and `allow_embedded_key` are type-checked.** `verify_record` accepted
   a dict or a string as `revocation`: a dict was searched by its field names, so a revoked
   key verified, and a string was searched by substring. Both now raise
   `ValueError`, as does a non-bool `allow_embedded_key`, which was read for truthiness (#511,
   by @drk-ram).
+- **`provenance.verify_record` validates both JWKs before revocation and thumbprint comparison.**
+  `trusted_jwk` is now validated with `_pubkey_from_jwk` before consulting `revocation` or
+  comparing thumbprints, and `record["cnf"]["jwk"]` is validated with `_pubkey_from_jwk`
+  before computing its thumbprint, so a `trusted_jwk` rejected by `_pubkey_from_jwk` is
+  reported as `trusted_jwk is unusable` rather than blamed on the record's embedded key or
+  passed to `revocation`, and a `cnf.jwk` rejected by `_pubkey_from_jwk` is reported as
+  `the record's embedded key is unusable` rather than `not the trusted key` when compared
+  against a valid `trusted_jwk`. Nothing that was rejected now passes (#602, by @drk-ram).
 - **`verify_bridge` reports the real reason.** A key-id mismatch or an unusable trusted JWK
   is now reported as itself rather than as an invalid signature; `verify_successor_artifact`
   gets the same JWK check. Nothing that was rejected now passes (#510, by @drk-ram).
@@ -43,6 +145,12 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
   independently of the Python implementation, and a differential harness scores the two
   against each other on 1644 cases: 1643 agree, and the remaining one is listed in the
   harness's divergence ledger (#376, by @chernistry).
+- **`citationResolver` and `platformAppraiser` in `trust-record-verify/`.** `verifyRecord`
+  now accepts `citationResolver` (`result.citations`, `checkCitations`) and
+  `platformAppraiser` (`result.platformMeasurement`, `checkPlatformMeasurement`), matching
+  Python `verify_record` across all 16 `examples/citation-resolution/` and 16
+  `examples/platform-measurement/` conformance vectors (#569, #575, by @drk-ram; review and
+  own-member preservation fix by @dinakarjs).
 - **v0.3 draft fixtures for the manifest reference.** Six conformance fixtures under
   `conformance/tests/vectors/manifest-ref-v0.3-draft/` exercise the `manifest` object
   proposed in #483: a digest match, a mismatch, a mismatch beside an asserted `verified`,

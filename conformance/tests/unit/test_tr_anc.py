@@ -14,6 +14,13 @@ _RECEIPT: dict[str, Any] = {
     "leaf_count": 1,
     "merkle_root": "sha256:" + "0" * 64,
 }
+_ENTRY: dict[str, Any] = {
+    "ts": "2026-10-15T00:00:00Z",
+    "merkle_root": "sha256:" + "0" * 64,
+    "leaf_count": 1,
+    "producer": "unit-test/1.0.0",
+    "batch_id": "unit-1",
+}
 
 
 def _nested(depth: int = 100_000) -> list[Any]:
@@ -62,6 +69,20 @@ def test_non_uri_scheme_fails():
     assert any(f.code == "TR-ANC-001" for f in failed)
 
 
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://scitt.example.org/receipts/abc 123",
+        "https://scitt.example.org/receipts/abc\n",
+        "https://scitt.example.org/receipts/\x00",
+        "https://scitt.example.org/receipts/\x7f",
+    ],
+)
+def test_transparency_with_whitespace_or_control_characters_fails(uri: str):
+    failed = [f for f in check({"transparency": uri}) if f.failed()]
+    assert any(f.code == "TR-ANC-001" for f in failed)
+
+
 def test_unparseable_transparency_uri_fails():
     """A URI that raises during parsing, rather than parsing to a wrong scheme.
 
@@ -90,7 +111,7 @@ def test_deeply_nested_claim_raises_inclusion_error_and_fails_tr_anc_002():
     with pytest.raises(InclusionError, match="nests too deeply"):
         canonical_claim_bytes(claim)
 
-    findings = check(claim, receipt=dict(_RECEIPT))
+    findings = check(claim, receipt=dict(_RECEIPT), entry=dict(_ENTRY))
     by_code = {f.code: f for f in findings}
     assert by_code["TR-ANC-002"].status is Status.FAIL
     assert "nests too deeply" in by_code["TR-ANC-002"].message
@@ -104,7 +125,7 @@ def test_non_json_serializable_claim_raises_inclusion_error_and_fails_tr_anc_002
     with pytest.raises(InclusionError, match="not JSON serializable"):
         canonical_claim_bytes(claim)
 
-    findings = check(claim, receipt=dict(_RECEIPT))
+    findings = check(claim, receipt=dict(_RECEIPT), entry=dict(_ENTRY))
     by_code = {f.code: f for f in findings}
     assert by_code["TR-ANC-002"].status is Status.FAIL
     assert "not JSON serializable" in by_code["TR-ANC-002"].message
@@ -125,7 +146,7 @@ def test_tuple_outside_anchor_profile_raises_inclusion_error_and_fails_tr_anc_00
         canonical_claim_bytes(claim)
 
     trace = {"transparency": "https://registry.example.org/claim/1", **claim}
-    findings = check(trace, receipt=dict(_RECEIPT))
+    findings = check(trace, receipt=dict(_RECEIPT), entry=dict(_ENTRY))
     by_code = {f.code: f for f in findings}
     assert by_code["TR-ANC-002"].status is Status.FAIL
     assert expected in by_code["TR-ANC-002"].message

@@ -28,6 +28,8 @@ result.profile;                   // the record's eat_profile, accepted by this 
 result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
 result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
 result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
+result.citations;                 // per-surface citation resolution outcomes (section 3.1.2)
+result.platformMeasurement;       // platform measurement appraisal outcome
 ```
 
 A rejection is a `TraceVerificationError` carrying a stable `code`. A resolved result still
@@ -62,8 +64,6 @@ same first failure for the same record. It is documented beside the function.
   the policy to its caller. See [`docs/rfcs/a2a-delegation-profile.md`](../docs/rfcs/a2a-delegation-profile.md).
 - No signing. A verifier that can sign is a verifier that can be made to sign.
 - No key or bundle fetching. Both are passed in, which is what keeps the package offline.
-- No ES256 or ES384 bundle signatures. The bundle schema admits them; a signature nobody
-  checked grounds nothing, so they are reported as `bundle_signature_unsupported`.
 - No statement-level signatures. Section 3.2.3 authenticates a revocation statement with
   the signature of the bundle that carries it, and that is the signature this package
   checks. A statement's own signature against the section 3.2.1 key hierarchy is not
@@ -106,7 +106,7 @@ python differential/compare.py --expect-external 12
 
 `--external` is a checkout of the published conformance vectors; CI pins one and passes
 `--expect-external` with the number of cases it must yield, so a checkout that did not
-happen fails the run rather than shrinking the corpus. Without it the corpus is 1632 cases
+happen fails the run rather than shrinking the corpus. Without it the corpus is 1634 cases
 and the published-vector row below is absent. `generate_cases.py` writes the SHA-256 of
 every vector file it read to `build/manifest.json`, and `compare.py` prints the count and
 the manifest digest.
@@ -135,9 +135,9 @@ Latest run, against this repository's implementation at the commit under test (i
 | RFC 8785 canonicalization corpus | 34 | 33 |
 | RFC 7638 thumbprints | 14 | 14 |
 | Chain digests over the delegation corpus | 134 | 134 |
-| This repository's conformance vectors | 34 | 34 |
+| This repository's conformance vectors | 36 | 36 |
 | Published conformance vectors | 12 | 12 |
-| **Total** | **1644** | **1643** |
+| **Total** | **1646** | **1645** |
 
 Every published vector agrees. The 1 remaining case is the ledger's 1 entry, pinned to
 the number of cases that land on it: the JSON number model, which the two languages hold
@@ -190,4 +190,4 @@ The differential compares verdicts, so it is silent on anything that does not ch
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
 and `codePointLength` cannot disagree with `value.length` on anything the current schema
 constrains (no `maxLength`; every `minLength` is 1). Those rest on the unit tests and on
-reading the code, not on the 1644.
+reading the code, not on the 1646.

@@ -172,6 +172,14 @@ _THUMBPRINT_MEMBERS: dict[str, tuple[str, ...]] = {
     "RSA": ("e", "kty", "n"),
 }
 
+# RFC 7517 / RFC 7518 §6.2.2, §6.3.2, §6.4.2 / RFC 8037 §2 private and symmetric
+# key parameters. Every key this module thumbprints or verifies with is a public
+# verification key; an unredacted private or symmetric JWK is refused rather than
+# silently stripped to its public members.
+_JWK_PRIVATE_PARAMS: frozenset[str] = frozenset(
+    {"d", "p", "q", "dp", "dq", "qi", "oth", "k"}
+)
+
 
 def jwk_thumbprint(jwk: dict[str, Any]) -> str:
     """Return the RFC 7638 JWK Thumbprint of *jwk*: base64url SHA-256, no padding.
@@ -184,13 +192,20 @@ def jwk_thumbprint(jwk: dict[str, Any]) -> str:
     Member names are ASCII, so the RFC 8785 (JCS) serialization used here is
     byte-identical to the code-point ordering RFC 7638 §3.3 specifies.
 
-    Raises ``ValueError`` for an unknown ``kty`` or a missing required member.
+    Raises ``ValueError`` for an unknown ``kty``, a missing required member, or a
+    JWK carrying private key material.
     """
     if not isinstance(jwk, dict):
         raise ValueError(
             f"jwk must be a JSON object, got {type(jwk).__name__}. A JWK reaches this "
             "function from a peer, a key document or a record's own `cnf`, so its shape "
             "is not something the caller has already established."
+        )
+    private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private_members:
+        raise ValueError(
+            f"cannot compute a JWK thumbprint for a JWK containing private key "
+            f"material ({', '.join(repr(m) for m in private_members)})"
         )
     kty = jwk.get("kty")
     if not isinstance(kty, str) or kty not in _THUMBPRINT_MEMBERS:
@@ -581,9 +596,19 @@ def _pubkey_from_jwk(jwk: dict[str, Any]) -> Any:
     """Reconstruct an Ed25519 public key from a JWK, rejecting other key types.
 
     Asserts ``kty == "OKP"`` and ``crv == "Ed25519"`` before building the key so
-    that, for example, an EC key is never silently treated as Ed25519.
+    that, for example, an EC key is never silently treated as Ed25519, and refuses
+    any JWK carrying private key material.
     """
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    if not isinstance(jwk, dict):
+        raise ValueError(f"JWK must be a JSON object, got {type(jwk).__name__}")
+    private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private_members:
+        raise ValueError(
+            f"JWK contains private key material ({', '.join(repr(m) for m in private_members)}); "
+            "expected a public verification key"
+        )
 
     kty = jwk.get("kty")
     crv = jwk.get("crv")
@@ -771,6 +796,7 @@ def verify_record(
         NO_CHECK,
         RevocationCheck,
         VerificationResult,
+        _sequence_of,
         check_bundle,
     )
 
@@ -778,14 +804,47 @@ def verify_record(
         verification_time = int(time.time())
     elif isinstance(now, bool) or not isinstance(now, int):
         raise ValueError("now must be an integer Unix timestamp in seconds, or None")
+    elif now < 0:
+        raise ValueError(
+            "now must be an integer Unix timestamp in seconds (must be non-negative), or None"
+        )
     else:
         verification_time = now
     if not isinstance(allow_embedded_key, bool):
         raise ValueError(
             f"allow_embedded_key must be a bool, got {type(allow_embedded_key).__name__}"
         )
+    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
     _check_seconds("max_bundle_age_seconds", max_bundle_age_seconds)
     _check_seconds("max_future_skew_seconds", max_future_skew_seconds)
+    if expected_nonce is not None and not isinstance(expected_nonce, str):
+        raise ValueError("expected_nonce must be a string")
+    if revocation is not None and not callable(revocation):
+        if isinstance(
+            revocation, (str, bytes, bytearray, memoryview, range, Mapping)
+        ) or not isinstance(revocation, Container):
+            raise ValueError(
+                "revocation must be a container of key identifier strings or a "
+                f"callable, got {type(revocation).__name__}"
+            )
+        if isinstance(revocation, Iterable):
+            try:
+                revocation = tuple(revocation)
+            except Exception as exc:
+                raise ValueError(
+                    f"revocation status could not be determined: {exc}. "
+                    "Verification fails closed: an unavailable revocation source is not "
+                    "evidence that the key is unrevoked."
+                ) from exc
+            if any(not isinstance(v, str) for v in revocation):
+                raise ValueError(
+                    "revocation must contain only str values, found "
+                    f"{sorted({type(v).__name__ for v in revocation if not isinstance(v, str)})}"
+                )
+    if trusted_bundle_keys is not None:
+        trusted_bundle_keys = _sequence_of(
+            trusted_bundle_keys, "trusted_bundle_keys", dict
+        )
     if citation_resolver is not None and not callable(citation_resolver):
         raise ValueError("citation_resolver must be callable or None")
     if platform_appraiser is not None and not callable(platform_appraiser):
@@ -957,8 +1016,7 @@ def verify_record(
 
     # Freshness: bound the age of the record against its issued-at timestamp.
     # Both bounds are verifier configuration, not record data, and a malformed
-    # one is checked before it is used -- see `_check_seconds`.
-    _check_seconds("max_age_seconds", max_age_seconds, optional=True)
+    # one is checked at entry before the record is inspected.
     # Decided by value, not by spelling (section 3.2.2): `json.loads` returns a float
     # for `1785000000.0` and `1.785e9`, and both are the integer the signature covers.
     try:
@@ -980,8 +1038,6 @@ def verify_record(
 
     # Freshness: bind to a caller-supplied nonce when provided.
     if expected_nonce is not None:
-        if not isinstance(expected_nonce, str):
-            raise ValueError("expected_nonce must be a string")
         actual_nonce = record.get("runtime", {}).get("nonce")
         if not isinstance(actual_nonce, str) or not compare_digest(
             actual_nonce.encode("utf-8"), expected_nonce.encode("utf-8")

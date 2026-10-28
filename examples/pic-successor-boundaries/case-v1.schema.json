@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agentrust:examples:pic-successor-case:1",
+  "title": "Bounded successor corpus case v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "context",
+    "inputs",
+    "expected"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "now": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_age_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trusted_observer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executor_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "independence_required": {
+          "const": true
+        },
+        "predicate": {
+          "const": "reachable"
+        }
+      },
+      "required": [
+        "now",
+        "max_age_seconds",
+        "trusted_observer",
+        "executor_id",
+        "independence_required",
+        "predicate"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bridge": {
+          "type": "object"
+        },
+        "authorizer_jwk": {
+          "type": "object"
+        },
+        "observer_jwk": {
+          "type": "object"
+        },
+        "declaration": {
+          "type": "object"
+        },
+        "tool_call": {
+          "type": "object"
+        },
+        "transcript": {
+          "type": "object"
+        },
+        "successor": {
+          "type": "object"
+        },
+        "after": {
+          "type": "object"
+        },
+        "pic_intent_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pic_args_digest": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "bridge",
+        "authorizer_jwk",
+        "observer_jwk",
+        "declaration",
+        "tool_call",
+        "transcript",
+        "successor",
+        "after",
+        "pic_intent_digest",
+        "pic_args_digest"
+      ]
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorization_bound": {
+          "type": "boolean"
+        },
+        "successor_bound": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "established",
+            "not-established",
+            "contradicted",
+            null
+          ]
+        },
+        "reason": {
+          "enum": [
+            "predicate-satisfied",
+            "successor-envelope-missing-fields",
+            "predicate-undecidable",
+            "predicate-contradicted",
+            "successor-authorization-mismatch",
+            "successor-digest-mismatch",
+            "successor-signature-invalid",
+            "successor-observer-mismatch",
+            "observation-stale",
+            "observation-future",
+            "pic-digest-syntax",
+            "authorizer-key-mismatch"
+          ]
+        }
+      },
+      "required": [
+        "authorization_bound",
+        "successor_bound",
+        "outcome",
+        "reason"
+      ]
+    }
+  }
+}

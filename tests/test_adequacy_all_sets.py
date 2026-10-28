@@ -266,6 +266,9 @@ def test_the_loader_reads_a_different_set_for_each_name() -> None:
 # That is the defect these criteria exist to catch, so leaving it in the instrument is
 # the one place it could not be caught.
 MEASURED_ELSEWHERE = {
+    "pic-successor-boundaries": "tests/test_pic_successor_boundaries.py, which executes "
+                                "every published vector on all three axes using reference "
+                                "and bounded independent checks",
     # Experimental profile, not a stable TRACE conformance corpus. The 14 original
     # vectors, also carried byte for byte as LEGACY-01 to LEGACY-14 in the set below.
     "verifier-token-profile": "tests/test_verifier_token_profile.py, which executes "

@@ -83,7 +83,7 @@ sha256:<64 lowercase hex characters>
 
 ## 4. Registry entry
 
-An anchor is recorded as one JSON object with exactly these fields:
+An anchor is recorded as one JSON object carrying these required fields:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -96,6 +96,8 @@ An anchor is recorded as one JSON object with exactly these fields:
 ```json
 {"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001"}
 ```
+
+An entry may also carry optional log-profile fields such as `canonicalization_id` (identifying the leaf canonicalization profile) and `mmr_checkpoint` (or other transparency-log checkpoint metadata). A verifier that does not consume optional entry fields ignores them rather than rejecting the entry.
 
 **Entries are append-only.** Lines are only ever added; existing entries are never rewritten. A registry MUST make that property checkable by an outside party rather than merely assert it. The reference registry uses git history as the tamper-evidence layer: any rewrite of a published entry diverges the commit hashes that auditors and mirrors have already observed, which is why non-fast-forward pushes to its default branch are refused at the platform level as well as in CI.
 
@@ -146,6 +148,10 @@ It does not validate the claim's signature, and it does not validate the claim's
 TRACE v0.2 makes `transparency` optional below Level 2, because an unanchored Level 0 or Level 1 record has no receipt to name. Where it is present, it identifies the registry entry that anchors the record.
 
 At **Level 2 and above the anchor is what makes the record independently checkable**, so a verifier appraising a Level 2 record MUST be able to retrieve the entry and check inclusion without contacting the record's issuer. A `transparency` value that resolves only through the issuer's own infrastructure does not satisfy this.
+
+A Level 2 verdict MUST rest on the registry entry itself, held by the verifier as the third input of §5.1, and not on a `merkle_root` and `leaf_count` carried only beside the proof. Where a receipt carries its own `merkle_root` or `leaf_count`, the verifier MUST check that each equals the entry's and MUST refuse the anchor if either differs. A verifier that does not hold the entry MUST NOT report Level 2.
+
+This document does not yet define how an entry is identified from the `transparency` value, so a verifier cannot check that the entry it holds is the one the record names. Until that is defined, a Level 2 verdict establishes inclusion in the entry the verifier was given, and a verifier MUST state that the link from `transparency` to that entry was not checked. Defining the link is tracked as finding 21 of [trace-spec#448](https://github.com/agentrust-io/trace-spec/issues/448).
 
 ## 7. Reference implementations
 

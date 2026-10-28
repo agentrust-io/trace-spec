@@ -863,6 +863,11 @@
               },
               {
                 "required": [
+                  "oth"
+                ]
+              },
+              {
+                "required": [
                   "k"
                 ]
               }

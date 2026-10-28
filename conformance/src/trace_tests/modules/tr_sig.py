@@ -31,6 +31,9 @@ from trace_tests.result import Finding, Status
 _SUPPORTED_KTY = {"OKP", "EC"}
 _ED25519_CRV = "Ed25519"
 _JCS_SAFE_INTEGER = 9007199254740991
+# RFC 7517/7518 private key members. Mirrors _JWK_PRIVATE_PARAMS in tr_env.py
+# and the agentrust-trace reference model.
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 _B64URL_RE = re.compile(r"[A-Za-z0-9_-]*\Z")
@@ -188,6 +191,15 @@ def check_cmcp_runtime(record: dict[str, Any]) -> list[Finding]:
         return findings
 
     jwk = _jwk_of(record.get("trace"))
+    private = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private:
+        findings.append(Finding(
+            "TR-SIG-001", Status.FAIL,
+            "TR-SIG-001: cnf.jwk must not contain private key material "
+            f"({', '.join(private)} member(s) present in the JWK)",
+        ))
+        return findings
+
     kty = jwk.get("kty")
     crv = jwk.get("crv")
     x = jwk.get("x")
@@ -236,11 +248,12 @@ def check(trace: dict[str, Any], record: dict[str, Any], fmt: str, level: int = 
     crv = jwk.get("crv")
     x = jwk.get("x")
 
-    if "d" in jwk:
+    private = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+    if private:
         findings.append(Finding(
             "TR-SIG-004", Status.FAIL,
             "TR-SIG-004: cnf.jwk must not contain private key material "
-            "('d' member present in the JWK)",
+            f"({', '.join(private)} member(s) present in the JWK)",
         ))
         # The signature is not checked against a key the record should never have
         # carried. Say so rather than returning nothing: a consumer reading TR-SIG-005

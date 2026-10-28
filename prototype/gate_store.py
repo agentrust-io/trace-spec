@@ -21,6 +21,7 @@ import base64
 import hmac
 import json
 import os
+import re
 import socket
 import socketserver
 import sqlite3
@@ -289,11 +290,27 @@ def _b64(raw: bytes) -> str:
 def _unb64(text: object) -> bytes:
     if not isinstance(text, str):
         raise TypeError("bytes field")
-    return base64.b64decode(text + "=" * (-len(text) % 4), altchars=b"-_", validate=True)
+    raw = base64.b64decode(text + "=" * (-len(text) % 4), altchars=b"-_", validate=True)
+    if _b64(raw) != text:
+        raise ValueError("bytes field")
+    return raw
+
+
+def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate json key")
+        result[name] = value
+    return result
+
+
+def _no_constants(token: str) -> Any:
+    raise ValueError(f"non-finite json constant: {token}")
 
 
 def _send(sock: socket.socket, message: dict[str, Any]) -> None:
-    body = json.dumps(message, separators=(",", ":")).encode()
+    body = json.dumps(message, separators=(",", ":"), allow_nan=False).encode()
     sock.sendall(struct.pack(">I", len(body)) + body)
 
 
@@ -311,13 +328,26 @@ def _recv(sock: socket.socket, limit: int) -> Any:
     (size,) = struct.unpack(">I", _recv_exact(sock, 4))
     if size > limit:
         raise ConnectionError("store frame too large")
-    return json.loads(_recv_exact(sock, size))
+    raw = _recv_exact(sock, size)
+    try:
+        return json.loads(
+            raw.decode("utf-8"), object_pairs_hook=_pairs, parse_constant=_no_constants
+        )
+    except RecursionError as exc:
+        raise ValueError("malformed json") from exc
 
 
 def _str(value: object) -> str:
     if not isinstance(value, str):
         raise TypeError("string field")
     return value
+
+
+def _digest(value: object) -> str:
+    text = _str(value)
+    if re.fullmatch(r"sha256:[0-9a-f]{64}", text) is None:
+        raise ValueError("digest field")
+    return text
 
 
 def _int(value: object) -> int:
@@ -331,10 +361,10 @@ def _dispatch(store: SQLiteGateStore, op: str, a: dict[str, Any]) -> Any:
         store.mint_challenge(
             issuer=_str(a["issuer"]),
             token_id=_str(a["token_id"]),
-            token_digest=_str(a["token_digest"]),
+            token_digest=_digest(a["token_digest"]),
             nonce=_str(a["nonce"]),
             session_id=_str(a["session_id"]),
-            action_digest=_str(a["action_digest"]),
+            action_digest=_digest(a["action_digest"]),
             issued=_int(a["issued"]),
             expires=_int(a["expires"]),
         )
@@ -351,7 +381,7 @@ def _dispatch(store: SQLiteGateStore, op: str, a: dict[str, Any]) -> Any:
         return store.receipted(_str(a["session_id"]), _str(a["call_id"]))
     if op == "reserve_call":
         return store.reserve_call(
-            _str(a["session_id"]), _str(a["call_id"]), _str(a["action_digest"])
+            _str(a["session_id"]), _str(a["call_id"]), _digest(a["action_digest"])
         )
     if op == "receipt_head":
         existing, head = store.receipt_head(_str(a["session_id"]), _str(a["call_id"]))
@@ -362,8 +392,8 @@ def _dispatch(store: SQLiteGateStore, op: str, a: dict[str, Any]) -> Any:
             _str(a["session_id"]),
             _str(a["call_id"]),
             _unb64(a["envelope"]),
-            _str(a["digest"]),
-            None if previous is None else _str(previous),
+            _digest(a["digest"]),
+            None if previous is None else _digest(previous),
         )
     if op == "receipts":
         return [_b64(raw) for raw in store.receipts()]
@@ -382,7 +412,7 @@ class GateStoreServer(socketserver.ThreadingTCPServer):
     allow_reuse_address = False
 
     def __init__(self, address: tuple[str, int], database: str | Path, secret: bytes) -> None:
-        if len(secret) < 16:
+        if type(secret) is not bytes or len(secret) < 16:
             raise ValueError("store secret must be at least 16 bytes")
         self.store = SQLiteGateStore(database)
         self.secret = secret
@@ -400,11 +430,13 @@ class _Handler(socketserver.BaseRequestHandler):
             request = _recv(sock, _MAX_REQUEST)
         except (OSError, ValueError, struct.error):
             return
-        if not isinstance(request, dict) or not hmac.compare_digest(
-            str(request.get("secret", "")).encode(), self.server.secret
+        secret = request.get("secret") if isinstance(request, dict) else None
+        if not isinstance(secret, str) or not hmac.compare_digest(
+            secret.encode("utf-8", "surrogatepass"), _b64(self.server.secret).encode("ascii")
         ):
             _send(sock, {"error": "unauthenticated"})
             return
+        assert isinstance(request, dict)
         op, args = request.get("op"), request.get("args")
         if not isinstance(op, str) or not isinstance(args, dict):
             _send(sock, {"error": "malformed"})
@@ -431,8 +463,10 @@ class RemoteGateStore:
     nonce; a lost append is resolved by the next ``receipt_head``)."""
 
     def __init__(self, host: str, port: int, secret: bytes, *, timeout: float = 5.0) -> None:
+        if type(secret) is not bytes or len(secret) < 16:
+            raise ValueError("store secret must be at least 16 bytes")
         self.address = (host, port)
-        self._secret = secret.decode()
+        self._secret = _b64(secret)
         self._timeout = timeout
 
     def _call(self, op: str, **args: Any) -> Any:
@@ -445,46 +479,84 @@ class RemoteGateStore:
         if not isinstance(response, dict):
             raise GateStoreUnavailable(f"gate store {op} returned a malformed response")
         if "error" in response:
-            if response["error"] in _FORWARDED_ERRORS:
-                raise v.ProfileError(response["error"])
-            raise GateStoreUnavailable(f"gate store {op} refused: {response['error']}")
-        return response.get("ok")
+            error = response["error"]
+            if isinstance(error, str) and error in _FORWARDED_ERRORS:
+                raise v.ProfileError(error)
+            raise GateStoreUnavailable(f"gate store {op} refused: {error}")
+        if set(response) != {"ok"}:
+            raise GateStoreUnavailable(f"gate store {op} returned a malformed response")
+        return response["ok"]
 
     def mint_challenge(self, **fields: Any) -> None:
-        self._call("mint_challenge", **fields)
+        if self._call("mint_challenge", **fields) is not None:
+            raise GateStoreUnavailable("gate store returned a malformed mint_challenge result")
 
     def consume_challenge(self, nonce: str) -> ChallengeRecord | None:
         row = self._call("consume_challenge", nonce=nonce)
         if row is None:
             return None
+        if not isinstance(row, list) or len(row) != 5:
+            raise GateStoreUnavailable("gate store returned a malformed challenge")
         try:
             return ChallengeRecord(
-                _str(row[0]), _str(row[1]), _str(row[2]), _int(row[3]), _int(row[4])
+                _digest(row[0]), _str(row[1]), _digest(row[2]), _int(row[3]), _int(row[4])
             )
-        except (IndexError, TypeError) as exc:
+        except (TypeError, ValueError) as exc:
             raise GateStoreUnavailable("gate store returned a malformed challenge") from exc
 
     def bump_admission(self, session_id: str, token: bytes) -> int:
-        return _int(self._call("bump_admission", session_id=session_id, token=_b64(token)))
+        try:
+            generation = _int(
+                self._call("bump_admission", session_id=session_id, token=_b64(token))
+            )
+        except (TypeError, ValueError) as exc:
+            raise GateStoreUnavailable(
+                "gate store returned a malformed admission generation"
+            ) from exc
+        if generation < 1:
+            raise GateStoreUnavailable("gate store returned a malformed admission generation")
+        return generation
 
     def admission(self, session_id: str) -> tuple[bytes, int] | None:
         found = self._call("admission", session_id=session_id)
-        return None if found is None else (_unb64(found[0]), _int(found[1]))
+        if found is None:
+            return None
+        if not isinstance(found, list) or len(found) != 2:
+            raise GateStoreUnavailable("gate store returned a malformed admission")
+        try:
+            token, generation = _unb64(found[0]), _int(found[1])
+        except (TypeError, ValueError) as exc:
+            raise GateStoreUnavailable("gate store returned a malformed admission") from exc
+        if generation < 1:
+            raise GateStoreUnavailable("gate store returned a malformed admission")
+        return token, generation
 
     def receipted(self, session_id: str, call_id: str) -> bool:
-        return self._call("receipted", session_id=session_id, call_id=call_id) is True
+        result = self._call("receipted", session_id=session_id, call_id=call_id)
+        if not isinstance(result, bool):
+            raise GateStoreUnavailable("gate store returned a malformed receipted flag")
+        return result
 
     def reserve_call(self, session_id: str, call_id: str, action_digest: str) -> bool:
         reserved = self._call(
             "reserve_call", session_id=session_id, call_id=call_id, action_digest=action_digest
         )
-        return reserved is True
+        if not isinstance(reserved, bool):
+            raise GateStoreUnavailable("gate store returned a malformed reserve_call flag")
+        return reserved
 
     def receipt_head(self, session_id: str, call_id: str) -> tuple[bytes | None, str | None]:
-        existing, head = self._call("receipt_head", session_id=session_id, call_id=call_id)
-        return (None if existing is None else _unb64(existing)), (
-            None if head is None else _str(head)
-        )
+        pair = self._call("receipt_head", session_id=session_id, call_id=call_id)
+        if not isinstance(pair, list) or len(pair) != 2:
+            raise GateStoreUnavailable("gate store returned a malformed receipt head")
+        existing, head = pair
+        try:
+            return (
+                None if existing is None else _unb64(existing),
+                None if head is None else _digest(head),
+            )
+        except (TypeError, ValueError) as exc:
+            raise GateStoreUnavailable("gate store returned a malformed receipt head") from exc
 
     def append_receipt(
         self, session_id: str, call_id: str, envelope: bytes, digest: str, previous: str | None
@@ -502,7 +574,13 @@ class RemoteGateStore:
         return outcome  # type: ignore[no-any-return]
 
     def receipts(self) -> list[bytes]:
-        return [_unb64(raw) for raw in self._call("receipts")]
+        items = self._call("receipts")
+        if not isinstance(items, list):
+            raise GateStoreUnavailable("gate store returned a malformed receipt list")
+        try:
+            return [_unb64(raw) for raw in items]
+        except (TypeError, ValueError) as exc:
+            raise GateStoreUnavailable("gate store returned a malformed receipt list") from exc
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -515,7 +593,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     options = parser.parse_args(argv)
-    secret = os.environ.get("TRACE_GATE_STORE_SECRET", "").encode()
+    if "TRACE_GATE_STORE_SECRET_B64" in os.environ:
+        secret = _unb64(os.environ["TRACE_GATE_STORE_SECRET_B64"])
+    else:
+        secret = os.environ.get("TRACE_GATE_STORE_SECRET", "").encode()
     server = GateStoreServer((options.host, options.port), options.database, secret)
     print(server.server_address[1], flush=True)
     sys.stdout.flush()
