@@ -11,6 +11,43 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 
 ## [Unreleased]
 
+- **The AGT and sandbox adapters validate `data_class`, string and URI fields, and the
+  policy and appraisal enums, when they are constructed and again in
+  `build_trust_record`.** `data_class`, `model_provider` and `model_id`, and when given
+  `model_version`, `build_provenance_builder` and the sandbox adapter's
+  `policy_version`, must be non-empty strings without lone surrogates, raising
+  `ValueError`, and the agent DID and sandbox ID checks refuse lone surrogates too;
+  `SandboxAttestation` holds its `firmware_version` and `nonce` to the same rule. An
+  invalid `enforcement_mode` or `appraisal_status`, and in the sandbox adapter an
+  invalid `build_provenance_slsa_level`, now raises `pydantic.ValidationError` from the
+  constructor instead of from `build_trust_record`, which repeats the adapter's checks,
+  so a value changed after construction is still refused. `transparency`,
+  `appraisal_verifier` (required), `appraisal_policy_ref`, `build_provenance_uri`, the
+  sandbox adapter's `policy_uri` and `SandboxAttestation.rim_uri` must be RFC 3986 URIs
+  by the check `validate.is_uri` makes, and must encode as UTF-8 (#615, #619, by
+  @drk-ram).
+
+- **`tdx_collateral` and `snp_collateral`: TCB status validation, minimal DER integer
+  decoding, and policy input validation.** `tdx_collateral._converge` now validates both
+  `platform` and `other` against `_STATUS_TO_QV` while preserving Intel DCAP QVL's
+  `convergeTcbStatuses` (`EvaluateTcb.cpp:187-225` at `d12717e3`) convergence semantics,
+  and `tdx_collateral` rejects non-minimal DER length and integer encodings in PCK SGX
+  extensions. `snp_collateral._der_uint` now rejects negative, non-minimal, and
+  out-of-range (`> 255`) DER integers in VCEK TCB extensions, and `TcbFloor`,
+  `CollateralPolicy`, `appraise_collateral`, and `tcb_component` validate their input
+  types and fail closed with `CollateralDenied` (#603, #610, by @drk-ram; review by
+  @dinakarjs and @lywinged).
+
+- **Acta receipt verifier: JWK, signature hex, and JSON input hardening.**
+  `tools/acta_receipt_verifier.py` now rejects JWKs carrying private or symmetric key
+  parameters (`d`, `p`, `q`, `dp`, `dq`, `qi`, `oth`, `k`) or non-canonical unpadded
+  base64url `x` values in `issuer_key` (`malformed_key_set`), requires `signature.sig`
+  in `signature_verifies` to be 128 lowercase hex characters without whitespace
+  (`signature_invalid`), rejects duplicate JSON object keys and catches `RecursionError`
+  in `_read_json` (`malformed`), and handles uncanonicalizable or deeply nested payloads
+  and predecessors in `signature_verifies` and `chain_link_matches` (#605, #608, by
+  @drk-ram).
+
 - **`prototype.gate_store` and `prototype.cmcp_gate`: binary store secrets, canonical
   base64url/JSON frames, `GateStoreUnavailable` response wrapping, and `CMCPTraceGate`
   entry checks.** `GateStoreServer` and `RemoteGateStore` now both require a `bytes`
