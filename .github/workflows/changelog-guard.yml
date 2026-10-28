@@ -18,9 +18,13 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
-concurrency:
-  group: changelog-guard-${{ github.ref }}
-  cancel-in-progress: true
+# There is no concurrency group, on purpose. Dependabot labels a pull request as
+# it opens it, so one pull request starts several runs at once, and with
+# cancel-in-progress the cancelled ones kept this required check from passing and
+# held the merge. Each run reads only its own event and takes seconds, so all of
+# them finish. Nor does a job-level `if` skip label events other than
+# `changelog`: a skipped run passes a required check, so any label added to a
+# pull request that edits the file would clear its failure.
 
 jobs:
   guard:
