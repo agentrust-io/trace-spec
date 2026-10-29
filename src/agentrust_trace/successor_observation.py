@@ -48,6 +48,35 @@ def _not_established(reason: str) -> SuccessorOutcome:
     return SuccessorOutcome("not-established", reason)
 
 
+def _clone_observation(root: dict[str, Any]) -> dict[str, Any]:
+    """Iteratively deep-copy a JSON-compatible observation dict without recursion limits."""
+    cloned_root: dict[str, Any] = {}
+    stack: list[tuple[Any, Any]] = [(root, cloned_root)]
+    tuple_fixups: list[tuple[Any, Any, list[Any]]] = []
+    while stack:
+        src, dst = stack.pop()
+        items = src.items() if isinstance(src, dict) else enumerate(src)
+        for k, v in items:
+            if isinstance(v, dict):
+                child_dict: dict[str, Any] = {}
+                dst[k] = child_dict
+                stack.append((v, child_dict))
+            elif isinstance(v, list):
+                child_list: list[Any] = [None] * len(v)
+                dst[k] = child_list
+                stack.append((v, child_list))
+            elif isinstance(v, tuple):
+                staged: list[Any] = [None] * len(v)
+                dst[k] = staged
+                tuple_fixups.append((dst, k, staged))
+                stack.append((v, staged))
+            else:
+                dst[k] = v
+    for parent, key, staged in reversed(tuple_fixups):
+        parent[key] = tuple(staged)
+    return cloned_root
+
+
 def evaluate_successor_observation(
     after: dict[str, Any] | None,
     *,
@@ -125,7 +154,7 @@ def evaluate_successor_observation(
                 "independent observation is required but observer is the executor"
             )
 
-    result = predicate(observation)
+    result = predicate(_clone_observation(observation))
     if result is True:
         return SuccessorOutcome(
             "established",
