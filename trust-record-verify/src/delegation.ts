@@ -53,6 +53,9 @@ export async function parentRecordHash(
       `unsupported chain digest algorithm ${typeof algorithm === "string" ? JSON.stringify(algorithm) : typeof algorithm}`,
     );
   }
+  if (!isPlainObject(record)) {
+    fail("record_not_object", "a Trust Record is a JSON object");
+  }
   return `${algorithm}:${hex(await digest(WEBCRYPTO_NAME[algorithm], canonicalize(record)))}`;
 }
 
@@ -99,7 +102,7 @@ export async function verifyDelegationLink(
     fail("invalid_argument", "supportedDigestAlgorithms must be an array of algorithm names");
   }
   const supported: readonly string[] = configured ?? DELEGATION_DIGEST_ALGORITHMS;
-  if (!isPlainObject(child)) {
+  if (!isPlainObject(child) || !isPlainObject(parent)) {
     fail("record_not_object", "a Trust Record is a JSON object");
   }
   const delegation = own(child, "delegation");
