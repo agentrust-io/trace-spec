@@ -29,7 +29,13 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from jsonschema import ValidationError
 
-from agentrust_trace.sign import _b64url_decode, _canonical_bytes, _integer_value
+from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
+    _JWK_PRIVATE_PARAMS,
+    _b64url_decode,
+    _canonical_bytes,
+    _integer_value,
+)
 from agentrust_trace.validate import validate_json
 
 DELEGATION_DIGEST_ALGORITHMS: tuple[str, ...] = ("sha256", "sha384")
@@ -428,8 +434,14 @@ def _validate_context(context: Any) -> dict[str, Any]:
             )
 
     max_depth = context["max_depth"]
-    if isinstance(max_depth, bool) or not isinstance(max_depth, int) or max_depth < 0:
-        raise DelegationError("context.max_depth must be a non-negative integer")
+    if (
+        isinstance(max_depth, bool)
+        or not isinstance(max_depth, int)
+        or not 0 <= max_depth <= JCS_SAFE_INTEGER
+    ):
+        raise DelegationError(
+            "context.max_depth must be a non-negative integer within the JCS safe-integer range"
+        )
 
     lattice = context["data_class_lattice"]
     if (
@@ -439,6 +451,11 @@ def _validate_context(context: Any) -> dict[str, Any]:
     ):
         raise DelegationError(
             "context.data_class_lattice must be a sequence of non-empty strings"
+        )
+    lattice_list = list(lattice)
+    if len(set(lattice_list)) != len(lattice_list):
+        raise DelegationError(
+            "context.data_class_lattice must not contain duplicate entries"
         )
 
     trusted_keys = context["trusted_root_keys"]
@@ -455,6 +472,13 @@ def _validate_context(context: Any) -> dict[str, Any]:
             "context.trusted_root_keys must contain only JWK objects"
         )
     for jwk in trusted_list:
+        private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+        if private_members:
+            raise DelegationError(
+                f"context.trusted_root_keys entry contains private key material "
+                f"({', '.join(repr(m) for m in private_members)}); "
+                "expected a public verification key"
+            )
         for member in ("kty", "crv", "x"):
             val = jwk.get(member)
             if not isinstance(val, str) or not val:
@@ -474,23 +498,36 @@ def _validate_context(context: Any) -> dict[str, Any]:
             raise DelegationError(
                 "context.credentials must map credential IDs to credential objects"
             )
-        if not isinstance(cred.get("issuer"), str) or not isinstance(
-            cred.get("holder"), str
+        issuer = cred.get("issuer")
+        holder = cred.get("holder")
+        if (
+            not isinstance(issuer, str)
+            or not issuer
+            or not isinstance(holder, str)
+            or not holder
         ):
             raise DelegationError(
-                f"credential {cid!r} must carry string issuer and holder"
+                f"credential {cid!r} must carry non-empty string issuer and holder"
             )
         for bound in ("not_before", "not_after"):
             val = cred.get(bound)
-            if isinstance(val, bool) or not isinstance(val, int):
+            if (
+                isinstance(val, bool)
+                or not isinstance(val, int)
+                or not 0 <= val <= JCS_SAFE_INTEGER
+            ):
                 raise DelegationError(
-                    f"credential {cid!r} must carry integer {bound}"
+                    f"credential {cid!r} must carry integer {bound} within [0, {JCS_SAFE_INTEGER}]"
                 )
+        if cred["not_before"] > cred["not_after"]:
+            raise DelegationError(
+                f"credential {cid!r} not_before must not exceed not_after"
+            )
 
     return {
         **context,
         "supported_digest_algorithms": list(supported),
-        "data_class_lattice": list(lattice),
+        "data_class_lattice": lattice_list,
         "trusted_root_keys": trusted_list,
     }
 
@@ -564,7 +601,7 @@ def verify_delegation_chain(
     failures: list[str] = []
     warnings: list[str] = []
     depth = 0
-    visited: set[int] = set()
+    visited: set[int] = {id(current)}
 
     while True:
         hop = Hop(
