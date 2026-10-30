@@ -99,7 +99,7 @@ review. "Before a pull request is reviewed" says what is.
    for two tables, the required flags. A wrong description stays green unless
    it omits a digest algorithm its field's pattern admits. For the rest, the
    README of the example set you touched, the docs page that describes the
-   behaviour, `CHANGELOG.md` and the description, assume nothing checks them
+   behaviour, the changelog entry and the description, assume nothing checks them
    unless you find the test, and read each after the last edit, counts and
    names first.
 
@@ -180,7 +180,7 @@ Steps for a normative contribution:
 2. Allow a minimum 5 business days for comment. Breaking changes, including anything touching wire format, cryptographic algorithms, or Trust Record required fields, carry a minimum 30-day comment period. See [Backward compatibility](GOVERNANCE.md#backward-compatibility) for the conditions under which a breaking change is considered at all.
 3. Name the sponsoring organization in the PR. If a proposal is accepted without a sponsor, a Maintainer may sponsor and carry the PR, and the proposer is credited in the `CHANGELOG.md` entry. A normative PR opened without a sponsor is not rejected on that basis: reviewers will say so on the PR and either identify a sponsor or convert it to an informative change.
 4. Submit the PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN - description -->`.
-5. Update `CHANGELOG.md`.
+5. Put the `CHANGELOG.md` entry you propose in the pull request description under `## Changelog entry`, one bullet in the file's style, and do not edit `CHANGELOG.md` itself. The merging Maintainer writes the entry under `[Unreleased]` on `main` at merge, crediting the author, so open pull requests never conflict on the one file they would all touch. A pull request that has to carry the file, a release for instance, is labelled `changelog` by a Maintainer, and the `Changelog guard` check passes it on that label.
 6. Breaking changes require Project Lead approval and an explicit backward-compatibility statement naming what breaks and what implementers must do.
 
 **No sponsor is required for** editorial changes, examples, conformance tests, tooling, schema changes tracking an already-merged spec change, and informative additions such as crosswalks and mappings to external schemas. Informative text carries no RFC 2119 keywords and binds no implementation, so it is the right home for a mapping that is still settling. Most contributions are in this set.

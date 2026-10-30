@@ -269,7 +269,8 @@ def _check_structure(
                 f"identity.artifact must be an object, got {type(artifact).__name__}"
             )
         _nonempty_string(artifact.get("package"), "artifact.package")
-        if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
+        artifact_digest = artifact.get("digest")
+        if not isinstance(artifact_digest, str) or not _DIGEST_RE.match(artifact_digest):
             raise ProvenanceError(
                 "artifact.digest must be a sha256: digest of the entrypoint. For an "
                 "interpreted server that is the script, not the interpreter: every such "
@@ -281,7 +282,8 @@ def _check_structure(
                 f"identity.endpoint must be an object, got {type(endpoint).__name__}"
             )
         _nonempty_string(endpoint.get("url"), "endpoint.url")
-        if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
+        spki = endpoint.get("spki_sha256")
+        if not isinstance(spki, str) or not _DIGEST_RE.match(spki):
             raise ProvenanceError(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
@@ -513,14 +515,15 @@ def verify_record(
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
     issued_at = _check_structure(
-        kind=str(record.get("kind")),
+        kind=record["kind"],
         artifact=identity.get("artifact"),
         endpoint=identity.get("endpoint"),
         attestation=record.get("attestation"),
         issued_at=record.get("issued_at"),
     )
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
-    if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
+    catalog_hash = catalog.get("hash")
+    if not isinstance(catalog_hash, str) or not _DIGEST_RE.match(catalog_hash):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     _tool_count(catalog)
 
@@ -667,6 +670,10 @@ def check_tool_catalog(
     actual = tool_catalog_hash(tools, format=record["format"])
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")
+    if "hash" in catalog and (
+        not isinstance(expected, str) or not _DIGEST_RE.match(expected)
+    ):
+        raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     if actual != expected:
         declared_count = catalog.get("tool_count")
         raise ToolCatalogMismatch(

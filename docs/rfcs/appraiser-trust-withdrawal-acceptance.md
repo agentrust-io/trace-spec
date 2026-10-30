@@ -1,6 +1,6 @@
 # Appraiser trust withdrawal: informative acceptance profile
 
-Status: proposed review criteria for [#442](https://github.com/agentrust-io/trace-spec/issues/442), against commit `53e347caadda536b34773349c38eb70fedfec761`, 20 October 2026. This is not a protocol extension, implemented status service or conformance requirement. Every pair below is planned and unexecuted.
+Status: proposed review criteria for [#442](https://github.com/agentrust-io/trace-spec/issues/442), against commit `b938790f7f46d3a943c76a5360d2de60bb72112c`, 30 October 2026. This is not a protocol extension, implemented status service or conformance requirement. Withdrawal-status pairs below remain planned and unexecuted. The existing grant-interval half of TW-07 is exercised by the separate boundary controls described below.
 
 ## Existing contract and bounded proposal
 
@@ -28,12 +28,16 @@ Keep authenticated revocation distinct from unknown subject, expired status, unr
 | TW-04 | Positive status is within its declared validity at the evaluation instant. | Evaluate at expiry or beyond clock bounds; do not treat it as fresh. |
 | TW-05 | Newly observed status advances retained status state. | Replay an older positive after retaining authenticated withdrawal, including after restart; detect rollback under the declared storage model. This does not detect a withdrawal never observed. |
 | TW-06 | Fresh authenticated status is available. | Disconnect retrieval, return unknown subject, or corrupt the signature separately; retain distinct unavailable/invalid diagnostics without fallback eligibility. |
-| TW-07 | Evaluation falls inside the grant interval. | Evaluate exactly at `valid_until`; status cannot extend the grant. |
+| TW-07 | Evaluation at `valid_from` qualifies under the existing grant interval. | Evaluate exactly at `valid_until`; the appraiser no longer qualifies. The grant boundary is tested; no withdrawal-status service is implemented. |
 | TW-08 | Retained authenticated history supports the selected past instant. | Only a current response exists; do not invent historical eligibility. |
-| TW-09 | Eligible required component supports the existing composite calculation. | Withdraw its appraiser; recompute using the maintainer-selected unverifiable/result rule rather than accepting the former composite. |
-| TW-10 | An eligible optional component and required controls preserve existing RFC behavior. | Withdraw only the optional component; do not silently invent a new rule that every optional absence invalidates the composite. |
+| TW-09 | Eligible required component supports the existing composite calculation. | For the existing configuration-removal model, remove the configured appraiser and recompute the component as `unverifiable` under RFC section 5 step 4, then the composite under section 6. A future token-status revocation model is a separate decision and is not measured by this row. |
+| TW-10 | An eligible optional component and required controls preserve existing RFC behavior. | For the same configuration-removal model as TW-09, remove only its appraiser and apply the RFC section 6 calculation, including the existing `missing` above `unverifiable` ordering. Do not impose token-wide refusal from the separate proposed token-status mechanism. |
+
+The existing grant interval is pinned by `tests/test_conformance_corpus.py::test_appraiser_grant_half_open_boundaries`: the same signed COMP-AUTH-006 token qualifies at `valid_from`; setting `valid_until` to the evaluation instant yields `composite_inconsistent` because the carried affirming result no longer matches recomposition. These are reference-prototype software tests, not executed status-service or withdrawal acceptance.
 
 For each future execution, retain exact source/dependency revisions, signed fixtures, independent trust configuration, evaluation time, status history, cache/storage model and observed outcomes. Remove the relevant guard while preserving fixture parsing and valid controls; the behavioral assertion should then fail. Passing this plan has not been claimed.
+
+TW-09 and TW-10 now name the existing configuration-removal model they would measure. This does not select it as the withdrawal protocol. The token-status proposal instead refuses the token with `status_not_active` or `status_unavailable`; that alternative needs its own explicitly approved acceptance cases. Placement remains with the RFC owners; section 11.2 of the composite RFC is a possible final home, following the existing section 11.1 evidence-resolution material.
 
 ## Decisions before implementation
 
@@ -41,7 +45,7 @@ Maintainers still need to choose leaf-only scope; status authority and transport
 
 ## References and limits
 
-1. [Composite component appraisal RFC at the reviewed commit](https://github.com/agentrust-io/trace-spec/blob/53e347caadda536b34773349c38eb70fedfec761/docs/rfcs/composite-component-appraisal.md): authoritative baseline for this comparison; not an already approved revocation mechanism.
+1. [Composite component appraisal RFC at the reviewed commit](https://github.com/agentrust-io/trace-spec/blob/b938790f7f46d3a943c76a5360d2de60bb72112c/docs/rfcs/composite-component-appraisal.md): authoritative baseline for this comparison; not an already approved revocation mechanism.
 2. [RFC 9334, Remote ATtestation procedureS Architecture, especially section 10](https://www.rfc-editor.org/rfc/rfc9334.html#section-10): role separation and freshness reasoning. It does not specify TRACE appraiser withdrawal.
 3. [RFC 6960, sections 2.2, 2.4 and 4.2.2](https://www.rfc-editor.org/rfc/rfc6960.html#section-2.2): prior art separating authenticated status, effective time and response freshness. This is a design analogy; neither OCSP transport, certificate chains nor its `good` semantics are adopted as TRACE rules.
 4. [Existing #442 proposal](https://github.com/agentrust-io/trace-spec/issues/442#issuecomment-6271717474): discussion context only. Maintainer acceptance and implementation remain open.

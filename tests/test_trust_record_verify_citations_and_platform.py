@@ -177,6 +177,22 @@ out.checks.badCitationResolver = await codeOf(() =>
 out.checks.badPlatformAppraiser = await codeOf(() =>
   trace.verifyRecord({}, { platformAppraiser: 123 })
 );
+out.checks.nonStringMeasurements = [];
+const badRuntimes = [
+  {},
+  { measurement: null },
+  { measurement: "" },
+  { measurement: 123 },
+  { measurement: true },
+  { measurement: ["sha256:aa"] },
+];
+for (const badRuntime of badRuntimes) {
+  const pm = await trace.checkPlatformMeasurement(
+    { runtime: badRuntime },
+    (rt) => ({ measurement: rt.measurement, layers: { "pcr:0": "established" } })
+  );
+  out.checks.nonStringMeasurements.push([pm.outcome, pm.cause]);
+}
 
 process.stdout.write(JSON.stringify(out));
 """
@@ -209,3 +225,11 @@ def test_ts_platform_measurement_vector(path: pathlib.Path, ts_results: dict[str
 def test_ts_invalid_callback_options_rejected_at_entry(ts_results: dict[str, Any]) -> None:
     assert ts_results["checks"]["badCitationResolver"] == "invalid_argument"
     assert ts_results["checks"]["badPlatformAppraiser"] == "invalid_argument"
+
+
+def test_ts_non_string_or_empty_runtime_measurement_is_field_absent(
+    ts_results: dict[str, Any],
+) -> None:
+    assert ts_results["checks"]["nonStringMeasurements"] == [
+        ["not_attempted", "field_absent"]
+    ] * 6

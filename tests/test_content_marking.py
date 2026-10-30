@@ -323,3 +323,52 @@ def test_a_complete_pair_still_verifies() -> None:
     record = _record()
     assertion = build_assertion(_bytes(record), url=URL)
     assert verify_assertion(assertion, _bytes(record)) == record
+
+
+@pytest.mark.parametrize(
+    ("declared_alg", "hash_alg"),
+    [("sha256", "sha384"), ("sha384", "sha256")],
+)
+def test_mismatched_record_alg_and_hash_prefix_is_content_marking_error_not_mismatch(
+    declared_alg: str, hash_alg: str
+) -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL, alg=hash_alg)
+    a["data"]["record"]["alg"] = declared_alg
+    with pytest.raises(ContentMarkingError, match="does not use declared record.alg") as excinfo:
+        verify_assertion(a, raw)
+    assert type(excinfo.value) is ContentMarkingError
+
+
+def test_unsupported_alg_in_verify_assertion_is_rejected_before_record_bytes() -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL)
+    a["data"]["record"]["alg"] = "md5"
+    with pytest.raises(ContentMarkingError, match="unsupported digest algorithm") as excinfo:
+        verify_assertion(a, b"")
+    assert type(excinfo.value) is ContentMarkingError
+
+
+@pytest.mark.parametrize("surface", ["top", "data", "record"])
+@pytest.mark.parametrize("keys", [("extra",), (123, "extra")])
+def test_verify_assertion_rejects_unknown_fields(
+    surface: str, keys: tuple[object, ...]
+) -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL)
+    target = a if surface == "top" else (a["data"] if surface == "data" else a["data"]["record"])
+    for key in keys:
+        target[key] = True
+    with pytest.raises(ContentMarkingError, match="unknown fields") as excinfo:
+        verify_assertion(a, raw)
+    assert type(excinfo.value) is ContentMarkingError
+
+
+@pytest.mark.parametrize("bad_hash", [None, 5])
+def test_verify_assertion_rejects_non_string_record_hash(bad_hash: object) -> None:
+    raw = _bytes(_record())
+    a = build_assertion(raw, url=URL)
+    a["data"]["record"]["hash"] = bad_hash
+    with pytest.raises(ContentMarkingError, match="record.hash") as excinfo:
+        verify_assertion(a, raw)
+    assert type(excinfo.value) is ContentMarkingError

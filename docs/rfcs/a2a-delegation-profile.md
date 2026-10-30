@@ -1,11 +1,11 @@
 # RFC Proposal: A2A delegation-link verification profile
 
-When one AI agent hands a task to another, each can write a TRACE record, and the later record points back to the earlier one (a delegation link). This proposal sets out how a checker follows those links and decides whether each hand-off was allowed. It is for people building verifiers, or agents that pass work to each other over A2A (the agent-to-agent protocol). It is a draft: nothing in it binds an implementation yet, and it ships with 24 test vectors so independent implementations can be compared.
+When one AI agent hands a task to another, each can write a TRACE record, and the later record points back to the earlier one (a delegation link). This proposal sets out how a checker follows those links and decides whether each hand-off was allowed. It is for people building verifiers, or agents that pass work to each other over A2A (the agent-to-agent protocol). It is a draft: nothing in it binds an implementation yet, and it ships with 26 test vectors so independent implementations can be compared.
 
 **Status:** Draft proposal. Binds nothing.
 **Scope:** Verification rules for the existing `delegation` block. No schema change.
 **Target:** `spec/trace-v0.2.md` §3.1 surface, for the v0.3 A2A profile named in `ROADMAP.md`.
-**Conformance material: ** `examples/delegation-link/`: 24 vectors, generator, published key.
+**Conformance material: ** `examples/delegation-link/`: 26 vectors, generator, published key.
 
 Requirement keywords are lowercase throughout this document, deliberately. `CONTRIBUTING.md`
 draws the line that normative text lives in the specifications and informative text binds no
@@ -88,7 +88,7 @@ an answer that looks like verification and is not. Naming them is half the profi
 
 ## 3. The rules
 
-Ten rules, each with a stable code, a classification, and two independent vectors.
+Eleven rules, each with a stable code, a classification, and two independent vectors.
 Classification is the three-way distinction the conformance corpus in `agentrust-io/ca2a`
 already uses for its action cases: a structural failure, an authority failure, and a chain
 that could not be read are three different findings, and a verifier that collapses any two
@@ -106,6 +106,7 @@ of them is reporting something other than what it found.
 | D-8 | `credential_window` | authorization | This record's `iat` falls inside the credential's validity window. | 16, 17 |
 | D-9 | `data_class_widened` | authorization | A hop's `data_class` is no more sensitive than its parent's, per the supplied lattice. | 18, 19 |
 | D-10 | `digest_algorithm_unsupported` | unverifiable | A link naming an algorithm the verifier cannot compute yields an unverifiable chain. | 22, 23 |
+| D-11 | `data_class_unknown` | unverifiable | A hop whose child or parent `data_class` is absent from `data_class_lattice` (the same string at both ends included) yields an unverifiable chain. | 25, 26 |
 
 Provenance outranks authorization in the reported classification. A chain whose structure is
 broken has no established parent for a credential to be judged against, so reporting an
@@ -188,11 +189,11 @@ freshness policy on top of this profile; no rule here reads it.
 
 ## 5. The conformance corpus
 
-`examples/delegation-link/` holds 24 vectors. Each is one scenario: a complete record set,
+`examples/delegation-link/` holds 26 vectors. Each is one scenario: a complete record set,
 the verifier context to judge it under, and the classification and codes it expects, so a
 third party can score an implementation without running anything from this repository.
 
-Twenty of the twenty-four score the ten rules above, two per rule with a
+Twenty-two of the twenty-six score the eleven rules above, two per rule with a
 declared implementation defect that one vector catches and the other misses.
 Three more (`01` to `03`) are clean chains, expected to verify with no rule
 firing. The remaining vector, `24-parent-key-supplementary-plane.json`, is
@@ -222,10 +223,11 @@ Coverage is held to the discipline argued in #124 and executed in
 `tests/test_vector_completeness.py`: two load-bearing vectors per rule, and: the part that
 is not satisfied by writing the same vector twice: at least one declared implementation
 defect that one vector catches and the other misses. `tests/test_delegation_completeness.py`
-declares those defects, all ten of them modelling a real shortcut: verifying the leaf only,
-anchoring on any trusted key found, an off-by-one bound, case-insensitive identifier lookup,
-issuer and holder compared to the wrong ends, half a validity window, narrowing checked at
-one hop.
+declares those defects, all eleven of them modelling a real shortcut: verifying the leaf only,
+anchoring on any trusted key found, an off-by-one bound, reading only the first link's
+digest algorithm, resolving over the signed body, case-insensitive identifier lookup,
+issuer and holder compared to the wrong ends, half a validity window, checking only the
+child's data class against the lattice, and narrowing checked at one hop.
 
 Vector identifiers are `TRACE-DELEG-NNN` and are never reused. They are deliberately not
 `ACTION-*`: that namespace belongs to ca2a's conformance set, whose own rule is that its

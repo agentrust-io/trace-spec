@@ -243,6 +243,19 @@ def test_vector(path):
     assert outcome(vector) == vector["expected"]
 
 
+@pytest.mark.parametrize("boundary", ["valid_from", "valid_until"])
+def test_appraiser_grant_half_open_boundaries(boundary):
+    vector = load(CORPUS / "vectors/COMP-AUTH-006.json")
+    assert outcome(vector) == vector["expected"]
+    vector["context"]["trusted_appraisers"][0][boundary] = vector["now"]
+    if boundary == "valid_from":
+        assert outcome(vector) == vector["expected"]
+    else:
+        assert outcome(vector) == {
+            "token": "composite_inconsistent", "composite_status": None, "proof": None
+        }
+
+
 def test_codes_are_the_published_list():
     codes = {c["code"] for c in load(CORPUS / "codes.json")["codes"]}
     source = Path(v.__file__).read_text(encoding="utf-8")
