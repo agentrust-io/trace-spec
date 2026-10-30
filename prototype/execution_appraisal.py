@@ -39,6 +39,10 @@ def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _no_nonfinite(_token: str) -> Any:
+    raise ExecutionDenied("jwt_framing")
+
+
 def _decode(value: Any) -> bytes:
     if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", value):
         raise ExecutionDenied("invalid_base64url")
@@ -96,7 +100,9 @@ def authenticate_token(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
     if len(parts) != 3:
         raise ExecutionDenied("jwt_framing")
     try:
-        header = json.loads(_decode(parts[0]), object_pairs_hook=_pairs)
+        header = json.loads(
+            _decode(parts[0]), object_pairs_hook=_pairs, parse_constant=_no_nonfinite
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ExecutionDenied("jwt_framing") from error
     if not isinstance(header, dict) or header.get("alg") != "RS256":
@@ -133,7 +139,9 @@ def authenticate_token(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
     except (InvalidSignature, ValueError) as error:
         raise ExecutionDenied("signature") from error
     try:
-        claims = json.loads(_decode(parts[1]), object_pairs_hook=_pairs)
+        claims = json.loads(
+            _decode(parts[1]), object_pairs_hook=_pairs, parse_constant=_no_nonfinite
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ExecutionDenied("jwt_framing") from error
     if not isinstance(claims, dict):
@@ -157,7 +165,12 @@ def appraise_launch(
     try:
         if not isinstance(packet, dict):
             raise ExecutionDenied("malformed_or_unauthenticated_evidence")
-        if type(now) is not int or now < 0 or type(policy.max_age) is not int or policy.max_age < 1:
+        if (
+            type(now) is not int
+            or not 0 <= now <= 9007199254740991
+            or type(policy.max_age) is not int
+            or policy.max_age < 1
+        ):
             raise ExecutionDenied("clock_or_policy")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", policy.image_digest):
             raise ExecutionDenied("policy_digest")
@@ -179,6 +192,8 @@ def appraise_launch(
         if any(type(value) is not int for value in times):
             raise ExecutionDenied("time_type")
         issued, not_before, expiry = (cast(int, value) for value in times)
+        if any(not 0 <= t <= 9007199254740991 for t in (issued, not_before, expiry)):
+            raise ExecutionDenied("time_bounds")
         if not (issued <= now < expiry and not_before <= now and issued <= expiry):
             raise ExecutionDenied("time_bounds")
         if now - issued >= policy.max_age:

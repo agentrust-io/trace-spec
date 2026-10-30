@@ -234,6 +234,12 @@ class Proof(Closed):
     issued_at: Time
     expires_at: Time
 
+    @model_validator(mode="after")
+    def check_canonical_nonce(self) -> Proof:
+        if len(_b64url(self.nonce)) != 32:
+            raise ValueError("noncanonical_nonce")
+        return self
+
 
 class Receipt(Closed):
     profile: Literal["urn:agentrust:trace:decision-receipt:experimental-v1"]
@@ -757,6 +763,22 @@ def verify_proof(
     challenge_expires_at: int,
     now: int,
 ) -> Proof:
+    if (
+        type(now) is not int
+        or type(challenge_issued_at) is not int
+        or type(challenge_expires_at) is not int
+        or not 0 <= now <= 9007199254740991
+        or not 0 <= challenge_issued_at <= 9007199254740991
+        or not 0 <= challenge_expires_at <= 9007199254740991
+        or not isinstance(nonce, str)
+        or not re.fullmatch(r"[A-Za-z0-9_-]{43}", nonce)
+    ):
+        raise ProfileError("verification_inputs_invalid")
+    try:
+        if len(_b64url(nonce)) != 32:
+            raise ValueError("noncanonical_nonce")
+    except ValueError as exc:
+        raise ProfileError("verification_inputs_invalid") from exc
     proof: Proof = authenticate(proof_bytes, PROOF_PROFILE, holder_public(token.cnf), Proof)
     if (
         proof.nonce != nonce
@@ -793,9 +815,23 @@ class RelyingParty:
     def challenge(
         self, *, nonce: str, session_id: str, action_digest: str, issued_at: int, expires_at: int
     ) -> None:
-        if not re.fullmatch(r"[A-Za-z0-9_-]{43}", nonce):
+        if not isinstance(nonce, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", nonce):
             raise ProfileError("nonce_shape")
-        if not issued_at < expires_at <= issued_at + 30:
+        try:
+            if len(_b64url(nonce)) != 32:
+                raise ValueError("noncanonical_nonce")
+        except ValueError as exc:
+            raise ProfileError("nonce_shape") from exc
+        try:
+            TypeAdapter(Identifier).validate_python(session_id, strict=True)
+            TypeAdapter(Digest).validate_python(action_digest, strict=True)
+        except ValueError as exc:
+            raise ProfileError("input_invalid") from exc
+        if (
+            type(issued_at) is not int
+            or type(expires_at) is not int
+            or not 0 <= issued_at < expires_at <= min(issued_at + 30, 9007199254740991)
+        ):
             raise ProfileError("challenge_interval")
         with self._lock:
             self._used_nonces = {n: end for n, end in self._used_nonces.items() if end > issued_at}
