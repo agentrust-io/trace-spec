@@ -28,6 +28,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -182,11 +183,27 @@ def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
+def _no_constants(token: str) -> Any:
+    raise ValueError(f"non-finite JSON constant: {token}")
+
+
+def _finite_float(token: str) -> float:
+    val = float(token)
+    if not math.isfinite(val):
+        raise ValueError(f"non-finite JSON float: {token}")
+    return val
+
+
 def _json(raw: bytes, name: str) -> Any:
     if type(raw) is not bytes or len(raw) > LIMIT:
         raise CollateralDenied(f"{name}_format")
     try:
-        return json.loads(raw, object_pairs_hook=_unique)
+        return json.loads(
+            raw,
+            object_pairs_hook=_unique,
+            parse_constant=_no_constants,
+            parse_float=_finite_float,
+        )
     except (ValueError, RecursionError) as exc:
         if isinstance(exc, CollateralDenied):
             raise
@@ -326,7 +343,9 @@ def _check_qcnl(raw: bytes, policy: CollateralPolicy) -> None:
     if config.get("use_secure_cert") is not True:
         raise CollateralDenied("qcnl_insecure")
     if (
-        config.get("pck_cache_expire_hours") != 0
+        type(config.get("pck_cache_expire_hours")) is not int
+        or config.get("pck_cache_expire_hours") != 0
+        or type(config.get("verify_collateral_cache_expire_hours")) is not int
         or config.get("verify_collateral_cache_expire_hours") != 0
     ):
         raise CollateralDenied("qcnl_cache")
@@ -458,12 +477,17 @@ def _sequence(blob: bytes) -> list[tuple[int, bytes]]:
 
 
 def _oid(value: bytes) -> str:
-    if not value:
+    if not value or value[-1] & 0x80:
         raise CollateralDenied("pck_extension")
-    parts, number = [min(value[0] // 40, 2), value[0] - 40 * min(value[0] // 40, 2)], 0
+    parts = [min(value[0] // 40, 2), value[0] - 40 * min(value[0] // 40, 2)]
+    number = 0
+    in_subid = False
     for byte in value[1:]:
+        if not in_subid and byte == 0x80:
+            raise CollateralDenied("pck_extension")
         number = number << 7 | byte & 0x7F
-        if not byte & 0x80:
+        in_subid = bool(byte & 0x80)
+        if not in_subid:
             parts.append(number)
             number = 0
     return ".".join(map(str, parts))
@@ -482,20 +506,27 @@ def _pck_extension(cert: x509.Certificate) -> dict[str, Any]:
         raise CollateralDenied("pck_extension")
     base = _SGX_EXTENSION.dotted_string
     values: dict[str, tuple[int, bytes]] = {}
+    seen_tcb = False
     for tag, item in _sequence(body):
         pair = _sequence(item) if tag == 0x30 else []
         if len(pair) != 2 or pair[0][0] != 0x06:
             raise CollateralDenied("pck_extension")
         name = _oid(pair[0][1])
         if name == base + ".2":
-            if pair[1][0] != 0x30:
+            if seen_tcb or pair[1][0] != 0x30:
                 raise CollateralDenied("pck_extension")
+            seen_tcb = True
             for inner_tag, inner in _sequence(pair[1][1]):
                 sub = _sequence(inner) if inner_tag == 0x30 else []
                 if len(sub) != 2 or sub[0][0] != 0x06:
                     raise CollateralDenied("pck_extension")
-                values[_oid(sub[0][1])] = sub[1]
+                sub_name = _oid(sub[0][1])
+                if sub_name in values:
+                    raise CollateralDenied("pck_extension")
+                values[sub_name] = sub[1]
         else:
+            if name in values:
+                raise CollateralDenied("pck_extension")
             values[name] = pair[1]
 
     def integer(oid: str) -> int:
@@ -601,7 +632,9 @@ def appraise_collateral(
     if (
         not isinstance(snapshot, dict)
         or set(snapshot) != {"version", "tee_type", "fields"}
+        or type(snapshot["version"]) is not int
         or snapshot["version"] != 3
+        or type(snapshot["tee_type"]) is not int
         or snapshot["tee_type"] != 0x81
         or not isinstance(snapshot["fields"], dict)
         or set(snapshot["fields"]) != set(FIELDS)
@@ -634,9 +667,19 @@ def appraise_collateral(
 
     tcb_info = _signed_json(fields["tcb_info"], "tcbInfo", tcb_chain[0], "tcb_info")
     qe_identity = _signed_json(fields["qe_identity"], "enclaveIdentity", qe_chain[0], "qe_identity")
-    if tcb_info.get("id") != "TDX" or tcb_info.get("version") != 3 or tcb_info.get("tcbType") != 0:
+    if (
+        tcb_info.get("id") != "TDX"
+        or type(tcb_info.get("version")) is not int
+        or tcb_info.get("version") != 3
+        or type(tcb_info.get("tcbType")) is not int
+        or tcb_info.get("tcbType") != 0
+    ):
         raise CollateralDenied("tcb_info_kind")
-    if qe_identity.get("id") != "TD_QE" or qe_identity.get("version") != 2:
+    if (
+        qe_identity.get("id") != "TD_QE"
+        or type(qe_identity.get("version")) is not int
+        or qe_identity.get("version") != 2
+    ):
         raise CollateralDenied("qe_identity_kind")
     fresh_until = min(
         _window(tcb_info, at, "tcb_info"),
@@ -688,6 +731,7 @@ def appraise_collateral(
             "qe_identity",
         )
         or str(qe_identity.get("mrsigner", "")).lower() != qe[128:160].hex()
+        or type(qe_identity.get("isvprodid")) is not int
         or qe_identity.get("isvprodid") != int.from_bytes(qe[256:258], "little")
     ):
         raise CollateralDenied("qe_identity_mismatch")
@@ -728,6 +772,12 @@ def appraise_collateral(
     status = level.get("tcbStatus")
     if not isinstance(status, str) or status not in _STATUS_TO_QV:
         raise CollateralDenied("tcb_status_unknown")
+    advisories = level.get("advisoryIDs")
+    if advisories is not None and (
+        not isinstance(advisories, list)
+        or any(not isinstance(item, str) or not item for item in advisories)
+    ):
+        raise CollateralDenied("tcb_info_levels")
 
     module_status = None
     if tee_tcb_svn[1] > 0:
@@ -829,7 +879,9 @@ def appraise(
     offline = appraise_collateral(packet.collateral, quote, trust_root, at=verified_at)
     number = policy.tcb_evaluation_data_number
     if (
-        offline["tcb_evaluation_data_number"] != number
+        type(offline["tcb_evaluation_data_number"]) is not int
+        or offline["tcb_evaluation_data_number"] != number
+        or type(offline["qe_tcb_evaluation_data_number"]) is not int
         or offline["qe_tcb_evaluation_data_number"] != number
     ):
         raise CollateralDenied("tcb_evaluation_data_number")

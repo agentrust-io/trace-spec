@@ -694,3 +694,252 @@ def test_pck_extension_rejects_non_minimal_and_negative_der_integers():
             t._pck_extension,
             _build_pck_cert_with_sgx_ext(pcesvn_bytes=bad_int),
         )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"x": NaN}',
+        b'{"x": Infinity}',
+        b'{"x": -Infinity}',
+        b'{"x": 1e309}',
+        b'{"x": -1e309}',
+    ],
+)
+def test_json_rejects_nan_infinity_and_float_overflow(raw: bytes):
+    assert t._json(b'{"x": 1.5}', "record") == {"x": 1.5}
+    denied("record_format", t._json, raw, "record")
+
+
+@pytest.mark.parametrize(
+    "bad_oid",
+    [
+        b"\x2a\x86\x48\x86\xf8\x4d\x01\x0d\x01\x04\x81",
+        b"\x2a\x86\x48\x86\xf8\x4d\x01\x0d\x01\x80\x04",
+    ],
+)
+def test_oid_rejects_trailing_continuation_and_leading_zero_subidentifier(
+    bad_oid: bytes,
+):
+    assert t._oid(b"\x2a\x86\x48\x86\xf8\x4d\x01\x0d\x01\x04") == "1.2.840.113741.1.13.1.4"
+    denied("pck_extension", t._oid, bad_oid)
+
+
+@pytest.mark.parametrize("case", ["dup_tcb_block", "dup_outer_oid", "dup_inner_oid"])
+def test_pck_extension_rejects_duplicate_outer_and_inner_oids(case: str):
+    base = t._SGX_EXTENSION.dotted_string
+    tcb_entries = [
+        _der_tlv(0x30, _der_oid(f"{base}.2.{i}") + _der_tlv(0x02, b"\x01"))
+        for i in range(1, 18)
+    ]
+    if case == "dup_inner_oid":
+        tcb_entries.append(_der_tlv(0x30, _der_oid(f"{base}.2.1") + _der_tlv(0x02, b"\x02")))
+    tcb_seq = _der_tlv(0x30, b"".join(tcb_entries))
+    outer = [
+        _der_tlv(0x30, _der_oid(f"{base}.2") + tcb_seq),
+        _der_tlv(0x30, _der_oid(f"{base}.3") + _der_tlv(0x04, b"\x00\x00")),
+        _der_tlv(0x30, _der_oid(f"{base}.4") + _der_tlv(0x04, bytes.fromhex("00806f050000"))),
+    ]
+    if case == "dup_tcb_block":
+        outer.append(_der_tlv(0x30, _der_oid(f"{base}.2") + tcb_seq))
+    elif case == "dup_outer_oid":
+        outer.append(
+            _der_tlv(0x30, _der_oid(f"{base}.4") + _der_tlv(0x04, bytes.fromhex("11806f050000")))
+        )
+    top_seq = _der_tlv(0x30, b"".join(outer))
+    key = ec.generate_private_key(ec.SECP256R1())
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Intel SGX PCK Certificate")])
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(datetime(2030, 1, 1, tzinfo=UTC))
+        .add_extension(x509.UnrecognizedExtension(t._SGX_EXTENSION, top_seq), critical=False)
+        .sign(key, hashes.SHA256())
+    )
+    denied("pck_extension", t._pck_extension, cert)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_val"),
+    [
+        ("pck_cache_expire_hours", False),
+        ("pck_cache_expire_hours", 0.0),
+        ("verify_collateral_cache_expire_hours", False),
+        ("verify_collateral_cache_expire_hours", 0.0),
+    ],
+)
+def test_check_qcnl_rejects_boolean_and_float_cache_expire_hours(
+    field_name: str, bad_val: object
+):
+    valid_qcnl = {
+        "tcb_update_type": "standard",
+        "pccs_url": t.INTEL_PCS + "sgx/certification/v4/",
+        "collateral_service": t.INTEL_PCS + "sgx/certification/v4/",
+        "use_secure_cert": True,
+        "pck_cache_expire_hours": 0,
+        "verify_collateral_cache_expire_hours": 0,
+    }
+    t._check_qcnl(json.dumps(valid_qcnl).encode(), STANDARD)
+    bad_qcnl = {**valid_qcnl, field_name: bad_val}
+    denied("qcnl_cache", t._check_qcnl, json.dumps(bad_qcnl).encode(), STANDARD)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_reason"),
+    [
+        ("snapshot_version_float", "collateral_structure"),
+        ("snapshot_tee_type_float", "collateral_structure"),
+        ("tcb_version_float", "tcb_info_kind"),
+        ("tcb_type_bool", "tcb_info_kind"),
+        ("qe_version_float", "qe_identity_kind"),
+        ("qe_isvprodid_bool", "qe_identity_mismatch"),
+        ("advisory_str", "tcb_info_levels"),
+        ("advisory_empty_str", "tcb_info_levels"),
+        ("advisory_int_item", "tcb_info_levels"),
+    ],
+)
+def test_appraise_collateral_rejects_non_int_fields_and_invalid_advisory_ids(
+    monkeypatch: pytest.MonkeyPatch, mutation: str, expected_reason: str
+):
+    import sys
+    import types
+
+    cert = _build_pck_cert_with_sgx_ext()
+
+    class _DummyCrl:
+        next_update_utc = datetime(2026, 6, 1, tzinfo=UTC)
+
+        def get_revoked_certificate_by_serial_number(self, _s):
+            return None
+
+    tcb_doc = {
+        "id": "TDX",
+        "version": 3,
+        "tcbType": 0,
+        "issueDate": "2026-01-01T00:00:00Z",
+        "nextUpdate": "2026-06-01T00:00:00Z",
+        "fmspc": "00806F050000",
+        "pceId": "0000",
+        "tcbEvaluationDataNumber": 20,
+        "tdxModule": {
+            "mrsigner": "00" * 48,
+            "attributes": "00" * 8,
+            "attributesMask": "ff" * 8,
+        },
+        "tcbLevels": [
+            {
+                "tcb": {
+                    "sgxtcbcomponents": [{"svn": 1} for _ in range(16)],
+                    "pcesvn": 1,
+                    "tdxtcbcomponents": [{"svn": 0} for _ in range(16)],
+                },
+                "tcbDate": "2026-01-01T00:00:00Z",
+                "tcbStatus": "UpToDate",
+                "advisoryIDs": ["INTEL-SA-00001"],
+            }
+        ],
+    }
+    qe_doc = {
+        "id": "TD_QE",
+        "version": 2,
+        "issueDate": "2026-01-01T00:00:00Z",
+        "nextUpdate": "2026-06-01T00:00:00Z",
+        "miscselect": "00000000",
+        "miscselectMask": "ffffffff",
+        "attributes": "00" * 16,
+        "attributesMask": "ff" * 16,
+        "mrsigner": "00" * 32,
+        "isvprodid": 0,
+        "tcbEvaluationDataNumber": 20,
+        "tcbLevels": [{"tcb": {"isvsvn": 0}, "tcbStatus": "UpToDate"}],
+    }
+    if mutation == "tcb_version_float":
+        tcb_doc["version"] = 3.0
+    elif mutation == "tcb_type_bool":
+        tcb_doc["tcbType"] = False
+    elif mutation == "qe_version_float":
+        qe_doc["version"] = 2.0
+    elif mutation == "qe_isvprodid_bool":
+        qe_doc["isvprodid"] = False
+    elif mutation == "advisory_str":
+        tcb_doc["tcbLevels"][0]["advisoryIDs"] = "INTEL-SA-00001"
+    elif mutation == "advisory_empty_str":
+        tcb_doc["tcbLevels"][0]["advisoryIDs"] = [""]
+    elif mutation == "advisory_int_item":
+        tcb_doc["tcbLevels"][0]["advisoryIDs"] = [123]
+
+    wcm_mod = types.ModuleType("wcm")
+    tdx_mod = types.ModuleType("wcm.tdx")
+    qv_mod = types.ModuleType("wcm._quote_verify")
+
+    class _QuoteFormatError(Exception):
+        pass
+
+    class _TrustStore:
+        def add_root(self, _r):
+            pass
+
+    class _ParsedReport:
+        raw = bytes(584)
+
+    class _ParsedQuote:
+        version = 4
+        pck_leaf = cert
+        pck_intermediates = [cert]
+        qe_report = bytes(384)
+        report = _ParsedReport()
+
+    qv_mod.QuoteFormatError = _QuoteFormatError  # type: ignore[attr-defined]
+    qv_mod.TrustStore = _TrustStore  # type: ignore[attr-defined]
+    tdx_mod.verify_tdx_quote = lambda *_a, **_k: types.SimpleNamespace(verified=True)  # type: ignore[attr-defined]
+    tdx_mod.parse_tdx_quote = lambda _q: _ParsedQuote()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm.tdx", tdx_mod)
+    monkeypatch.setitem(sys.modules, "wcm._quote_verify", qv_mod)
+    monkeypatch.setattr(t, "_chain", lambda *_a, **_k: [cert, cert])
+    monkeypatch.setattr(
+        t,
+        "_cn",
+        lambda c: t._TCB_SIGNER if c is cert else t._PCK_CAS[0],
+    )
+    monkeypatch.setattr(t, "_crl", lambda *_a, **_k: _DummyCrl())
+    monkeypatch.setattr(
+        t,
+        "_signed_json",
+        lambda _raw, key, _s, _n: tcb_doc if key == "tcbInfo" else qe_doc,
+    )
+
+    def _chain_side_effect(_raw, _root, _when, name):
+        if name == "pck_crl":
+            return [types.SimpleNamespace(subject=cert.issuer, serial_number=2), cert]
+        return [cert, cert]
+
+    monkeypatch.setattr(t, "_chain", _chain_side_effect)
+    monkeypatch.setattr(
+        t,
+        "_cn",
+        lambda c: t._TCB_SIGNER if c is cert else t._PCK_CAS[0],
+    )
+    _ParsedQuote.pck_intermediates = [
+        _chain_side_effect(b"", None, None, "pck_crl")[0]  # type: ignore[list-item]
+    ]
+
+    snapshot = {
+        "version": 3.0 if mutation == "snapshot_version_float" else 3,
+        "tee_type": 129.0 if mutation == "snapshot_tee_type_float" else 0x81,
+        "fields": {name: base64.b64encode(b"x\x00").decode() for name in t.FIELDS},
+    }
+    denied(
+        expected_reason,
+        t.appraise_collateral,
+        json.dumps(snapshot).encode(),
+        b"quote",
+        cert,
+        at=1770000000,
+    )
+
