@@ -20,6 +20,7 @@ import argparse
 import base64
 import hmac
 import json
+import math
 import os
 import re
 import socket
@@ -309,6 +310,13 @@ def _no_constants(token: str) -> Any:
     raise ValueError(f"non-finite json constant: {token}")
 
 
+def _finite_float(token: str) -> float:
+    val = float(token)
+    if not math.isfinite(val):
+        raise ValueError(f"non-finite json float: {token}")
+    return val
+
+
 def _send(sock: socket.socket, message: dict[str, Any]) -> None:
     body = json.dumps(message, separators=(",", ":"), allow_nan=False).encode()
     sock.sendall(struct.pack(">I", len(body)) + body)
@@ -331,14 +339,17 @@ def _recv(sock: socket.socket, limit: int) -> Any:
     raw = _recv_exact(sock, size)
     try:
         return json.loads(
-            raw.decode("utf-8"), object_pairs_hook=_pairs, parse_constant=_no_constants
+            raw.decode("utf-8"),
+            object_pairs_hook=_pairs,
+            parse_constant=_no_constants,
+            parse_float=_finite_float,
         )
     except RecursionError as exc:
         raise ValueError("malformed json") from exc
 
 
 def _str(value: object) -> str:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or not value:
         raise TypeError("string field")
     return value
 
@@ -353,6 +364,8 @@ def _digest(value: object) -> str:
 def _int(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError("integer field")
+    if not 0 <= value <= 9_007_199_254_740_991:
+        raise ValueError("integer field out of range")
     return value
 
 
@@ -465,6 +478,13 @@ class RemoteGateStore:
     def __init__(self, host: str, port: int, secret: bytes, *, timeout: float = 5.0) -> None:
         if type(secret) is not bytes or len(secret) < 16:
             raise ValueError("store secret must be at least 16 bytes")
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or timeout <= 0
+        ):
+            raise ValueError("timeout must be a positive finite number")
         self.address = (host, port)
         self._secret = _b64(secret)
         self._timeout = timeout

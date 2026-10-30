@@ -429,3 +429,69 @@ def test_cmcp_trace_gate_recheck_and_receipt_validate_handle_and_reason(
     handle = CallAdmission(raw, b"{}", 1, "session-1", "call-1")
     with pytest.raises(v.ProfileError, match="^input_invalid$"):
         call(gate, handle)
+
+
+@pytest.mark.parametrize("raw_frame", [b'{"ok":1e309}', b'{"ok":-1e309}'])
+def test_recv_rejects_float_exponent_overflow(raw_frame: bytes) -> None:
+    left, right = socket.socketpair()
+    try:
+        frame = struct.pack(">I", len(raw_frame)) + raw_frame
+        sender = threading.Thread(target=left.sendall, args=(frame,), daemon=True)
+        sender.start()
+        with pytest.raises(ValueError, match="non-finite json float"):
+            gate_store._recv(right, 1 << 20)
+        sender.join(timeout=5)
+    finally:
+        left.close()
+        right.close()
+
+
+@pytest.mark.parametrize(
+    "bad_val",
+    [-1, 9_007_199_254_740_992, 1 << 64],
+)
+def test_int_and_server_reject_out_of_range_integers_without_crashing(
+    bad_val: int, tmp_path: Path
+) -> None:
+    assert gate_store._int(0) == 0
+    assert gate_store._int(9_007_199_254_740_991) == 9_007_199_254_740_991
+    with pytest.raises(ValueError, match="out of range"):
+        gate_store._int(bad_val)
+
+    with _running_server(tmp_path / "int-bounds.sqlite", BINARY_SECRET) as server:
+        port = int(server.server_address[1])
+        store = RemoteGateStore("127.0.0.1", port, BINARY_SECRET)
+        with pytest.raises(GateStoreUnavailable, match="malformed"):
+            store.mint_challenge(
+                issuer="iss",
+                token_id="jti",
+                token_digest="sha256:" + "0" * 64,
+                nonce="n" * 43,
+                session_id="s1",
+                action_digest="sha256:" + "1" * 64,
+                issued=bad_val,
+                expires=bad_val + 10 if bad_val >= 0 else 10,
+            )
+
+
+def test_str_and_server_reject_empty_string_identifiers(tmp_path: Path) -> None:
+    assert gate_store._str("ok") == "ok"
+    with pytest.raises(TypeError, match="string field"):
+        gate_store._str("")
+
+    with _running_server(tmp_path / "empty-str.sqlite", BINARY_SECRET) as server:
+        port = int(server.server_address[1])
+        store = RemoteGateStore("127.0.0.1", port, BINARY_SECRET)
+        with pytest.raises(GateStoreUnavailable, match="malformed"):
+            store.admission("")
+
+
+@pytest.mark.parametrize(
+    "bad_timeout",
+    [False, True, 0, -1.0, float("nan"), float("inf"), "5"],
+)
+def test_remote_gate_store_rejects_invalid_timeout(bad_timeout: Any) -> None:
+    assert RemoteGateStore("127.0.0.1", 9999, BINARY_SECRET, timeout=2.5)._timeout == 2.5
+    with pytest.raises(ValueError, match="^timeout must be a positive finite number$"):
+        RemoteGateStore("127.0.0.1", 9999, BINARY_SECRET, timeout=bad_timeout)
+
