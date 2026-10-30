@@ -113,6 +113,44 @@ def _run_core(
     return results
 
 
+_VALID_FORMATS = frozenset({"trace", "cmcp-runtime"})
+
+
+def _validate_runner_inputs(
+    record: Any,
+    fmt: Any,
+    max_age_seconds: Any,
+    expected_nonce: Any,
+    receipt: Any,
+    entry: Any,
+    policy_resolver: Any,
+) -> None:
+    if not isinstance(record, dict):
+        raise ValueError(f"record must be a JSON object, got {type(record).__name__}")
+    if not isinstance(fmt, str) or fmt not in _VALID_FORMATS:
+        raise ValueError(
+            f"Unknown record format {fmt!r}; valid: 'trace', 'cmcp-runtime'"
+        )
+    if type(max_age_seconds) is not int or max_age_seconds < 1:
+        raise ValueError(
+            f"max_age_seconds must be a positive integer, got {max_age_seconds!r}"
+        )
+    if expected_nonce is not None and not isinstance(expected_nonce, str):
+        raise ValueError(
+            f"expected_nonce must be a string or None, got {type(expected_nonce).__name__}"
+        )
+    if receipt is not None and not isinstance(receipt, dict):
+        raise ValueError(
+            f"receipt must be a JSON object or None, got {type(receipt).__name__}"
+        )
+    if entry is not None and not isinstance(entry, dict):
+        raise ValueError(
+            f"entry must be a JSON object or None, got {type(entry).__name__}"
+        )
+    if policy_resolver is not None and not callable(policy_resolver):
+        raise ValueError("policy_resolver must be callable or None")
+
+
 def run(
     record: dict[str, Any],
     fmt: str,
@@ -125,8 +163,11 @@ def run(
     expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
     """Run all modules required for *level* and return findings keyed by module ID."""
-    if level not in _LEVEL_MODULES:
+    if type(level) is not int or level not in _LEVEL_MODULES:
         raise ValueError(f"Unknown conformance level {level!r}; valid: 0, 1, 2")
+    _validate_runner_inputs(
+        record, fmt, max_age_seconds, expected_nonce, receipt, entry, policy_resolver
+    )
     tr_pol.validate_expected_policy_hash(expected_policy_hash)
     with accounting._without_capture():
         trace = extract_trace(record, fmt)
@@ -165,6 +206,9 @@ def _run_levels(
         or any(type(level) is not int for level in attempted)
     ):
         raise ValueError("attempted levels must be exactly (0,), (0, 1), or (0, 1, 2)")
+    _validate_runner_inputs(
+        record, fmt, max_age_seconds, expected_nonce, receipt, entry, policy_resolver
+    )
     tr_pol.validate_expected_policy_hash(expected_policy_hash)
 
     planned = tuple(
