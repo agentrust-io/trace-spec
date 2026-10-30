@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 import {
+  bundleDigest,
   canonicalJson,
   checkRevocationBundle,
   decodeBase64url,
@@ -112,6 +113,60 @@ test("verifyDelegationLink takes a plain options object, as verifyRecord does", 
   class Options {}
   for (const options of [[], new Date(0), new Options(), Object.create({ supportedDigestAlgorithms: [] }), null, "sha256", 1]) {
     await rejects(verifyDelegationLink({}, {}, options), "invalid_argument");
+  }
+});
+
+test("parentRecordHash, verifyDelegationLink and bundleDigest refuse non-object inputs", async () => {
+  const validChild = {
+    delegation: {
+      parent_record_hash: "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+      credential_id: "cred-1",
+    },
+  };
+  for (const bad of [null, undefined, 123, true, false, "record", [1, 2], new Date(0)]) {
+    await rejects(parentRecordHash(bad), "record_not_object");
+    await rejects(verifyDelegationLink(bad, {}), "record_not_object");
+    await rejects(verifyDelegationLink({}, bad), "record_not_object");
+    await rejects(verifyDelegationLink(validChild, bad), "record_not_object");
+    await rejects(bundleDigest(bad), "invalid_argument");
+  }
+  await rejects(parentRecordHash(123, "md5"), "delegation_algorithm_unsupported");
+});
+
+test("checkRevocationBundle and verifyRecord report non-plain bundle objects as bundle_malformed", async () => {
+  const examples = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "examples", "revocation-bundle");
+  const v01 = JSON.parse(readFileSync(join(examples, "01-fresh-well-inside-both-bounds.json"), "utf8"));
+  const v20 = JSON.parse(readFileSync(join(examples, "20-malformed-statement-on-another-log.json"), "utf8"));
+
+  class Bundle {}
+  for (const vec of [v01, v20]) {
+    const opts = {
+      trustedKeyIdentifiers: ["issuer-key-2026"],
+      trustedBundleKeys: vec.context.trusted_bundle_keys,
+      now: vec.context.now,
+      maxBundleAgeSeconds: vec.context.max_bundle_age_seconds,
+      maxFutureSkewSeconds: vec.context.max_future_skew_seconds,
+    };
+    for (const nonPlain of [
+      Object.assign(new Bundle(), vec.context.bundle),
+      Object.assign(Object.create({}), vec.context.bundle),
+    ]) {
+      const check = await checkRevocationBundle(nonPlain, opts);
+      assert.equal(check.outcome, "unverified_for_revocation");
+      assert.equal(check.cause, "bundle_malformed");
+      assert.equal(check.evidence.path, "/");
+
+      const res = await verifyRecord(vec.records[0], {
+        trustedKey: vec.context.trusted_key,
+        now: vec.context.now,
+        maxAgeSeconds: null,
+        revocationBundle: nonPlain,
+        trustedBundleKeys: vec.context.trusted_bundle_keys,
+      });
+      assert.equal(res.revocation.outcome, "unverified_for_revocation");
+      assert.equal(res.revocation.cause, "bundle_malformed");
+      assert.equal(res.revocation.evidence.path, "/");
+    }
   }
 });
 
