@@ -27,7 +27,9 @@ repository.
 [`tests/test_openproof_approval_outcome_fixtures.py`](../../tests/test_openproof_approval_outcome_fixtures.py)
 re-verifies all of it on every run without importing OpenProof: the TRACE signatures,
 each reference digest recomputed with `rfc8785`, the Ed25519 signatures OpenProof made
-over its OPEC-1 bytes, and the passkey assertions of cases `01` and `03`.
+over its OPEC-1 bytes, and the passkey assertions of cases `01` and `03`. It also rebuilds
+case `01` under keys it generates at run time and makes 21 single changes, each signed
+again, so that every check behind a signature is seen failing on its own.
 
 ## Fixture cases
 

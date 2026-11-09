@@ -50,7 +50,7 @@ Given a Trust Record, access to the store named in `resolver`, and an OpenProof 
 5. If the entry has a receipt, verify it under the trust's receiver key and check that it names this approval, this document, the next version and the same content hash. No receipt means approved but not executed.
 6. Verify the checkpoint under the trust's witness key and check that it names the same receiver and that its count reaches the receipt's sequence number.
 
-Steps 2, 3 and 4 each have a committed fixture that fails exactly that step: `04`, `02` and `05`. Case `03` takes the no-receipt branch of step 5. The verdicts for a trust that the root did not sign, a receipt that contradicts the approval, and a missing checkpoint are reached in the fixture test by changing a committed store, not by a committed fixture.
+Steps 2, 3 and 4 each have a committed fixture that fails exactly that step: `04`, `02` and `05`. Case `03` takes the no-receipt branch of step 5. The fixture test also rebuilds case `01` under keys it generates at run time, then changes one field and signs again, so that each check in steps 4 to 6 is seen failing on its own: 21 single defects, from a revoked authority to a checkpoint that does not reach the receipt.
 
 OpenProof requires a passkey assertion only for changes at or after the passkey's `from_sequence`. In these fixtures that is 1, so every approval carries one. Step 4 as written requires an assertion whenever the trust names a passkey, which is stricter for a store with approvals from before the passkey was enrolled.
 

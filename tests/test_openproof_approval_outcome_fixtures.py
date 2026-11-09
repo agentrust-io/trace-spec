@@ -27,7 +27,11 @@ import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from agentrust_trace import verify_record
 
@@ -366,3 +370,257 @@ def test_each_later_step_changes_the_verdict() -> None:
     changed = copy.deepcopy(store)
     changed["entries"][entry_id]["checkpoint"] = None
     assert _assess(record, changed)["verdict"] == "executed-unwitnessed"
+
+
+# A second store, signed at test time by keys generated here, so that each check in
+# `_assess` can be seen failing on its own. The committed fixtures hold no private
+# keys, so changing a signed field there also breaks its signature, and a check
+# behind that signature is never reached. Here every object is re-signed after the
+# change, and only the one check under test fails.
+
+
+def _b64u(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+def _ed25519() -> tuple[Ed25519PrivateKey, str]:
+    key = Ed25519PrivateKey.generate()
+    return key, key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+
+
+def _sign(key: Ed25519PrivateKey, domain: str, payload: dict) -> dict:
+    return {"payload": payload, "signature": key.sign(_preimage(domain, payload)).hex()}
+
+
+def _test_store(tweak=lambda stage, value: None, signers=None):
+    """The executed case 01 rebuilt under test keys. `tweak(stage, value)` changes a
+    value in place just before it is signed or encoded; `signers` swaps a signing key.
+    Returns the unsigned record, the store and the test root's public key."""
+    store = _load("openproof-approvals.json")
+    record = _load("01-approval-executed.json")
+    entry = store["entries"][record["references"][0]["id"]]
+    root, root_pub = _ed25519()
+    authority, authority_pub = _ed25519()
+    receiver, receiver_pub = _ed25519()
+    witness, witness_pub = _ed25519()
+    owner = ec.generate_private_key(ec.SECP256R1())
+    keys = {"root": root, "authority": authority, "receiver": receiver, "witness": witness}
+    keys.update(signers or {})
+
+    trust = copy.deepcopy(store["signed_trust"]["payload"])
+    trust.update(
+        authority=authority_pub,
+        previous_authorities=[],
+        revoked_authorities=[],
+        receiver=receiver_pub,
+        witness=witness_pub,
+    )
+    trust["owner_passkey"]["public_key"] = (
+        owner.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint).hex()
+    )
+    tweak("trust", trust)
+    signed_trust = _sign(keys["root"], "witness-trust/1", trust)
+
+    approval = copy.deepcopy(entry["request"]["approval"]["payload"])
+    approval.update(authority=authority_pub, receiver=receiver_pub)
+    tweak("approval", approval)
+    request = {
+        "approval": _sign(keys["authority"], "document-approval/1", approval),
+        "content": entry["request"]["content"],
+    }
+    tweak("content", request)
+    digest = _approval_digest(request)
+
+    passkey = trust["owner_passkey"]
+    client = {
+        "type": "webauthn.get",
+        "challenge": _b64u(bytes.fromhex(digest)),
+        "origin": passkey["origin"],
+    }
+    tweak("client", client)
+    auth = bytearray(hashlib.sha256(passkey["rp_id"].encode()).digest() + b"\x05" + bytes(4))
+    tweak("auth", auth)
+    client_bytes = json.dumps(client, separators=(",", ":")).encode()
+    signature = owner.sign(
+        bytes(auth) + hashlib.sha256(client_bytes).digest(), ec.ECDSA(hashes.SHA256())
+    )
+    request["owner_assertion"] = {
+        "authenticator_data": _b64u(bytes(auth)),
+        "client_data_json": _b64u(client_bytes),
+        "signature": _b64u(signature),
+    }
+
+    receipt = copy.deepcopy(entry["receipt"]["payload"])
+    receipt["approval_sha256"] = digest
+    tweak("receipt", receipt)
+    checkpoint = copy.deepcopy(entry["checkpoint"]["payload"])
+    checkpoint["receiver"] = receiver_pub
+    tweak("checkpoint", checkpoint)
+
+    entry_id = ID_PREFIX + digest
+    built = {
+        "resolver": store["resolver"],
+        "signed_trust": signed_trust,
+        "entries": {
+            entry_id: {
+                "request": request,
+                "receipt": _sign(keys["receiver"], "receiver-receipt/1", receipt),
+                "checkpoint": _sign(keys["witness"], "witness-checkpoint/1", checkpoint),
+            }
+        },
+    }
+    record = copy.deepcopy(record)
+    record["references"][0].update(id=entry_id, digest=_jcs_sha256(request))
+    return record, built, root_pub
+
+
+def _set(**fields):
+    return lambda value: value.update(fields)
+
+
+def _at(stage: str, change):
+    return lambda s, value: change(value) if s == stage else None
+
+
+def test_the_store_rebuilt_under_test_keys_is_confirmed() -> None:
+    """The baseline for the cases below: without a change, every check passes."""
+    record, store, root = _test_store()
+    assert _assess(record, store, root)["verdict"] == "approval-confirmed-and-executed"
+
+
+def _flip_flags(auth: bytearray) -> None:
+    auth[32] = 0x01  # user present, not user verified
+
+
+def _revoke_authority(trust: dict) -> None:
+    trust["revoked_authorities"] = [trust["authority"]]
+
+
+SINGLE_DEFECTS = [
+    # Step 4: the trust and the approval.
+    ("authority revoked", _at("trust", _revoke_authority), None, "approval-not-attributable"),
+    (
+        "authority not named",
+        _at("trust", _set(authority="00" * 32)),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "approval names another receiver",
+        _at("approval", _set(receiver="00" * 32)),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "approval signed by another key",
+        None,
+        {"authority": Ed25519PrivateKey.generate()},
+        "approval-not-attributable",
+    ),
+    (
+        "content does not hash to the approval",
+        _at("content", lambda r: r.update(content=r["content"] + " ")),
+        None,
+        "approval-not-attributable",
+    ),
+    # Step 4: the owner's passkey assertion.
+    (
+        "assertion type",
+        _at("client", _set(type="webauthn.create")),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "assertion challenge",
+        _at("client", _set(challenge=_b64u(b"\x00" * 32))),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "assertion origin",
+        _at("client", _set(origin="http://localhost:1")),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "assertion cross-origin",
+        _at("client", _set(crossOrigin=True)),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "assertion relying party",
+        _at("auth", lambda a: a.__setitem__(slice(0, 32), bytes(32))),
+        None,
+        "approval-not-attributable",
+    ),
+    (
+        "assertion without user verification",
+        _at("auth", _flip_flags),
+        None,
+        "approval-not-attributable",
+    ),
+    # Step 5: the receipt.
+    (
+        "receipt signed by another key",
+        None,
+        {"receiver": Ed25519PrivateKey.generate()},
+        "execution-contradicted",
+    ),
+    ("receipt kind", _at("receipt", _set(kind="create")), None, "execution-contradicted"),
+    (
+        "receipt names another approval",
+        _at("receipt", _set(approval_sha256="00" * 32)),
+        None,
+        "execution-contradicted",
+    ),
+    (
+        "receipt content hash",
+        _at("receipt", _set(content_sha256="00" * 32)),
+        None,
+        "execution-contradicted",
+    ),
+    ("receipt document", _at("receipt", _set(document="other")), None, "execution-contradicted"),
+    (
+        "receipt version",
+        _at("receipt", lambda r: r.update(document_version=r["document_version"] + 1)),
+        None,
+        "execution-contradicted",
+    ),
+    # Step 6: the checkpoint.
+    (
+        "checkpoint signed by another key",
+        None,
+        {"witness": Ed25519PrivateKey.generate()},
+        "executed-unwitnessed",
+    ),
+    (
+        "checkpoint names another receiver",
+        _at("checkpoint", _set(receiver="00" * 32)),
+        None,
+        "executed-unwitnessed",
+    ),
+    (
+        "checkpoint short of the receipt",
+        _at("checkpoint", lambda c: c.update(count=0)),
+        None,
+        "executed-unwitnessed",
+    ),
+    # Step 4: the trust itself.
+    (
+        "trust signed by another root",
+        None,
+        {"root": Ed25519PrivateKey.generate()},
+        "trust-unverified",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("tweak", "signers", "verdict"),
+    [case[1:] for case in SINGLE_DEFECTS],
+    ids=[case[0] for case in SINGLE_DEFECTS],
+)
+def test_each_check_fails_on_its_own_defect(tweak, signers, verdict) -> None:
+    record, store, root = _test_store(tweak or (lambda stage, value: None), signers)
+    assert _assess(record, store, root)["verdict"] == verdict
