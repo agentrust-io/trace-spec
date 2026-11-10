@@ -1,20 +1,26 @@
-# Verifier-compatibility vectors (proposed, not accepted)
+# Verifier-compatibility vectors
 
-> These fixtures encode the obligations proposed in
-> [agentrust-io/trace-spec#116](https://github.com/agentrust-io/trace-spec/issues/116).
-> **No normative text for them has been accepted.** Do not read a passing vector here
-> as a conformance requirement.
+> These fixtures encode Obligations 2 and 3 of
+> [agentrust-io/trace-spec#116](https://github.com/agentrust-io/trace-spec/issues/116),
+> which are normative in `spec/trace-v0.2.md` §3.3 and documented in
+> `docs/verification.md` ("Step 4: Check the EAT profile"). Obligations 1 (emitter
+> version declarations) and 4 (downgrade disclosure) remain deferred.
 
 Compliance evidence is verified years after it is issued, so the artifact routinely
-outlives the verifier build that reads it. Nothing in `docs/verification.md` currently
-says what a verifier must do about version skew, which leaves two failure modes open:
-a revision silently orphans existing evidence, or a verifier "helpfully" accepts an
-artifact under semantics it does not implement.
+outlives the verifier build that reads it. `spec/trace-v0.2.md` §3.3 and
+`docs/verification.md` ("Step 4: Check the EAT profile") address version skew by
+requiring a nonempty `accepted_profiles` set and recording both the verified `profile`
+and the complete `accepted_profiles` set in the verification result. Without those
+checks, two failure modes stay open: a revision silently orphans existing evidence, or
+a verifier "helpfully" accepts an artifact under semantics it does not implement.
 
-The proposal is four obligations: records carry an explicit profile, a verifier
-declares the set it supports and refuses anything outside it, the verification
-statement names the profile it ran under, and any fallback is disclosed rather than
-silent.
+#116 proposed four obligations: records carry an explicit profile (Obligation 1,
+deferred for standalone emitter version declarations beyond `eat_profile`), a verifier
+declares the nonempty `accepted_profiles` set it supports and refuses anything outside
+it (Obligation 2, normative in `spec/trace-v0.2.md` §3.3), the verification statement
+records both the verified `profile` and the complete `accepted_profiles` set
+(Obligation 3, normative in `spec/trace-v0.2.md` §3.3), and any fallback is disclosed
+rather than silent (Obligation 4, deferred).
 
 ## The vectors
 
@@ -85,12 +91,12 @@ reports one generic refusal for all of them conforms, and two controls hold that
 `test_a_generic_refusal_is_separated_by_nothing` in the separation module. Both fail the
 day an assertion on the refusal's cause comes back.
 
-This was settled on review, and the set was stricter than its text until it was. The draft
-normative text for #116, held for a maintainer to carry and not part of this change, says
-a verifier SHOULD report refusal-for-an-unimplemented-profile distinguishably from a
-verification failure, which is coarser than a rule name and is a SHOULD, and it declines
-to mandate any field name. Asserting the label was this set asking more of a foreign
-implementation than the text it encodes.
+This was settled on review, and the set was stricter than its text until it was. The
+proposal for #116 said a verifier SHOULD report refusal-for-an-unimplemented-profile
+distinguishably from a verification failure, which is coarser than a rule name, and
+neither #116 nor `spec/trace-v0.2.md` §3.3 mandates any refusal field name. Asserting
+the label was this set asking more of a foreign implementation than the specification
+requires.
 
 The label stays in the JSON because it tells a reader what each vector is for. This
 library's own refusal messages are pinned separately, in

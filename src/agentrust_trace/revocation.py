@@ -116,12 +116,13 @@ class VerificationResult:
     outcomes section 3.2.3 says may not be reported as an affirming appraisal have
     somewhere to be reported, alongside the checks that passed.
 
-    ``profile`` and ``accepted_profiles`` are the verifier-compatibility obligations
-    proposed in agentrust-io/trace-spec#116 and are **not accepted normative text**.
-    They are fields on this type rather than on one of their own, which is the smaller
-    change and the one that follows from this type already existing: evidence outlives
-    verifier builds, and a result that does not name the semantics it ran under cannot
-    be re-read years later.
+    ``profile`` and ``accepted_profiles`` implement the verifier-compatibility
+    obligations (Obligations 2 and 3 of agentrust-io/trace-spec#116), which are
+    **normative in ``spec/trace-v0.2.md`` §3.3** (Obligations 1 and 4 remain
+    deferred). They are fields on this type rather than on one of their own,
+    which is the smaller change and the one that follows from this type already
+    existing: evidence outlives verifier builds, and a result that does not name
+    the semantics it ran under cannot be re-read years later.
 
     ``citations`` carries, for each surface in ``agentrust_trace.citation.SURFACES``,
     what the caller's resolver did with the URI the record cites, and asserts nothing
@@ -142,8 +143,8 @@ class VerificationResult:
     """The ``eat_profile`` the record was verified under. Always a member of
     ``accepted_profiles``, and covered by the verified signature. Obligation 3 of #116.
 
-    Defaulted so that constructing a result without it stays valid while the proposal
-    is under review, and because exactly one profile is admissible in this build.
+    Defaulted so that constructing a result without it stays valid for callers
+    that omit it, and because exactly one profile is admissible in this build.
     """
 
     accepted_profiles: tuple[str, ...] = (TRACE_PROFILE_V0_2,)

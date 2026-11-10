@@ -104,7 +104,10 @@ def fixture(
         "profile": PROFILE,
         "proposal": {
             "issue": "agentrust-io/trace-spec#116",
-            "status": "under review, not accepted normative text",
+            "status": (
+                "Obligations 2 and 3 normative in spec/trace-v0.2.md §3.3; "
+                "Obligations 1 and 4 deferred"
+            ),
         },
         "verifier": {
             "accepted_profiles": accepted_profiles,
