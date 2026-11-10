@@ -75,6 +75,12 @@ checking any archived record, including these.
   `does-not-apply` and an `undetermined` assessment that verify identically to `applies`,
   unresolvable, and an issuer whose key the relying party does not hold. Every digest
   recomputes; see that directory's README and `docs/references-registry.md`.
+- `openproof-approval-outcome/`: five signed Trust Records, each citing an OpenProof
+  approval through a `references` entry with `rel: "approval-outcome"`, against two
+  OpenProof stores committed beside them: executed and witnessed, altered after issue,
+  approved but not executed, unresolvable, and signed by a key outside the owner's
+  trust. Every digest recomputes; see that directory's README and
+  `docs/crosswalks/openproof-approvals.md`.
 - `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
   embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
   not accepted normative text (#247); carries a `scan_published_signatures.py` tool

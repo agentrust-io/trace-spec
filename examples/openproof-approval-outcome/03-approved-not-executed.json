@@ -1,0 +1,42 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+  "iat": 1794187732,
+  "subject": "spiffe://trust.example.org/agent/release-writer",
+  "model": {
+    "provider": "example",
+    "model_id": "example-model"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "internal",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "references": [
+    {
+      "rel": "approval-outcome",
+      "id": "openproof/approval/133b69a4506a50e8d44694ce3d9641bdc198bc2d1c4d54e5d464afaee56736d7",
+      "resolver": "https://openproof.example.org/owners/release-desk",
+      "digest": "sha256:6e14d08f03a9585f87acac3f4feb4993a9dcd070b3a2bbd75ebe06f72547e6ac"
+    }
+  ],
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "_D-Cxu524uw5iMn5AzSQkr9C-gC4_Eejy7IMJuQxccE"
+    }
+  },
+  "signature": "wKtrNfOes0hvXd0sdXJoWFQlHnEcgj-NaJzqeXfxKSGGMek6cnThSXyDCFyEuzZRsCflPDCWeeCGouWvTdLQCg"
+}

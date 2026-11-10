@@ -1,0 +1,61 @@
+{
+  "trace_signer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "_D-Cxu524uw5iMn5AzSQkr9C-gC4_Eejy7IMJuQxccE"
+  },
+  "openproof_root_public_key": "0717615b5d10b099fa18ee2064c2508cbc05f49e1427ace812dfa0c58376abe3",
+  "resolver": "https://openproof.example.org/owners/release-desk",
+  "cases": {
+    "01-approval-executed.json": {
+      "store": "openproof-approvals.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "approval_attributable": true,
+      "executed_as_approved": true,
+      "witnessed": true,
+      "verdict": "approval-confirmed-and-executed"
+    },
+    "02-approval-altered-after-issue.json": {
+      "store": "openproof-approvals-altered.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": false,
+      "approval_attributable": null,
+      "executed_as_approved": null,
+      "witnessed": null,
+      "verdict": "approval-contradicted"
+    },
+    "03-approved-not-executed.json": {
+      "store": "openproof-approvals.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "approval_attributable": true,
+      "executed_as_approved": false,
+      "witnessed": null,
+      "verdict": "approved-not-executed"
+    },
+    "04-reference-unresolvable.json": {
+      "store": "openproof-approvals.json",
+      "trace_record_verifies": true,
+      "reference_resolves": false,
+      "digest_matches": null,
+      "approval_attributable": null,
+      "executed_as_approved": null,
+      "witnessed": null,
+      "verdict": "approval-unconfirmed"
+    },
+    "05-approval-outside-trust.json": {
+      "store": "openproof-approvals.json",
+      "trace_record_verifies": true,
+      "reference_resolves": true,
+      "digest_matches": true,
+      "approval_attributable": false,
+      "executed_as_approved": null,
+      "witnessed": null,
+      "verdict": "approval-not-attributable"
+    }
+  }
+}
