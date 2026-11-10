@@ -22,7 +22,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.14.1",
+    "pydantic>=2.14.3",
     "jsonschema>=4.26.0",
     # `jsonschema` treats `format` as an annotation unless a checker for that format is
     # installed. Without this, all eight `"format": "uri"` declarations in
@@ -40,12 +40,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-prototype = ["cbor2>=6.1.5,<7"]
+prototype = ["cbor2>=6.2.0.post2,<7"]
 dev = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.17.2",
-    "mypy>=2.4.0",
+    "ruff>=0.17.4",
+    "mypy>=2.4.1",
     "types-jsonschema",
     "PyYAML>=6.0.3",
 ]
