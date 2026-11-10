@@ -196,7 +196,10 @@ def appraise_collateral(
     from wcm.snp import extract_snp_report_from_hcl  # type: ignore[import-not-found]
 
     try:
-        report = extract_snp_report_from_hcl(base64.b64decode(packet["hcl_b64"], validate=True))
+        hcl_raw = base64.b64decode(packet["hcl_b64"], validate=True)
+        if base64.b64encode(hcl_raw).decode("ascii") != packet["hcl_b64"]:
+            raise ValueError("non-canonical hcl_b64")
+        report = extract_snp_report_from_hcl(hcl_raw)
         vcek = load_pem_certificate(packet["vcek_pem"].encode(), allow_non_positive_serial=True)
         asks = [load_pem_certificate(p.encode()) for p in packet["intermediates_pem"]]
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
@@ -205,6 +208,8 @@ def appraise_collateral(
         raise CollateralDenied("platform_evidence_format")
     ask = asks[0]
     version = int.from_bytes(report[_VERSION : _VERSION + 4], "little")
+    if version < 2:
+        raise CollateralDenied("platform_evidence_format")
 
     # Product line: VCEK issuer, ASK subject and issuer, pinned ARK and CPUID must agree.
     issuer = _cn(vcek.issuer)
@@ -215,6 +220,8 @@ def appraise_collateral(
     if (
         ark is None
         or _cn(ask.subject) != issuer
+        or vcek.issuer != ask.subject
+        or not _verify_signed_by(vcek, ask)
         or _cn(ask.issuer) != "ARK-" + product
         or ask.issuer != ark.subject
         or not _verify_signed_by(ask, ark)
@@ -318,10 +325,16 @@ def tcb_component(
     """TRACE runtime component for the appraised platform, including a negative verdict."""
     from .verifier_token import Component, EvidenceRef, canonical_digest
 
-    if type(now) is not int or now < 0 or type(max_age) is not int or not 1 <= max_age <= 86400:
+    if (
+        type(now) is not int
+        or type(max_age) is not int
+        or not 1 <= max_age <= 86400
+        or not 1 <= now <= 9_007_199_254_740_991 - max_age
+    ):
         raise CollateralDenied("clock_or_age")
     if (
         not isinstance(appraisal, dict)
+        or ("profile" in appraisal and appraisal["profile"] != PROFILE)
         or not isinstance(appraisal.get("status"), str)
         or not isinstance(appraisal.get("reasons"), list)
         or any(not isinstance(r, str) for r in appraisal["reasons"])
