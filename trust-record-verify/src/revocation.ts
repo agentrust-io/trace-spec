@@ -80,6 +80,9 @@ function unverified(cause: RevocationCause, evidence: Record<string, unknown>): 
 
 /** The bundle's identity: `sha256:` and the hex SHA-256 of its RFC 8785 form, signature included. */
 export async function bundleDigest(bundle: unknown): Promise<string> {
+  if (!isPlainObject(bundle)) {
+    fail("invalid_argument", "bundle must be a JSON object");
+  }
   return `sha256:${hex(await digest("SHA-256", canonicalize(bundle)))}`;
 }
 
@@ -140,6 +143,9 @@ export async function checkRevocationBundle(
   }
 
   // 1. Shape. The first violation by location, so the evidence names one place.
+  if (!isPlainObject(bundle)) {
+    return unverified("bundle_malformed", { path: "/", error: "the bundle is not a plain JSON object" });
+  }
   const violations = bundleSchemaViolations(bundle);
   if (violations.length > 0) {
     const first = violations[0] as { path: readonly string[]; message: string };
