@@ -106,3 +106,80 @@ def test_report_record_digest_remains_diagnostic(bad_value: object) -> None:
     assert data.digest == expected
     assert json.loads(report_mod.to_json(data))["record"]["digest"] == expected
     assert expected in report_mod.to_html(data)
+
+
+def _assert_raises_only(
+    exc_type: type[BaseException], fn: Any, *args: Any, **kwargs: Any
+) -> None:
+    try:
+        fn(*args, **kwargs)
+    except exc_type:
+        return
+    except BaseException as exc:
+        pytest.fail(f"expected {exc_type.__name__}, got {type(exc).__name__}")
+    pytest.fail(f"DID NOT RAISE {exc_type.__name__}")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"x": NaN}',
+        b'{"x": Infinity}',
+        b'{"x": -Infinity}',
+        "not-bytes",
+        None,
+    ],
+)
+def test_loads_strict_and_parse_record_reject_non_standard_constants_and_non_bytes(
+    raw: Any,
+) -> None:
+    loader_mod = importlib.import_module("trace_tests.loader")
+    assert loader_mod.loads_strict(b'{"x": 1}') == {"x": 1}
+    _assert_raises_only(loader_mod.LoadError, loader_mod.loads_strict, raw)
+    _assert_raises_only(loader_mod.LoadError, loader_mod.parse_record, raw)
+
+
+@pytest.mark.parametrize("bad_record", [None, 123, "record", [1, 2]])
+def test_record_digest_and_report_build_reject_non_dict_record(
+    bad_record: Any,
+) -> None:
+    _assert_raises_only(ValueError, report_mod.record_digest, bad_record)
+    _assert_raises_only(
+        ValueError,
+        report_mod.build,
+        record=bad_record,
+        record_path="r.json",
+        record_format="trace",
+        results_by_level={0: {}},
+        suite_version="0.5.0",
+        library_version=None,
+        generated_at="now",
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_results",
+    [
+        "not-a-dict",
+        {True: {}},
+        {-1: {}},
+        {3: {}},
+        {0: "not-a-dict"},
+    ],
+)
+def test_report_build_rejects_invalid_results_by_level(
+    bad_results: Any,
+) -> None:
+    record = _load_vector("valid_level0.json")
+    _assert_raises_only(
+        ValueError,
+        report_mod.build,
+        record=record,
+        record_path="r.json",
+        record_format="trace",
+        results_by_level=bad_results,
+        suite_version="0.5.0",
+        library_version=None,
+        generated_at="now",
+    )
+

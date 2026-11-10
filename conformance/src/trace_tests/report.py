@@ -65,6 +65,8 @@ def record_digest(record: dict[str, Any]) -> str:
     specification, section 0; getting it backwards here would be harmless but
     confusing, so the choice is stated rather than left implicit.
     """
+    if not isinstance(record, dict):
+        raise ValueError(f"record must be a JSON object, got {type(record).__name__}")
     encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode(
         "ascii"
     )
@@ -171,6 +173,15 @@ def build(
     library_version: str | None,
     generated_at: str,
 ) -> ReportData:
+    if not isinstance(record, dict):
+        raise ValueError(f"record must be a JSON object, got {type(record).__name__}")
+    if not isinstance(results_by_level, dict) or any(
+        type(lv) is not int or lv not in LEVEL_NAMES or not isinstance(res, dict)
+        for lv, res in results_by_level.items()
+    ):
+        raise ValueError(
+            "results_by_level must map conformance levels (0, 1, 2) to module finding dicts"
+        )
     levels = []
     for level in sorted(results_by_level):
         failures, unverified = _tally(results_by_level[level], level)
