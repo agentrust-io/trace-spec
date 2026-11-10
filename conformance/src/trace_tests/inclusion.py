@@ -44,16 +44,25 @@ _SAFE_INT = 2**53 - 1
 def _outside_profile(value: Any) -> str | None:
     """Name the first value registry-anchor-v1 section 1 excludes, or None.
 
-    Non-integer numbers (NaN and the infinities among them) and integers outside
-    -(2**53 - 1) to 2**53 - 1 are outside the anchor-leaf profile: two
-    implementations of the four serialization rules write different bytes for
-    them, so a proof over them only proves what Python's ``json.dumps`` wrote.
-    Iterative, because the claim is attacker-controlled and may be deep.
+    Non-integer numbers (NaN and the infinities among them), integers outside
+    -(2**53 - 1) to 2**53 - 1, and unpaired UTF-16 surrogates (U+D800..U+DFFF)
+    are outside the anchor-leaf profile: two implementations of the serialization
+    rules write different bytes for them, so a proof over them only proves what
+    Python's ``json.dumps`` wrote. Iterative, because the claim is
+    attacker-controlled and may be deep.
     """
-    stack = [value]
+    active: set[int] = set()
+    stack: list[tuple[Any, bool]] = [(value, False)]
     while stack:
-        v = stack.pop()
-        if isinstance(v, bool) or v is None or isinstance(v, str):
+        v, exiting = stack.pop()
+        if exiting:
+            active.discard(id(v))
+            continue
+        if isinstance(v, bool) or v is None:
+            continue
+        if isinstance(v, str):
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in v):
+                return "unpaired UTF-16 surrogate"
             continue
         if isinstance(v, int):
             if not -_SAFE_INT <= v <= _SAFE_INT:
@@ -61,9 +70,24 @@ def _outside_profile(value: Any) -> str | None:
         elif isinstance(v, float):
             return f"non-integer number {v!r}"
         elif isinstance(v, dict):
-            stack.extend(v.values())
+            obj_id = id(v)
+            if obj_id in active:
+                return "circular reference"
+            for k in v:
+                if not isinstance(k, str):
+                    return f"non-string object key of type {type(k).__name__}"
+                if any(0xD800 <= ord(ch) <= 0xDFFF for ch in k):
+                    return "unpaired UTF-16 surrogate in object key"
+            active.add(obj_id)
+            stack.append((v, True))
+            stack.extend((item, False) for item in v.values())
         elif isinstance(v, (list, tuple)):
-            stack.extend(v)
+            obj_id = id(v)
+            if obj_id in active:
+                return "circular reference"
+            active.add(obj_id)
+            stack.append((v, True))
+            stack.extend((item, False) for item in v)
     return None
 
 
@@ -157,14 +181,26 @@ def parse_proof(receipt: object) -> tuple[int, list[bytes], int | None, bytes | 
     if not isinstance(raw_path, list):
         raise InclusionError(f"audit_path must be an array, got {type(raw_path).__name__}")
 
-    leaf_count = receipt.get("leaf_count")
-    if "leaf_count" in receipt and (type(leaf_count) is not int):
+    leaf_index = receipt["leaf_index"]
+    if type(leaf_index) is not int or not 0 <= leaf_index <= _SAFE_INT:
         raise InclusionError(
-            f"receipt leaf_count must be an integer, got {type(leaf_count).__name__}"
+            f"receipt leaf_index must be a non-negative integer, got {leaf_index!r}"
+        )
+
+    leaf_count = receipt.get("leaf_count")
+    if "leaf_count" in receipt and (
+        type(leaf_count) is not int or not 1 <= leaf_count <= _SAFE_INT
+    ):
+        raise InclusionError(
+            f"receipt leaf_count must be an integer >= 1, got {leaf_count!r}"
+        )
+    if leaf_count is not None and leaf_index >= leaf_count:
+        raise InclusionError(
+            f"receipt leaf_index {leaf_index} must be less than leaf_count {leaf_count}"
         )
 
     return (
-        receipt["leaf_index"],
+        leaf_index,
         [decode_hash(node) for node in raw_path],
         leaf_count,
         decode_hash(receipt["merkle_root"]) if "merkle_root" in receipt else None,
@@ -226,6 +262,14 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
         if not isinstance(entry[key], str) or not entry[key]:
             raise InclusionError(f"registry entry {key} must be a non-empty string")
 
+    for key in ("producer", "batch_id"):
+        val = entry[key]
+        if not val.strip() or any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in val):
+            raise InclusionError(
+                f"registry entry {key} must be a non-blank string without "
+                "ASCII control characters"
+            )
+
     if not _is_utc_timestamp(entry["ts"]):
         raise InclusionError(
             "registry entry ts must be an ISO-8601 UTC timestamp ending in Z, "
@@ -233,7 +277,7 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
         )
 
     leaf_count = entry["leaf_count"]
-    if not isinstance(leaf_count, int) or isinstance(leaf_count, bool) or leaf_count < 1:
+    if type(leaf_count) is not int or not 1 <= leaf_count <= _SAFE_INT:
         raise InclusionError(
             f"registry entry leaf_count must be an integer >= 1, got {leaf_count!r}"
         )
