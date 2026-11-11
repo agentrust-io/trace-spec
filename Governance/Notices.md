@@ -47,4 +47,23 @@ This section records Exclusion Notices made under the Community Specification Li
 
 For an unpublished patent application, the notice must instead provide either the text of the filed application or identify the specific part of the Specification whose implementation makes the excluded claim a Necessary Claim.
 
-No Exclusion Notices have been recorded.
+### Recorded Exclusion Notices
+
+1. - Name of party making the Exclusion Notice: Antagon, Inc.
+   - Name of patent owner: Antagon, Inc.
+   - Specification and version: TRACE Specification v0.2 (Draft Specification), including any later version that keeps the parts named below
+   - Patents excluded, and the parts of the Specification whose implementation would make an excluded claim a Necessary Claim. Each is an unpublished United States provisional patent application, together with any application claiming priority to it:
+     - U.S. Provisional Application No. 64/174,236: section 3.1.4 (`reproducibility`), section 3.3 (Verification) and section 3.3.4 (Disclosed gaps in a receipt chain)
+     - U.S. Provisional Application No. 64/174,246: section 3.1.4 (`reproducibility`) and section 3.3 (Verification)
+   - Date of notice: 2026-11-09
+   - Authorized individual and system identifier: W. Alexander Ousley, GitHub `@antagoninc`
+
+2. - Name of party making the Exclusion Notice: William Alexander Ousley
+   - Name of patent owner: William Alexander Ousley
+   - Specification and version: TRACE Specification v0.2 (Draft Specification), including any later version that keeps the parts named below
+   - Patents excluded, and the parts of the Specification whose implementation would make an excluded claim a Necessary Claim. Each is an unpublished United States provisional patent application, together with any application claiming priority to it:
+     - U.S. Provisional Application No. 64/181,786: section 3.1.5 (`appraisal.platform_measurement`), section 3.2.2 (signature and freshness binding), section 3.3 (Verification), section 4.2 (Hardware roots) and section 4.3 (Bindings TRACE adds)
+     - U.S. Provisional Application No. 64/188,752: section 3.1 (`policy`, `tool_transcript`), section 3.1.2 (`references`, including `authorized-intent` and `approval-outcome`), section 3.3.2 (External execution evidence) and section 3.3.3 (Action receipts)
+     - U.S. Provisional Application No. 64/191,526: section 3.2.3 (Revocation of record-signing keys, transparency-log ordering), section 3.3.3 (Action receipts) and section 3.3.4 (Disclosed gaps in a receipt chain)
+   - Date of notice: 2026-11-09
+   - Authorized individual and system identifier: W. Alexander Ousley, GitHub `@antagoninc`
