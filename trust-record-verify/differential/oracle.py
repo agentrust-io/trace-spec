@@ -67,6 +67,7 @@ MESSAGE_CODES: list[tuple[str, str]] = [
     ("signature is not valid base64url", "signature_malformed"),
     ("signature is not canonical base64url", "signature_malformed"),
     ("record does not conform to the TRACE v0.2 schema", "schema_invalid"),
+    ("measurement_mismatch", "measurement_mismatch"),
     ("verify_record requires a trusted key", "trusted_key_missing"),
     ("record has no cnf.jwk and no public key was supplied", "trusted_key_missing"),
     ("revocation status for key", "revocation_unavailable"),
