@@ -24,8 +24,8 @@ def _load(path: pathlib.Path) -> dict[str, Any]:
 
 
 def test_vectors_were_found() -> None:
-    assert len(ALL) == 26
-    assert len(VALID) == 4
+    assert len(ALL) == 35
+    assert len(VALID) == 5
 
 
 @pytest.mark.parametrize("path", ALL, ids=lambda p: p.stem)
@@ -34,12 +34,13 @@ def test_vector(path: pathlib.Path) -> None:
     assert bt.verify_run(v["blocks"], v["pinned_keys"]) == v["expected"]
 
 
-def test_every_code_has_two_vectors() -> None:
+def test_every_code_has_at_least_two_vectors() -> None:
     seen: dict[str, int] = {}
     for path in ALL:
         for code in _load(path)["expected"]["codes"]:
             seen[code] = seen.get(code, 0) + 1
-    assert seen == dict.fromkeys(bt.BLOCK_CODES + bt.RUN_CODES, 2)
+    assert set(seen) == set(bt.BLOCK_CODES + bt.RUN_CODES)
+    assert min(seen.values()) >= 2
 
 
 def test_signer_matches_the_generator() -> None:
@@ -139,3 +140,39 @@ def test_a_non_object_block_is_schema_invalid() -> None:
 
 def test_an_empty_run_has_no_start() -> None:
     assert bt.verify_run([], {}) == {"classification": "rejected", "codes": ["run_start_invalid"]}
+
+
+RUN_A = _load(VECTORS / "01-valid-two-edges.json")
+
+
+def test_unknown_edge_in_pinned_keys_is_a_config_error() -> None:
+    with pytest.raises(ValueError):
+        bt.verify_run(RUN_A["blocks"], {**RUN_A["pinned_keys"], "cmpc": []})
+
+
+def test_pinned_keys_duplicate_unused_and_empty() -> None:
+    pinned = RUN_A["pinned_keys"]
+    doubled = {**pinned, "cmcp": pinned["cmcp"] * 2}
+    assert bt.verify_run(RUN_A["blocks"], doubled)["classification"] == "verified"
+    unused = {**pinned, "sandbox": pinned["cmcp"]}
+    assert bt.verify_run(RUN_A["blocks"], unused)["classification"] == "verified"
+    empty = {**pinned, "cmcp": []}
+    assert bt.verify_run(RUN_A["blocks"], empty)["codes"] == ["key_not_pinned"]
+
+
+def _nested(depth: int) -> Any:
+    value: Any = "x"
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+@pytest.mark.parametrize("where", ["body", "parents"])
+def test_deep_nesting_is_schema_invalid_not_an_exception(where: str) -> None:
+    blocks = copy.deepcopy(RUN_A["blocks"])
+    if where == "body":
+        blocks[2]["body"]["deep"] = _nested(100_000)
+    else:
+        blocks[2]["parents"] = [_nested(100_000), _nested(100_000)]
+    got = bt.verify_run(blocks, RUN_A["pinned_keys"])
+    assert got == {"classification": "rejected", "codes": ["schema_invalid"]}

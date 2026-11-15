@@ -1,6 +1,9 @@
 """Reference code for behavior-trace blocks (docs/rfcs/behavior-trace.md).
 
 Experimental. Builds, signs and verifies blocks, and verifies a whole run.
+
+Bad configuration (``pinned_keys``, a non-list ``blocks``) raises ValueError.
+Bad blocks never raise: they are reported as codes in the result.
 """
 
 from __future__ import annotations
@@ -35,8 +38,11 @@ SCHEMA_PATH = (
     / "behavior-trace-block-experimental-v1.json"
 )
 
-BLOCK_CODES = ("schema_invalid", "key_not_pinned", "signature_invalid")
+EDGES = ("wrapper", "model-gateway", "cmcp", "egress-proxy", "sandbox", "ca2a")
+
+BLOCK_CODES = ("schema_invalid", "key_not_pinned", "signature_invalid", "provenance_path_invalid")
 RUN_CODES = (
+    "duplicate_block",
     "run_start_invalid",
     "run_id_mismatch",
     "fork",
@@ -94,13 +100,32 @@ def _pinned_index(pinned_keys: Any) -> dict[str, dict[str, dict[str, Any]]]:
         raise ValueError("pinned_keys must map an edge name to a list of JWKs")
     index: dict[str, dict[str, dict[str, Any]]] = {}
     for edge, jwks in pinned_keys.items():
-        if not isinstance(edge, str) or not isinstance(jwks, list):
-            raise ValueError("pinned_keys must map an edge name to a list of JWKs")
+        if edge not in EDGES or not isinstance(jwks, list):
+            raise ValueError(f"pinned_keys must map an edge name in {EDGES} to a list of JWKs")
         index[edge] = {}
         for jwk in jwks:
             _pubkey_from_jwk(jwk)  # refuses non-Ed25519 and private keys
             index[edge][jwk_thumbprint(jwk)] = jwk
     return index
+
+
+_INDEX = re.compile(r"(0|[1-9][0-9]*)\Z")
+
+
+def _resolves(block: dict[str, Any], pointer: str) -> bool:
+    """True if the RFC 6901 pointer names a member of the block outside sig and provenance."""
+    tokens = [t.replace("~1", "/").replace("~0", "~") for t in pointer.split("/")[1:]]
+    if tokens[0] in ("sig", "provenance"):
+        return False
+    node: Any = block
+    for token in tokens:
+        if isinstance(node, dict) and token in node:
+            node = node[token]
+        elif isinstance(node, list) and _INDEX.match(token) and int(token) < len(node):
+            node = node[int(token)]
+        else:
+            return False
+    return True
 
 
 def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str | None:
@@ -119,6 +144,8 @@ def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str
         _pubkey_from_jwk(jwk).verify(raw, signed)
     except (InvalidSignature, ValueError):
         return "signature_invalid"
+    if not all(_resolves(block, path) for path in block.get("provenance", {})):
+        return "provenance_path_invalid"
     return None
 
 
@@ -126,6 +153,12 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
     """Verify the blocks of one run.
 
     Returns ``{"classification": "verified" | "truncated" | "rejected", "codes": [...]}``.
+
+    ``verified`` means every block is authentic and correctly linked and the run is
+    closed by a run_end. It does not mean the record is complete: an edge can stop
+    writing, and a chain cannot show blocks that were never written.
+
+    Cost grows with the total size of the input. Bound it before calling.
     """
     if not isinstance(blocks, list):
         raise ValueError("blocks must be a list")
@@ -135,12 +168,20 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
     if codes:
         return _result(codes, ended=False)
 
-    digests = [block_digest(b) for b in blocks]
-    by_digest = dict(zip(digests, blocks, strict=True))
+    # The same block twice is reported once, then dropped, so `fork` below only
+    # ever means two different blocks in one position.
+    by_digest: dict[str, dict[str, Any]] = {}
+    for block in blocks:
+        d = block_digest(block)
+        if d in by_digest:
+            codes.add("duplicate_block")
+        by_digest.setdefault(d, block)
+    digests = list(by_digest)
+    blocks = list(by_digest.values())
 
     starts = [i for i, b in enumerate(blocks) if b["kind"] == "run_start"]
     if len(starts) != 1 or blocks[starts[0]]["edge"] != "wrapper" or blocks[starts[0]]["seq"] != 0:
-        return _result({"run_start_invalid"}, ended=False)
+        return _result(codes | {"run_start_invalid"}, ended=False)
     run_id = digests[starts[0]]
 
     if any(b.get("run_id", run_id) != run_id for b in blocks):
@@ -174,9 +215,11 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
                 if d not in by_digest or by_digest[d]["edge"] != edge:
                     codes.add("heartbeat_peer_unknown")
 
-    ends = [b for b in blocks if b["kind"] == "run_end"]
-    wrapper_last = max(chains["wrapper"])
-    if len(ends) > 1 or any(e["edge"] != "wrapper" or e["seq"] != wrapper_last for e in ends):
+    # A run_end must be the one block at the end of the wrapper chain.
+    ends = [i for i, b in enumerate(blocks) if b["kind"] == "run_end"]
+    wrapper = chains.get("wrapper", {})
+    terminal = wrapper[max(wrapper)] if wrapper else []
+    if len(ends) > 1 or any(terminal != [i] for i in ends):
         codes.add("block_after_end")
 
     return _result(codes, ended=bool(ends))

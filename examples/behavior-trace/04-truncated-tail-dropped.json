@@ -165,12 +165,12 @@
         }
       },
       "provenance": {
-        "body.usage": "asserted"
+        "/body/usage": "asserted"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "2Oe8bfpew3MWheaYoYUJLtOdTGdJR9DV46z2ioG2zJDKZKb2AsDlmK5DDbee-pjRyZgWr02lu0Z9dasI7qoEBg"
+        "value": "WrefCQn22vpZdKlgFCSpN6n_zixGCLPAMgUhXVsVB4hdRIt_Y4dp0XOq2Wv5cLOx8HbIWeRLSiTSWOgQuOQzDg"
       }
     },
     {
@@ -180,7 +180,7 @@
       "seq": 0,
       "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
       "parents": [
-        "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73"
+        "sha256:70b95f2f220f47d984353717fea3da09412e1a7dd56b07c65b05fc400e911e1a"
       ],
       "kind": "tool_call",
       "t": {
@@ -192,12 +192,12 @@
         "decision": "allow"
       },
       "provenance": {
-        "body.tool": "observed"
+        "/body/tool": "observed"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "XVw_76ota3-kY3AAHE3EcjXjWrTDgGKhCWs4xbYNrcoD0VafpKQncT2fzrg_HTSYeIdQHtf68Z_dC1RsUrLkAg"
+        "value": "uGUilfp4jN7K_MfXnHPSub-zbrZHRZOo4CZUm5JZyXMJUGrJ6LhtBwyzSmk9MkVtBfA4v48eOKnpInJr5PzkDg"
       }
     }
   ],

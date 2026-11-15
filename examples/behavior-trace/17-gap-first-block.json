@@ -142,12 +142,12 @@
         }
       },
       "provenance": {
-        "body.usage": "asserted"
+        "/body/usage": "asserted"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "2Oe8bfpew3MWheaYoYUJLtOdTGdJR9DV46z2ioG2zJDKZKb2AsDlmK5DDbee-pjRyZgWr02lu0Z9dasI7qoEBg"
+        "value": "WrefCQn22vpZdKlgFCSpN6n_zixGCLPAMgUhXVsVB4hdRIt_Y4dp0XOq2Wv5cLOx8HbIWeRLSiTSWOgQuOQzDg"
       }
     },
     {
@@ -157,7 +157,7 @@
       "seq": 0,
       "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
       "parents": [
-        "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73"
+        "sha256:70b95f2f220f47d984353717fea3da09412e1a7dd56b07c65b05fc400e911e1a"
       ],
       "kind": "tool_call",
       "t": {
@@ -169,12 +169,12 @@
         "decision": "allow"
       },
       "provenance": {
-        "body.tool": "observed"
+        "/body/tool": "observed"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "XVw_76ota3-kY3AAHE3EcjXjWrTDgGKhCWs4xbYNrcoD0VafpKQncT2fzrg_HTSYeIdQHtf68Z_dC1RsUrLkAg"
+        "value": "uGUilfp4jN7K_MfXnHPSub-zbrZHRZOo4CZUm5JZyXMJUGrJ6LhtBwyzSmk9MkVtBfA4v48eOKnpInJr5PzkDg"
       }
     },
     {
@@ -182,9 +182,9 @@
       "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
       "edge": "cmcp",
       "seq": 1,
-      "prev": "sha256:a4c0b658e94a3bb62334b36a6906dd2eb62b63c4b4213661a75de256b8bb7768",
+      "prev": "sha256:cea1c82e95a15e8b907c972f5a7f73de9c01b874a630dd1fc30b2fb9ad0a588d",
       "parents": [
-        "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73"
+        "sha256:70b95f2f220f47d984353717fea3da09412e1a7dd56b07c65b05fc400e911e1a"
       ],
       "kind": "policy_decision",
       "t": {
@@ -198,7 +198,7 @@
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "n2kVdjZiCysUQYI_4XcVV6ZtSJVDho5qZpWAa_yAIsQ3U03obXJLUwFUJfsArZuJEyntrHd19D0WKh0Y3rZgDg"
+        "value": "dBCtwSb1JzbuA3N9bQSOFXx3Ozts8Yyk0oB5jEE86tYxIDuaFabVUJl6E_q03sHalKK55c0faZfEeAMjz9GECg"
       }
     },
     {
@@ -206,7 +206,7 @@
       "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
       "edge": "model-gateway",
       "seq": 2,
-      "prev": "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73",
+      "prev": "sha256:70b95f2f220f47d984353717fea3da09412e1a7dd56b07c65b05fc400e911e1a",
       "parents": [],
       "kind": "heartbeat",
       "t": {
@@ -215,14 +215,14 @@
       },
       "body": {
         "peers": {
-          "cmcp": "sha256:84937a2cef13dfa2673fdaaf2f55230df6cccaf11a9a02d2c5f23be6a44ac34c",
+          "cmcp": "sha256:01d30a4703d36cb32197e4bb920dd568d47fb89a557c4b0a4130984e8671c87a",
           "egress-proxy": "sha256:2d58c3d6695e2f254ae9726a5f471880be29340737cd96bc9c52f2d5f984e21c"
         }
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "KdJ33-FNrua8RJ1z96CtQ6Q3Z0sPpU0mPHS205R9oF0wWsrPgzeLU4HvBj_LwuB0CBiSWPyv5HZI5NmMDw1mDA"
+        "value": "rfhSBbArHThVX6OSaZgagKw01cwQkO_FTK7Pbek1k18xxpe8LSmn43lTp-9Yc1ZHNu84t3TJyns24qTI_1A6BA"
       }
     },
     {
@@ -232,8 +232,8 @@
       "seq": 1,
       "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
       "parents": [
-        "sha256:84937a2cef13dfa2673fdaaf2f55230df6cccaf11a9a02d2c5f23be6a44ac34c",
-        "sha256:0ca9a5c7efe961e8f5f16da1af3dc97164b31d66c4381e3a49a817aa56136750"
+        "sha256:01d30a4703d36cb32197e4bb920dd568d47fb89a557c4b0a4130984e8671c87a",
+        "sha256:d943d1b174702b05e6eb5465dd44543b12c96877f179970321ee795dc9f9275d"
       ],
       "kind": "run_end",
       "t": {
@@ -246,7 +246,7 @@
       "sig": {
         "alg": "Ed25519",
         "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
-        "value": "Lhs0kVWcyw5KZ5fgF97zSaWQCw7ncr-6rz4ShttrmWFnGb1BqZc3rJc-lK-_OUGJfT8nAXiFp0098IemrU9xBA"
+        "value": "DOs3HfGiCLU-IpndR7Yn458YpnAoxcuns92NvXyKX5_qOMtD160kYib8jSBzhyA1wsOgJu5HQ3jPcXXe0_pIAg"
       }
     }
   ],

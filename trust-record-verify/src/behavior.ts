@@ -3,6 +3,9 @@
  *
  * Experimental. Mirrors prototype/behavior_trace.py rule for rule, so both
  * give the same classification and codes for the same run.
+ *
+ * Bad configuration (`pinnedKeys`, a non-array `blocks`) throws a
+ * TraceVerificationError. Bad blocks never throw: they become codes.
  */
 
 import { decodeBase64url } from "./base64url.js";
@@ -13,13 +16,24 @@ import { canonicalize } from "./jcs.js";
 import { jwkThumbprint } from "./jwk.js";
 import { isPlainObject, own } from "./text.js";
 
+export const BEHAVIOR_EDGES = Object.freeze([
+  "wrapper",
+  "model-gateway",
+  "cmcp",
+  "egress-proxy",
+  "sandbox",
+  "ca2a",
+] as const);
+
 export const BEHAVIOR_BLOCK_CODES = Object.freeze([
   "schema_invalid",
   "key_not_pinned",
   "signature_invalid",
+  "provenance_path_invalid",
 ] as const);
 
 export const BEHAVIOR_RUN_CODES = Object.freeze([
+  "duplicate_block",
   "run_start_invalid",
   "run_id_mismatch",
   "fork",
@@ -47,7 +61,12 @@ type Block = Record<string, unknown> & {
   sig: { kid: string; value: string };
 };
 
-/** SHA-256 over the RFC 8785 form of the whole block, sig included. */
+/**
+ * SHA-256 over the RFC 8785 form of the whole block, sig included.
+ *
+ * Throws a TraceVerificationError (`canonicalization_failed`) for a value that
+ * has no RFC 8785 form, such as a non-finite number or one nested too deeply.
+ */
 export async function blockDigest(block: unknown): Promise<string> {
   return `sha256:${hex(await digest("SHA-256", canonicalize(block)))}`;
 }
@@ -72,8 +91,8 @@ async function pinnedIndex(pinnedKeys: unknown): Promise<Pinned> {
   const index: Pinned = new Map();
   for (const edge of Object.keys(pinnedKeys)) {
     const jwks = own(pinnedKeys, edge);
-    if (!Array.isArray(jwks)) {
-      fail("invalid_argument", "pinnedKeys must map an edge name to a list of JWKs");
+    if (!(BEHAVIOR_EDGES as readonly string[]).includes(edge) || !Array.isArray(jwks)) {
+      fail("invalid_argument", `pinnedKeys must map an edge name in ${BEHAVIOR_EDGES.join(", ")} to a list of JWKs`);
     }
     const keys = new Map<string, CryptoKey>();
     for (const jwk of jwks) {
@@ -83,6 +102,30 @@ async function pinnedIndex(pinnedKeys: unknown): Promise<Pinned> {
     index.set(edge, keys);
   }
   return index;
+}
+
+const INDEX = /^(0|[1-9][0-9]*)$/;
+
+/** True if the RFC 6901 pointer names a member of the block outside sig and provenance. */
+function resolves(block: Record<string, unknown>, pointer: string): boolean {
+  const tokens = pointer
+    .split("/")
+    .slice(1)
+    .map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
+  if (tokens[0] === "sig" || tokens[0] === "provenance") {
+    return false;
+  }
+  let node: unknown = block;
+  for (const token of tokens) {
+    if (isPlainObject(node) && Object.hasOwn(node, token)) {
+      node = node[token];
+    } else if (Array.isArray(node) && INDEX.test(token) && Number(token) < node.length) {
+      node = node[Number(token)];
+    } else {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** The first per-block failure, or null if the block verifies. */
@@ -108,6 +151,10 @@ async function blockCode(block: unknown, pinned: Pinned): Promise<BehaviorCode |
   if (raw === null || !(await verifyEd25519(key, raw, signed))) {
     return "signature_invalid";
   }
+  const provenance = (own(b, "provenance") ?? {}) as Record<string, unknown>;
+  if (!Object.keys(provenance).every((path) => resolves(b, path))) {
+    return "provenance_path_invalid";
+  }
   return null;
 }
 
@@ -121,8 +168,14 @@ function result(codes: Set<BehaviorCode>, ended: boolean): RunResult {
 /**
  * Verify the blocks of one run against the keys pinned for each edge.
  *
- * Returns `verified` (complete), `truncated` (genuine but no run_end) or
- * `rejected` with the codes that apply.
+ * Returns `verified`, `truncated` (genuine blocks but no run_end) or `rejected`
+ * with the codes that apply.
+ *
+ * `verified` means every block is authentic and correctly linked and the run is
+ * closed by a run_end. It does not mean the record is complete: an edge can stop
+ * writing, and a chain cannot show blocks that were never written.
+ *
+ * Cost grows with the total size of the input. Bound it before calling.
  */
 export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<RunResult> {
   if (!Array.isArray(blocks)) {
@@ -141,15 +194,24 @@ export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<R
     return result(codes, false);
   }
 
-  const run = blocks as Block[];
-  const digests = await Promise.all(run.map((b) => blockDigest(b)));
+  // The same block twice is reported once, then dropped, so `fork` below only
+  // ever means two different blocks in one position.
   const byDigest = new Map<string, Block>();
-  run.forEach((b, i) => byDigest.set(digests[i] as string, b));
+  for (const b of blocks as Block[]) {
+    const d = await blockDigest(b);
+    if (byDigest.has(d)) {
+      codes.add("duplicate_block");
+    } else {
+      byDigest.set(d, b);
+    }
+  }
+  const digests = [...byDigest.keys()];
+  const run = [...byDigest.values()];
 
   const starts = run.flatMap((b, i) => (b.kind === "run_start" ? [i] : []));
   const start = starts.length === 1 ? run[starts[0] as number] : undefined;
   if (start === undefined || start.edge !== "wrapper" || start.seq !== 0) {
-    return result(new Set(["run_start_invalid"]), false);
+    return result(codes.add("run_start_invalid"), false);
   }
   const runId = digests[starts[0] as number] as string;
 
@@ -203,9 +265,11 @@ export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<R
     }
   }
 
-  const ends = run.filter((b) => b.kind === "run_end");
-  const wrapperLast = Math.max(...(chains.get("wrapper") as Map<number, number[]>).keys());
-  if (ends.length > 1 || ends.some((e) => e.edge !== "wrapper" || e.seq !== wrapperLast)) {
+  // A run_end must be the one block at the end of the wrapper chain.
+  const ends = run.flatMap((b, i) => (b.kind === "run_end" ? [i] : []));
+  const wrapper = chains.get("wrapper");
+  const terminal = wrapper === undefined ? [] : (wrapper.get(Math.max(...wrapper.keys())) ?? []);
+  if (ends.length > 1 || ends.some((i) => terminal.length !== 1 || terminal[0] !== i)) {
     codes.add("block_after_end");
   }
 

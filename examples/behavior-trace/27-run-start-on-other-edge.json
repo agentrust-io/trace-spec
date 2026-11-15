@@ -1,0 +1,83 @@
+{
+  "id": "27",
+  "name": "27-run-start-on-other-edge",
+  "description": "The only run_start is written by cmcp; no wrapper block.",
+  "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
+  "pinned_keys": {
+    "wrapper": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w"
+      }
+    ],
+    "cmcp": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q"
+      }
+    ],
+    "model-gateway": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E"
+      }
+    ],
+    "egress-proxy": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "edge": "cmcp",
+      "seq": 0,
+      "prev": null,
+      "parents": [],
+      "kind": "run_start",
+      "t": {
+        "observed_at": 1794700000000,
+        "duration_ms": 5
+      },
+      "body": {},
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "zGt06WlEeLDsm-EjHIzSrR30RQPnlTb4C3Hovq3tawk7OY1yC6CS24UEv8wpaAdxxARaSREuJrMaNZT5decnBA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:029d5bc1204bc6525b9c6062cf244a29fc9b45e0979d1678328221d071a412c2",
+      "edge": "cmcp",
+      "seq": 1,
+      "prev": "sha256:029d5bc1204bc6525b9c6062cf244a29fc9b45e0979d1678328221d071a412c2",
+      "parents": [
+        "sha256:029d5bc1204bc6525b9c6062cf244a29fc9b45e0979d1678328221d071a412c2"
+      ],
+      "kind": "tool_call",
+      "t": {
+        "observed_at": 1794700001000,
+        "duration_ms": 5
+      },
+      "body": {},
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "__LUUzomnZSb-4MB2FPX7G0cG7H5VCM1cGGcBQ2H0PRT8s_t7_Oj4BiFjef5uIxuFcFiGmJ-cqkB4ErG-di8CA"
+      }
+    }
+  ],
+  "expected": {
+    "classification": "rejected",
+    "codes": [
+      "run_start_invalid"
+    ]
+  }
+}

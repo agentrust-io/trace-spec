@@ -53,7 +53,8 @@
       "items": {
         "$ref": "#/$defs/digest"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "maxItems": 256
     },
     "kind": {
       "enum": [
@@ -99,6 +100,10 @@
     },
     "provenance": {
       "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^(/([^~/]|~[01])*)+$"
+      },
       "patternProperties": {
         "^": {
           "enum": [
