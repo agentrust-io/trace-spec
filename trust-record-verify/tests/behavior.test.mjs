@@ -10,8 +10,11 @@ import vm from "node:vm";
 
 import {
   BEHAVIOR_BLOCK_CODES,
+  BEHAVIOR_MAX_BLOCKS,
   BEHAVIOR_RUN_CODES,
   blockDigest,
+  bundleSchemaViolations,
+  recordSchemaViolations,
   TraceVerificationError,
   verifyRun,
 } from "../dist/index.js";
@@ -25,8 +28,8 @@ const VECTORS = readdirSync(DIR)
 const VALID = VECTORS.filter((v) => v.expected.codes.length === 0);
 
 test("all vectors were found", () => {
-  assert.equal(VECTORS.length, 39);
-  assert.equal(VALID.length, 6);
+  assert.equal(VECTORS.length, 42);
+  assert.equal(VALID.length, 7);
 });
 
 for (const v of VECTORS) {
@@ -168,4 +171,71 @@ test("jsonEqual treats objects from another realm like local ones", () => {
 
 test("jsonEqual on input nested past the stack throws RangeError", () => {
   assert.throws(() => jsonEqual(nested(1_000_000), nested(1_000_000)), RangeError);
+});
+
+test("maxBlocks limits the input", async () => {
+  const n = RUN_A.blocks.length;
+  await assert.rejects(verifyRun(RUN_A.blocks, RUN_A.pinned_keys, { maxBlocks: n - 1 }), TraceVerificationError);
+  assert.deepEqual((await verifyRun(RUN_A.blocks, RUN_A.pinned_keys, { maxBlocks: n })).codes, []);
+  assert.deepEqual((await verifyRun(RUN_A.blocks, RUN_A.pinned_keys, { maxBlocks: null })).codes, []);
+  for (const bad of [-1, 1.5, true, "10"]) {
+    await assert.rejects(verifyRun(RUN_A.blocks, RUN_A.pinned_keys, { maxBlocks: bad }), TraceVerificationError);
+  }
+  await assert.rejects(verifyRun(RUN_A.blocks, RUN_A.pinned_keys, "x"), TraceVerificationError);
+});
+
+test("maxBlocks null lifts the default limit", async () => {
+  const junk = new Array(BEHAVIOR_MAX_BLOCKS + 1).fill("x");
+  await assert.rejects(verifyRun(junk, {}), TraceVerificationError);
+  assert.deepEqual((await verifyRun(junk, {}, { maxBlocks: null })).codes, ["schema_invalid"]);
+});
+
+test("a private or malformed pinned key is a configuration error", async () => {
+  const jwk = RUN_A.pinned_keys.cmcp[0];
+  for (const bad of [{ ...jwk, d: jwk.x }, { ...jwk, x: `${jwk.x}=` }, { ...jwk, x: "AAAA" }]) {
+    await assert.rejects(verifyRun(RUN_A.blocks, { ...RUN_A.pinned_keys, cmcp: [bad] }), TraceVerificationError);
+  }
+});
+
+test("a malformed signature encoding is schema_invalid", async () => {
+  const blocks = structuredClone(RUN_A.blocks);
+  blocks[2].sig.value = `!${blocks[2].sig.value.slice(1)}`;
+  assert.deepEqual((await verifyRun(blocks, RUN_A.pinned_keys)).codes, ["schema_invalid"]);
+});
+
+test("several bad blocks give sorted codes", async () => {
+  const blocks = structuredClone(RUN_A.blocks);
+  blocks[1].body.model = "has a space";
+  blocks[2].body.tool = "changed";
+  blocks[3].edge = "sandbox";
+  assert.deepEqual(await verifyRun(blocks, RUN_A.pinned_keys), {
+    classification: "rejected",
+    codes: ["key_not_pinned", "schema_invalid", "signature_invalid"],
+  });
+});
+
+test("deep nesting in a Trust Record or bundle is a violation, not an exception", () => {
+  const record = { cnf: { jwk: { kty: "OKP", deep: nested(100_000) } } };
+  assert.ok(recordSchemaViolations(record).length > 0);
+  const bundle = { statements: nested(100_000) };
+  assert.ok(bundleSchemaViolations(bundle).length > 0);
+});
+
+test("only the block schema can reach jsonEqual", () => {
+  // Ajv calls its deep-equality helper for uniqueItems, and for const or enum
+  // with an object or array value. No other compiled schema may use those.
+  const uses = (node) => {
+    if (Array.isArray(node)) return node.some(uses);
+    if (node === null || typeof node !== "object") return false;
+    if (node.uniqueItems === true) return true;
+    if (typeof node.const === "object" && node.const !== null) return true;
+    if (Array.isArray(node.enum) && node.enum.some((v) => typeof v === "object" && v !== null)) return true;
+    return Object.values(node).some(uses);
+  };
+  const schemaDir = join(dirname(DIR), "..", "schema");
+  for (const name of ["trace-claim.json", "trace-revocation-bundle.json", "trace-revocation.json"]) {
+    assert.equal(uses(JSON.parse(readFileSync(join(schemaDir, name), "utf8"))), false, name);
+  }
+  const block = JSON.parse(readFileSync(join(schemaDir, "behavior-trace-block-experimental-v1.json"), "utf8"));
+  assert.equal(uses(block), true, "the guard should see the block schema's uniqueItems");
 });

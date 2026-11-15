@@ -24,8 +24,8 @@ def _load(path: pathlib.Path) -> dict[str, Any]:
 
 
 def test_vectors_were_found() -> None:
-    assert len(ALL) == 39
-    assert len(VALID) == 6
+    assert len(ALL) == 42
+    assert len(VALID) == 7
 
 
 @pytest.mark.parametrize("path", ALL, ids=lambda p: p.stem)
@@ -176,3 +176,49 @@ def test_deep_nesting_is_schema_invalid_not_an_exception(where: str) -> None:
         blocks[2]["parents"] = [_nested(100_000), _nested(100_000)]
     got = bt.verify_run(blocks, RUN_A["pinned_keys"])
     assert got == {"classification": "rejected", "codes": ["schema_invalid"]}
+
+
+def test_max_blocks_limits_the_input() -> None:
+    blocks = RUN_A["blocks"]
+    with pytest.raises(ValueError):
+        bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=len(blocks) - 1)
+    assert bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=len(blocks))["codes"] == []
+    assert bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=None)["codes"] == []
+
+
+def test_max_blocks_none_lifts_the_default() -> None:
+    junk = ["x"] * (bt.MAX_BLOCKS + 1)
+    with pytest.raises(ValueError):
+        bt.verify_run(junk, {})
+    assert bt.verify_run(junk, {}, max_blocks=None)["codes"] == ["schema_invalid"]
+
+
+@pytest.mark.parametrize("bad", [-1, 1.5, True, "10"])
+def test_max_blocks_must_be_a_non_negative_integer(bad: Any) -> None:
+    with pytest.raises(ValueError):
+        bt.verify_run(RUN_A["blocks"], RUN_A["pinned_keys"], max_blocks=bad)
+
+
+def test_private_or_malformed_pinned_key_is_a_config_error() -> None:
+    jwk = RUN_A["pinned_keys"]["cmcp"][0]
+    for bad in ({**jwk, "d": jwk["x"]}, {**jwk, "x": jwk["x"] + "="}, {**jwk, "x": "AAAA"}):
+        with pytest.raises(ValueError):
+            bt.verify_run(RUN_A["blocks"], {**RUN_A["pinned_keys"], "cmcp": [bad]})
+
+
+def test_malformed_signature_encoding_is_schema_invalid() -> None:
+    blocks = copy.deepcopy(RUN_A["blocks"])
+    blocks[2]["sig"]["value"] = "!" + blocks[2]["sig"]["value"][1:]
+    assert bt.verify_run(blocks, RUN_A["pinned_keys"])["codes"] == ["schema_invalid"]
+
+
+def test_several_bad_blocks_give_sorted_codes() -> None:
+    blocks = copy.deepcopy(RUN_A["blocks"])
+    blocks[1]["body"]["model"] = "has a space"  # schema_invalid
+    blocks[2]["body"]["tool"] = "changed"  # signature_invalid
+    blocks[3]["edge"] = "sandbox"  # signed by cmcp, so key_not_pinned
+    got = bt.verify_run(blocks, RUN_A["pinned_keys"])
+    assert got == {
+        "classification": "rejected",
+        "codes": ["key_not_pinned", "schema_invalid", "signature_invalid"],
+    }

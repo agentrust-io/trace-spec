@@ -31,6 +31,20 @@
         "crv": "Ed25519",
         "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
       }
+    ],
+    "sandbox": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bnoc3Smwt4_ROvTFWY_v9O8qlxZuPKby5Pv8zYBQW_E"
+      }
+    ],
+    "ca2a": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iodf_x6zhFFXes1a_uQFRWVo3XyJ4JCGOgVXvHr0nxc"
+      }
     ]
   },
   "blocks": [
@@ -46,22 +60,22 @@
         "duration_ms": 5
       },
       "body": {
-        "task": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
-        "value": "RONzKT_bxtvzTOO5U1XM3S8dbiFXQfPSvTkSDxoscQxkuvsk5fb3ywhOs-fPREfKj65fcVIEtMYEQ1IH57uICQ"
+        "value": "h9PoSFhAzoqj_7-n5jF2P1-kBeMU0mWBqNSNpfGIMrfqrW54151eHhcPuen4pPeQtU7Rn2OEFOwKoncIu3OGCQ"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "edge": "model-gateway",
       "seq": 0,
-      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "parents": [
-        "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9"
+        "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06"
       ],
       "kind": "model_call",
       "t": {
@@ -69,22 +83,30 @@
         "duration_ms": 5
       },
       "body": {
-        "response": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        "model": "example-model-1",
+        "request": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "response": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "requested_tools": [
+          {
+            "tool": "search",
+            "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003"
+          }
+        ]
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "67e8ZdQ0ZrqDW8ns6TvkAaln_Bw9K2XwBqKTbwTIU8rhoanErxG60efRqu-KULc7B5mZv15-vXtWeLGCcpYhAA"
+        "value": "3qC70kI4waLEpY_XBSq4dPgbDC0k4k0Un7q3MEk3F2LmC9E0avAidhGIi8kyJzvi4XYQeZO1D43zs4cAltnwBQ"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "edge": "cmcp",
       "seq": 0,
-      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "parents": [
-        "sha256:31d1c64561cf34b6e66d1d0141392eafaa4aec78f88eaf04237b34b4b69dcc06"
+        "sha256:333888459d6a92f578b0ce4fd1f8abf7fdbb52fc16bb01d4fb496f40514a6fb5"
       ],
       "kind": "tool_call",
       "t": {
@@ -93,6 +115,7 @@
       },
       "body": {
         "tool": "search",
+        "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003",
         "decision": "allow"
       },
       "provenance": {
@@ -101,17 +124,17 @@
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "A7O9t3rRxMnuRjCGc7sm55gK7XtV3QrwOxINgjb0OZCydf66KdY2qS95PvVioc8oVuesKmKWV2ffWGMDmR3uAQ"
+        "value": "OYIxLsksr7pvy6KLHLWpnuFtpP37ZQh-v4KS7XEUsn9PBj9zSpaa3OuJwArYgaAOuneoVIi954KvqGe6haUSDA"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "edge": "cmcp",
       "seq": 1,
-      "prev": "sha256:10fb42eaaf5f8e1e045e9ba4d2bc5bb1126780738d0f82f9d954771b618d86bf",
+      "prev": "sha256:adceab826e2d2b9d62cf31500e2458c6c758588594ad7a70a193263912b5134d",
       "parents": [
-        "sha256:10fb42eaaf5f8e1e045e9ba4d2bc5bb1126780738d0f82f9d954771b618d86bf"
+        "sha256:adceab826e2d2b9d62cf31500e2458c6c758588594ad7a70a193263912b5134d"
       ],
       "kind": "tool_result",
       "t": {
@@ -119,20 +142,22 @@
         "duration_ms": 5
       },
       "body": {
-        "result": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        "tool": "search",
+        "status": "ok",
+        "result": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000004"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "FDabrmchR18WEFF-h1RLbVPRqZjSVF7w4268GBE0qxq6wcrSoBcWcwhpeg9rC7ppdV80uM9yqsX41tHe2RiVBg"
+        "value": "n1KOwXhkYk_7E64z-0ijHjJFLhg8P4DlbGfoTl4UblXmdslLgiZVtdckB2edoc7QFkSZs3gdWhX5bEEqY4OtBA"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "edge": "model-gateway",
       "seq": 1,
-      "prev": "sha256:31d1c64561cf34b6e66d1d0141392eafaa4aec78f88eaf04237b34b4b69dcc06",
+      "prev": "sha256:333888459d6a92f578b0ce4fd1f8abf7fdbb52fc16bb01d4fb496f40514a6fb5",
       "parents": [],
       "kind": "heartbeat",
       "t": {
@@ -141,23 +166,23 @@
       },
       "body": {
         "peers": {
-          "cmcp": "sha256:1f9f196ced535c98106062d2c13e77dcb67bc4b77993a022963920349f4c8a8e"
+          "cmcp": "sha256:1a448c7a3717330ce804301112670e839c8b964ae2cd1188c13e392a0cb87fa1"
         }
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "H1SU1NlpluxDnhBUYih4lTSogqDu6hHP04LUPZKs4NSnU3oGsKmjfHEcoiUmjgWahk1vLo7_O5HRT0iIzDIfBQ"
+        "value": "fwHAgqTkGwzh-P7JkpNMdU0TsSSpWjoqPMqjv1WvgpeqxIkGEvXgtHTAfZgtHcLFLs7sSYuTAuREur70_su7Bw"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "edge": "wrapper",
       "seq": 1,
-      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
       "parents": [
-        "sha256:1f9f196ced535c98106062d2c13e77dcb67bc4b77993a022963920349f4c8a8e"
+        "sha256:1a448c7a3717330ce804301112670e839c8b964ae2cd1188c13e392a0cb87fa1"
       ],
       "kind": "run_end",
       "t": {
@@ -170,7 +195,7 @@
       "sig": {
         "alg": "Ed25519",
         "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
-        "value": "oWRgeaD9wP2liAGxQBlt8POK6CJI8J-DGC6e-EdkgYAd0SGmSHpoQsmNVLwdnkFKEUuoR4e010JpUyJWN7pxBg"
+        "value": "5uIncNJpUme4PnyZW9CNbYenhOMyZlYeaWxuBB-DIzkIm6G4W1tt6dQ4gL9e1ydC1Ns_cmZ1Tr8lYSAa0TCcBw"
       }
     }
   ],

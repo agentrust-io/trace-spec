@@ -979,6 +979,7 @@ def test_the_scan_knows_every_integer_member() -> None:
         ("fresh_until",), ("maximum_age_seconds",),
         # The experimental behavior-trace block schema.
         ("seq",), ("t", "observed_at"), ("t", "duration_ms"),
+        ("bytes",), ("status",), ("usage", "input_tokens"), ("usage", "output_tokens"),
     }
 
 

@@ -93,16 +93,13 @@
       }
     },
     "body": {
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/canonicalizableValue"
-      }
+      "description": "Closed per kind; see the body_* definitions."
     },
     "provenance": {
       "type": "object",
       "maxProperties": 256,
       "propertyNames": {
-        "pattern": "^(/([^~/]|~[01])*)+$"
+        "pattern": "^/body(/([^~/]|~[01])*)+$"
       },
       "patternProperties": {
         "^": {
@@ -174,6 +171,182 @@
       "if": {
         "properties": {
           "kind": {
+            "const": "run_start"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_run_start"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "model_call"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_model_call"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "tool_call"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_tool_call"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "tool_result"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_tool_result"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "policy_decision"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_policy_decision"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "fetch"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_fetch"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "dns"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_dns"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_file"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "device"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_device"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "approval"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_approval"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "delegation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/body_delegation"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
             "const": "heartbeat"
           }
         }
@@ -181,30 +354,7 @@
       "then": {
         "properties": {
           "body": {
-            "required": [
-              "peers"
-            ],
-            "properties": {
-              "peers": {
-                "type": "object",
-                "propertyNames": {
-                  "enum": [
-                    "wrapper",
-                    "model-gateway",
-                    "cmcp",
-                    "egress-proxy",
-                    "sandbox",
-                    "ca2a"
-                  ]
-                },
-                "patternProperties": {
-                  "^": {
-                    "$ref": "#/$defs/digest"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
+            "$ref": "#/$defs/body_heartbeat"
           }
         }
       }
@@ -220,20 +370,7 @@
       "then": {
         "properties": {
           "body": {
-            "required": [
-              "outcome"
-            ],
-            "properties": {
-              "outcome": {
-                "enum": [
-                  "completed",
-                  "blocked",
-                  "failed",
-                  "killed",
-                  "abandoned"
-                ]
-              }
-            }
+            "$ref": "#/$defs/body_run_end"
           }
         }
       }
@@ -244,34 +381,417 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
-    "canonicalizableValue": {
-      "description": "A JSON value with one RFC 8785 form: no non-integer numbers, integers in the safe range.",
-      "anyOf": [
-        {
-          "type": [
-            "string",
-            "boolean",
-            "null"
+    "commitment": {
+      "description": "A keyed digest of content, never the content.",
+      "type": "string",
+      "pattern": "^hmac-sha256:[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "description": "A name or id: a bounded token with no spaces.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/@+-]{1,256}$"
+    },
+    "ext": {
+      "description": "Producer-specific values. Commitments, identifiers, booleans and counts only.",
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "maxLength": 64
+      },
+      "patternProperties": {
+        "^": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/commitment"
+            },
+            {
+              "$ref": "#/$defs/identifier"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "body_run_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/digest"
+        },
+        "manifest": {
+          "$ref": "#/$defs/digest"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_model_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "request",
+        "response"
+      ],
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/identifier"
+        },
+        "request": {
+          "$ref": "#/$defs/commitment"
+        },
+        "response": {
+          "$ref": "#/$defs/commitment"
+        },
+        "requested_tools": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tool",
+              "args"
+            ],
+            "properties": {
+              "tool": {
+                "$ref": "#/$defs/identifier"
+              },
+              "args": {
+                "$ref": "#/$defs/commitment"
+              }
+            }
+          }
+        },
+        "usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_tool_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "args",
+        "decision"
+      ],
+      "properties": {
+        "tool": {
+          "$ref": "#/$defs/identifier"
+        },
+        "server": {
+          "$ref": "#/$defs/identifier"
+        },
+        "args": {
+          "$ref": "#/$defs/commitment"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "deny",
+            "redact",
+            "advisory_deny",
+            "step_up",
+            "defer"
           ]
         },
-        {
+        "rule": {
+          "$ref": "#/$defs/identifier"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_tool_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "status"
+      ],
+      "properties": {
+        "tool": {
+          "$ref": "#/$defs/identifier"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error"
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/commitment"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_policy_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "decision"
+      ],
+      "properties": {
+        "tool": {
+          "$ref": "#/$defs/identifier"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "deny",
+            "redact",
+            "advisory_deny",
+            "step_up",
+            "defer"
+          ]
+        },
+        "rule": {
+          "$ref": "#/$defs/identifier"
+        },
+        "args": {
+          "$ref": "#/$defs/commitment"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_fetch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "status",
+        "content"
+      ],
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/commitment"
+        },
+        "host": {
+          "$ref": "#/$defs/commitment"
+        },
+        "status": {
           "type": "integer",
-          "minimum": -9007199254740991,
+          "minimum": 0,
+          "maximum": 999
+        },
+        "content": {
+          "$ref": "#/$defs/commitment"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
           "maximum": 9007199254740991
         },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/canonicalizableValue"
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/canonicalizableValue"
-          }
+        "ext": {
+          "$ref": "#/$defs/ext"
         }
-      ]
+      }
+    },
+    "body_dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query"
+      ],
+      "properties": {
+        "query": {
+          "$ref": "#/$defs/commitment"
+        },
+        "answers": {
+          "$ref": "#/$defs/commitment"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "op"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/commitment"
+        },
+        "op": {
+          "enum": [
+            "read",
+            "write",
+            "create",
+            "delete",
+            "list"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device",
+        "op"
+      ],
+      "properties": {
+        "device": {
+          "enum": [
+            "camera",
+            "microphone",
+            "screen",
+            "location",
+            "other"
+          ]
+        },
+        "op": {
+          "enum": [
+            "open",
+            "close"
+          ]
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver",
+        "approves",
+        "decision"
+      ],
+      "properties": {
+        "approver": {
+          "$ref": "#/$defs/identifier"
+        },
+        "approves": {
+          "$ref": "#/$defs/digest"
+        },
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected"
+          ]
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_delegation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "credential"
+      ],
+      "properties": {
+        "credential": {
+          "$ref": "#/$defs/identifier"
+        },
+        "child_run": {
+          "$ref": "#/$defs/digest"
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_heartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peers"
+      ],
+      "properties": {
+        "peers": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "wrapper",
+              "model-gateway",
+              "cmcp",
+              "egress-proxy",
+              "sandbox",
+              "ca2a"
+            ]
+          },
+          "patternProperties": {
+            "^": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
+    },
+    "body_run_end": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "completed",
+            "blocked",
+            "failed",
+            "killed",
+            "abandoned"
+          ]
+        },
+        "ext": {
+          "$ref": "#/$defs/ext"
+        }
+      }
     }
   }
 }

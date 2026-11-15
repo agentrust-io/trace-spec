@@ -1,7 +1,7 @@
 {
   "id": "12",
-  "name": "12-run-start-not-first",
-  "description": "The run_start has seq 1.",
+  "name": "12-run-start-seq-not-zero",
+  "description": "The run_start has seq 1 instead of 0.",
   "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
   "pinned_keys": {
     "wrapper": [
@@ -31,6 +31,20 @@
         "crv": "Ed25519",
         "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
       }
+    ],
+    "sandbox": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bnoc3Smwt4_ROvTFWY_v9O8qlxZuPKby5Pv8zYBQW_E"
+      }
+    ],
+    "ca2a": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iodf_x6zhFFXes1a_uQFRWVo3XyJ4JCGOgVXvHr0nxc"
+      }
     ]
   },
   "blocks": [
@@ -46,22 +60,22 @@
         "duration_ms": 5
       },
       "body": {
-        "task": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
-        "value": "1SH49MylZp2Jvba0WIA3YpEeQ1WT7W-uYNBqQZJKY4U2cEpmjUXoN1Zjg7r-_dyDj72ez2TtXqJyWahT5m1aBA"
+        "value": "M9WrVCq50s0z_cyH_ka7ue9fXHGDNqzlttavppDfA65vRSM67GzsSpX1iKTfqexH4fvxjOoUdGBhtZyXfApEDQ"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "edge": "model-gateway",
       "seq": 0,
-      "prev": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "parents": [
-        "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299"
+        "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9"
       ],
       "kind": "model_call",
       "t": {
@@ -69,22 +83,30 @@
         "duration_ms": 5
       },
       "body": {
-        "response": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        "model": "example-model-1",
+        "request": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "response": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "requested_tools": [
+          {
+            "tool": "search",
+            "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003"
+          }
+        ]
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "jjMyLgd0YyG9IVjsmU_OLc_2RsSrI5ggixGW7Mpr-iSTLQMTEufmlPmA1f3XSBsaLIVUFwLemYd62-hGglK0Ag"
+        "value": "Wd2kdNBGQi-B9C2wEEEQdEGNzyOsZt3ehYI2PufKCNOw0SI5IKJR9tZKij880rMQfVvWT-ZUr-oyJcCP12jIAg"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "edge": "cmcp",
       "seq": 0,
-      "prev": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "parents": [
-        "sha256:35779308857c888c7b239bb42b613c1d24fa8c87703f50ede6c6780dfdc18619"
+        "sha256:d7a8782ca2c6c988ecf1d9d5cc92123b86be89a776447417fcaeea82a91c9335"
       ],
       "kind": "tool_call",
       "t": {
@@ -93,22 +115,23 @@
       },
       "body": {
         "tool": "search",
+        "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003",
         "decision": "allow"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "AEvA1o5dCgvRkYa273JTqTg53gVAsQoVja7q3Ubv-7EMjar5j6P37XFESVKZnYJxd8NV2ymM5vxFb70YVpS6Bg"
+        "value": "LVVXYuLxT8yjgZ5FfFLoe2kKOoz3lmYyrgInVDZ3JozdE3tTrppW4M57qdS4Ey_amBRF8xRiFWjdc1I44VEBAw"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "edge": "cmcp",
       "seq": 1,
-      "prev": "sha256:6a519f482fb8bbd1029265b8a1d5418ab31aaa9710d1d08caaece11e9db8af7d",
+      "prev": "sha256:1189ea21f74dd4c6e1f05544b29fb27d977db9ea9f7d0deecfce28771d8b8a4d",
       "parents": [
-        "sha256:6a519f482fb8bbd1029265b8a1d5418ab31aaa9710d1d08caaece11e9db8af7d"
+        "sha256:1189ea21f74dd4c6e1f05544b29fb27d977db9ea9f7d0deecfce28771d8b8a4d"
       ],
       "kind": "tool_result",
       "t": {
@@ -116,20 +139,22 @@
         "duration_ms": 5
       },
       "body": {
-        "result": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        "tool": "search",
+        "status": "ok",
+        "result": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000004"
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
-        "value": "fx9_uJo1ir3WroYtzaG4e08ZDE_YOXrwgyR3pMDZRLxCzbcCgs211SxVzGU9dwqGnE3Nzag0CvT36pd1peB0AQ"
+        "value": "JbLeM9dPt10Z-XxHlCutCXE-Qp_NfkDEu9p-7C0eyCoAXw7tjTkodOal-j4nL5gA3i0ArL9HpA57uFriR2mvAA"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "edge": "model-gateway",
       "seq": 1,
-      "prev": "sha256:35779308857c888c7b239bb42b613c1d24fa8c87703f50ede6c6780dfdc18619",
+      "prev": "sha256:d7a8782ca2c6c988ecf1d9d5cc92123b86be89a776447417fcaeea82a91c9335",
       "parents": [],
       "kind": "heartbeat",
       "t": {
@@ -138,23 +163,23 @@
       },
       "body": {
         "peers": {
-          "cmcp": "sha256:122be8b40e368987070aa531a769e83c3b833c2a41ac6c62c3ef49a26b4f859e"
+          "cmcp": "sha256:8f83a453c76b89d598dfccae97fd05cfb4c6bb7a7b92e033bffbfd0394ee6fe9"
         }
       },
       "sig": {
         "alg": "Ed25519",
         "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
-        "value": "FZ2FB3-6BhmcuUzCL_yruy4NZq-dLujGXHyj76UILtK-E5OME8rMYSiRNXl-98SNUuLfdJyX2NVVcvXbCRB8BA"
+        "value": "I5FiVs-O9uRBx8bGk53Fz_fXF-TWS7k4A0yefqOxN9XwlAY-jlnBViltunAKZdoqE9peIDcgrdPpClN_UCvmBA"
       }
     },
     {
       "v": "behavior-trace-block/experimental-v1",
-      "run_id": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "edge": "wrapper",
       "seq": 2,
-      "prev": "sha256:eae488b53f9193e554decb356483002e3b8b8576fff39d436200a0c234173299",
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
       "parents": [
-        "sha256:122be8b40e368987070aa531a769e83c3b833c2a41ac6c62c3ef49a26b4f859e"
+        "sha256:8f83a453c76b89d598dfccae97fd05cfb4c6bb7a7b92e033bffbfd0394ee6fe9"
       ],
       "kind": "run_end",
       "t": {
@@ -167,7 +192,7 @@
       "sig": {
         "alg": "Ed25519",
         "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
-        "value": "NJysNgF3ey0WWHKMzeDdzCFNna-HTuQCbVcnrQUbiiT1A7ZB4l5ilhNUm_q39jf_8M6CAz6guxG3IBv2gv7BBg"
+        "value": "yG6qUBs4fsuMwLIDdEjbgsyflAubOgwZtNNUxu7HXUEisihM8-jznqxe-0KZNfgqMdY9xUBvobJKZ2-iTpjeAw"
       }
     }
   ],

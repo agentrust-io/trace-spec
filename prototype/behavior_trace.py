@@ -32,6 +32,7 @@ from agentrust_trace.sign import (
 )
 
 PROFILE = "behavior-trace-block/experimental-v1"
+MAX_BLOCKS = 100_000
 SCHEMA_PATH = (
     pathlib.Path(__file__).resolve().parents[1]
     / "schema"
@@ -113,10 +114,11 @@ _INDEX = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 
 def _resolves(block: dict[str, Any], pointer: str) -> bool:
-    """True if the RFC 6901 pointer names a member of the block outside sig and provenance."""
+    """True if the RFC 6901 pointer names a leaf value (not an object or array).
+
+    The schema already holds every pointer to start with /body.
+    """
     tokens = [t.replace("~1", "/").replace("~0", "~") for t in pointer.split("/")[1:]]
-    if tokens[0] in ("sig", "provenance"):
-        return False
     node: Any = block
     for token in tokens:
         if isinstance(node, dict) and token in node:
@@ -125,7 +127,7 @@ def _resolves(block: dict[str, Any], pointer: str) -> bool:
             node = node[int(token)]
         else:
             return False
-    return True
+    return not isinstance(node, (dict, list))
 
 
 def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str | None:
@@ -149,7 +151,9 @@ def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str
     return None
 
 
-def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
+def verify_run(
+    blocks: Any, pinned_keys: Any, *, max_blocks: int | None = MAX_BLOCKS
+) -> dict[str, Any]:
     """Verify the blocks of one run.
 
     Returns ``{"classification": "verified" | "truncated" | "rejected", "codes": [...]}``.
@@ -158,10 +162,18 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
     closed by a run_end. It does not mean the record is complete: an edge can stop
     writing, and a chain cannot show blocks that were never written.
 
-    Cost grows with the total size of the input. Bound it before calling.
+    Cost grows with the total size of the input. More than ``max_blocks`` blocks
+    raises ValueError; pass None to lift the limit. Bound the input's size in
+    bytes before parsing it.
     """
     if not isinstance(blocks, list):
         raise ValueError("blocks must be a list")
+    if max_blocks is not None and (
+        isinstance(max_blocks, bool) or not isinstance(max_blocks, int) or max_blocks < 0
+    ):
+        raise ValueError("max_blocks must be a non-negative integer or None")
+    if max_blocks is not None and len(blocks) > max_blocks:
+        raise ValueError(f"{len(blocks)} blocks is more than max_blocks={max_blocks}")
     pinned = _pinned_index(pinned_keys)
 
     codes = {code for block in blocks if (code := _block_code(block, pinned))}
@@ -222,10 +234,10 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
     wrapper = chains.get("wrapper", {})
     terminal = wrapper[max(wrapper)] if wrapper else []
     end_digests = {digests[i] for i in ends}
-    if (
-        len(ends) > 1
-        or any(terminal != [i] for i in ends)
-        or any(end_digests.intersection(b["parents"]) for b in blocks)
+    # Two run_ends can never both be the one terminal block, so a second one is
+    # caught here too.
+    if any(terminal != [i] for i in ends) or any(
+        end_digests.intersection(b["parents"]) for b in blocks
     ):
         codes.add("block_after_end")
 

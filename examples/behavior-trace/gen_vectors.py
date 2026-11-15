@@ -52,6 +52,8 @@ KEYS = {
     "cmcp": _key(2),
     "model-gateway": _key(3),
     "egress-proxy": _key(4),
+    "sandbox": _key(5),
+    "ca2a": _key(6),
 }
 ROGUE = _key(9)
 PINNED = {edge: [_jwk(k)] for edge, k in KEYS.items()}
@@ -121,16 +123,25 @@ OTHER_RUN = "sha256:" + "b" * 64
 UNKNOWN = "sha256:" + "c" * 64
 
 
+def c(n: int) -> str:
+    """A placeholder keyed commitment."""
+    return f"hmac-sha256:{n:064x}"
+
+
+MODEL = "example-model-1"
+
+
 def run_a() -> list[dict[str, Any]]:
     """Two edges and a heartbeat, ending completed."""
     return [
-        {"label": "W0", "edge": "wrapper", "kind": "run_start", "body": {"task": TASK}},
+        {"label": "W0", "edge": "wrapper", "kind": "run_start", "body": {"contract": TASK}},
         {"label": "M0", "edge": "model-gateway", "kind": "model_call", "parents": ["W0"],
-         "body": {"response": "sha256:" + "1" * 64}},
+         "body": {"model": MODEL, "request": c(1), "response": c(2),
+                  "requested_tools": [{"tool": "search", "args": c(3)}]}},
         {"label": "C0", "edge": "cmcp", "kind": "tool_call", "parents": ["M0"],
-         "body": {"tool": "search", "decision": "allow"}},
+         "body": {"tool": "search", "args": c(3), "decision": "allow"}},
         {"label": "C1", "edge": "cmcp", "kind": "tool_result", "parents": ["C0"],
-         "body": {"result": "sha256:" + "2" * 64}},
+         "body": {"tool": "search", "status": "ok", "result": c(4)}},
         {"label": "M1", "edge": "model-gateway", "kind": "heartbeat", "peers": {"cmcp": "C1"}},
         {"label": "W1", "edge": "wrapper", "kind": "run_end", "parents": ["C1"],
          "body": {"outcome": "completed"}},
@@ -140,24 +151,63 @@ def run_a() -> list[dict[str, Any]]:
 def run_b() -> list[dict[str, Any]]:
     """Four edges, a policy deny, provenance tags, ending blocked."""
     return [
-        {"label": "W0", "edge": "wrapper", "kind": "run_start", "body": {"task": TASK}},
-        {"label": "M0", "edge": "model-gateway", "kind": "model_call", "parents": ["W0"]},
+        {"label": "W0", "edge": "wrapper", "kind": "run_start", "body": {"contract": TASK}},
+        {"label": "M0", "edge": "model-gateway", "kind": "model_call", "parents": ["W0"],
+         "body": {"model": MODEL, "request": c(5), "response": c(6)}},
         {"label": "E0", "edge": "egress-proxy", "kind": "dns", "parents": ["M0"],
-         "body": {"query": "sha256:" + "3" * 64}},
+         "body": {"query": c(7)}},
         {"label": "E1", "edge": "egress-proxy", "kind": "dns", "parents": ["M0"],
-         "body": {"query": "sha256:" + "4" * 64}},
+         "body": {"query": c(8), "answers": c(9)}},
         {"label": "E2", "edge": "egress-proxy", "kind": "fetch", "parents": ["M0"],
-         "body": {"content": "sha256:" + "5" * 64, "status": 200}},
+         "body": {"url": c(10), "status": 200, "content": c(11), "bytes": 1024}},
         {"label": "M1", "edge": "model-gateway", "kind": "model_call", "parents": ["E2"],
-         "provenance": {"/body/usage": "asserted"}, "body": {"usage": {"tokens": 512}}},
+         "provenance": {"/body/usage/input_tokens": "asserted"},
+         "body": {"model": MODEL, "request": c(12), "response": c(13),
+                  "usage": {"input_tokens": 512, "output_tokens": 64}}},
         {"label": "C0", "edge": "cmcp", "kind": "tool_call", "parents": ["M1"],
-         "provenance": {"/body/tool": "observed"}, "body": {"tool": "read", "decision": "allow"}},
+         "provenance": {"/body/tool": "observed"},
+         "body": {"tool": "read", "args": c(14), "decision": "allow"}},
         {"label": "C1", "edge": "cmcp", "kind": "policy_decision", "parents": ["M1"],
-         "body": {"tool": "delete_records", "decision": "deny"}},
+         "body": {"tool": "delete_records", "decision": "deny", "rule": "no-deletes"}},
         {"label": "M2", "edge": "model-gateway", "kind": "heartbeat",
          "peers": {"cmcp": "C1", "egress-proxy": "E2"}},
         {"label": "W1", "edge": "wrapper", "kind": "run_end", "parents": ["C1", "M2"],
          "body": {"outcome": "blocked"}},
+    ]
+
+
+def run_every_kind() -> list[dict[str, Any]]:
+    """Every kind, with a full body, in one run."""
+    return [
+        {"label": "W0", "edge": "wrapper", "kind": "run_start",
+         "body": {"contract": TASK, "manifest": OTHER_RUN}},
+        {"label": "M0", "edge": "model-gateway", "kind": "model_call", "parents": ["W0"],
+         "body": {"model": MODEL, "request": c(20), "response": c(21),
+                  "requested_tools": [{"tool": "fs.read", "args": c(22)}],
+                  "usage": {"input_tokens": 1, "output_tokens": 2}, "ext": {"region": "eu-west"}}},
+        {"label": "C0", "edge": "cmcp", "kind": "tool_call", "parents": ["M0"],
+         "body": {"tool": "fs.read", "server": "spiffe://example.org/mcp/fs", "args": c(22),
+                  "decision": "step_up", "rule": "needs-approval"}},
+        {"label": "W1", "edge": "wrapper", "kind": "approval", "parents": ["C0"],
+         "body": {"approver": "alice@example.org", "approves": TASK, "decision": "approved"}},
+        {"label": "C1", "edge": "cmcp", "kind": "tool_result", "parents": ["W1"],
+         "body": {"tool": "fs.read", "status": "error"}},
+        {"label": "C2", "edge": "cmcp", "kind": "policy_decision", "parents": ["C1"],
+         "body": {"tool": "fs.delete", "decision": "deny", "args": c(23)}},
+        {"label": "S0", "edge": "sandbox", "kind": "file", "parents": ["C0"],
+         "body": {"path": c(24), "op": "read", "bytes": 10}},
+        {"label": "S1", "edge": "sandbox", "kind": "device", "parents": ["M0"],
+         "body": {"device": "camera", "op": "open"}},
+        {"label": "E0", "edge": "egress-proxy", "kind": "dns", "parents": ["M0"],
+         "body": {"query": c(25)}},
+        {"label": "E1", "edge": "egress-proxy", "kind": "fetch", "parents": ["E0"],
+         "body": {"url": c(26), "host": c(27), "status": 404, "content": c(28)}},
+        {"label": "A0", "edge": "ca2a", "kind": "delegation", "parents": ["M0"],
+         "body": {"credential": "cred-1", "child_run": OTHER_RUN}},
+        {"label": "M1", "edge": "model-gateway", "kind": "heartbeat",
+         "peers": {"cmcp": "C2", "sandbox": "S1", "egress-proxy": "E1", "ca2a": "A0"}},
+        {"label": "W2", "edge": "wrapper", "kind": "run_end", "parents": ["C2", "M1"],
+         "body": {"outcome": "failed"}},
     ]
 
 
@@ -206,7 +256,7 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
          swapped_sig, "rejected", ["signature_invalid"]),
         ("11-run-start-missing", "The run_start block is absent.",
          without(a, 0), "rejected", ["run_start_invalid"]),
-        ("12-run-start-not-first", "The run_start has seq 1.",
+        ("12-run-start-seq-not-zero", "The run_start has seq 1 instead of 0.",
          build(tweak(run_a(), "W0", seq=1)), "rejected", ["run_start_invalid"]),
         ("13-run-id-other-run", "A heartbeat names another run.",
          build(tweak(run_a(), "M1", run_id=OTHER_RUN)), "rejected", ["run_id_mismatch"]),
@@ -215,7 +265,7 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
         ("15-fork-cmcp", "Two cmcp blocks share seq 1.",
          build(run_a() + [
              {"label": "C1b", "edge": "cmcp", "kind": "tool_result", "seq": 1, "prev": "C0",
-              "parents": ["C0"], "body": {"result": "sha256:" + "6" * 64}},
+              "parents": ["C0"], "body": {"tool": "search", "status": "ok", "result": c(6)}},
          ]), "rejected", ["fork"]),
         ("16-fork-heartbeat", "Two model-gateway blocks share seq 1.",
          build(run_a() + [
@@ -242,14 +292,16 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
          ["heartbeat_peer_unknown"]),
         ("25-block-after-run-end", "The wrapper writes a block after run_end.",
          build(run_a() + [
-             {"label": "W2", "edge": "wrapper", "kind": "approval", "body": {"by": "x"}},
+             {"label": "W2", "edge": "wrapper", "kind": "approval",
+              "body": {"approver": "alice@example.org", "approves": TASK, "decision": "approved"}},
          ]), "rejected", ["block_after_end"]),
         ("26-run-end-on-cmcp", "A run_end is written by cmcp, not the wrapper.",
          build(tweak(run_a(), "W1", edge="cmcp")), "rejected", ["block_after_end"]),
         ("27-run-start-on-other-edge", "The only run_start is written by cmcp; no wrapper block.",
          build([
              {"label": "S", "edge": "cmcp", "kind": "run_start"},
-             {"label": "C1", "edge": "cmcp", "kind": "tool_call", "parents": ["S"]},
+             {"label": "C1", "edge": "cmcp", "kind": "tool_call", "parents": ["S"],
+              "body": {"tool": "search", "args": c(33), "decision": "allow"}},
          ]), "rejected", ["run_start_invalid"]),
         ("28-duplicate-tool-block", "The same tool block appears twice.",
          a + [a[2]], "rejected", ["duplicate_block"]),
@@ -262,13 +314,16 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
         ("31-provenance-missing-member", "Provenance names a member the block does not have.",
          build(tweak(run_a(), "C0", provenance={"/body/missing": "observed"})), "rejected",
          ["provenance_path_invalid"]),
-        ("32-provenance-into-sig", "Provenance names the signature.",
-         build(tweak(run_a(), "C0", provenance={"/sig/value": "observed"})), "rejected",
-         ["provenance_path_invalid"]),
+        ("32-provenance-names-a-container", "Provenance names an array, not a leaf value.",
+         build(tweak(run_a(), "M0", provenance={"/body/requested_tools": "observed"})),
+         "rejected", ["provenance_path_invalid"]),
         ("33-valid-escaped-pointers", "Provenance uses escaped keys and an array index.",
-         build(tweak(tweak(run_a(), "C0", body={"a/b": "x", "tool": "search"},
-                           provenance={"/body/a~1b": "derived", "/parents/0": "observed"}),
-                     "C1", body={"a~1b": "y"}, provenance={"/body/a~01b": "derived"})),
+         build(tweak(tweak(tweak(run_a(),
+             "M0", provenance={"/body/requested_tools/0/tool": "observed"}),
+             "C0", body={"tool": "search", "args": c(3), "decision": "allow", "ext": {"a/b": "x"}},
+             provenance={"/body/ext/a~1b": "derived"}),
+             "C1", body={"tool": "search", "status": "ok", "ext": {"a~1b": "y"}},
+             provenance={"/body/ext/a~01b": "derived"})),
          "verified", []),
         ("34-provenance-dotted-path", "Provenance uses a dotted path, not a JSON Pointer.",
          build(tweak(run_a(), "C0", provenance={"body.tool": "observed"})), "rejected",
@@ -276,16 +331,17 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
         ("36-fork-at-run-end", "Another wrapper block shares the run_end's seq.",
          build(run_a() + [
              {"label": "W1b", "edge": "wrapper", "kind": "approval", "seq": 1, "prev": "W0",
-              "body": {"by": "x"}},
+              "body": {"approver": "alice@example.org", "approves": TASK, "decision": "approved"}},
          ]), "rejected", ["block_after_end", "fork"]),
         ("37-tool-call-after-end", "A cmcp block names the run_end as its parent.",
          build(run_a() + [
              {"label": "C2", "edge": "cmcp", "kind": "tool_call", "parents": ["W1"],
-              "body": {"tool": "send_email"}},
+              "body": {"tool": "send_email", "args": c(30), "decision": "allow"}},
          ]), "rejected", ["block_after_end"]),
         ("38-model-call-after-end", "A model block names the run_end as its parent.",
          build(run_a() + [
-             {"label": "M2", "edge": "model-gateway", "kind": "model_call", "parents": ["W1"]},
+             {"label": "M2", "edge": "model-gateway", "kind": "model_call", "parents": ["W1"],
+              "body": {"model": MODEL, "request": c(31), "response": c(32)}},
          ]), "rejected", ["block_after_end"]),
         ("39-valid-heartbeat-sees-end", "A heartbeat names the run_end as a peer.",
          build(run_a() + [
@@ -293,8 +349,18 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
               "peers": {"wrapper": "W1", "cmcp": "C1"}},
          ]), "verified", []),
         ("35-provenance-index-leading-zero", "Provenance uses an array index with a leading zero.",
-         build(tweak(run_a(), "C0", provenance={"/parents/00": "observed"})), "rejected",
-         ["provenance_path_invalid"]),
+         build(tweak(run_a(), "M0", provenance={"/body/requested_tools/00/tool": "observed"})),
+         "rejected", ["provenance_path_invalid"]),
+        ("40-raw-content-in-body", "A tool call carries the raw prompt text.",
+         build(tweak(run_a(), "C0", body={"tool": "search", "args": c(3), "decision": "allow",
+                                         "prompt": "summarise the customer file"})),
+         "rejected", ["schema_invalid"]),
+        ("41-args-not-a-commitment", "A tool call's args are plain text, not a commitment.",
+         build(tweak(run_a(), "C0", body={"tool": "search", "args": "customer 4411",
+                                         "decision": "allow"})),
+         "rejected", ["schema_invalid"]),
+        ("42-valid-every-kind", "One run using every kind with a full body.",
+         build(run_every_kind()), "verified", []),
     ]
 
 

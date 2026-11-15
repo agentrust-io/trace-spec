@@ -46,6 +46,14 @@ export const BEHAVIOR_RUN_CODES = Object.freeze([
 
 export type BehaviorCode = (typeof BEHAVIOR_BLOCK_CODES)[number] | (typeof BEHAVIOR_RUN_CODES)[number];
 
+/** The default limit on the number of blocks `verifyRun` accepts. */
+export const BEHAVIOR_MAX_BLOCKS = 100_000;
+
+export interface VerifyRunOptions {
+  /** Refuse runs with more blocks than this. `null` lifts the limit. */
+  readonly maxBlocks?: number | null;
+}
+
 export interface RunResult {
   readonly classification: "verified" | "truncated" | "rejected";
   readonly codes: readonly BehaviorCode[];
@@ -106,15 +114,15 @@ async function pinnedIndex(pinnedKeys: unknown): Promise<Pinned> {
 
 const INDEX = /^(0|[1-9][0-9]*)$/;
 
-/** True if the RFC 6901 pointer names a member of the block outside sig and provenance. */
+/**
+ * True if the RFC 6901 pointer names a leaf value (not an object or array).
+ * The schema already holds every pointer to start with /body.
+ */
 function resolves(block: Record<string, unknown>, pointer: string): boolean {
   const tokens = pointer
     .split("/")
     .slice(1)
     .map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
-  if (tokens[0] === "sig" || tokens[0] === "provenance") {
-    return false;
-  }
   let node: unknown = block;
   for (const token of tokens) {
     if (isPlainObject(node) && Object.hasOwn(node, token)) {
@@ -125,7 +133,7 @@ function resolves(block: Record<string, unknown>, pointer: string): boolean {
       return false;
     }
   }
-  return true;
+  return !isPlainObject(node) && !Array.isArray(node);
 }
 
 /** The first per-block failure, or null if the block verifies. */
@@ -175,11 +183,29 @@ function result(codes: Set<BehaviorCode>, ended: boolean): RunResult {
  * closed by a run_end. It does not mean the record is complete: an edge can stop
  * writing, and a chain cannot show blocks that were never written.
  *
- * Cost grows with the total size of the input. Bound it before calling.
+ * Cost grows with the total size of the input. More than `maxBlocks` blocks
+ * throws; pass `null` to lift the limit. Bound the input's size in bytes
+ * before parsing it.
  */
-export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<RunResult> {
+export async function verifyRun(
+  blocks: unknown,
+  pinnedKeys: unknown,
+  options: VerifyRunOptions = {},
+): Promise<RunResult> {
   if (!Array.isArray(blocks)) {
     fail("invalid_argument", "blocks must be an array");
+  }
+  if (!isPlainObject(options)) {
+    fail("invalid_argument", "verifyRun takes a plain options object");
+  }
+  // Only a missing option means the default: null lifts the limit.
+  const given = own(options, "maxBlocks");
+  const maxBlocks = given === undefined ? BEHAVIOR_MAX_BLOCKS : given;
+  if (maxBlocks !== null && (typeof maxBlocks !== "number" || !Number.isSafeInteger(maxBlocks) || maxBlocks < 0)) {
+    fail("invalid_argument", "maxBlocks must be a non-negative integer or null");
+  }
+  if (maxBlocks !== null && blocks.length > maxBlocks) {
+    fail("invalid_argument", `${blocks.length} blocks is more than maxBlocks=${maxBlocks}`);
   }
   const pinned = await pinnedIndex(pinnedKeys);
 
@@ -276,8 +302,9 @@ export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<R
   }
   const terminal = wrapper?.get(last) ?? [];
   const endDigests = new Set(ends.map((i) => digests[i] as string));
+  // Two run_ends can never both be the one terminal block, so a second one is
+  // caught here too.
   if (
-    ends.length > 1 ||
     ends.some((i) => terminal.length !== 1 || terminal[0] !== i) ||
     run.some((b) => b.parents.some((p) => endDigests.has(p)))
   ) {
