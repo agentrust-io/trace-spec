@@ -53,7 +53,7 @@ Two rules shape it:
 
 Every member is inside the signed bytes except `sig` itself.
 
-**What a parent means.** A block names a parent by its digest, which covers the parent's signature, so the parent existed before the block naming it was signed. A parent link therefore means "happened before", and the graph of parents cannot contain a cycle: a cycle would need a block to contain a digest of itself. That is why the verifier checks that parents exist and nothing more.
+**What a parent means.** A block names a parent by its digest, which covers the parent's signature, so the parent existed before the block naming it was signed. A parent link therefore means "happened before". A cycle of parents would need blocks that each contain the digest of the next, around the loop, which is computationally infeasible under SHA-256. The verifier does not search for cycles; it checks that each parent exists, and that none is the run's end (section 3).
 
 ## 3. Kinds and the run lifecycle
 
@@ -62,10 +62,10 @@ Every member is inside the signed bytes except `sig` itself.
 A run has exactly one start and at most one end, both written by `wrapper`:
 
 - `run_start`: `wrapper`, `seq` 0, `prev` null, no `run_id`. Its digest is the `run_id` of every other block.
-- `run_end`: `wrapper`, the one block at the end of the wrapper chain, `body.outcome` one of `completed`, `blocked`, `failed`, `killed`, `abandoned`.
+- `run_end`: `wrapper`, the one block at the end of the wrapper chain, `body.outcome` one of `completed`, `blocked`, `failed`, `killed`, `abandoned`. No block may name it as a parent, since that would be activity after the end.
 - `heartbeat`: `body.peers` maps an edge name to the digest of a block in that edge's chain. It records what the signing edge had seen from its peers.
 
-Blocks of other edges have no order relative to `run_end` beyond their links, so a block from another edge is not "after the end" unless a link says so.
+Blocks of other edges have no order relative to `run_end` beyond their links. A block that names `run_end` as a parent is after the end and is rejected. A heartbeat may name `run_end` as a peer: that records that its edge saw the end, and is not activity.
 
 ## 4. Verifying a run
 
@@ -96,7 +96,7 @@ Across blocks:
 | `chain_link_broken` | A `prev` does not match the rule in section 2. |
 | `parent_missing` | A `parents` digest names no block in the run. |
 | `heartbeat_peer_unknown` | A heartbeat peer digest names no block of that edge. |
-| `block_after_end` | More than one `run_end`, or a `run_end` that is not the one block at the end of the wrapper chain. |
+| `block_after_end` | More than one `run_end`, a `run_end` that is not the one block at the end of the wrapper chain, or a block that names `run_end` as a parent. |
 
 Classification:
 
@@ -117,8 +117,8 @@ Classification:
 
 ## 6. How the two implementations are held to each other
 
-- Both run the 35 vectors in `examples/behavior-trace/` and must give the expected result for each: 3 `verified`, 2 `truncated` and 30 `rejected`. Every code has at least two vectors.
-- `tests/test_behavior_trace_parity.py` builds 600 runs from seeded random structural changes to valid runs, re-signs every changed block so the run reaches the checks after the signature, runs both implementations, and requires the same result for every run. The test also requires that the runs reach every code and all three classifications.
+- Both run the 39 vectors in `examples/behavior-trace/` and must give the expected result for each: 4 `verified`, 2 `truncated` and 33 `rejected`. Every code has at least two vectors.
+- `tests/test_behavior_trace_parity.py` builds 600 runs from seeded random changes to valid runs, runs both implementations, and requires the same result for every run. Changes to a block's content re-sign it, so the run reaches the checks after the signature; one change deliberately does not, to keep the signature check in play. The test also requires that the runs reach every code and all three classifications.
 - Each rule has a near-miss mutant in both implementations that the tests above must reject.
 
 That is evidence over the inputs those tests generate, not a proof of equivalence over every input.

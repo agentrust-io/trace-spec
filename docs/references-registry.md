@@ -45,7 +45,7 @@ The six labels agreed so far, what each one points at, and where it is defined:
 |---|---|---|---|
 | `authorized-intent` | An authorization decided before execution, held in another system | §3.1.2; one mapping in [`crosswalks/nkemba-institutional-reconstruction.md`](crosswalks/nkemba-institutional-reconstruction.md) | none committed |
 | `approval-outcome` | An attributable human approval attached to a step-up or defer decision | §3.1.2; the CHAP mapping in [`crosswalks/chap-review-decisions.md`](crosswalks/chap-review-decisions.md) | [`examples/chap-approval-outcome/`](../examples/chap-approval-outcome/) |
-| `behavior-trace` | A behavioural record of what the agent did, of which this record is the environment evidence | §3.1.2 | none committed |
+| `behavior-trace` | A behavioural record of what the agent did, of which this record is the environment evidence | §3.1.2; a draft format in [`rfcs/behavior-trace.md`](rfcs/behavior-trace.md) | [`examples/behavior-trace/`](../examples/behavior-trace/) |
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below | [`examples/condition-appraisal/`](../examples/condition-appraisal/) |
 | `observed-effect` | A signed record of the state change an observer outside the agent saw over one interval | This document, below | [`examples/observed-effect/`](../examples/observed-effect/) |
 | `applicability-assessment` | An assessor's statement of whether a stated legal provision applies to a stated party, held in another system | This document, below | [`examples/applicability-assessment/`](../examples/applicability-assessment/) |

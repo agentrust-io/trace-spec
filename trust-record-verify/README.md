@@ -67,8 +67,8 @@ with codes. A bad `pinnedKeys` throws; bad blocks only ever become codes.
 `verified` means every block is authentic and correctly linked and the run is closed by a
 `run_end`. It does not mean the record is complete. Bound the input size before calling.
 
-It follows `prototype/behavior_trace.py` rule for rule. Section 6 of the RFC says how the
-two are held to each other: the vectors in
+It implements the same rules as `prototype/behavior_trace.py`. Section 6 of the RFC says
+how the two are held to each other: the vectors in
 [`examples/behavior-trace/`](../examples/behavior-trace/) and a randomized comparison.
 
 ## What it does not do
