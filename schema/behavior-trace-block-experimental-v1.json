@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trace.agentrust-io.com/schema/behavior-trace-block-experimental-v1.json",
+  "title": "behavior-trace block (experimental v1)",
+  "description": "One signed step of an agent run. See docs/rfcs/behavior-trace.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "edge",
+    "seq",
+    "prev",
+    "parents",
+    "kind",
+    "t",
+    "body",
+    "sig"
+  ],
+  "properties": {
+    "v": {
+      "const": "behavior-trace-block/experimental-v1"
+    },
+    "run_id": {
+      "$ref": "#/$defs/digest"
+    },
+    "edge": {
+      "enum": [
+        "wrapper",
+        "model-gateway",
+        "cmcp",
+        "egress-proxy",
+        "sandbox",
+        "ca2a"
+      ]
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "prev": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/digest"
+        }
+      ]
+    },
+    "parents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/digest"
+      },
+      "uniqueItems": true
+    },
+    "kind": {
+      "enum": [
+        "run_start",
+        "model_call",
+        "tool_call",
+        "tool_result",
+        "fetch",
+        "dns",
+        "file",
+        "device",
+        "approval",
+        "delegation",
+        "policy_decision",
+        "heartbeat",
+        "run_end"
+      ]
+    },
+    "t": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed_at"
+      ],
+      "properties": {
+        "observed_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/canonicalizableValue"
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "patternProperties": {
+        "^": {
+          "enum": [
+            "observed",
+            "derived",
+            "asserted"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alg",
+        "kid",
+        "value"
+      ],
+      "properties": {
+        "alg": {
+          "const": "Ed25519"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{85}[AQgw]$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "run_start"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "run_id"
+          ]
+        },
+        "properties": {
+          "prev": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "run_id"
+        ],
+        "properties": {
+          "prev": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "heartbeat"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "peers"
+            ],
+            "properties": {
+              "peers": {
+                "type": "object",
+                "propertyNames": {
+                  "enum": [
+                    "wrapper",
+                    "model-gateway",
+                    "cmcp",
+                    "egress-proxy",
+                    "sandbox",
+                    "ca2a"
+                  ]
+                },
+                "patternProperties": {
+                  "^": {
+                    "$ref": "#/$defs/digest"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "run_end"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "outcome"
+            ],
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "completed",
+                  "blocked",
+                  "failed",
+                  "killed",
+                  "abandoned"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "canonicalizableValue": {
+      "description": "A JSON value with one RFC 8785 form: no non-integer numbers, integers in the safe range.",
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "boolean",
+            "null"
+          ]
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/canonicalizableValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/canonicalizableValue"
+          }
+        }
+      ]
+    }
+  }
+}
