@@ -113,7 +113,7 @@ def test_plain_trace_embedded_ed25519_signature_passes():
     trace: dict = {
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1748000000,
-        "subject": "did:mesh:spiffe://example.org/agent/test",
+        "subject": "did:mesh:example.org:agent:test",
         "runtime": {"platform": "software-only", "measurement": "sha256:" + "a" * 64},
         "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
         "data_class": "internal",
@@ -137,7 +137,7 @@ def test_plain_trace_tampered_embedded_signature_fails():
     trace: dict = {
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1748000000,
-        "subject": "did:mesh:spiffe://example.org/agent/test",
+        "subject": "did:mesh:example.org:agent:test",
         "runtime": {"platform": "software-only", "measurement": "sha256:" + "a" * 64},
         "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
         "data_class": "internal",
@@ -323,7 +323,7 @@ def test_plain_trace_all_private_jwk_members_fail_tr_sig_004(member: str) -> Non
     trace: dict = {
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1748000000,
-        "subject": "did:mesh:spiffe://example.org/agent/test",
+        "subject": "did:mesh:example.org:agent:test",
         "runtime": {"platform": "software-only", "measurement": "sha256:" + "a" * 64},
         "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
         "data_class": "internal",

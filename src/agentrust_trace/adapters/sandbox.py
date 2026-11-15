@@ -71,6 +71,7 @@ this adapter deliberately needs no schema change.
 
 from __future__ import annotations
 
+from agentrust_trace._identity import _is_subject
 from agentrust_trace._patterns import _PYTHON_PATTERNS
 
 import hashlib
@@ -131,17 +132,13 @@ _PLATFORMS: frozenset[str] = frozenset(
     get_args(RuntimeInfo.model_fields["platform"].annotation)
 )
 
-# Mirrors TrustRecord.subject. Checked here so a bad identity fails at the adapter with
-# a message naming the field, rather than at model_validate() several steps later.
-_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
-
 _DIGEST_RE = _PYTHON_PATTERNS[r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"]
 
 
 def _check_sandbox_id(value: object) -> None:
     if not isinstance(value, str):
         raise ValueError(f"sandbox_id must be a string, got {type(value).__name__}")
-    if not _SUBJECT_RE.match(value):
+    if not _is_subject(value):
         raise ValueError(
             f"sandbox_id {value!r} must be a SPIFFE URI "
             "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "

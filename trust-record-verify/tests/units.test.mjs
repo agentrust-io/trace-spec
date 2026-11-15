@@ -21,6 +21,7 @@ import {
   verifyRecord,
 } from "../dist/index.js";
 import { importEcdsa } from "../dist/crypto.js";
+import { recordSchemaViolations } from "../dist/schema.js";
 
 async function rejects(promise, code) {
   await assert.rejects(promise, (error) => {
@@ -181,6 +182,47 @@ test("verifyRecord refuses to guess a trust anchor", async () => {
     verifyRecord({ eat_profile: TRACE_PROFILE_V0_2, signature: "AQID" }),
     "schema_invalid",
   );
+});
+
+test("subject schema accepts identities and rejects parser differentials", () => {
+  const example = JSON.parse(
+    readFileSync(
+      join(
+        dirname(dirname(dirname(fileURLToPath(import.meta.url)))),
+        "examples",
+        "canonicalization-boundary",
+        "01-non-ascii-values.json",
+      ),
+      "utf8",
+    ),
+  ).record;
+  for (const subject of [
+    "spiffe://example.org/agent",
+    "spiffe://trust_domain.example/agent.v1/_worker-2",
+    "did:web:example.org",
+    "did:example:factory%2Fagent",
+  ]) {
+    assert.deepEqual(recordSchemaViolations({ ...example, subject }), [], subject);
+  }
+  for (const subject of [
+    "spiffe://exam\nple.org/agent",
+    "spiffe://user@example.org/agent",
+    "spiffe://example.org:443/agent",
+    "spiffe://example.org/../agent",
+    "spiffe://example.org/agent?role=admin",
+    "did:web:caf\u00e9",
+    "did:web:example.org/path",
+    "did:web:example%2",
+  ]) {
+    const violations = recordSchemaViolations({ ...example, subject });
+    assert.ok(
+      violations.some(
+        (violation) => violation.path.join(".") === "subject" &&
+          ["pattern", "not"].includes(violation.keyword),
+      ),
+      subject,
+    );
+  }
 });
 
 // Match the Python verifier after #390: presence is separate from value/type.

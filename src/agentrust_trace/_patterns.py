@@ -2,11 +2,17 @@
 
 import re
 
-# Only the five pattern forms shipped in TRACE v0.2 are adapted here. This is
+from agentrust_trace._identity import _SUBJECT_PATTERN
+
+# Only the six pattern forms shipped in TRACE v0.2 are adapted here. This is
 # not a general ECMA-262 translator: a new schema pattern needs explicit review.
 # None of these forms has a literal/escaped dot or dollar, or a dot in a class.
 _ECMA_PATTERNS = (
-    '^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$',
+    _SUBJECT_PATTERN,
+    # Used by the subject schema's `not` guard. ECMA-262 `$` also matches just
+    # before a final line terminator, so the anchored subject pattern alone is
+    # not sufficient for schema consumers using the specified regex dialect.
+    r'[\u0000-\u001F\u007F-\u009F\u2028\u2029]',
     '^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$',
     (r"^P(\d+W|(\d+Y(\d+M)?(\d+D)?|\d+M(\d+D)?|\d+D)"
      r"(T(\d+H(\d+M)?(\d+S)?|\d+M(\d+S)?|\d+S))?"

@@ -49,15 +49,43 @@ def test_signed_uri_line_terminators_are_rejected(tail):
 
 
 @pytest.mark.parametrize("subject", [
-    "spiffe://example.org/agent", "did:web:example.org", "did:web:caf\u00e9", "did:web:\U0001f600",
-    # The schema's negated authority class permits line breaks. Do not add a new rule.
-    "spiffe://exam\nple.org/agent",
+    "spiffe://example.org/agent",
+    "spiffe://trust_domain.example/agent.v1/_worker-2",
+    "did:web:example.org",
+    "did:key:z6MkhaXgBZDvotzL8oCYaXeFuJArwvX6mDMsKTJVjtN7R",
+    "did:example:factory:agent-1",
+    "did:example:factory%2Fagent",
 ])
-def test_valid_subjects_keep_their_schema_meaning(subject):
+def test_valid_subjects_pass_signed_verification(subject):
     body = copy.deepcopy(BASE)
     body["subject"] = subject
     key = generate_key()
     verify_record(sign_record(body, key), key_to_jwk(key), now=body["iat"])
+
+
+@pytest.mark.parametrize("subject", [
+    "spiffe://exam\nple.org/agent",
+    "spiffe://user@example.org/agent",
+    "spiffe://example.org:443/agent",
+    "spiffe://example.org/agent?role=admin",
+    "spiffe://example.org/agent#fragment",
+    "spiffe://example.org/a//b",
+    "spiffe://example.org/./agent",
+    "spiffe://example.org/%61gent",
+    "did:web:caf\u00e9",
+    "did:web:\U0001f600",
+    "did:web:example.org/path",
+    "did:web:example.org?service=agent",
+    "did:web:example.org#key-1",
+    "did:web:example%2",
+    "did:web:example%GG",
+])
+def test_signed_non_identity_subjects_are_rejected(subject):
+    body = copy.deepcopy(BASE)
+    body["subject"] = subject
+    key = generate_key()
+    with pytest.raises(ValueError, match="does not conform.*subject"):
+        verify_record(sign_record(body, key), key_to_jwk(key), now=body["iat"])
 
 
 @pytest.mark.parametrize("field", ["signature", "measurement"])

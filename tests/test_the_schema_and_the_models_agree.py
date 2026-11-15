@@ -74,7 +74,7 @@ from agentrust_trace import TrustRecord, validate_json
 BASE: dict[str, Any] = {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": 1750000000,
-    "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
+    "subject": "did:mesh:factory.example:agent:payments:prod",
     "model": {"provider": "example-provider", "model_id": "example-model"},
     "runtime": {"platform": "software-only", "measurement": "sha256:" + "0" * 64},
     "policy": {"bundle_hash": "sha256:" + "a" * 64, "enforcement_mode": "enforce"},
@@ -634,9 +634,15 @@ def test_the_generator_reaches_the_prefix_class_the_matrix_could_not() -> None:
         before, format_checker=jsonschema.FormatChecker()
     )
 
+    spiffe_record = copy.deepcopy(FULL)
+    spiffe_record["subject"] = "spiffe://factory.example/agent/payments/prod"
+    assert _by_schema(spiffe_record) and _by_model(spiffe_record)
+
     split = []
-    for probe in _probes(CANONICAL_SCHEMA["properties"]["subject"]["pattern"], FULL["subject"]):
-        record = copy.deepcopy(FULL)
+    for probe in _probes(
+        CANONICAL_SCHEMA["properties"]["subject"]["pattern"], spiffe_record["subject"]
+    ):
+        record = copy.deepcopy(spiffe_record)
         record["subject"] = probe
         if validator.is_valid(record) != _by_model(record):
             split.append(probe)
