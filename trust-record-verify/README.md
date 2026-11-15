@@ -57,6 +57,14 @@ affirming appraisal.
 The check order inside `verifyRecord` is the Python implementation's, so both report the
 same first failure for the same record. It is documented beside the function.
 
+## Behavior-trace runs (experimental)
+
+`verifyRun(blocks, pinnedKeys)` checks the blocks of one agent run against the keys
+pinned for each edge, as [`docs/rfcs/behavior-trace.md`](../docs/rfcs/behavior-trace.md)
+describes. It returns `verified`, `truncated` (genuine blocks, no `run_end`) or `rejected`
+with codes. It follows `prototype/behavior_trace.py` rule for rule, and both are held to
+the vectors in [`examples/behavior-trace/`](../examples/behavior-trace/).
+
 ## What it does not do
 
 - No chain walk. The `delegation` block is normative in v0.2 and what a verifier does with a

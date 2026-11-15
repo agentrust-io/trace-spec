@@ -11,6 +11,14 @@
 
 export { decodeBase64url, encodeBase64url } from "./base64url.js";
 export {
+  BEHAVIOR_BLOCK_CODES,
+  BEHAVIOR_RUN_CODES,
+  blockDigest,
+  verifyRun,
+  type BehaviorCode,
+  type RunResult,
+} from "./behavior.js";
+export {
   checkCitations,
   SURFACES,
   type CitationCause,

@@ -5,7 +5,7 @@ A signed, hash-linked record of every step of one agent run, written by the syst
 **Status:** Draft proposal. Binds nothing. Experimental wire, `behavior-trace-block/experimental-v1`.
 **Scope:** The block format, the chain rules and the verifier outcomes. Signals, task contracts, action tickets and anchoring are later work and are only named here.
 **Schema:** `schema/behavior-trace-block-experimental-v1.json`.
-**Reference code:** `prototype/behavior_trace.py` (outside the installed SDK).
+**Reference code:** `prototype/behavior_trace.py` (outside the installed SDK) and `verifyRun` in `trust-record-verify`, which agree on every vector.
 **Vectors:** `examples/behavior-trace/`, built by `gen_vectors.py` from raw primitives, not from the reference code.
 
 ## 1. Why
@@ -106,4 +106,4 @@ Classification:
 
 ## 6. Later work
 
-Task contracts, deviation signals, heartbeat deadlines, anchoring in the registry, action tickets, and a browser verifier.
+Task contracts, deviation signals, heartbeat deadlines, anchoring in the registry, and action tickets.

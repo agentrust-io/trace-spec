@@ -14,8 +14,8 @@ Format: [Semantic Versioning](https://semver.org/). Spec versions follow `MAJOR.
 - **Experimental behavior-trace blocks.** A draft format for a signed, hash-linked
   record of each step of an agent run, written by the gateways around the agent:
   `docs/rfcs/behavior-trace.md`, `schema/behavior-trace-block-experimental-v1.json`,
-  reference code in `prototype/behavior_trace.py`, and 26 vectors in
-  `examples/behavior-trace/`. Binds nothing; v0.2 records are unchanged.
+  reference code in `prototype/behavior_trace.py`, `verifyRun` in `trust-record-verify`,
+  and 26 vectors in `examples/behavior-trace/`. Binds nothing; v0.2 records are unchanged.
 
 - **The AGT and sandbox adapters validate `data_class`, string and URI fields, and the
   policy and appraisal enums, when they are constructed and again in
