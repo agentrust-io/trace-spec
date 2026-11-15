@@ -1,0 +1,259 @@
+{
+  "id": "18",
+  "name": "18-gap-middle-block",
+  "description": "A middle egress-proxy block is missing.",
+  "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
+  "pinned_keys": {
+    "wrapper": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w"
+      }
+    ],
+    "cmcp": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q"
+      }
+    ],
+    "model-gateway": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E"
+      }
+    ],
+    "egress-proxy": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "edge": "wrapper",
+      "seq": 0,
+      "prev": null,
+      "parents": [],
+      "kind": "run_start",
+      "t": {
+        "observed_at": 1794700000000,
+        "duration_ms": 5
+      },
+      "body": {
+        "task": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "RONzKT_bxtvzTOO5U1XM3S8dbiFXQfPSvTkSDxoscQxkuvsk5fb3ywhOs-fPREfKj65fcVIEtMYEQ1IH57uICQ"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "model-gateway",
+      "seq": 0,
+      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "parents": [
+        "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700001000,
+        "duration_ms": 5
+      },
+      "body": {},
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "FRtJl-Fh9K2hOdSRtFdB9VlzLOfpqE_h3XlygMscVkf12bChRiY-9gyVd0sSBzWE6e3KZjvB7ddoDigRc1udCw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "egress-proxy",
+      "seq": 0,
+      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "parents": [
+        "sha256:34ec06f764eddcdad76ce5aa0e931cf9897c08d98351688a7b1e9d42c9d030b3"
+      ],
+      "kind": "dns",
+      "t": {
+        "observed_at": 1794700002000,
+        "duration_ms": 5
+      },
+      "body": {
+        "query": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "d8Me3uJ82jhdsCstWyVMr3_I2ueeTYG5agM1-2r1_bY",
+        "value": "_HByoz6xAz5e3TMHoMgyvE8B6Mh5b9pbQYZYvrYtIRCEuRMNqS9dhytYWuYNwptQoYe9DO_4WF_FRmPSMZJwCA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "egress-proxy",
+      "seq": 2,
+      "prev": "sha256:2df94d509c26d62d009ba18a75fbfc7a0d1daf00c4d217ea0e2ec05b6a125284",
+      "parents": [
+        "sha256:34ec06f764eddcdad76ce5aa0e931cf9897c08d98351688a7b1e9d42c9d030b3"
+      ],
+      "kind": "fetch",
+      "t": {
+        "observed_at": 1794700004000,
+        "duration_ms": 5
+      },
+      "body": {
+        "content": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "status": 200
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "d8Me3uJ82jhdsCstWyVMr3_I2ueeTYG5agM1-2r1_bY",
+        "value": "pfxQkIjiamJ3IckPt5ry-ykauOGj9MbVW8IjYw5g8EXeibncM6_Ds7wAnMAJJ8y75MFdJM42NjCAZnGtgtCgCw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "model-gateway",
+      "seq": 1,
+      "prev": "sha256:34ec06f764eddcdad76ce5aa0e931cf9897c08d98351688a7b1e9d42c9d030b3",
+      "parents": [
+        "sha256:2d58c3d6695e2f254ae9726a5f471880be29340737cd96bc9c52f2d5f984e21c"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700005000,
+        "duration_ms": 5
+      },
+      "body": {
+        "usage": {
+          "tokens": 512
+        }
+      },
+      "provenance": {
+        "body.usage": "asserted"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "2Oe8bfpew3MWheaYoYUJLtOdTGdJR9DV46z2ioG2zJDKZKb2AsDlmK5DDbee-pjRyZgWr02lu0Z9dasI7qoEBg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "cmcp",
+      "seq": 0,
+      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "parents": [
+        "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73"
+      ],
+      "kind": "tool_call",
+      "t": {
+        "observed_at": 1794700006000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "read",
+        "decision": "allow"
+      },
+      "provenance": {
+        "body.tool": "observed"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "XVw_76ota3-kY3AAHE3EcjXjWrTDgGKhCWs4xbYNrcoD0VafpKQncT2fzrg_HTSYeIdQHtf68Z_dC1RsUrLkAg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "cmcp",
+      "seq": 1,
+      "prev": "sha256:a4c0b658e94a3bb62334b36a6906dd2eb62b63c4b4213661a75de256b8bb7768",
+      "parents": [
+        "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73"
+      ],
+      "kind": "policy_decision",
+      "t": {
+        "observed_at": 1794700007000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "delete_records",
+        "decision": "deny"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "n2kVdjZiCysUQYI_4XcVV6ZtSJVDho5qZpWAa_yAIsQ3U03obXJLUwFUJfsArZuJEyntrHd19D0WKh0Y3rZgDg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "model-gateway",
+      "seq": 2,
+      "prev": "sha256:0680bb306f77077ed8157e0d95260362f4b0248dddb42c7d7725e22aa7772c73",
+      "parents": [],
+      "kind": "heartbeat",
+      "t": {
+        "observed_at": 1794700008000,
+        "duration_ms": 5
+      },
+      "body": {
+        "peers": {
+          "cmcp": "sha256:84937a2cef13dfa2673fdaaf2f55230df6cccaf11a9a02d2c5f23be6a44ac34c",
+          "egress-proxy": "sha256:2d58c3d6695e2f254ae9726a5f471880be29340737cd96bc9c52f2d5f984e21c"
+        }
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "KdJ33-FNrua8RJ1z96CtQ6Q3Z0sPpU0mPHS205R9oF0wWsrPgzeLU4HvBj_LwuB0CBiSWPyv5HZI5NmMDw1mDA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "edge": "wrapper",
+      "seq": 1,
+      "prev": "sha256:9f3104f47dd6dcc3be73aac748a16fc62a36b3713050793bc2271b147a1bf2e9",
+      "parents": [
+        "sha256:84937a2cef13dfa2673fdaaf2f55230df6cccaf11a9a02d2c5f23be6a44ac34c",
+        "sha256:0ca9a5c7efe961e8f5f16da1af3dc97164b31d66c4381e3a49a817aa56136750"
+      ],
+      "kind": "run_end",
+      "t": {
+        "observed_at": 1794700009000,
+        "duration_ms": 5
+      },
+      "body": {
+        "outcome": "blocked"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "Lhs0kVWcyw5KZ5fgF97zSaWQCw7ncr-6rz4ShttrmWFnGb1BqZc3rJc-lK-_OUGJfT8nAXiFp0098IemrU9xBA"
+      }
+    }
+  ],
+  "expected": {
+    "classification": "rejected",
+    "codes": [
+      "chain_gap"
+    ]
+  }
+}
