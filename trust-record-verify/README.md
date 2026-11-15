@@ -62,8 +62,14 @@ same first failure for the same record. It is documented beside the function.
 `verifyRun(blocks, pinnedKeys)` checks the blocks of one agent run against the keys
 pinned for each edge, as [`docs/rfcs/behavior-trace.md`](../docs/rfcs/behavior-trace.md)
 describes. It returns `verified`, `truncated` (genuine blocks, no `run_end`) or `rejected`
-with codes. It follows `prototype/behavior_trace.py` rule for rule, and both are held to
-the vectors in [`examples/behavior-trace/`](../examples/behavior-trace/).
+with codes. A bad `pinnedKeys` throws; bad blocks only ever become codes.
+
+`verified` means every block is authentic and correctly linked and the run is closed by a
+`run_end`. It does not mean the record is complete. Bound the input size before calling.
+
+It follows `prototype/behavior_trace.py` rule for rule. Section 6 of the RFC says how the
+two are held to each other: the vectors in
+[`examples/behavior-trace/`](../examples/behavior-trace/) and a randomized comparison.
 
 ## What it does not do
 
