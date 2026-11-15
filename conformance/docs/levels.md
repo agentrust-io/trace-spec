@@ -135,7 +135,7 @@ Level 1 adds hardware attestation: the record names the TEE (trusted execution e
 
 Level 2 adds two things: a fingerprint of the log of tool calls the agent made, and proof that the record was entered in a public, append-only transparency log, so it cannot be quietly swapped later. SCITT is the standard format for such logs.
 
-The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT receipt. The suite checks that it parses and that the scheme and host are present; it does not resolve the URI, and it does not recognise a placeholder value.
+The `transparency` field must be the pre-reserved canonical HTTPS URI of one registry entry. The suite checks URI shape, then TR-ANC-002 compares the resolved entry's `log_id` and `entry_id` and verifies inclusion. The command-line interface's `--entry-dir` lookup is only a local map; it cannot authenticate log publication and returns an unverified anchor. A library caller needs an independently authenticated resolver source before asserting `entry_source_authenticated=True` and earning Level 2.
 
 **Minimum conformant Level 2 record** (additional fields over Level 1):
 
@@ -156,7 +156,7 @@ The `transparency` field must be an HTTPS URI with a host, pointing to a SCITT r
 - `tool_transcript.hash` missing or not a valid `sha256:` or `sha384:` digest: TR-TXN-001
 - `tool_transcript.call_count` negative or not an integer: TR-TXN-002
 - `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host: TR-ANC-001
-- no anchor receipt or no registry entry was supplied, either is malformed, the receipt's `merkle_root` or `leaf_count` differs from the entry's, or the inclusion proof does not reproduce the committed `merkle_root`: TR-ANC-002. A record cannot reach Level 2 on a URI alone: pass the receipt with `--receipt` and the entry with `--entry`
+- no anchor receipt was supplied, the exact signed entry URI cannot be resolved, the resolved `log_id`/`entry_id` names another URI, the receipt or entry is malformed, or inclusion fails: TR-ANC-002. A raw `--entry` or local `--entry-dir` map is diagnostic evidence only and cannot earn Level 2
 - `policy.policy_uri` is present, a resolver was supplied with `--policy-dir`, and the bundle could not be read: TR-POL-003. Unverified rather than failed, and unverified fails the run from Level 2
 
 ---
@@ -175,6 +175,7 @@ which that stops being tolerable is a property of the check.
 
 | Code | UNVERIFIED fails the run from level |
 |------|-------------------------------------|
+| TR-ANC-002 | 2 |
 | TR-SIG-005 | 1 |
 | TR-POL-003 | 2 |
 

@@ -1,21 +1,22 @@
 # TR-ANC: Transparency
 
-Checks that the record was entered in a public, append-only log, so it cannot be quietly replaced later. TR-ANC-001 checks the link to the log entry. TR-ANC-002 uses a receipt and the registry entry you supply to prove, offline, that this exact record is in that entry. Both apply from Level 2.
+Checks whether the record was entered in the log entry its signed `transparency` value names. TR-ANC-001 checks URI shape. TR-ANC-002 compares the resolved entry's canonical identity and proves inclusion; a Level 2 pass additionally requires the caller to authenticate the entry source independently. Both apply from Level 2.
 
 ??? info "Technical detail: what the receipt proof covers"
     The log follows SCITT, the IETF format for transparency services. The receipt carries an
     inclusion proof (a short list of hashes linking the record to a Merkle root, the single
     hash that commits to the whole log). The receipt's `merkle_root` and `leaf_count` must
-    equal those of the registry entry you pass with `--entry` (one line in the shape of
-    Anchor Format §4), and the proof is then replayed against that root. Nothing yet
-    identifies an entry from the `transparency` URI, so the check does not establish that
-    the entry is the one the record names, and the pass message says so (trace-spec#448
-    finding 21). Whether a public log really published the entry is also outside this
-    module, as [Known limitations](../../LIMITATIONS.md) explains.
+    equal those of the resolved registry entry (one line in the shape of Anchor Format §4),
+    and the proof is then replayed against that root. `--entry-dir` supplies an
+    `entries.json` map from each exact signed URI to a local snapshot. The map alone
+    cannot establish that the named log published it; the command-line interface
+    reports a matching entry and proof as unverified. The library API can record
+    a pass only when its caller separately authenticates the resolver's source,
+    as [Known limitations](../../LIMITATIONS.md) explains.
 
 ## Required at Level 2+
 
 | Test ID | Description | Positive Case | Negative Case |
 |---------|-------------|---------------|---------------|
 | TR-ANC-001 | `transparency` is an `https://` URI with a host. Not resolved | `https://transparency.example/entries/abc123` | missing field, empty string, non-string, `http://`, bare path, `ipfs://` |
-| TR-ANC-002 | The record's inclusion proof (`leaf_index` and `audit_path`) replays to the supplied registry entry's `merkle_root` and `leaf_count` from the leaf of the complete signed claim, signature included (Anchor Format §1; for `cmcp-runtime` that is the whole envelope, not the nested `trace`), per RFC 9162 over an RFC 6962 tree; any `merkle_root` or `leaf_count` the receipt carries equals the entry's, and the entry's `ts` is an ISO-8601 UTC timestamp ending in `Z`. Offline, no network. The link from the `transparency` URI to the entry is not checked | a receipt whose `audit_path` reproduces the entry's `merkle_root` from the record's leaf, with or without its own copy of `merkle_root` and `leaf_count` | no receipt supplied, no entry supplied, malformed entry or `ts`, a receipt-carried `merkle_root` or `leaf_count` differing from the entry's, missing `leaf_index`/`audit_path`, non-hex audit node, out-of-range `leaf_index`, proof for a different record, record modified after anchoring, a `cmcp-runtime` proof over the nested `trace` only, an envelope re-signed or with a changed signature after anchoring |
+| TR-ANC-002 | The exact signed `transparency` URI resolves to an independently authenticated entry whose canonical `log_id`/`entry_id` URI matches byte for byte; the record's inclusion proof (`leaf_index` and `audit_path`) then replays to that entry's `merkle_root` and `leaf_count` from the complete signed claim, signature included (Anchor Format §§1, 4, and 6; for `cmcp-runtime` that is the whole envelope, not the nested `trace`). Offline, no network | a caller-authenticated resolver for the named entry and a receipt whose `audit_path` reproduces that entry's `merkle_root` | unresolved URI, unauthenticated local map, presenter-supplied entry only, identity from another log or checkpoint, malformed entry, mismatched root/count, malformed proof, proof for a different record, or modified signed claim |

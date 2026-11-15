@@ -588,11 +588,11 @@ class TrustRecord(_TraceModel):
     build_provenance: BuildProvenance
     appraisal: Appraisal
     transparency: Annotated[str, Field(min_length=1)] | None = None
-    """SCITT receipt URI resolving to the inclusion proof on the transparency log.
+    """Signed URI naming the exact registry entry that anchors this record.
 
     Optional in the model, and required by conformance at **Level 2**, where
     `TR-ANC` runs (`agentrust-trace-tests`). A Level 0 or Level 1 record is not
-    anchored, so it has no receipt to name, and the model must be able to
+    anchored, so it has no entry to name, and the model must be able to
     represent that. Enforcing a non-empty value here regardless of level made the
     model stricter than both the conformance suite and `schema/trace-claim.json`,
     which sets no minimum length.

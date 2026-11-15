@@ -20,15 +20,19 @@ import json
 import re
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 LEAF_PREFIX = b"\x00"
 NODE_PREFIX = b"\x01"
 _HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")  # fullmatch: $ admits a trailing newline
+_DNS_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+_URI_SEGMENT_RE = re.compile(r"[A-Za-z0-9._~-]+")
 
 __all__ = [
     "InclusionError",
     "canonical_claim_bytes",
     "decode_hash",
+    "entry_uri",
     "parse_entry",
     "verify_inclusion",
 ]
@@ -191,7 +195,7 @@ def parse_receipt(receipt: object) -> tuple[int, list[bytes], int, bytes]:
     return leaf_index, audit_path, leaf_count, merkle_root
 
 
-_ENTRY_STRINGS = ("ts", "producer", "batch_id")
+_ENTRY_STRINGS = ("ts", "producer", "batch_id", "log_id", "entry_id")
 _UTC_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z")
 
 
@@ -206,8 +210,59 @@ def _is_utc_timestamp(value: str) -> bool:
     return True
 
 
-def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
-    """Validate a registry entry and return (merkle_root, leaf_count, producer, batch_id).
+def entry_uri(log_id: object, entry_id: object) -> str:
+    """Return the canonical section 4 URI for one pre-reserved registry entry."""
+    if not isinstance(log_id, str) or not log_id:
+        raise InclusionError("registry entry log_id must be a non-empty string")
+    if not isinstance(entry_id, str) or not _URI_SEGMENT_RE.fullmatch(entry_id):
+        raise InclusionError(
+            "registry entry entry_id must contain only ASCII letters, digits, '.', '_', '~', "
+            "and '-', and must begin with a letter or digit"
+        )
+    if not entry_id[0].isalnum() or not entry_id[0].isascii():
+        raise InclusionError("registry entry entry_id must begin with an ASCII letter or digit")
+
+    try:
+        parsed = urlsplit(log_id)
+        port = parsed.port
+    except ValueError as exc:
+        raise InclusionError(f"registry entry log_id is not a canonical HTTPS URI: {exc}") from exc
+    hostname = parsed.hostname
+    if (
+        parsed.scheme != "https"
+        or not log_id.startswith("https://")
+        or hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or "?" in log_id
+        or "#" in log_id
+        or log_id.endswith("/")
+        or any(ord(ch) <= 0x20 or ord(ch) == 0x7F for ch in log_id)
+    ):
+        raise InclusionError("registry entry log_id must be a canonical HTTPS base URI")
+    if hostname != hostname.lower() or any(
+        not _DNS_LABEL_RE.fullmatch(label) for label in hostname.split(".")
+    ):
+        raise InclusionError("registry entry log_id must use an ASCII lowercase DNS name")
+    if port == 443:
+        raise InclusionError("registry entry log_id must omit the default HTTPS port")
+    expected_authority = hostname if port is None else f"{hostname}:{port}"
+    if parsed.netloc != expected_authority:
+        raise InclusionError("registry entry log_id authority is not canonical")
+    if parsed.path:
+        segments = parsed.path.removeprefix("/").split("/")
+        if not parsed.path.startswith("/") or any(
+            segment in {".", ".."} or not segment or not _URI_SEGMENT_RE.fullmatch(segment)
+            for segment in segments
+        ):
+            raise InclusionError("registry entry log_id path is not canonical")
+    return f"{log_id}/{entry_id}"
+
+
+def parse_entry(entry: object) -> tuple[bytes, int, str, str, str, str]:
+    """Validate an entry and return its root, count, producer, batch, log, and entry IDs.
 
     The entry is the registry-anchor-v1 section 4 line the receipt claims to
     commit to. Fields beyond section 4 are ignored rather than rejected, because
@@ -217,7 +272,9 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
         raise InclusionError(f"registry entry must be a JSON object, got {type(entry).__name__}")
 
     missing = [
-        k for k in ("ts", "merkle_root", "leaf_count", "producer", "batch_id") if k not in entry
+        k
+        for k in ("ts", "merkle_root", "leaf_count", "producer", "batch_id", "log_id", "entry_id")
+        if k not in entry
     ]
     if missing:
         raise InclusionError(f"registry entry is missing required field(s): {', '.join(missing)}")
@@ -238,4 +295,12 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
             f"registry entry leaf_count must be an integer >= 1, got {leaf_count!r}"
         )
 
-    return decode_hash(entry["merkle_root"]), leaf_count, entry["producer"], entry["batch_id"]
+    entry_uri(entry["log_id"], entry["entry_id"])
+    return (
+        decode_hash(entry["merkle_root"]),
+        leaf_count,
+        entry["producer"],
+        entry["batch_id"],
+        entry["log_id"],
+        entry["entry_id"],
+    )

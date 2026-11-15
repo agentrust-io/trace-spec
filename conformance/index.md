@@ -105,7 +105,7 @@ The table uses the specification's own terms. Each module's page explains them.
 | Policy | `TR-POL` | Bundle hash, enforcement mode, TEE binding |
 | Appraisal | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp |
 | Transcript | `TR-TXN` | Tool-call transcript hash binding (Phase 2+) |
-| Transparency | `TR-ANC` | SCITT receipt URI, inclusion proof |
+| Transparency | `TR-ANC` | Canonical registry-entry URI, authenticated resolution, inclusion proof |
 | Provenance | `TR-SCA` | SLSA level, builder URI, digest format |
 
 The suite tracks [TRACE Spec v0.2](https://trace.agentrust-io.com). See [Changelog](CHANGELOG.md) for what moved between suite versions.

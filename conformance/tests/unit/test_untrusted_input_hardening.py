@@ -252,6 +252,8 @@ def _entry_for(receipt: dict[str, Any]) -> dict[str, Any]:
         "leaf_count": receipt["leaf_count"],
         "producer": "hardening/1.0.0",
         "batch_id": "hardening-1",
+        "log_id": "https://log.example.com/e",
+        "entry_id": "1",
     }
 
 
@@ -281,7 +283,13 @@ def test_claim_inside_the_anchor_profile_is_proven() -> None:
         "none": None,
     }
     receipt = _single_leaf_receipt(claim)
-    findings = tr_anc.check(claim, receipt=receipt, entry=_entry_for(receipt))
+    entry = _entry_for(receipt)
+    findings = tr_anc.check(
+        claim,
+        receipt=receipt,
+        entry_resolver=lambda _uri: json.dumps(entry).encode(),
+        entry_source_authenticated=True,
+    )
     assert _status(findings, "TR-ANC-002") is Status.PASS
 
 

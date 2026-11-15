@@ -59,8 +59,8 @@ Look up a code from a failed or unverified check here: what it means and how to 
 
 | Code | Description | How to fix |
 |------|-------------|------------|
-| TR-ANC-001 | `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host | Submit the record to a SCITT transparency log and set `transparency` to the returned receipt URI. The URI is not resolved and the receipt behind it is not fetched; this is a format check on the pointer, and TR-ANC-002 is what checks the anchor |
-| TR-ANC-002 | No anchor receipt or no registry entry was supplied, either is malformed, the receipt's `merkle_root` or `leaf_count` differs from the entry's, or replaying the inclusion proof does not reproduce the committed `merkle_root` | Pass the receipt with `--receipt` and the registry entry it commits to with `--entry`. Without both, Level 2 cannot pass. A receipt whose root or count differs from the entry's does not describe that entry. If the proof does not verify, the record is not in that tree or it has been modified since it was anchored. A pass does not check that the entry is the one the `transparency` URI names |
+| TR-ANC-001 | `transparency` is absent or empty, is not a string, or is not an `https://` URI with a host | Reserve the canonical Anchor Format v1 entry URI before signing and set `transparency` to that exact URI. TR-ANC-002 resolves and checks the named entry |
+| TR-ANC-002 | The signed entry URI could not be resolved, its source was not authenticated, its canonical `log_id`/`entry_id` identity differs, the receipt or resolved entry is malformed, or inclusion fails | Pass the receipt with `--receipt`. `--entry` and `--entry-dir` diagnose identity and inclusion but cannot independently authenticate the named log or earn Level 2. A caller using the library API must authenticate the source before asserting `entry_source_authenticated=True` |
 
 ## TR-SCA: Provenance
 

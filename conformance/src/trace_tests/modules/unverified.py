@@ -30,6 +30,7 @@ from trace_tests.result import Finding
 #: counts as a failure. Registered here and in ``docs/levels.md``; the two are
 #: held equal by ``tests/test_docs_match_the_modules.py``.
 UNVERIFIED_FAILS_FROM_LEVEL: dict[str, int] = {
+    "TR-ANC-002": 2,
     "TR-SIG-005": 1,
     "TR-POL-003": 2,
 }

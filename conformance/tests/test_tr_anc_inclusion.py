@@ -72,11 +72,17 @@ def _entry(receipt: dict) -> dict:
         "leaf_count": receipt["leaf_count"],
         "producer": "inclusion-test/1.0.0",
         "batch_id": "inclusion-1",
+        "log_id": "https://log.example.com/entries",
+        "entry_id": "1",
     }
 
 
 def _trace(n: int = 0) -> dict:
-    return {"transparency": "https://log.example.com/entries/1", "iat": 1000 + n, "subject": f"agent-{n}"}
+    return {
+        "transparency": "https://log.example.com/entries/1",
+        "iat": 1000 + n,
+        "subject": f"agent-{n}",
+    }
 
 
 def _codes(findings) -> dict[str, Status]:
@@ -96,7 +102,8 @@ def test_a_uri_pointing_nowhere_no_longer_earns_level_2():
 def test_the_pass_message_no_longer_overstates_what_was_checked():
     trace = {"transparency": "https://example.invalid/nothing-here"}
     anc001 = next(f for f in tr_anc.check(trace) if f.code == "TR-ANC-001")
-    assert "pointer" in anc001.message
+    assert "well-formed https URI" in anc001.message
+    assert "TR-ANC-002 checks" in anc001.message
 
 
 # --- real proofs -----------------------------------------------------------
@@ -105,7 +112,13 @@ def test_the_pass_message_no_longer_overstates_what_was_checked():
 def test_a_genuine_inclusion_proof_passes(count, index):
     claims = [_trace(i) for i in range(count)]
     receipt = _receipt(claims, index)
-    codes = _codes(tr_anc.check(claims[index], receipt=receipt, entry=_entry(receipt)))
+    entry = _entry(receipt)
+    codes = _codes(tr_anc.check(
+        claims[index],
+        receipt=receipt,
+        entry_resolver=lambda _uri: json.dumps(entry).encode(),
+        entry_source_authenticated=True,
+    ))
     assert codes["TR-ANC-002"] is Status.PASS
 
 
@@ -188,7 +201,8 @@ def test_a_missing_transparency_field_still_fails(value):
 
 
 def test_a_non_https_uri_still_fails():
-    assert _codes(tr_anc.check({"transparency": "http://log.example.com/1"}))["TR-ANC-001"] is Status.FAIL
+    findings = tr_anc.check({"transparency": "http://log.example.com/1"})
+    assert _codes(findings)["TR-ANC-001"] is Status.FAIL
 
 
 def test_a_non_string_transparency_still_fails():

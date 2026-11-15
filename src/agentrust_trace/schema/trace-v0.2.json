@@ -663,7 +663,7 @@
     "transparency": {
       "type": "string",
       "format": "uri",
-      "description": "SCITT receipt URI. The Trust Record is the Signed Statement; this URI resolves to the inclusion proof (Receipt) on the transparency log."
+      "description": "Signed registry-entry URI. At Level 2 it must be the canonical log_id/entry_id URI defined by Registry Anchor Format v1; the verifier resolves that exact URI through the named log or an authenticated mirror and separately verifies the inclusion proof against the resolved entry."
     },
     "cnf": {
       "type": "object",

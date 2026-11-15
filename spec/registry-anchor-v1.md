@@ -92,10 +92,16 @@ An anchor is recorded as one JSON object carrying these required fields:
 | `leaf_count` | integer | Number of leaves in the batch, `>= 1` |
 | `producer` | string | Identifier of the party that produced and submitted the batch |
 | `batch_id` | string | Producer-scoped unique identifier for the batch |
+| `log_id` | string | Stable canonical HTTPS base URI identifying the transparency log |
+| `entry_id` | string | Log-scoped identifier reserved before the record is signed and naming this exact entry |
 
 ```json
-{"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001"}
+{"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001","log_id":"https://registry.example/entries","entry_id":"0000000421"}
 ```
+
+`log_id` MUST use lowercase `https`, an ASCII lowercase DNS name, no user information, query, fragment, percent encoding, dot segment, empty path segment, trailing slash, or explicit default port. A non-default port MAY be present. `entry_id` MUST consist only of ASCII letters, digits, `.`, `_`, `~`, and `-`, MUST begin with a letter or digit, and MUST be unique and immutable within the log. A log profile that uses entry ordering, including TRACE v0.2 revocation, MUST allocate entry IDs monotonically under one documented comparison rule.
+
+The canonical entry URI is the exact string `log_id + "/" + entry_id`. The registry MUST reserve that URI before the record is signed, MUST publish only this entry at that URI, and MUST NOT later reuse or retarget it. Reservation avoids a circular construction: the URI and ID do not depend on the Merkle root, while the root still commits to the complete signed record containing that URI. <!-- CHANGED: #672 - bind the signed transparency URI to one log entry -->
 
 An entry may also carry optional log-profile fields such as `canonicalization_id` (identifying the leaf canonicalization profile) and `mmr_checkpoint` (or other transparency-log checkpoint metadata). A verifier that does not consume optional entry fields ignores them rather than rejecting the entry.
 
@@ -116,7 +122,7 @@ A producer gives each claim holder an inclusion proof:
 
 ### 5.1 Verification algorithm
 
-Inputs: the claim object, the proof (`leaf_index`, `audit_path`), and the registry entry (`merkle_root`, `leaf_count`). All `sha256:<hex>` strings decode to 32 raw bytes.
+Inputs: the claim object, the proof (`leaf_index`, `audit_path`), and the registry entry resolved and authenticated as required by §6. All `sha256:<hex>` strings decode to 32 raw bytes.
 
 ```
 1. If leaf_index >= leaf_count, reject.
@@ -145,19 +151,22 @@ It does not validate the claim's signature, and it does not validate the claim's
 
 ## 6. Relationship to the `transparency` claim
 
-TRACE v0.2 makes `transparency` optional below Level 2, because an unanchored Level 0 or Level 1 record has no receipt to name. Where it is present, it identifies the registry entry that anchors the record.
+TRACE v0.2 makes `transparency` optional below Level 2, because an unanchored Level 0 or Level 1 record has no entry to name. Where it is present for Level 2, it MUST equal the canonical entry URI from §4 byte for byte. The Trust Record signature authenticates that identifier; the URI's `log_id` prefix selects the log, and its final `entry_id` selects the exact pre-reserved entry or checkpoint within that log.
 
 At **Level 2 and above the anchor is what makes the record independently checkable**, so a verifier appraising a Level 2 record MUST be able to retrieve the entry and check inclusion without contacting the record's issuer. A `transparency` value that resolves only through the issuer's own infrastructure does not satisfy this.
 
 A Level 2 verdict MUST rest on the registry entry itself, held by the verifier as the third input of §5.1, and not on a `merkle_root` and `leaf_count` carried only beside the proof. Where a receipt carries its own `merkle_root` or `leaf_count`, the verifier MUST check that each equals the entry's and MUST refuse the anchor if either differs. A verifier that does not hold the entry MUST NOT report Level 2.
 
-This document does not yet define how an entry is identified from the `transparency` value, so a verifier cannot check that the entry it holds is the one the record names. Until that is defined, a Level 2 verdict establishes inclusion in the entry the verifier was given, and a verifier MUST state that the link from `transparency` to that entry was not checked. Defining the link is tracked as finding 21 of [trace-spec#448](https://github.com/agentrust-io/trace-spec/issues/448).
+Before applying §5.1, the verifier MUST resolve the exact signed `transparency` URI through the named log or a verifier-controlled authenticated mirror. The resolved entry's `log_id` and `entry_id` MUST reconstruct that URI byte for byte. Redirects, aliases, a lookup under a different URI, and an entry supplied only by the record presenter do not establish this binding. If resolution or authentication is unavailable, the result is incomplete or unverified and MUST NOT earn Level 2. If the reconstructed URI differs, the anchor MUST be rejected. Only after this comparison succeeds may §5.1 establish inclusion in the named entry.
+
+These checks are ordered deliberately. A valid proof against an independently supplied entry proves membership in that entry, but says nothing about the log and entry named by the signed record. Comparing the authenticated resolution first prevents a presenter from substituting a valid proof and entry from another log while retaining the signed identity of the intended log.
 
 ## 7. Reference implementations
 
 Named so that "here is the algorithm, and here is one implementation that is not the definition" is available as a pairing. Neither is normative.
 
-- **`trace-verify`** (PyPI): `pip install trace-verify`, then verify a claim against a proof and an entry. Standard library only.
+- **`trace-tests`** (this repository's conformance package): a local `entries.json` map can diagnose URI identity and replay a proof, but cannot authenticate publication in the named log or earn Level 2 by itself. Library callers may assert a separately authenticated entry source before requesting a Level 2 verdict.
+- **`trace-verify`** (PyPI): verifies a claim against a proof and an entry. Its proof replay is only the §5.1 step; a caller MUST also enforce the §6 authenticated resolution and identity comparison before treating the result as Level 2.
 - A single-file standalone verifier and the anchoring tool ship in the registry repository, deliberately self-contained so they can be copied and audited in isolation rather than trusted.
 
 ## 8. Conformance

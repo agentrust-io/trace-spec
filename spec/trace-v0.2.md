@@ -541,7 +541,7 @@ A signature stays valid forever. A record signed by a key that was later comprom
 
 **Why `iat` cannot carry the boundary.** The obvious rule is to reject a record from a revoked key when its `iat` is later than the compromise time. A compromised record-signing key also signs the `iat` field, so an attacker holding the key backdates it and the rule passes. Any revocation rule anchored to a timestamp the compromised key controls is defeated by the compromise it is meant to contain. This is not a clock-skew problem and no tolerance setting fixes it.
 
-**Anchor: transparency-log entry ordering.** Entry IDs in the log named by the record's SCITT receipt are monotonic and cryptographically bound to the Merkle structure. The attacker cannot choose an entry ID for a record submitted after the log has moved past it, and cannot reorder entries already committed. Ordering therefore survives the compromise of the record-signing key, which a timestamp does not.
+**Anchor: transparency-log entry ordering.** The signed `transparency` value names one log and pre-reserved entry under Registry Anchor Format v1 §4 and §6. Entry IDs in that log are monotonic and bound to the authenticated registry entry and its Merkle structure. The attacker cannot substitute an entry from another log, choose an earlier entry ID after the named log has moved past it, or reorder entries already committed. Ordering therefore survives the compromise of the record-signing key, which a timestamp does not. <!-- CHANGED: #672 - require the signed anchor identifier to select the compared log entry -->
 
 `TraceRevocation/1.0` claim type:
 
@@ -558,7 +558,7 @@ A signature stays valid forever. A record signed by a key that was later comprom
 }
 ```
 
-**Verifier rule.** A record signed by a revoked key is valid if and only if its SCITT inclusion entry ID is less than or equal to `last_valid_entry_id` in the applicable revocation statement, and that entry ID is on the log named by `log_id`. A record whose entry ID is greater MUST be rejected. Entry IDs from a different log are not comparable and MUST NOT be used to satisfy the rule.
+**Verifier rule.** A record signed by a revoked key is valid if and only if its authenticated Registry Anchor Format v1 `entry_id` is less than or equal to `last_valid_entry_id` in the applicable revocation statement, and the anchor entry's `log_id` exactly equals the statement's `log_id`. A record whose entry ID is greater MUST be rejected. An entry whose signed `transparency` URI was not resolved and compared under Anchor Format §6 has no authenticated log or entry ID and MUST use the fallback below. Entry IDs from a different log are not comparable and MUST NOT be used to satisfy the rule.
 
 **Fallback for records with no usable receipt.** A record without a SCITT inclusion entry ID on the named log has no external anchor, so there is no reliable way to place it before or after the compromise. Revocation for such records is binary: a verifier MUST reject every record signed by the revoked key. This is a fallback rather than a lesser mode; it is what the absence of an anchor costs, and it is the existing behaviour for deployments that carry no receipts.
 
