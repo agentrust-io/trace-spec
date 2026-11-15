@@ -488,7 +488,7 @@ def test_str_and_server_reject_empty_string_identifiers(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "bad_timeout",
-    [False, True, 0, -1.0, float("nan"), float("inf"), "5"],
+    [False, True, 0, -1.0, float("nan"), float("inf"), "5", 10**400],
 )
 def test_remote_gate_store_rejects_invalid_timeout(bad_timeout: Any) -> None:
     assert RemoteGateStore("127.0.0.1", 9999, BINARY_SECRET, timeout=2.5)._timeout == 2.5

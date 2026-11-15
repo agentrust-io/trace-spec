@@ -478,10 +478,13 @@ class RemoteGateStore:
     def __init__(self, host: str, port: int, secret: bytes, *, timeout: float = 5.0) -> None:
         if type(secret) is not bytes or len(secret) < 16:
             raise ValueError("store secret must be at least 16 bytes")
+        try:
+            finite_timeout = isinstance(timeout, (int, float)) and math.isfinite(timeout)
+        except OverflowError:
+            finite_timeout = False
         if (
             isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
+            or not finite_timeout
             or timeout <= 0
         ):
             raise ValueError("timeout must be a positive finite number")
