@@ -27,9 +27,9 @@ def _passing_record():
     """A genuinely conformant record.
 
     The ``valid_level0.json`` vector is a structural fixture: its ``iat`` is from
-    2025 and it carries no signature, so it fails Level 0 on staleness. Using it
-    to test "what does a passing report look like" would have asserted the wrong
-    thing about the code under test.
+    2025 and it carries no signature, so it fails Level 0 on both freshness and
+    signature verification. Using it to test "what does a passing report look like"
+    would have asserted the wrong thing about the code under test.
     """
     record, _key = _build_signed_cmcp_record()
     return record
@@ -191,14 +191,16 @@ def test_html_escapes_record_content() -> None:
 # --- badge -----------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "vector,expected",
-    [("valid_level0.json", "Level 0"), ("invalid_wrong_profile.json", "fails Level 0")],
-)
-def test_badge_states_the_level(vector: str, expected: str) -> None:
-    svg = report_mod.badge_svg(_build(load_vector(vector)))
+def test_badge_states_failure_for_unsigned_level_zero_record() -> None:
+    svg = report_mod.badge_svg(_build(load_vector("valid_level0.json")))
     assert svg.startswith("<svg")
-    assert expected in svg
+    assert "fails Level 0" in svg
+
+
+def test_badge_states_level_for_signed_record() -> None:
+    svg = report_mod.badge_svg(_build(_passing_record(), fmt="cmcp-runtime"))
+    assert svg.startswith("<svg")
+    assert "Level 0" in svg
 
 
 def test_badge_is_static_svg() -> None:

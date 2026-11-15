@@ -97,7 +97,7 @@ finding.skipped()     # True when status == SKIP
 finding.unverified()  # True when status == UNVERIFIED
 ```
 
-`UNVERIFIED` is distinct from `SKIP`. It means the check could not reach the evidence it needed: for TR-SIG-005, a signature that can be verified; for TR-POL-003, a policy bundle that could be read. Each code has a level from which it counts as a failure (TR-SIG-005 from Level 1, TR-POL-003 from Level 2; see [Unverified findings](../levels.md#unverified-findings)), so a caller cannot mistake an unverified record for a passing one.
+`UNVERIFIED` is distinct from `SKIP`. It means the check could not reach the evidence it needed: for TR-SIG-005, a signature that can be verified; for TR-POL-003, a policy bundle that could be read. Each code has a level from which it counts as a failure (TR-SIG-005 from Level 0, TR-POL-003 from Level 2; see [Unverified findings](../levels.md#unverified-findings)), so a caller cannot mistake an unverified record for a passing one.
 
 ---
 

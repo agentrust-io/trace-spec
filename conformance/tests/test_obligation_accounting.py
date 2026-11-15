@@ -814,7 +814,7 @@ def test_registry_binds_declared_sources_rules_candidate_bytes_and_hash(
         "https://github.com/agentrust-io/trace-tests",
         "src/trace_tests/modules/unverified.py",
         "finding_counts_as_level_failure",
-        {"TR-POL-003": 2, "TR-SIG-005": 1},
+        {"TR-POL-003": 2, "TR-SIG-005": 0},
         1,
     )
     assert policy["source_sha256"] == (
@@ -1101,7 +1101,7 @@ def test_frozen_policy_lets_a_finding_tighten_but_never_relax_its_code() -> None
     looser = Finding("TR-SIG-005", Status.UNVERIFIED, "m", unverified_fails_from_level=2)
     tighter = Finding("TR-POL-003", Status.UNVERIFIED, "m", unverified_fails_from_level=0)
     assert [accounting._frozen_policy_counts(looser, lv, policy) for lv in (0, 1, 2)] == [
-        False, True, True,
+        True, True, True,
     ]
     assert [accounting._frozen_policy_counts(tighter, lv, policy) for lv in (0, 1, 2)] == [
         True, True, True,
@@ -1365,7 +1365,7 @@ def test_report_tally_uses_the_execution_policy_snapshot(
         generated_at="2026-08-31 12:00 UTC",
     )
     document = json.loads(report.to_json(built))
-    assert document["levels"][0]["failures"] == 0
+    assert document["levels"][0]["failures"] == 1
     assert (
         document["obligation_accounting"]["registry"]["contribution_policy"][
             "unverified_fails_from_level"

@@ -13,9 +13,10 @@ on every ASCII record, which is every record this suite carried, so nothing here
 failed while the suite told conformant implementations they were not.
 
 A plain trace record carrying a ``signature`` field is verified against it. One
-without a signature cannot be, so TR-SIG fails closed: at any level that requires
-signatures (level >= 1) the result is FAIL; at level 0 it is an explicit UNVERIFIED
-finding, so a record with nothing to check is never reported as verified.
+without a signature cannot be, so TR-SIG fails closed: at level 1 and above the
+result is FAIL; at level 0 it is an explicit UNVERIFIED finding that the central
+contribution policy counts as a failure. A record with nothing to check therefore
+cannot receive a conformance PASS at any level.
 """
 
 from __future__ import annotations
@@ -237,7 +238,8 @@ def check(trace: dict[str, Any], record: dict[str, Any], fmt: str, level: int = 
 
     Plain trace records with an embedded ``signature`` field are verified with Ed25519
     (agentrust-trace ``sign_record()`` output). Plain trace records without a signature
-    field FAIL at level >= 1 and are UNVERIFIED at level 0.
+    field FAIL at level >= 1. At level 0 they are UNVERIFIED, and the central
+    contribution policy counts that finding as a conformance failure.
     """
     if fmt == "cmcp-runtime":
         return check_cmcp_runtime(record)
