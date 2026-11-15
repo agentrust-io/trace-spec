@@ -65,7 +65,10 @@ describes. It returns `verified`, `truncated` (genuine blocks, no `run_end`) or 
 with codes. A bad `pinnedKeys` throws; bad blocks only ever become codes.
 
 `verified` means every block is authentic and correctly linked and the run is closed by a
-`run_end`. It does not mean the record is complete. Bound the input size before calling.
+`run_end`. It does not mean the record is complete.
+
+Runs over 100,000 blocks throw unless you pass `{ maxBlocks }`; `null` lifts the limit.
+Bound the input's size in bytes before parsing it.
 
 It implements the same rules as `prototype/behavior_trace.py`. Section 6 of the RFC says
 how the two are held to each other: the vectors in

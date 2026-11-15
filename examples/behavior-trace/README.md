@@ -7,7 +7,8 @@ blocks recording the steps of one agent run. Nothing here binds an implementatio
 ## Running them
 
 ```
-python -m pytest tests/test_behavior_trace.py tests/test_behavior_trace_parity.py
+python -m pytest tests/test_behavior_trace.py tests/test_behavior_trace_parity.py \
+  tests/test_behavior_trace_mutants.py
 npm --prefix trust-record-verify test
 ```
 
@@ -19,5 +20,5 @@ copying it. Keys come from fixed seeds, so the bytes are the same on every run.
 
 Each file holds `blocks`, the `pinned_keys` trusted for each edge, and `expected`: a
 `classification` (`verified`, `truncated` or `rejected`) and the sorted `codes`. There are
-39: 4 verified, 2 truncated and 33 rejected, with at
+42: 5 verified, 2 truncated and 35 rejected, with at
 least two vectors for every code.
