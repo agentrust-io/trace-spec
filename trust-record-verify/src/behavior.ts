@@ -1,8 +1,8 @@
 /**
  * Verify behavior-trace blocks (docs/rfcs/behavior-trace.md).
  *
- * Experimental. Mirrors prototype/behavior_trace.py rule for rule, so both
- * give the same classification and codes for the same run.
+ * Experimental. Implements the same rules as prototype/behavior_trace.py.
+ * Section 6 of the RFC says how the two are held to each other.
  *
  * Bad configuration (`pinnedKeys`, a non-array `blocks`) throws a
  * TraceVerificationError. Bad blocks never throw: they become codes.
@@ -265,11 +265,22 @@ export async function verifyRun(blocks: unknown, pinnedKeys: unknown): Promise<R
     }
   }
 
-  // A run_end must be the one block at the end of the wrapper chain.
+  // A run_end must be the one block at the end of the wrapper chain, and no
+  // block may name it as a parent: a parent link means "happened before".
+  // A heartbeat may still name it as a peer, recording that its edge saw the end.
   const ends = run.flatMap((b, i) => (b.kind === "run_end" ? [i] : []));
   const wrapper = chains.get("wrapper");
-  const terminal = wrapper === undefined ? [] : (wrapper.get(Math.max(...wrapper.keys())) ?? []);
-  if (ends.length > 1 || ends.some((i) => terminal.length !== 1 || terminal[0] !== i)) {
+  let last = -1;
+  for (const seq of wrapper?.keys() ?? []) {
+    last = Math.max(last, seq); // a loop, not a spread: a spread overflows on long chains
+  }
+  const terminal = wrapper?.get(last) ?? [];
+  const endDigests = new Set(ends.map((i) => digests[i] as string));
+  if (
+    ends.length > 1 ||
+    ends.some((i) => terminal.length !== 1 || terminal[0] !== i) ||
+    run.some((b) => b.parents.some((p) => endDigests.has(p)))
+  ) {
     codes.add("block_after_end");
   }
 

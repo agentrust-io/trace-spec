@@ -215,11 +215,18 @@ def verify_run(blocks: Any, pinned_keys: Any) -> dict[str, Any]:
                 if d not in by_digest or by_digest[d]["edge"] != edge:
                     codes.add("heartbeat_peer_unknown")
 
-    # A run_end must be the one block at the end of the wrapper chain.
+    # A run_end must be the one block at the end of the wrapper chain, and no
+    # block may name it as a parent: a parent link means "happened before".
+    # A heartbeat may still name it as a peer, recording that its edge saw the end.
     ends = [i for i, b in enumerate(blocks) if b["kind"] == "run_end"]
     wrapper = chains.get("wrapper", {})
     terminal = wrapper[max(wrapper)] if wrapper else []
-    if len(ends) > 1 or any(terminal != [i] for i in ends):
+    end_digests = {digests[i] for i in ends}
+    if (
+        len(ends) > 1
+        or any(terminal != [i] for i in ends)
+        or any(end_digests.intersection(b["parents"]) for b in blocks)
+    ):
         codes.add("block_after_end")
 
     return _result(codes, ended=bool(ends))

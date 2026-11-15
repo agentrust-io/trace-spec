@@ -24,8 +24,8 @@ def _load(path: pathlib.Path) -> dict[str, Any]:
 
 
 def test_vectors_were_found() -> None:
-    assert len(ALL) == 35
-    assert len(VALID) == 5
+    assert len(ALL) == 39
+    assert len(VALID) == 6
 
 
 @pytest.mark.parametrize("path", ALL, ids=lambda p: p.stem)

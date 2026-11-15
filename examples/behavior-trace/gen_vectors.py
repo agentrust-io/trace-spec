@@ -273,6 +273,25 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
         ("34-provenance-dotted-path", "Provenance uses a dotted path, not a JSON Pointer.",
          build(tweak(run_a(), "C0", provenance={"body.tool": "observed"})), "rejected",
          ["schema_invalid"]),
+        ("36-fork-at-run-end", "Another wrapper block shares the run_end's seq.",
+         build(run_a() + [
+             {"label": "W1b", "edge": "wrapper", "kind": "approval", "seq": 1, "prev": "W0",
+              "body": {"by": "x"}},
+         ]), "rejected", ["block_after_end", "fork"]),
+        ("37-tool-call-after-end", "A cmcp block names the run_end as its parent.",
+         build(run_a() + [
+             {"label": "C2", "edge": "cmcp", "kind": "tool_call", "parents": ["W1"],
+              "body": {"tool": "send_email"}},
+         ]), "rejected", ["block_after_end"]),
+        ("38-model-call-after-end", "A model block names the run_end as its parent.",
+         build(run_a() + [
+             {"label": "M2", "edge": "model-gateway", "kind": "model_call", "parents": ["W1"]},
+         ]), "rejected", ["block_after_end"]),
+        ("39-valid-heartbeat-sees-end", "A heartbeat names the run_end as a peer.",
+         build(run_a() + [
+             {"label": "M2", "edge": "model-gateway", "kind": "heartbeat",
+              "peers": {"wrapper": "W1", "cmcp": "C1"}},
+         ]), "verified", []),
         ("35-provenance-index-leading-zero", "Provenance uses an array index with a leading zero.",
          build(tweak(run_a(), "C0", provenance={"/parents/00": "observed"})), "rejected",
          ["provenance_path_invalid"]),
