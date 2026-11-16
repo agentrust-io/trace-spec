@@ -14,6 +14,7 @@ import json
 import pathlib
 import shutil
 import subprocess
+import sys
 import types
 from typing import Any
 
@@ -111,6 +112,10 @@ MUTANTS: dict[str, tuple[str | None, str | None, str | None, str | None, list[st
         "if not _validator().is_valid(block):", "if False:",
         "if (!validateBlock(block)) {", "if (false) {",
         ["40-raw-content-in-body", "41-args-not-a-commitment"]),
+    "array index digits not bounded": (
+        "            and len(token) <= _MAX_INDEX_DIGITS\n", "",
+        None, None,  # Number() never throws, so TypeScript needs no bound
+        ["44-provenance-index-many-digits"]),
     "patterns use Python $ semantics": (
         'pattern.replace("$", r"\\Z")', "pattern",
         None, None,  # JavaScript has ECMA-262 semantics natively
@@ -138,6 +143,16 @@ def _apply(source: str, old: str, new: str) -> str:
 
 
 def _python_failing(source: str) -> set[str]:
+    """Vectors the source gets wrong, run at Python's lowest int() digit limit."""
+    before = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(640)
+    try:
+        return _python_failing_at_current_limit(source)
+    finally:
+        sys.set_int_max_str_digits(before)
+
+
+def _python_failing_at_current_limit(source: str) -> set[str]:
     module = types.ModuleType("behavior_trace_mutant")
     module.__file__ = str(PROTOTYPE)  # schema is found next to this checkout
     exec(compile(source, str(PROTOTYPE), "exec"), module.__dict__)  # noqa: S102

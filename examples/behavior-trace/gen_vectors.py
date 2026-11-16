@@ -361,6 +361,14 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
          "rejected", ["schema_invalid"]),
         ("42-valid-every-kind", "One run using every kind with a full body.",
          build(run_every_kind()), "verified", []),
+        ("43-provenance-pointer-too-long", "A provenance pointer is longer than 1024 characters.",
+         build(tweak(run_a(), "M0", provenance={
+             "/body/requested_tools/" + "1" * 5000 + "/tool": "observed"})),
+         "rejected", ["schema_invalid"]),
+        ("44-provenance-index-many-digits", "A provenance index has 700 digits.",
+         build(tweak(run_a(), "M0", provenance={
+             "/body/requested_tools/" + "1" * 700 + "/tool": "observed"})),
+         "rejected", ["provenance_path_invalid"]),
     ]
 
 

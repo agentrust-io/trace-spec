@@ -28,7 +28,7 @@ const VECTORS = readdirSync(DIR)
 const VALID = VECTORS.filter((v) => v.expected.codes.length === 0);
 
 test("all vectors were found", () => {
-  assert.equal(VECTORS.length, 42);
+  assert.equal(VECTORS.length, 44);
   assert.equal(VALID.length, 7);
 });
 

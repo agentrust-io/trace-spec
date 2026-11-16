@@ -99,6 +99,7 @@
       "type": "object",
       "maxProperties": 256,
       "propertyNames": {
+        "maxLength": 1024,
         "pattern": "^/body(/([^~/]|~[01])*)+$"
       },
       "patternProperties": {

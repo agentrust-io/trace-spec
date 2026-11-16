@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import pathlib
+import sys
 from typing import Any
 
 import pytest
@@ -24,7 +25,7 @@ def _load(path: pathlib.Path) -> dict[str, Any]:
 
 
 def test_vectors_were_found() -> None:
-    assert len(ALL) == 42
+    assert len(ALL) == 44
     assert len(VALID) == 7
 
 
@@ -184,6 +185,17 @@ def test_max_blocks_limits_the_input() -> None:
         bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=len(blocks) - 1)
     assert bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=len(blocks))["codes"] == []
     assert bt.verify_run(blocks, RUN_A["pinned_keys"], max_blocks=None)["codes"] == []
+
+
+def test_a_long_index_is_a_code_at_the_lowest_int_limit() -> None:
+    # 640 is the lowest limit Python allows on int() of a digit string.
+    v = _load(VECTORS / "44-provenance-index-many-digits.json")
+    before = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(640)
+    try:
+        assert bt.verify_run(v["blocks"], v["pinned_keys"]) == v["expected"]
+    finally:
+        sys.set_int_max_str_digits(before)
 
 
 def test_max_blocks_none_lifts_the_default() -> None:

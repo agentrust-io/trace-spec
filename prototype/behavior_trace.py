@@ -111,6 +111,9 @@ def _pinned_index(pinned_keys: Any) -> dict[str, dict[str, dict[str, Any]]]:
 
 
 _INDEX = re.compile(r"(0|[1-9][0-9]*)\Z")
+# A longer index names nothing in any list, so it is refused without int(),
+# whose limit on digits depends on how the interpreter is configured.
+_MAX_INDEX_DIGITS = 15
 
 
 def _resolves(block: dict[str, Any], pointer: str) -> bool:
@@ -123,7 +126,12 @@ def _resolves(block: dict[str, Any], pointer: str) -> bool:
     for token in tokens:
         if isinstance(node, dict) and token in node:
             node = node[token]
-        elif isinstance(node, list) and _INDEX.match(token) and int(token) < len(node):
+        elif (
+            isinstance(node, list)
+            and _INDEX.match(token)
+            and len(token) <= _MAX_INDEX_DIGITS
+            and int(token) < len(node)
+        ):
             node = node[int(token)]
         else:
             return False

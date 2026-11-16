@@ -11,6 +11,7 @@ import json
 import pathlib
 import random
 import subprocess
+import sys
 from collections import Counter
 from typing import Any
 
@@ -110,7 +111,8 @@ def _mutate(rng: random.Random, blocks: list[dict[str, Any]]) -> list[dict[str, 
             b["provenance"] = {rng.choice(
                 ["/body", "/body/tool", "/body/model", "/body/requested_tools",
                  "/body/requested_tools/0/tool", "/body/requested_tools/9/tool",
-                 "/body/nope", "/body/ext/~0x", "/kind", "/sig/kid"]
+                 "/body/nope", "/body/ext/~0x", "/kind", "/sig/kid",
+                 "/body/requested_tools/" + "9" * 700 + "/tool"]
             ): "observed"}
         blocks[i] = _resign(b)
     return blocks
@@ -150,7 +152,12 @@ def _typescript(cases: list[list[dict[str, Any]]], tmp: pathlib.Path) -> list[di
 def results(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     _ensure_built()
     cases = _cases()
-    python = [bt.verify_run(c, PINNED) for c in cases]
+    before = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(640)  # the lowest limit a host can set
+    try:
+        python = [bt.verify_run(c, PINNED) for c in cases]
+    finally:
+        sys.set_int_max_str_digits(before)
     return {"python": python, "typescript": _typescript(cases, tmp_path_factory.mktemp("bt"))}
 
 
