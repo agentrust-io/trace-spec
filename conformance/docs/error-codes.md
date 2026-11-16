@@ -11,7 +11,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 | TR-ENV-003 | `subject` does not match SPIFFE URI or DID pattern | Use `spiffe://<trust-domain>/<path>` or a `did:` URI |
 | TR-ENV-004 | `cnf` is absent or not an object, `cnf.jwk` is absent or not an object, or `cnf.jwk.kty` is absent | Populate `cnf.jwk` with at least `kty`. This checks that one field; TR-ENV-006 checks the rest of the required set |
 | TR-ENV-005 | `cnf.jwk` carries private key material (`d`, `p`, `q`, `dp`, `dq`, `qi`, `k`) | Publish the public half only. RFC 8747 makes `cnf` a confirmation key, and a record is signed and usually anchored, so a key exposed this way must be treated as compromised and the identity revoked |
-| TR-ENV-006 | A field the spec requires is absent or `null` (the message names which) | Add it. A record that cannot fill a field truthfully is not a complete TRACE record and does not pass Level 0 |
+| TR-ENV-006 | A member of the schema's required tree is absent, `null` or of another JSON type (the message names each, such as `model.provider is missing` or `runtime is not an object`) | Add it with its type. A record that cannot fill a field truthfully is not a complete TRACE record and does not pass Level 0 |
 
 ## TR-SIG: Signature
 

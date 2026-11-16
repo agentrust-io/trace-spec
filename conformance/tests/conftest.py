@@ -174,6 +174,8 @@ def _build_software_only_record() -> dict:
                 "enforcement_mode": "enforce",
             },
             "data_class": "internal",
+            "model": {"provider": "example-provider", "model_id": "example-model"},
+            "build_provenance": {"slsa_level": 0, "digest": "sha256:" + "c" * 64},
             "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, "kid": kid}},
             "appraisal": {"status": "affirming", "verifier": "https://verifier.example.org"},
         },

@@ -16,12 +16,73 @@ _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 # Applied with fullmatch: $ alone also matches before a trailing newline.
 _SUBJECT_RE = re.compile(r'^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$')
 _IAT_MIN = 1_700_000_000
-#: The record's required members (spec 3.1). Equal to the schema's `required`
-#: list; test_required_fields_parity fails if the two drift.
-_REQUIRED = (
-    "eat_profile", "iat", "subject", "model", "runtime",
-    "policy", "data_class", "build_provenance", "appraisal", "cnf",
+#: The schema's unconditional required tree (spec 3.1: every field is required
+#: unless marked OPTIONAL): each member reached through `required`, from the root
+#: and into required objects, with its JSON type. Equal to schema/trace-claim.json;
+#: test_required_tree_parity fails if the two drift.
+_REQUIRED: tuple[tuple[str, str], ...] = (
+    ("eat_profile", "string"),
+    ("iat", "integer"),
+    ("subject", "string"),
+    ("model", "object"),
+    ("model.provider", "string"),
+    ("model.model_id", "string"),
+    ("runtime", "object"),
+    ("runtime.platform", "string"),
+    ("runtime.measurement", "string"),
+    ("policy", "object"),
+    ("policy.bundle_hash", "string"),
+    ("policy.enforcement_mode", "string"),
+    ("data_class", "string"),
+    ("build_provenance", "object"),
+    ("build_provenance.slsa_level", "integer"),
+    ("build_provenance.digest", "string"),
+    ("appraisal", "object"),
+    ("appraisal.status", "string"),
+    ("appraisal.verifier", "string"),
+    ("cnf", "object"),
+    ("cnf.jwk", "object"),
+    ("cnf.jwk.kty", "string"),
 )
+
+
+def _has_type(value: Any, json_type: str) -> bool:
+    """JSON Schema's type test. An integer is any number with no fractional part,
+    as TR-ENV-002 already reads `iat`; a bool is never a number."""
+    if json_type == "object":
+        return isinstance(value, dict)
+    if json_type == "string":
+        return isinstance(value, str)
+    if json_type == "integer":
+        if isinstance(value, bool):
+            return False
+        return isinstance(value, int) or (isinstance(value, float) and value.is_integer())
+    raise ValueError(f"no type test for {json_type!r}")
+
+
+def _required_tree_errors(trace: dict[str, Any]) -> list[str]:
+    """One entry per required member that is absent, null or of the wrong type.
+
+    A member under one that failed is not reported again. Formats and enums are
+    the field modules' checks, and conditional rules are not read here.
+    """
+    errors: list[str] = []
+    failed: list[str] = []
+    for path, json_type in _REQUIRED:
+        *parents, name = path.split(".")
+        if any(path.startswith(f + ".") for f in failed):
+            continue
+        node: Any = trace
+        for part in parents:
+            node = node[part]
+        value = node.get(name)
+        if value is None:
+            errors.append(f"{path} is missing")
+            failed.append(path)
+        elif not _has_type(value, json_type):
+            errors.append(f"{path} is not {'an' if json_type[0] in 'aeiou' else 'a'} {json_type}")
+            failed.append(path)
+    return errors
 _JCS_SAFE_INTEGER = 9007199254740991
 
 #: Default maximum record age (seconds). Records older than this fail freshness.
@@ -104,14 +165,15 @@ def check(trace: dict[str, Any], max_age_seconds: int = DEFAULT_MAX_AGE_SECONDS)
             ))
 
     # TR-ENV-006. Spec 3.1: every field is required unless marked OPTIONAL.
-    # The other checks read single fields, so a record missing model, runtime
-    # or build_provenance passed Level 0. Presence only; a null is not a value.
-    missing = [name for name in _REQUIRED if trace.get(name) is None]
-    if missing:
-        findings.append(Finding(
-            "TR-ENV-006", Status.FAIL, "required fields missing: " + ", ".join(missing)
-        ))
+    # The other Level 0 checks read single fields, so a record with no model,
+    # runtime or build_provenance, or with `model: {}`, passed Level 0. This is
+    # the schema's required tree, not full schema validation.
+    errors = _required_tree_errors(trace)
+    if errors:
+        findings.append(Finding("TR-ENV-006", Status.FAIL, "; ".join(errors)))
     else:
-        findings.append(Finding("TR-ENV-006", Status.PASS, "all required fields present"))
+        findings.append(Finding(
+            "TR-ENV-006", Status.PASS, "every required member is present with its type"
+        ))
 
     return findings

@@ -1,5 +1,5 @@
 {
-  "cmcp_version": "1.0",
+  "cmcp_version": "1.1",
   "trace": {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": 1748000000,
@@ -69,7 +69,8 @@
     },
     "attestation_generated_at": "2025-05-23T12:00:00Z",
     "attestation_validity_seconds": 3600,
-    "attestation_stale": false
+    "attestation_stale": false,
+    "trace_omitted": []
   },
-  "signature": "k9P6xD5Ozg6BgvfvKt0C97qC07Eg92mUyubzotcYaRwJXo-CZuqRegd8eFmg888rpPjR1jtCRdiEW9ePdgQiBg"
+  "signature": "IpKPaSUk0ucVijvxDK5JsiqHT002SckLpgIWVLJjdYmgHyT8eOhDPoTnOeWPuYXY98wI0L2q-K6T9IUVnScQAw"
 }

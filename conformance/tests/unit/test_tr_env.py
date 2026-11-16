@@ -1,5 +1,6 @@
 """Unit tests for TR-ENV module."""
 
+import copy
 import json
 import pathlib
 import time
@@ -169,28 +170,104 @@ def test_public_only_cnf_jwk_passes():
     assert findings[0].passed()
 
 
-# TR-ENV-006: spec 3.1 requires every field not marked OPTIONAL.
-@pytest.mark.parametrize("name", [k for k in _VALID if k != "tool_transcript"])
-def test_each_missing_required_field_fails(name):
-    trace = {k: v for k, v in _VALID.items() if k != name}
-    failed = [f for f in check(trace) if f.code == "TR-ENV-006" and f.failed()]
-    assert failed and name in failed[0].message
+# TR-ENV-006: the schema's unconditional required tree (spec 3.1).
+_SCHEMA = json.loads(
+    (pathlib.Path(__file__).parents[3] / "schema" / "trace-claim.json").read_text()
+)
+_PATHS = [path for path, _ in _REQUIRED]
+_WRONG = {"object": [[], "x", 1], "string": [1, [], {}], "integer": ["1", True, 1.5, {}]}
 
 
-def test_null_required_field_fails():
-    failed = [f for f in check({**_VALID, "model": None}) if f.code == "TR-ENV-006"]
-    assert failed[0].failed() and "model" in failed[0].message
+def _env006(trace):
+    [finding] = [f for f in check(trace) if f.code == "TR-ENV-006"]
+    return finding
 
 
-def test_optional_fields_are_not_required():
+def _edit(path, value=..., delete=False):
+    trace = copy.deepcopy(_VALID)
+    *parents, name = path.split(".")
+    node = trace
+    for part in parents:
+        node = node[part]
+    if delete:
+        del node[name]
+    else:
+        node[name] = value
+    return trace
+
+
+def test_required_tree_passes_on_valid():
+    assert _env006(_VALID).status is Status.PASS
+
+
+@pytest.mark.parametrize("path", _PATHS)
+def test_each_missing_required_member_fails(path):
+    finding = _env006(_edit(path, delete=True))
+    assert finding.failed() and f"{path} is missing" in finding.message
+
+
+@pytest.mark.parametrize("path", _PATHS)
+def test_each_null_required_member_fails(path):
+    finding = _env006(_edit(path, None))
+    assert finding.failed() and f"{path} is missing" in finding.message
+
+
+@pytest.mark.parametrize(
+    "path, value",
+    [(path, bad) for path, json_type in _REQUIRED for bad in _WRONG[json_type]],
+)
+def test_each_wrong_type_fails(path, value):
+    finding = _env006(_edit(path, value))
+    assert finding.failed() and f"{path} is not a" in finding.message
+
+
+@pytest.mark.parametrize("name", ["model", "runtime", "policy", "build_provenance", "appraisal", "cnf"])
+def test_empty_required_object_fails_on_its_members(name):
+    finding = _env006(_edit(name, {}))
+    assert finding.failed()
+    members = [p for p in _PATHS if p.startswith(name + ".") and p.count(".") == 1]
+    assert members and all(f"{m} is missing" in finding.message for m in members)
+
+
+def test_a_failed_member_is_not_reported_again_below():
+    finding = _env006(_edit("cnf", []))
+    assert finding.message == "cnf is not an object"
+
+
+def test_whole_number_float_is_an_integer():
+    """As JSON Schema and TR-ENV-002 read it."""
+    assert _env006(_edit("build_provenance.slsa_level", 2.0)).status is Status.PASS
+
+
+def test_optional_members_are_not_required():
     trace = {**_VALID, "tool_transcript": {"hash": "sha256:" + "d" * 64}}
-    assert [f.status for f in check(trace) if f.code == "TR-ENV-006"] == [Status.PASS]
-    assert [f.status for f in check(_VALID) if f.code == "TR-ENV-006"] == [Status.PASS]
+    assert _env006(trace).status is Status.PASS
+    trace = {k: v for k, v in _VALID.items()}
+    trace["model"] = {**trace["model"], "version": None}  # optional member, null
+    assert _env006(trace).status is Status.PASS
 
 
-def test_required_fields_parity():
-    """_REQUIRED restates the schema's required list; drift fails here."""
-    schema = json.loads(
-        (pathlib.Path(__file__).parents[3] / "schema" / "trace-claim.json").read_text()
-    )
-    assert list(_REQUIRED) == schema["required"]
+def _schema_tree(node, prefix=""):
+    """(path, type) for every member reached through `required` and `properties`."""
+    out = []
+    for name in node.get("required", []):
+        sub = node["properties"][name]
+        out.append((prefix + name, sub["type"]))
+        if sub["type"] == "object":
+            out.extend(_schema_tree(sub, prefix + name + "."))
+    return out
+
+
+def test_required_tree_parity():
+    """_REQUIRED restates the schema's required tree, in order, with types."""
+    assert list(_REQUIRED) == _schema_tree(_SCHEMA)
+    assert {t for _, t in _REQUIRED} <= set(_WRONG)
+
+
+def test_runner_reports_the_missing_runtime_vector():
+    from tests.conftest import load_vector
+    from trace_tests.runner import run
+
+    results = run(load_vector("invalid_missing_runtime.json"), "trace", 0, max_age_seconds=10**10)
+    [finding] = [f for f in results["TR-ENV"] if f.code == "TR-ENV-006"]
+    assert finding.failed() and "runtime is missing" in finding.message
