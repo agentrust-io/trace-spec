@@ -11,5 +11,6 @@ Technically, the envelope is an EAT (Entity Attestation Token, an IETF format fo
 | TR-ENV-001 | `eat_profile` present and correct URI | `tag:agentrust-io.com,2026:trace-v0.2` | missing or wrong |
 | TR-ENV-002 | `iat` is a valid Unix timestamp | integer, reasonable range | string, future date |
 | TR-ENV-003 | `subject` matches SPIFFE URI or DID | `spiffe://trust.example/agent/x` or `did:key:z6Mk...` | bare string |
-| TR-ENV-004 | `cnf.jwk.kty` is present. This is not a gate over the schema's required set | `cnf.jwk.kty` set to any value | `cnf` absent, `cnf.jwk` absent or not an object, `kty` absent |
+| TR-ENV-004 | `cnf.jwk.kty` is present. TR-ENV-006 checks the rest of the required set | `cnf.jwk.kty` set to any value | `cnf` absent, `cnf.jwk` absent or not an object, `kty` absent |
 | TR-ENV-005 | `cnf.jwk` carries no private key material | `cnf.jwk` with `kty`/`crv`/`x` only | `cnf.jwk` containing `d`, `p`, `q`, `dp`, `dq`, `qi` or `k` |
+| TR-ENV-006 | Every field the spec requires (3.1) is present: `eat_profile`, `iat`, `subject`, `model`, `runtime`, `policy`, `data_class`, `build_provenance`, `appraisal`, `cnf` | all present | any of them absent or `null` |

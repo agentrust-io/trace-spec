@@ -63,6 +63,8 @@ def _build_signed_cmcp_record(
             "enforcement_mode": "enforce",
         },
         "data_class": "internal",
+        "model": {"provider": "example-provider", "model_id": "example-model"},
+        "build_provenance": {"slsa_level": 2, "digest": "sha256:" + "c" * 64},
         "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, "kid": kid}},
         "appraisal": {"status": "affirming", "verifier": "https://verifier.example.org"},
     }

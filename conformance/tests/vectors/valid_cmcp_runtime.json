@@ -26,6 +26,18 @@
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
         "kid": "cmcp-d75a9947"
       }
+    },
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model"
+    },
+    "build_provenance": {
+      "slsa_level": 2,
+      "digest": "sha256:e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example.org"
     }
   },
   "gateway": {
@@ -59,5 +71,5 @@
     "attestation_validity_seconds": 3600,
     "attestation_stale": false
   },
-  "signature": "3IxZkIUnz9FUnYHmO-7cBO6Cyg80FGycchnUYMyQPGtFTH1gwGD0fBl8RQpBQhQh1zwCOuqO38Q4SHawnpdLDg"
+  "signature": "k9P6xD5Ozg6BgvfvKt0C97qC07Eg92mUyubzotcYaRwJXo-CZuqRegd8eFmg888rpPjR1jtCRdiEW9ePdgQiBg"
 }

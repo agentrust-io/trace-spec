@@ -16,6 +16,12 @@ _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 # Applied with fullmatch: $ alone also matches before a trailing newline.
 _SUBJECT_RE = re.compile(r'^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$')
 _IAT_MIN = 1_700_000_000
+#: The record's required members (spec 3.1). Equal to the schema's `required`
+#: list; test_required_fields_parity fails if the two drift.
+_REQUIRED = (
+    "eat_profile", "iat", "subject", "model", "runtime",
+    "policy", "data_class", "build_provenance", "appraisal", "cnf",
+)
 _JCS_SAFE_INTEGER = 9007199254740991
 
 #: Default maximum record age (seconds). Records older than this fail freshness.
@@ -96,5 +102,16 @@ def check(trace: dict[str, Any], max_age_seconds: int = DEFAULT_MAX_AGE_SECONDS)
             findings.append(Finding(
                 "TR-ENV-005", Status.PASS, "cnf.jwk carries no private key material"
             ))
+
+    # TR-ENV-006. Spec 3.1: every field is required unless marked OPTIONAL.
+    # The other checks read single fields, so a record missing model, runtime
+    # or build_provenance passed Level 0. Presence only; a null is not a value.
+    missing = [name for name in _REQUIRED if trace.get(name) is None]
+    if missing:
+        findings.append(Finding(
+            "TR-ENV-006", Status.FAIL, "required fields missing: " + ", ".join(missing)
+        ))
+    else:
+        findings.append(Finding("TR-ENV-006", Status.PASS, "all required fields present"))
 
     return findings

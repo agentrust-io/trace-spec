@@ -1,8 +1,10 @@
 """Unit tests for TR-ENV module."""
 
+import json
+import pathlib
 import time
 import pytest
-from trace_tests.modules.tr_env import check
+from trace_tests.modules.tr_env import _REQUIRED, check
 from trace_tests.result import Status
 
 _VALID = {
@@ -10,6 +12,12 @@ _VALID = {
     "iat": int(time.time()) - 600,  # fresh: 10 minutes old
     "subject": "spiffe://example.org/agent/test",
     "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": "dGVzdA"}},
+    "model": {"provider": "example-provider", "model_id": "example-model"},
+    "runtime": {"platform": "software-only", "measurement": "sha256:" + "a" * 64},
+    "policy": {"bundle_hash": "sha256:" + "b" * 64, "enforcement_mode": "enforce"},
+    "data_class": "internal",
+    "build_provenance": {"slsa_level": 0, "digest": "sha256:" + "c" * 64},
+    "appraisal": {"status": "none", "verifier": "https://verifier.example.org"},
 }
 
 
@@ -159,3 +167,30 @@ def test_public_only_cnf_jwk_passes():
 
     assert len(findings) == 1
     assert findings[0].passed()
+
+
+# TR-ENV-006: spec 3.1 requires every field not marked OPTIONAL.
+@pytest.mark.parametrize("name", [k for k in _VALID if k != "tool_transcript"])
+def test_each_missing_required_field_fails(name):
+    trace = {k: v for k, v in _VALID.items() if k != name}
+    failed = [f for f in check(trace) if f.code == "TR-ENV-006" and f.failed()]
+    assert failed and name in failed[0].message
+
+
+def test_null_required_field_fails():
+    failed = [f for f in check({**_VALID, "model": None}) if f.code == "TR-ENV-006"]
+    assert failed[0].failed() and "model" in failed[0].message
+
+
+def test_optional_fields_are_not_required():
+    trace = {**_VALID, "tool_transcript": {"hash": "sha256:" + "d" * 64}}
+    assert [f.status for f in check(trace) if f.code == "TR-ENV-006"] == [Status.PASS]
+    assert [f.status for f in check(_VALID) if f.code == "TR-ENV-006"] == [Status.PASS]
+
+
+def test_required_fields_parity():
+    """_REQUIRED restates the schema's required list; drift fails here."""
+    schema = json.loads(
+        (pathlib.Path(__file__).parents[3] / "schema" / "trace-claim.json").read_text()
+    )
+    assert list(_REQUIRED) == schema["required"]
