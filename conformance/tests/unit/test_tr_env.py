@@ -175,7 +175,11 @@ _SCHEMA = json.loads(
     (pathlib.Path(__file__).parents[3] / "schema" / "trace-claim.json").read_text()
 )
 _PATHS = [path for path, _ in _REQUIRED]
-_WRONG = {"object": [[], "x", 1], "string": [1, [], {}], "integer": ["1", True, 1.5, {}]}
+_WRONG = {
+    "object": [[], "x", 1, False],
+    "string": [1, [], {}, False],
+    "integer": ["1", True, False, 1.5, {}],
+}
 
 
 def _env006(trace):
@@ -209,7 +213,7 @@ def test_each_missing_required_member_fails(path):
 @pytest.mark.parametrize("path", _PATHS)
 def test_each_null_required_member_fails(path):
     finding = _env006(_edit(path, None))
-    assert finding.failed() and f"{path} is missing" in finding.message
+    assert finding.failed() and f"{path} is null" in finding.message
 
 
 @pytest.mark.parametrize(
@@ -221,7 +225,9 @@ def test_each_wrong_type_fails(path, value):
     assert finding.failed() and f"{path} is not a" in finding.message
 
 
-@pytest.mark.parametrize("name", ["model", "runtime", "policy", "build_provenance", "appraisal", "cnf"])
+@pytest.mark.parametrize(
+    "name", ["model", "runtime", "policy", "build_provenance", "appraisal", "cnf"]
+)
 def test_empty_required_object_fails_on_its_members(name):
     finding = _env006(_edit(name, {}))
     assert finding.failed()
@@ -271,3 +277,27 @@ def test_runner_reports_the_missing_runtime_vector():
     results = run(load_vector("invalid_missing_runtime.json"), "trace", 0, max_age_seconds=10**10)
     [finding] = [f for f in results["TR-ENV"] if f.code == "TR-ENV-006"]
     assert finding.failed() and "runtime is missing" in finding.message
+
+
+def test_every_failure_in_one_record_is_reported():
+    trace = _edit("model.provider", delete=True)
+    del trace["policy"]["bundle_hash"]
+    trace["build_provenance"]["slsa_level"] = "2"
+    trace["appraisal"] = None
+    finding = _env006(trace)
+    assert finding.failed()
+    for expected in (
+        "model.provider is missing",
+        "policy.bundle_hash is missing",
+        "build_provenance.slsa_level is not an integer",
+        "appraisal is null",
+    ):
+        assert expected in finding.message
+    assert "appraisal.status" not in finding.message
+
+
+@pytest.mark.parametrize("record", [None, [], "x", 7])
+def test_a_record_that_is_not_an_object_is_a_finding(record):
+    from trace_tests.modules.tr_env import _required_tree_errors
+
+    assert _required_tree_errors(record) == ["the record is not an object"]

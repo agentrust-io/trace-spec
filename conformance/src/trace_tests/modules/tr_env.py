@@ -60,28 +60,32 @@ def _has_type(value: Any, json_type: str) -> bool:
     raise ValueError(f"no type test for {json_type!r}")
 
 
-def _required_tree_errors(trace: dict[str, Any]) -> list[str]:
+def _required_tree_errors(trace: Any) -> list[str]:
     """One entry per required member that is absent, null or of the wrong type.
 
     A member under one that failed is not reported again. Formats and enums are
     the field modules' checks, and conditional rules are not read here.
     """
+    if not isinstance(trace, dict):
+        return ["the record is not an object"]
     errors: list[str] = []
-    failed: list[str] = []
+    failed: set[str] = set()
     for path, json_type in _REQUIRED:
         *parents, name = path.split(".")
-        if any(path.startswith(f + ".") for f in failed):
+        if any(".".join(parents[: i + 1]) in failed for i in range(len(parents))):
             continue
         node: Any = trace
         for part in parents:
             node = node[part]
-        value = node.get(name)
-        if value is None:
+        if name not in node:
             errors.append(f"{path} is missing")
-            failed.append(path)
-        elif not _has_type(value, json_type):
+        elif node[name] is None:
+            errors.append(f"{path} is null")
+        elif not _has_type(node[name], json_type):
             errors.append(f"{path} is not {'an' if json_type[0] in 'aeiou' else 'a'} {json_type}")
-            failed.append(path)
+        else:
+            continue
+        failed.add(path)
     return errors
 _JCS_SAFE_INTEGER = 9007199254740991
 
