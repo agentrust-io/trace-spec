@@ -20,5 +20,5 @@ copying it. Keys come from fixed seeds, so the bytes are the same on every run.
 
 Each file holds `blocks`, the `pinned_keys` trusted for each edge, and `expected`: a
 `classification` (`verified`, `truncated` or `rejected`) and the sorted `codes`. There are
-42: 5 verified, 2 truncated and 35 rejected, with at
+44: 5 verified, 2 truncated and 37 rejected, with at
 least two vectors for every code.
