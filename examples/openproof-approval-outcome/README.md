@@ -28,8 +28,13 @@ repository.
 re-verifies all of it on every run without importing OpenProof: the TRACE signatures,
 each reference digest recomputed with `rfc8785`, the Ed25519 signatures OpenProof made
 over its OPEC-1 bytes, and the passkey assertions of cases `01` and `03`. It also rebuilds
-case `01` under keys it generates at run time and makes 21 single changes, each signed
-again, so that every check behind a signature is seen failing on its own.
+case `01` under keys it generates at run time and makes 39 single changes, each signed
+again, so that every check behind a signature is seen failing on its own. For each change
+it then turns off the one check named for it and expects the change to pass.
+
+Those tests run the Python in that file. They do not run OpenProof's Rust or Go
+verifier, so they are evidence about the test's own checks, not a differential test
+against OpenProof.
 
 ## Fixture cases
 
@@ -43,6 +48,10 @@ record verifies as a TRACE record; what differs is what the reference resolves t
 | `03-approved-not-executed.json` | `openproof-approvals.json` | resolves | matches | yes | **no receipt** | n/a | approved, not executed |
 | `04-reference-unresolvable.json` | `openproof-approvals.json` | **no such entry** | n/a | n/a | n/a | n/a | approval unconfirmed |
 | `05-approval-outside-trust.json` | `openproof-approvals.json` | resolves | matches | **no** | n/a | n/a | approval not attributable |
+
+`Witnessed` means the witness key signed a checkpoint whose count and head are this
+receipt's. It does not mean the history before the receipt was replayed or compared with
+a checkpoint pinned elsewhere.
 
 `02` is the same approval with its content rewritten in the store after the record was
 issued. The record's digest no longer matches, and the content would no longer hash to
