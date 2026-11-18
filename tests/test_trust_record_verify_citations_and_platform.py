@@ -177,6 +177,50 @@ out.checks.badCitationResolver = await codeOf(() =>
 out.checks.badPlatformAppraiser = await codeOf(() =>
   trace.verifyRecord({}, { platformAppraiser: 123 })
 );
+out.checks.nonObjectParentRecordHash = await codeOf(() =>
+  trace.parentRecordHash(123)
+);
+out.checks.nonObjectParentRecordHashBadAlg = await codeOf(() =>
+  trace.parentRecordHash(123, "md5")
+);
+out.checks.nonObjectParentEmptyChild = await codeOf(() =>
+  trace.verifyDelegationLink({}, 123)
+);
+out.checks.nonObjectParentDelegationLink = await codeOf(() =>
+  trace.verifyDelegationLink(
+    {
+      delegation: {
+        parent_record_hash: "sha256:" + "a".repeat(64),
+        credential_id: "c1",
+      },
+    },
+    123,
+  )
+);
+out.checks.nonObjectBundleDigest = await codeOf(() =>
+  trace.bundleDigest(123)
+);
+const rev01 = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "examples", "revocation-bundle", "01-fresh-well-inside-both-bounds.json"),
+    "utf8",
+  )
+);
+const nonPlainCheck = await trace.checkRevocationBundle(
+  Object.assign(new (class Bundle {})(), rev01.context.bundle),
+  {
+    trustedKeyIdentifiers: ["issuer-key-2026"],
+    trustedBundleKeys: rev01.context.trusted_bundle_keys,
+    now: rev01.context.now,
+    maxBundleAgeSeconds: rev01.context.max_bundle_age_seconds,
+    maxFutureSkewSeconds: rev01.context.max_future_skew_seconds,
+  },
+);
+out.checks.nonPlainRevocationBundle = [
+  nonPlainCheck.outcome,
+  nonPlainCheck.cause,
+  nonPlainCheck.evidence?.path ?? null,
+];
 out.checks.nonStringMeasurements = [];
 const badRuntimes = [
   {},
@@ -233,3 +277,22 @@ def test_ts_non_string_or_empty_runtime_measurement_is_field_absent(
     assert ts_results["checks"]["nonStringMeasurements"] == [
         ["not_attempted", "field_absent"]
     ] * 6
+
+
+def test_ts_non_object_inputs_rejected_in_delegation_and_bundle_digest(
+    ts_results: dict[str, Any],
+) -> None:
+    assert ts_results["checks"]["nonObjectParentRecordHash"] == "record_not_object"
+    assert (
+        ts_results["checks"]["nonObjectParentRecordHashBadAlg"]
+        == "delegation_algorithm_unsupported"
+    )
+    assert ts_results["checks"]["nonObjectParentEmptyChild"] == "record_not_object"
+    assert ts_results["checks"]["nonObjectParentDelegationLink"] == "record_not_object"
+    assert ts_results["checks"]["nonObjectBundleDigest"] == "invalid_argument"
+    assert ts_results["checks"]["nonPlainRevocationBundle"] == [
+        "unverified_for_revocation",
+        "bundle_malformed",
+        "/",
+    ]
+
