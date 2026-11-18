@@ -312,6 +312,12 @@ MEASURED_ELSEWHERE = {
                              "recomputes every verdict from the committed record and "
                              "CHAP log instead of reading expected.json",
     # Not loadable here for the same reason: every record verifies, and the cases
+    # differ only in what the reference resolves to in the OpenProof store beside them.
+    "openproof-approval-outcome": "tests/test_openproof_approval_outcome_fixtures.py, "
+                                  "which recomputes every verdict from the committed "
+                                  "record and OpenProof store instead of reading "
+                                  "expected.json",
+    # Not loadable here for the same reason: every record verifies, and the cases
     # differ only in what the reference resolves to in the appraisal store beside them.
     "condition-appraisal": "tests/test_condition_appraisal_fixtures.py, which recomputes "
                            "every verdict from the committed record and appraisal store "

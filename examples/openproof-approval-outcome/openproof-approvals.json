@@ -1,0 +1,125 @@
+{
+  "resolver": "https://openproof.example.org/owners/release-desk",
+  "signed_trust": {
+    "payload": {
+      "authority": "4af715c9ca07177711845af4082f817e1a24ecb7bc5c8aff6c0ced8cfb765317",
+      "epoch": 2,
+      "expires_at": 1794274131,
+      "owner_passkey": {
+        "from_sequence": 1,
+        "origin": "http://localhost:8765",
+        "public_key": "04db3783c283aeeddf4b9eaab42856a42c05f190657b2f1b8c5b8ceb89e8fc934a6055162afd736c01da3b3699929b3cca1a44963543703315b5cb06096833a943",
+        "rp_id": "localhost"
+      },
+      "previous_authorities": [],
+      "receiver": "689de07a032507e729a148cb7caf7a35e64bf6b55b7fee7ca9d21956b8f52f74",
+      "revoked_authorities": [],
+      "version": "openproof-witness/1",
+      "witness": "5b61c031656495ea5f4a465bb92de1da03e0fa27b6a78a711d5c9062fe8e2e76"
+    },
+    "signature": "9de0111393bdeadfd33cdc203e9dad7335e6bd65ada05fcf92e177d0be3f926d39c3d9bbd27d4eab171d39d48c3b7e1ade5c504ad1e3bb6ecf7a79e23ead170d"
+  },
+  "entries": {
+    "openproof/approval/fbba245132a7b9c5ac4d51fc0cafd244f034765f8c60378b75242ad601b803e9": {
+      "request": {
+        "approval": {
+          "payload": {
+            "authority": "4af715c9ca07177711845af4082f817e1a24ecb7bc5c8aff6c0ced8cfb765317",
+            "content_sha256": "2d1c5bf12b746246f14b293e129bac30667caac89faf2b45adcc7aff6ae02599",
+            "document": "release-notes",
+            "expected_version": 0,
+            "expires_at": 1794188031,
+            "nonce": "db49e7e884df0c27b4f3363dab826bbf67bb1b504f626e5c0fb8d84e3f543fd8",
+            "not_before": 1794187731,
+            "receiver": "689de07a032507e729a148cb7caf7a35e64bf6b55b7fee7ca9d21956b8f52f74",
+            "version": "openproof-witness/1"
+          },
+          "signature": "d333715a23caeae514a4a856a3720b144f72d799a7e308a0487fd0e98fa55c9b4da1988b3928dc54601c259d20eae820fcb72f2ac2cede251d85290301734a03"
+        },
+        "content": "Release 1.4: fixes the export retry.",
+        "owner_assertion": {
+          "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiLTdva1VUS251Y1dzVFZIOERLX1NSUEEwZGwtTVlEZUxkU1FxMWdHNEEtayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODc2NSJ9",
+          "signature": "MEQCIBLm_nvmsUpFgO4JN1YA-_S_kTiieLM-TsfXTxTnLV0gAiBfgZ952cfaPjNAOtASr51vREG5hxw82fThcmy4J0Kphw"
+        }
+      },
+      "receipt": {
+        "payload": {
+          "approval_sha256": "fbba245132a7b9c5ac4d51fc0cafd244f034765f8c60378b75242ad601b803e9",
+          "content_sha256": "2d1c5bf12b746246f14b293e129bac30667caac89faf2b45adcc7aff6ae02599",
+          "document": "release-notes",
+          "document_version": 1,
+          "kind": "update",
+          "observed_at": 1794187731,
+          "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+          "reason": "",
+          "sequence": 1,
+          "version": "openproof-witness/1"
+        },
+        "signature": "1f61a998c5cfddd89c27dba1abf3815817d766037e1e163115ea388152e35ef5f8f8fa7bd4c5bbaeefc2207caa5443112ff55e906ff1affa6613ede9fd0bf901"
+      },
+      "checkpoint": {
+        "payload": {
+          "count": 1,
+          "head": "6dbbc6adc951b66f6c091f3a750f12a217efb904d0c6892925b78d8c15919c12",
+          "observed_at": 1794187732,
+          "receiver": "689de07a032507e729a148cb7caf7a35e64bf6b55b7fee7ca9d21956b8f52f74",
+          "version": "openproof-witness/1"
+        },
+        "signature": "26101dd740f21a808b15df265076e7b3ccb32ae4c3ad57b26163b399f2cd78b33400e9a6b6906f1ef46b146ce1de28dafe9260cb30a40c496873f5909e33780d"
+      }
+    },
+    "openproof/approval/133b69a4506a50e8d44694ce3d9641bdc198bc2d1c4d54e5d464afaee56736d7": {
+      "request": {
+        "approval": {
+          "payload": {
+            "authority": "4af715c9ca07177711845af4082f817e1a24ecb7bc5c8aff6c0ced8cfb765317",
+            "content_sha256": "863925ab1b97a19c4a30b9e641ee0a647d112b56dee13ff675370350a115b835",
+            "document": "release-notes",
+            "expected_version": 0,
+            "expires_at": 1794188031,
+            "nonce": "30b579d5dbe7bc91e456085fd8f0bb286f0a33b030f5efea9b2f251134d3a103",
+            "not_before": 1794187731,
+            "receiver": "689de07a032507e729a148cb7caf7a35e64bf6b55b7fee7ca9d21956b8f52f74",
+            "version": "openproof-witness/1"
+          },
+          "signature": "53fb5cc819841530107475dd0f5770d6d0abb4c15540212dc7f4c66978c764dd01d5d01df1bfd9c3b07cfc42c6f647bf5601e9e621c37b8284c824322139ba04"
+        },
+        "content": "Release 1.4: no changes.",
+        "owner_assertion": {
+          "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRXp0cHBGQnFVT2pVUnBUT1BaWkJ2Y0dZdkMwY1RWVGwxR1N2cnVWbk50YyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODc2NSJ9",
+          "signature": "MEYCIQCm4gHnOJsFsnYLjczdY8qPjO7NONRc6-s9ZBsS3K7GsQIhAPIJLBJRbU5j6fnmRQdhNdyo8cHrMI5XiG103bScXIyg"
+        }
+      },
+      "receipt": null,
+      "checkpoint": null
+    },
+    "openproof/approval/9a2f7d5d0dfd6695b78d71085b9c95e4fa0c03327d5182b1d977c213ffc57457": {
+      "request": {
+        "approval": {
+          "payload": {
+            "authority": "4cfbe4058e3316829b2f0c16ce3c25fee55e3f574e6d6224a7a108625bc5470f",
+            "content_sha256": "2ebc2439f28a3d12d73b9a9b97c9a565e9ea2bef315823dcf98a131eeff7e1db",
+            "document": "release-notes",
+            "expected_version": 1,
+            "expires_at": 1794188032,
+            "nonce": "bd61e7d81b1cac255345a99aefc1d16ee79ccc2c2d49e102e4f70e4a7189563c",
+            "not_before": 1794187732,
+            "receiver": "689de07a032507e729a148cb7caf7a35e64bf6b55b7fee7ca9d21956b8f52f74",
+            "version": "openproof-witness/1"
+          },
+          "signature": "7ce93c6e15fea85a68115f25f6e9c9719408e5ff3db9ef902fdf926bd541b5d5173114932e650f18bbacc0ff8646265662a373bf161f2767702baa23f7e61706"
+        },
+        "content": "Release 1.4: forged.",
+        "owner_assertion": {
+          "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAA",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiLTdva1VUS251Y1dzVFZIOERLX1NSUEEwZGwtTVlEZUxkU1FxMWdHNEEtayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODc2NSJ9",
+          "signature": "MEQCIBLm_nvmsUpFgO4JN1YA-_S_kTiieLM-TsfXTxTnLV0gAiBfgZ952cfaPjNAOtASr51vREG5hxw82fThcmy4J0Kphw"
+        }
+      },
+      "receipt": null,
+      "checkpoint": null
+    }
+  }
+}
