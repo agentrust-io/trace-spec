@@ -234,3 +234,18 @@ def test_several_bad_blocks_give_sorted_codes() -> None:
         "classification": "rejected",
         "codes": ["key_not_pinned", "schema_invalid", "signature_invalid"],
     }
+
+
+@pytest.mark.parametrize("key", [None, "a-string", 7, {"kty": "OKP"}])
+def test_sign_block_refuses_a_non_key_with_value_error(key):
+    with pytest.raises(ValueError, match="Ed25519 private key"):
+        bt.sign_block({"kind": "run_start"}, key)
+
+
+@pytest.mark.parametrize("value", [float("nan"), 2**53, "\ud800", b"bytes"])
+def test_a_block_with_no_rfc_8785_form_is_a_value_error(value):
+    key = Ed25519PrivateKey.generate()
+    with pytest.raises(ValueError, match="RFC 8785"):
+        bt.sign_block({"kind": "run_start", "x": value}, key)
+    with pytest.raises(ValueError, match="RFC 8785"):
+        bt.block_digest({"x": value})

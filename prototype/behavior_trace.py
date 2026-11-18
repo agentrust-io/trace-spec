@@ -74,19 +74,31 @@ def _validator() -> Any:
     return _Validator(json.loads(SCHEMA_PATH.read_text(encoding="utf-8")))
 
 
+def _jcs(value: Any) -> bytes:
+    """RFC 8785 bytes; a value with no RFC 8785 form is a ValueError."""
+    try:
+        return _canonical_bytes(value)
+    except rfc8785.CanonicalizationError as exc:
+        raise ValueError(f"value has no RFC 8785 form: {exc}") from exc
+
+
 def block_digest(block: dict[str, Any]) -> str:
     """SHA-256 over the RFC 8785 form of the whole block, sig included."""
-    return "sha256:" + hashlib.sha256(_canonical_bytes(block)).hexdigest()
+    return "sha256:" + hashlib.sha256(_jcs(block)).hexdigest()
 
 
 def _signing_bytes(block: dict[str, Any]) -> bytes:
-    return _canonical_bytes({k: v for k, v in block.items() if k != "sig"})
+    return _jcs({k: v for k, v in block.items() if k != "sig"})
 
 
 def sign_block(block: dict[str, Any], key: Ed25519PrivateKey) -> dict[str, Any]:
-    """Return a copy of *block* with ``sig`` set by *key*."""
+    """Return a copy of *block* with ``sig`` set by *key*. Raises ValueError for a
+    block that is not a JSON object or has no RFC 8785 form, or a key that is not
+    an Ed25519 private key."""
     if not isinstance(block, dict):
         raise ValueError(f"block must be a JSON object, got {type(block).__name__}")
+    if not isinstance(key, Ed25519PrivateKey):
+        raise ValueError(f"key must be an Ed25519 private key, got {type(key).__name__}")
     unsigned = {k: copy.deepcopy(v) for k, v in block.items() if k != "sig"}
     value = base64.urlsafe_b64encode(key.sign(_signing_bytes(unsigned))).rstrip(b"=").decode()
     return {
@@ -144,7 +156,7 @@ def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str
         if not _validator().is_valid(block):
             return "schema_invalid"
         signed = _signing_bytes(block)
-    except (rfc8785.CanonicalizationError, RecursionError):
+    except (ValueError, RecursionError):  # no RFC 8785 form, or nested too deep
         return "schema_invalid"
     jwk = pinned.get(block["edge"], {}).get(block["sig"]["kid"])
     if jwk is None:
