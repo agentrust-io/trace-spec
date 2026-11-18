@@ -29,7 +29,13 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from jsonschema import ValidationError
 
-from agentrust_trace.sign import _b64url_decode, _canonical_bytes, _integer_value
+from agentrust_trace.sign import (
+    JCS_SAFE_INTEGER,
+    _JWK_PRIVATE_PARAMS,
+    _b64url_decode,
+    _canonical_bytes,
+    _integer_value,
+)
 from agentrust_trace.validate import validate_json
 
 DELEGATION_DIGEST_ALGORITHMS: tuple[str, ...] = ("sha256", "sha384")
@@ -83,25 +89,17 @@ def parent_record_hash(record: dict[str, Any], algorithm: str = "sha256") -> str
     if not isinstance(algorithm, str) or algorithm not in DELEGATION_DIGEST_ALGORITHMS:
         raise DelegationError(f"unsupported chain digest algorithm {algorithm!r}")
     if not isinstance(record, dict):
-        raise DelegationError(
-            f"record must be a JSON object, got {type(record).__name__}"
-        )
+        raise DelegationError(f"record must be a JSON object, got {type(record).__name__}")
     try:
         canonical = _canonical_bytes(record)
     except (rfc8785.CanonicalizationError, ValueError, TypeError) as exc:
-        raise DelegationError(
-            f"record has no RFC 8785 canonical form: {exc}"
-        ) from exc
+        raise DelegationError(f"record has no RFC 8785 canonical form: {exc}") from exc
     return f"{algorithm}:{hashlib.new(algorithm, canonical).hexdigest()}"
 
 
 def _normalize_supported_algorithms(value: Any) -> tuple[str, ...]:
-    if isinstance(value, (str, bytes, bytearray, dict)) or not isinstance(
-        value, Iterable
-    ):
-        raise DelegationError(
-            "supported_digest_algorithms must be an iterable of algorithm names"
-        )
+    if isinstance(value, (str, bytes, bytearray, dict)) or not isinstance(value, Iterable):
+        raise DelegationError("supported_digest_algorithms must be an iterable of algorithm names")
     items = tuple(value)
     if not items or not all(isinstance(alg, str) and alg for alg in items):
         raise DelegationError(
@@ -126,18 +124,12 @@ def verify_delegation_link(
     """
     supported = _normalize_supported_algorithms(supported_digest_algorithms)
     if not isinstance(child, dict):
-        raise DelegationError(
-            f"child record must be a JSON object, got {type(child).__name__}"
-        )
+        raise DelegationError(f"child record must be a JSON object, got {type(child).__name__}")
     if not isinstance(parent, dict):
-        raise DelegationError(
-            f"parent record must be a JSON object, got {type(parent).__name__}"
-        )
+        raise DelegationError(f"parent record must be a JSON object, got {type(parent).__name__}")
     delegation = child.get("delegation")
     if delegation is None:
-        raise DelegationError(
-            "the record has no delegation block, so it claims no parent hop"
-        )
+        raise DelegationError("the record has no delegation block, so it claims no parent hop")
     if not isinstance(delegation, dict):
         raise DelegationError("the record's delegation member is not an object")
     if set(delegation) != {"parent_record_hash", "credential_id"}:
@@ -152,9 +144,7 @@ def verify_delegation_link(
         or not isinstance(credential_id, str)
         or not credential_id
     ):
-        raise DelegationError(
-            "the delegation block needs a parent_record_hash and a credential_id"
-        )
+        raise DelegationError("the delegation block needs a parent_record_hash and a credential_id")
     separator = stated.find(":")
     algorithm = "" if separator == -1 else stated[:separator]
     if algorithm not in supported:
@@ -163,9 +153,7 @@ def verify_delegation_link(
             "implement; section 3.1.3 forbids falling back to another one"
         )
     if algorithm not in DELEGATION_DIGEST_ALGORITHMS:
-        raise DelegationError(
-            f"digest algorithm {algorithm!r} is not one this build can compute"
-        )
+        raise DelegationError(f"digest algorithm {algorithm!r} is not one this build can compute")
     computed = parent_record_hash(parent, algorithm)
     if not (stated.isascii() and hmac.compare_digest(computed, stated)):
         raise DelegationError(
@@ -189,11 +177,7 @@ def _signature_invalid(record: dict[str, Any]) -> bool:
     jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
     if not isinstance(jwk, dict):
         return True
-    if (
-        jwk.get("kty") != "OKP"
-        or jwk.get("crv") != "Ed25519"
-        or not isinstance(jwk.get("x"), str)
-    ):
+    if jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519" or not isinstance(jwk.get("x"), str):
         return True
     signature = record.get("signature")
     if not isinstance(signature, str):
@@ -203,9 +187,7 @@ def _signature_invalid(record: dict[str, Any]) -> bool:
         canonical_body = _canonical_bytes(body)
         raw_x = _b64url_decode(jwk["x"], field="cnf.jwk.x")
         raw_sig = _b64url_decode(signature, field="signature")
-        Ed25519PublicKey.from_public_bytes(raw_x).verify(
-            raw_sig, canonical_body
-        )
+        Ed25519PublicKey.from_public_bytes(raw_x).verify(raw_sig, canonical_body)
     except (
         InvalidSignature,
         ValueError,
@@ -313,19 +295,14 @@ def _data_class_unknown(hop: Hop) -> bool:
     if hop.parent is None:
         return False
     lattice: list[str] = hop.context["data_class_lattice"]
-    return (
-        hop.record["data_class"] not in lattice
-        or hop.parent["data_class"] not in lattice
-    )
+    return hop.record["data_class"] not in lattice or hop.parent["data_class"] not in lattice
 
 
 def _data_class_widened(hop: Hop) -> bool:
     if hop.parent is None or _data_class_unknown(hop):
         return False
     lattice: list[str] = hop.context["data_class_lattice"]
-    return lattice.index(hop.record["data_class"]) > lattice.index(
-        hop.parent["data_class"]
-    )
+    return lattice.index(hop.record["data_class"]) > lattice.index(hop.parent["data_class"])
 
 
 RULES: tuple[Rule, ...] = (
@@ -346,9 +323,7 @@ RULES: tuple[Rule, ...] = (
         _digest_algorithm_unsupported,
     ),
     Rule("parent_not_found", "failure", "provenance", "resolve", _parent_not_found),
-    Rule(
-        "credential_unknown", "failure", "authorization", "link", _credential_unknown
-    ),
+    Rule("credential_unknown", "failure", "authorization", "link", _credential_unknown),
     Rule(
         "credential_issuer_mismatch",
         "failure",
@@ -364,18 +339,12 @@ RULES: tuple[Rule, ...] = (
         _credential_holder_mismatch,
     ),
     Rule("credential_window", "failure", "authorization", "link", _credential_window),
-    Rule(
-        "data_class_unknown", "warning", "unverifiable", "link", _data_class_unknown
-    ),
-    Rule(
-        "data_class_widened", "failure", "authorization", "link", _data_class_widened
-    ),
+    Rule("data_class_unknown", "warning", "unverifiable", "link", _data_class_unknown),
+    Rule("data_class_widened", "failure", "authorization", "link", _data_class_widened),
 )
 
 
-def _evaluate(
-    hop: Hop, rules: Sequence[Rule], path: str
-) -> tuple[list[str], list[str]]:
+def _evaluate(hop: Hop, rules: Sequence[Rule], path: str) -> tuple[list[str], list[str]]:
     failures: list[str] = []
     warnings: list[str] = []
     for rule in rules:
@@ -386,9 +355,7 @@ def _evaluate(
 
 def _validate_record_shape(record: Any) -> dict[str, Any]:
     if not isinstance(record, dict):
-        raise DelegationError(
-            f"each record must be a JSON object, got {type(record).__name__}"
-        )
+        raise DelegationError(f"each record must be a JSON object, got {type(record).__name__}")
     try:
         validate_json(record)
     except ValidationError as exc:
@@ -404,9 +371,7 @@ def _validate_record_shape(record: Any) -> dict[str, Any]:
 
 def _validate_context(context: Any) -> dict[str, Any]:
     if not isinstance(context, dict):
-        raise DelegationError(
-            f"context must be a JSON object, got {type(context).__name__}"
-        )
+        raise DelegationError(f"context must be a JSON object, got {type(context).__name__}")
     required = (
         "trusted_root_keys",
         "credentials",
@@ -418,18 +383,19 @@ def _validate_context(context: Any) -> dict[str, Any]:
     if missing:
         raise DelegationError(f"context is missing required field(s): {missing}")
 
-    supported = _normalize_supported_algorithms(
-        context["supported_digest_algorithms"]
-    )
+    supported = _normalize_supported_algorithms(context["supported_digest_algorithms"])
     for alg in supported:
         if alg not in DELEGATION_DIGEST_ALGORITHMS:
-            raise DelegationError(
-                f"context lists unsupported digest algorithm {alg!r}"
-            )
+            raise DelegationError(f"context lists unsupported digest algorithm {alg!r}")
 
-    max_depth = context["max_depth"]
-    if isinstance(max_depth, bool) or not isinstance(max_depth, int) or max_depth < 0:
-        raise DelegationError("context.max_depth must be a non-negative integer")
+    try:
+        max_depth = _integer_value(context["max_depth"], "context.max_depth")
+    except ValueError as exc:
+        raise DelegationError(str(exc)) from exc
+    if max_depth < 0:
+        raise DelegationError(
+            "context.max_depth must be a non-negative integer within the JCS safe-integer range"
+        )
 
     lattice = context["data_class_lattice"]
     if (
@@ -437,24 +403,27 @@ def _validate_context(context: Any) -> dict[str, Any]:
         or not isinstance(lattice, Sequence)
         or not all(isinstance(item, str) and item for item in lattice)
     ):
-        raise DelegationError(
-            "context.data_class_lattice must be a sequence of non-empty strings"
-        )
+        raise DelegationError("context.data_class_lattice must be a sequence of non-empty strings")
+    lattice_list = list(lattice)
+    if len(set(lattice_list)) != len(lattice_list):
+        raise DelegationError("context.data_class_lattice must not contain duplicate entries")
 
     trusted_keys = context["trusted_root_keys"]
-    if (
-        isinstance(trusted_keys, (str, bytes, bytearray, dict))
-        or not isinstance(trusted_keys, Iterable)
+    if isinstance(trusted_keys, (str, bytes, bytearray, dict)) or not isinstance(
+        trusted_keys, Iterable
     ):
-        raise DelegationError(
-            "context.trusted_root_keys must be an iterable of JWK objects"
-        )
+        raise DelegationError("context.trusted_root_keys must be an iterable of JWK objects")
     trusted_list = list(trusted_keys)
     if not all(isinstance(k, dict) for k in trusted_list):
-        raise DelegationError(
-            "context.trusted_root_keys must contain only JWK objects"
-        )
+        raise DelegationError("context.trusted_root_keys must contain only JWK objects")
     for jwk in trusted_list:
+        private_members = sorted(_JWK_PRIVATE_PARAMS.intersection(jwk))
+        if private_members:
+            raise DelegationError(
+                f"context.trusted_root_keys entry contains private key material "
+                f"({', '.join(repr(m) for m in private_members)}); "
+                "expected a public verification key"
+            )
         for member in ("kty", "crv", "x"):
             val = jwk.get(member)
             if not isinstance(val, str) or not val:
@@ -469,29 +438,40 @@ def _validate_context(context: Any) -> dict[str, Any]:
     credentials = context["credentials"]
     if not isinstance(credentials, dict):
         raise DelegationError("context.credentials must be a JSON object")
+    normalized_credentials: dict[str, dict[str, Any]] = {}
     for cid, cred in credentials.items():
         if not isinstance(cid, str) or not cid or not isinstance(cred, dict):
             raise DelegationError(
                 "context.credentials must map credential IDs to credential objects"
             )
-        if not isinstance(cred.get("issuer"), str) or not isinstance(
-            cred.get("holder"), str
-        ):
+        issuer = cred.get("issuer")
+        holder = cred.get("holder")
+        if not isinstance(issuer, str) or not issuer or not isinstance(holder, str) or not holder:
             raise DelegationError(
-                f"credential {cid!r} must carry string issuer and holder"
+                f"credential {cid!r} must carry non-empty string issuer and holder"
             )
+        bounds: dict[str, int] = {}
         for bound in ("not_before", "not_after"):
-            val = cred.get(bound)
-            if isinstance(val, bool) or not isinstance(val, int):
+            try:
+                val = _integer_value(cred.get(bound), f"credential {cid!r} {bound}")
+            except ValueError as exc:
+                raise DelegationError(str(exc)) from exc
+            if val < 0:
                 raise DelegationError(
-                    f"credential {cid!r} must carry integer {bound}"
+                    f"credential {cid!r} must carry integer {bound} within [0, {JCS_SAFE_INTEGER}]"
                 )
+            bounds[bound] = val
+        if bounds["not_before"] > bounds["not_after"]:
+            raise DelegationError(f"credential {cid!r} not_before must not exceed not_after")
+        normalized_credentials[cid] = {**cred, **bounds}
 
     return {
         **context,
+        "max_depth": max_depth,
         "supported_digest_algorithms": list(supported),
-        "data_class_lattice": list(lattice),
+        "data_class_lattice": lattice_list,
         "trusted_root_keys": trusted_list,
+        "credentials": normalized_credentials,
     }
 
 
@@ -510,19 +490,19 @@ def verify_delegation_chain(
     element. An implementation that reads ``records[0]`` as the root agrees with
     this one on nothing.
 
-    No cycle check, deliberately. A cycle needs each record's delegation block to
-    carry a digest covering the block that names it back, which is a hash
-    collision; the reachable analogue is an unbounded chain, and that is what
-    ``depth_exceeded`` is for. The RFC states this rather than leaving a reader to
-    wonder which of the two was forgotten.
+    Hash-consistent cycles are cryptographically unreachable: a cycle would need
+    each record's delegation block to carry a digest covering the block that names
+    it back, which is a hash collision, and the reachable analogue (an unbounded
+    chain) is governed by ``depth_exceeded``. To guarantee termination even on
+    in-memory or test-constructed graphs whose digests were bypassed or stubbed,
+    the walk tracks visited record object identities (seeded with the starting
+    leaf) and stops before re-evaluating an already-visited record.
 
     Raises :class:`DelegationError` when the caller's inputs (*records*, *leaf*,
     *context*, or *rules*) are malformed, when any record fails schema validation,
     or when *leaf* is not present in *records* under a supported digest algorithm.
     """
-    if isinstance(records, (str, bytes, bytearray, dict)) or not isinstance(
-        records, Iterable
-    ):
+    if isinstance(records, (str, bytes, bytearray, dict)) or not isinstance(records, Iterable):
         raise DelegationError("records must be an iterable of Trust Record objects")
     record_list = [_validate_record_shape(r) for r in records]
     if not record_list:
@@ -530,9 +510,7 @@ def verify_delegation_chain(
 
     validated_context = _validate_context(context)
 
-    if isinstance(rules, (str, bytes, bytearray, dict)) or not isinstance(
-        rules, Sequence
-    ):
+    if isinstance(rules, (str, bytes, bytearray, dict)) or not isinstance(rules, Sequence):
         raise DelegationError("rules must be a sequence of Rule objects")
     rule_tuple = tuple(rules)
     if not all(isinstance(r, Rule) for r in rule_tuple):
@@ -564,7 +542,7 @@ def verify_delegation_chain(
     failures: list[str] = []
     warnings: list[str] = []
     depth = 0
-    visited: set[int] = set()
+    visited: set[int] = {id(current)}
 
     while True:
         hop = Hop(
@@ -625,9 +603,7 @@ def verify_delegation_chain(
 
         current = parent
 
-    if any(
-        rule.klass == "provenance" for rule in rule_tuple if rule.code in failures
-    ):
+    if any(rule.klass == "provenance" for rule in rule_tuple if rule.code in failures):
         classification = "provenance-invalid"
     elif failures:
         classification = "authorization-invalid"
