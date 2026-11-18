@@ -80,16 +80,46 @@ def test_digest_boundary_across_public_surfaces(alg, length, suffix):
             verify_assertion(assertion, raw)
 
 
-@pytest.mark.parametrize("subject", ["did:web:caf\u00e9", "did:web:\U0001f600",
-                                     "spiffe://exam\nple.org/agent"])
-def test_preserves_existing_schema_language(subject):
-    # The negated authority class permits LF; this repair does not redefine it.
+@pytest.mark.parametrize("subject", [
+    "spiffe://example.org/agent",
+    "spiffe://trust_domain.example/agent.v1/_worker-2",
+    "did:web:example.org",
+    "did:example:factory:agent-1",
+    "did:example:factory%2Fagent",
+])
+def test_standard_subjects_pass_every_public_surface(subject):
     record = {**deepcopy(BASE), "subject": subject}
     validate_json(record)
     TrustRecord.model_validate(record)
     build_assertion(json.dumps(record).encode(), url="https://example.com/r")
     SandboxSessionResult(sandbox_id=subject, image_digest="sha256:" + "a" * 64,
                          policy_bundle_bytes=b"p", decisions=[])
+
+
+@pytest.mark.parametrize("subject", [
+    "did:web:caf\u00e9",
+    "did:web:\U0001f600",
+    "did:web:example.org/path",
+    "did:web:example%2",
+    "spiffe://exam\nple.org/agent",
+    "spiffe://user@example.org/agent",
+    "spiffe://example.org:443/agent",
+    "spiffe://example.org/a//b",
+    "spiffe://example.org/../agent",
+    "spiffe://example.org/agent?role=admin",
+])
+def test_non_identity_subjects_fail_every_public_surface(subject):
+    record = {**deepcopy(BASE), "subject": subject}
+    raw = json.dumps(record).encode()
+    import jsonschema
+    with pytest.raises(jsonschema.ValidationError):
+        validate_json(record)
+    assert not accepts(lambda: TrustRecord.model_validate(record))
+    assert not accepts(lambda: build_assertion(raw, url="https://example.com/r"))
+    assert not accepts(lambda: SandboxSessionResult(
+        sandbox_id=subject, image_digest="sha256:" + "a" * 64,
+        policy_bundle_bytes=b"p", decisions=[],
+    ))
 
 
 @pytest.mark.parametrize("retention", ["P1D", "P\u0661D", "P1D\n"])

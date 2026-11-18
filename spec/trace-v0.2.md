@@ -179,6 +179,16 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 | `iat` | Issued-at timestamp (Unix epoch) | EAT standard claim |
 | `signature` | OPTIONAL as a record field: embedded signature by the `cnf` key over the canonical record (section 3.2.2). Profiles using an enveloping signature (JWS, COSE, cMCP RuntimeClaim) omit this field and carry the signature in the envelope. The signature binding itself is mandatory either way. | JWS / COSE signature over canonical JSON |
 
+<!-- CHANGED: #671 - define subject identity grammar -->
+`subject` MUST be either a SPIFFE ID with a 1 to 255 character lowercase-ASCII trust
+domain and one or more non-empty workload path segments, or a DID conforming to the
+generic DID Core §3.1 ABNF. SPIFFE path segments use ASCII unreserved characters and
+MUST NOT be `.` or `..`; userinfo, ports, percent encoding, query and fragment
+components are not permitted. A DID method-specific identifier uses ASCII `idchar`,
+colon separators, and complete percent-encoded triplets; a DID URL path, query or
+fragment is not the identity named by this field. Neither form permits raw control
+characters or raw non-ASCII identifier text.
+
 Each field is independently verifiable. Sub-records (e.g., per-tool-call transcripts) compose under one root envelope.
 
 #### 3.1.1 `origin`: who assembled this record

@@ -111,9 +111,24 @@ def test_did_subject_passes():
 
 
 def test_did_mesh_subject_passes():
-    trace = {**_VALID, "subject": "did:mesh:spiffe://factory.example/agent/material-movement/dev"}
+    trace = {**_VALID, "subject": "did:mesh:factory.example:agent:material-movement:dev"}
     findings = check(trace)
     assert all(f.passed() for f in findings), [f for f in findings if not f.passed()]
+
+
+@pytest.mark.parametrize("subject", [
+    "spiffe://exam\nple.org/agent",
+    "spiffe://user@example.org/agent",
+    "spiffe://example.org:443/agent",
+    "spiffe://example.org/../agent",
+    "did:web:caf\u00e9",
+    "did:web:example.org/path",
+    "did:web:example%2",
+])
+def test_non_identity_subjects_fail(subject):
+    trace = {**_VALID, "subject": subject}
+    codes = {f.code for f in check(trace) if f.failed()}
+    assert "TR-ENV-003" in codes
 
 
 def test_non_spiffe_non_did_subject_fails():

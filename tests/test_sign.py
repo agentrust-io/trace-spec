@@ -37,7 +37,7 @@ def _minimal_record() -> dict:
     return {
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": 1750000000,
-        "subject": "did:mesh:spiffe://factory.example/agent/payments/prod",
+        "subject": "did:mesh:factory.example:agent:payments:prod",
         "model": {"provider": "example-provider", "model_id": "example-model"},
         "runtime": {
             "platform": "software-only",

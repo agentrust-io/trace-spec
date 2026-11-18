@@ -61,8 +61,11 @@
     },
     "subject": {
       "type": "string",
-      "description": "Workload identity as a SPIFFE SVID URI or DID URI. A SPIFFE ID carries a trust domain and a workload path within it; a DID carries a lowercase method name, per DID Core section 3.1, and a method-specific identifier. A prefix alone is not an identity: spiffe://example.org names a trust domain and no workload.",
-      "pattern": "^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
+      "description": "Workload identity as a SPIFFE ID with an ASCII trust domain and workload path, or a DID Core DID with a lowercase method and ASCII method-specific identifier. SPIFFE userinfo, ports, percent encoding, queries, fragments, empty or dot path segments, and DID URL suffixes are not identities in this field. DID percent encoding must be complete.",
+      "pattern": "^(?:spiffe://[a-z0-9_\\x2E-]{1,255}/(?:[A-Za-z0-9_-]|[A-Za-z0-9_-][A-Za-z0-9_\\x2E-]|\\x2E[A-Za-z0-9_-]|[A-Za-z0-9_\\x2E-]{3,})(?:/(?:[A-Za-z0-9_-]|[A-Za-z0-9_-][A-Za-z0-9_\\x2E-]|\\x2E[A-Za-z0-9_-]|[A-Za-z0-9_\\x2E-]{3,}))*|did:[a-z0-9]+:(?:(?:[A-Za-z0-9_\\x2E-]|%[0-9A-Fa-f]{2})|:)*(?:[A-Za-z0-9_\\x2E-]|%[0-9A-Fa-f]{2}))$",
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]"
+      }
     },
     "model": {
       "type": "object",
