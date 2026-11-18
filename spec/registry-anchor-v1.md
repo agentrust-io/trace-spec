@@ -90,9 +90,9 @@ An anchor is recorded as one JSON object carrying these required fields:
 |---|---|---|
 | `ts` | string | Anchoring time, ISO-8601 UTC with `Z` suffix |
 | `merkle_root` | string | `sha256:<hex>` root of the batch tree (§3) |
-| `leaf_count` | integer | Number of leaves in the batch, `>= 1` |
-| `producer` | string | Identifier of the party that produced and submitted the batch |
-| `batch_id` | string | Producer-scoped unique identifier for the batch |
+| `leaf_count` | integer | Number of leaves in the batch, `1 <= leaf_count <= 9007199254740991` (`2^53 - 1`) |
+| `producer` | string | Non-blank identifier of the party that produced and submitted the batch (no ASCII control characters `U+0000` to `U+001F`, `U+007F`) |
+| `batch_id` | string | Non-blank producer-scoped unique identifier for the batch (no ASCII control characters `U+0000` to `U+001F`, `U+007F`) |
 
 ```json
 {"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001"}
@@ -112,7 +112,7 @@ A producer gives each claim holder an inclusion proof:
 {"leaf_index": 0, "audit_path": ["sha256:<hex>", "sha256:<hex>"]}
 ```
 
-- `leaf_index`: 0-based position of the claim's leaf in the batch.
+- `leaf_index`: 0-based position of the claim's leaf in the batch (`0 <= leaf_index <= 9007199254740991`).
 - `audit_path`: the RFC 6962 audit path, ordered leaf-to-root: at each tree level, the sibling hash needed to recompute the parent. A level where the node was promoted, and therefore had no sibling, contributes no path element. A single-leaf batch has an empty `audit_path`.
 
 ### 5.1 Verification algorithm

@@ -151,3 +151,76 @@ def test_tuple_outside_anchor_profile_raises_inclusion_error_and_fails_tr_anc_00
     assert by_code["TR-ANC-002"].status is Status.FAIL
     assert expected in by_code["TR-ANC-002"].message
 
+
+@pytest.mark.parametrize(
+    ("claim", "expected"),
+    [
+        ({"s": "\ud800"}, "surrogate"),
+        ({"nested": ("\udfff",)}, "surrogate"),
+        ({"\ud800key": 1}, "surrogate"),
+        ({1: "val"}, "non-string object key"),  # type: ignore[dict-item]
+    ],
+    ids=["surrogate-value", "surrogate-tuple", "surrogate-key", "int-key"],
+)
+def test_surrogates_and_non_string_keys_raise_inclusion_error(
+    claim: dict[str, Any], expected: str
+):
+    with pytest.raises(InclusionError, match=expected):
+        canonical_claim_bytes(claim)
+
+
+def test_cyclic_claim_raises_inclusion_error_while_shared_acyclic_succeeds():
+    shared = {"k": 1}
+    assert canonical_claim_bytes({"a": shared, "b": shared}) == b'{"a":{"k":1},"b":{"k":1}}'
+
+    cyc_dict: dict[str, Any] = {}
+    cyc_dict["self"] = cyc_dict
+    with pytest.raises(InclusionError, match="circular reference"):
+        canonical_claim_bytes(cyc_dict)
+
+    cyc_list: list[Any] = []
+    cyc_list.append(cyc_list)
+    with pytest.raises(InclusionError, match="circular reference"):
+        canonical_claim_bytes({"lst": cyc_list})
+
+
+@pytest.mark.parametrize(
+    "bad_receipt",
+    [
+        {**_RECEIPT, "leaf_index": True},
+        {**_RECEIPT, "leaf_index": "0"},
+        {**_RECEIPT, "leaf_index": -1},
+        {**_RECEIPT, "leaf_index": 2**53},
+        {**_RECEIPT, "leaf_count": 0},
+        {**_RECEIPT, "leaf_count": 2**53},
+        {**_RECEIPT, "leaf_index": 1, "leaf_count": 1},
+    ],
+)
+def test_parse_proof_and_receipt_reject_invalid_leaf_index_or_count(
+    bad_receipt: dict[str, Any]
+):
+    from trace_tests.inclusion import parse_proof, parse_receipt
+
+    with pytest.raises(InclusionError):
+        parse_proof(bad_receipt)
+    with pytest.raises(InclusionError):
+        parse_receipt(bad_receipt)
+
+
+@pytest.mark.parametrize(
+    "bad_entry",
+    [
+        {**_ENTRY, "producer": "   "},
+        {**_ENTRY, "producer": "prod\n1.0"},
+        {**_ENTRY, "batch_id": "batch\x001"},
+        {**_ENTRY, "leaf_count": 2**53},
+    ],
+)
+def test_parse_entry_rejects_whitespace_or_control_chars_and_unsafe_leaf_count(
+    bad_entry: dict[str, Any]
+):
+    from trace_tests.inclusion import parse_entry
+
+    assert parse_entry({**_ENTRY, "producer": "Example Gateway 1.0"})[2] == "Example Gateway 1.0"
+    with pytest.raises(InclusionError):
+        parse_entry(bad_entry)
