@@ -43,6 +43,32 @@ class ExecutionDenied(ValueError):
     pass
 
 
+def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ExecutionDenied("duplicate_json_key")
+        result[key] = value
+    return result
+
+
+def _b64url_uint(value: Any, label: str) -> int:
+    if (
+        not isinstance(value, str)
+        or not re.fullmatch(r"[A-Za-z0-9_-]+", value)
+        or len(value) % 4 == 1
+    ):
+        raise ValueError(f"HCLAkPub {label}")
+    raw = base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+    if (
+        not raw
+        or raw[0] == 0
+        or base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value
+    ):
+        raise ValueError(f"HCLAkPub {label} encoding")
+    return int.from_bytes(raw, "big")
+
+
 def _digest_set(values: frozenset[str], name: str) -> None:
     if not isinstance(values, frozenset) or any(
         not isinstance(v, str) or not _HEX64.fullmatch(v) for v in values
@@ -221,10 +247,17 @@ def _secure_boot_state(events: list[UefiEvent]) -> bool:
     for event in events:
         if event.pcr != 7 or event.event_type != EV_EFI_VARIABLE_DRIVER_CONFIG:
             continue
+        if not isinstance(event.data, bytes) or len(event.data) < 32:
+            raise ExecutionDenied("secure_boot_state")
         if hashlib.sha256(event.data).digest() != event.sha256:
             raise ExecutionDenied("uefi_variable_digest")
         name_len, data_len = struct.unpack_from("<QQ", event.data, 16)
-        name = event.data[32 : 32 + 2 * name_len].decode("utf-16-le")
+        if 32 + 2 * name_len + data_len != len(event.data):
+            raise ExecutionDenied("secure_boot_state")
+        try:
+            name = event.data[32 : 32 + 2 * name_len].decode("utf-16-le")
+        except UnicodeDecodeError as exc:
+            raise ExecutionDenied("secure_boot_state") from exc
         if name == "SecureBoot":
             found.append(event.data[32 + 2 * name_len : 32 + 2 * name_len + data_len])
     if len(found) != 1 or found[0] not in (b"\x00", b"\x01"):
@@ -466,24 +499,22 @@ def authenticate_ak(
     if parsed.report_data != hashlib.sha256(runtime_json).digest() + bytes(32):
         raise ExecutionDenied("hcl_runtime_binding")
     try:
-        doc = json.loads(runtime_json)
+        doc = json.loads(runtime_json, object_pairs_hook=_pairs)
         keys = [k for k in doc["keys"] if isinstance(k, dict) and k.get("kid") == "HCLAkPub"]
-        if len(keys) != 1 or _JWK_PRIVATE_PARAMS.intersection(keys[0]):
-            raise ValueError("HCLAkPub")
-        n = keys[0]["n"]
-        if not isinstance(n, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", n):
-            raise ValueError("HCLAkPub n")
-        n_bytes = base64.b64decode(n + "=" * (-len(n) % 4), altchars=b"-_", validate=True)
         if (
-            not n_bytes
-            or n_bytes[0] == 0
-            or base64.urlsafe_b64encode(n_bytes).rstrip(b"=").decode("ascii") != n
+            len(keys) != 1
+            or keys[0].get("kty") != "RSA"
+            or _JWK_PRIVATE_PARAMS.intersection(keys[0])
         ):
-            raise ValueError("HCLAkPub n encoding")
-        modulus = int.from_bytes(n_bytes, "big")
+            raise ValueError("HCLAkPub")
+        modulus = _b64url_uint(keys[0]["n"], "n")
+        exponent = _b64url_uint(keys[0]["e"], "e")
+        if modulus.bit_length() < 2048 or exponent != 65537:
+            raise ValueError("HCLAkPub key size or exponent")
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
         raise ExecutionDenied("hcl_ak") from exc
-    if modulus != ak.public_numbers().n:
+    numbers = ak.public_numbers()
+    if (modulus, exponent) != (numbers.n, numbers.e):
         raise ExecutionDenied("ak_not_hcl_bound")
     return ak
 
@@ -505,7 +536,7 @@ def _runtime_claims(packet: dict[str, Any]) -> dict[str, Any]:
     runtime = _b64(packet.get("hcl_b64"), "hcl")[32 + 1184 :]
     json_len = int.from_bytes(runtime[16:20], "little")
     try:
-        claims = json.loads(runtime[20 : 20 + json_len])
+        claims = json.loads(runtime[20 : 20 + json_len], object_pairs_hook=_pairs)
         vm_id = claims["vm-configuration"]["vmUniqueId"]
         secure_boot = claims["vm-configuration"]["secure-boot"]
     except (KeyError, ValueError, TypeError) as exc:
@@ -580,33 +611,52 @@ def execution_component(
 
 def authenticode_sha256(image: bytes) -> str:
     """PE Authenticode SHA-256, the digest firmware logs for boot applications."""
-    pe = struct.unpack_from("<I", image, 0x3C)[0]
-    if image[pe : pe + 4] != b"PE\x00\x00":
+    if not isinstance(image, bytes) or len(image) < 0x40:
         raise ValueError("not a PE image")
-    sections = struct.unpack_from("<H", image, pe + 6)[0]
-    optional_size = struct.unpack_from("<H", image, pe + 20)[0]
-    opt = pe + 24
-    magic = struct.unpack_from("<H", image, opt)[0]
-    datadir = opt + (112 if magic == 0x20B else 96)
-    checksum = opt + 64
-    cert_entry = datadir + 8 * 4
-    headers_size = struct.unpack_from("<I", image, opt + 60)[0]
-    cert_offset, cert_size = struct.unpack_from("<II", image, cert_entry)
+    try:
+        pe = struct.unpack_from("<I", image, 0x3C)[0]
+        if pe + 24 > len(image) or image[pe : pe + 4] != b"PE\x00\x00":
+            raise ValueError("not a PE image")
+        sections = struct.unpack_from("<H", image, pe + 6)[0]
+        optional_size = struct.unpack_from("<H", image, pe + 20)[0]
+        opt = pe + 24
+        magic = struct.unpack_from("<H", image, opt)[0]
+        if magic not in (0x10B, 0x20B):
+            raise ValueError("malformed PE image")
+        datadir = opt + (112 if magic == 0x20B else 96)
+        checksum = opt + 64
+        cert_entry = datadir + 8 * 4
+        headers_size = struct.unpack_from("<I", image, opt + 60)[0]
+        cert_offset, cert_size = struct.unpack_from("<II", image, cert_entry)
+        table = opt + optional_size
+        if (
+            cert_entry + 8 > table
+            or table + 40 * sections > headers_size
+            or headers_size > len(image)
+        ):
+            raise ValueError("malformed PE image")
+        if (cert_offset == 0) != (cert_size == 0) or (
+            cert_offset and (cert_offset < headers_size or cert_offset + cert_size != len(image))
+        ):
+            raise ValueError("malformed PE image")
+        raw = []
+        for i in range(sections):
+            size, pointer = struct.unpack_from("<II", image, table + 40 * i + 16)
+            if size:
+                raw.append((pointer, size))
+    except struct.error as exc:
+        raise ValueError("malformed PE image") from exc
+    end = len(image) - (cert_size if cert_offset else 0)
     digest = hashlib.sha256()
     digest.update(image[:checksum])
     digest.update(image[checksum + 4 : cert_entry])
     digest.update(image[cert_entry + 8 : headers_size])
-    table = opt + optional_size
-    raw = []
-    for i in range(sections):
-        size, pointer = struct.unpack_from("<II", image, table + 40 * i + 16)
-        if size:
-            raw.append((pointer, size))
     hashed = headers_size
     for pointer, size in sorted(raw):
+        if pointer < hashed or pointer + size > end:
+            raise ValueError("malformed PE image")
         digest.update(image[pointer : pointer + size])
         hashed = max(hashed, pointer + size)
-    end = len(image) - (cert_size if cert_offset else 0)
     if end > hashed:
         digest.update(image[hashed:end])
     return digest.hexdigest()
