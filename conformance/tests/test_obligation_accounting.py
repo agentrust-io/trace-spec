@@ -814,7 +814,7 @@ def test_registry_binds_declared_sources_rules_candidate_bytes_and_hash(
         "https://github.com/agentrust-io/trace-tests",
         "src/trace_tests/modules/unverified.py",
         "finding_counts_as_level_failure",
-        {"TR-POL-003": 2, "TR-SIG-005": 1},
+        {"TR-ANC-002": 2, "TR-POL-003": 2, "TR-SIG-005": 1},
         1,
     )
     assert policy["source_sha256"] == (

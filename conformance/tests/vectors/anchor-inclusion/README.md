@@ -52,5 +52,7 @@ dependencies. Agreement between these implementations is a local cross-check,
 not acceptance by an external verifier maintainer or a whole-record verdict.
 
 Limits: no online receipt retrieval, registry append-only check, signature
-validation, MMR receipts, or whole-record Level 2 verdict is measured here. This
-set does not resolve trace-spec#448 row 21's self-referential transparency issue.
+validation, MMR receipts, or whole-record Level 2 verdict is measured here. The
+test supplies each synthetic entry through an exact-URI resolver so the vectors
+can continue to isolate proof replay; authenticated resolver provenance is tested
+separately in `test_tr_anc_entry_binding.py`.

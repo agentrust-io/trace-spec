@@ -198,8 +198,8 @@ class TraceAGTAdapter:
                 being built, and stamping ``affirming`` on an unappraised record puts a
                 verdict in the field a consumer reads to find out whether anybody
                 checked. Set this only when an appraisal actually happened.
-            transparency: SCITT receipt URI. ``None`` means unanchored, which is correct
-                below Level 2 and leaves the key out of the record.
+            transparency: Pre-reserved canonical registry-entry URI. ``None`` means
+                unanchored, which is correct below Level 2 and leaves the key out of the record.
         """
         _check_utf8_str(model_provider, "model_provider")
         _check_utf8_str(model_id, "model_id")

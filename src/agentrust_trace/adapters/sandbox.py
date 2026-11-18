@@ -363,8 +363,8 @@ class TraceSandboxAdapter:
                 built, and stamping ``affirming`` on an unappraised record puts a verdict
                 in the field a consumer reads to find out whether anybody checked. Set
                 this only when an appraisal actually happened.
-            transparency: SCITT receipt URI. ``None`` means unanchored, which is correct
-                below Level 2 and leaves the key out of the record.
+            transparency: Pre-reserved canonical registry-entry URI. ``None`` means
+                unanchored, which is correct below Level 2 and leaves the key out of the record.
             build_provenance_slsa_level: Defaults to 0, meaning no provenance claim. Raise
                 it only when a builder genuinely produced the attested level.
         """

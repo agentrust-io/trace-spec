@@ -104,7 +104,7 @@ remains an unsigned self-report; see [Known Limitations](LIMITATIONS.md).
 | Policy | `TR-POL` | Bundle hash, enforcement mode, TEE binding |
 | Appraisal | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp |
 | Transcript | `TR-TXN` | Tool-call transcript hash binding (Phase 2+) |
-| Transparency | `TR-ANC` | SCITT receipt URI, inclusion proof |
+| Transparency | `TR-ANC` | Canonical registry-entry URI, authenticated resolution, inclusion proof |
 | Provenance | `TR-SCA` | SLSA level, builder URI, digest format |
 
 ## Resources

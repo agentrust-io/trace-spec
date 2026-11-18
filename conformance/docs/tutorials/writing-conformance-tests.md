@@ -26,7 +26,7 @@ TRACE defines three levels. Each level activates a cumulative set of modules:
 | 1 | Level 0 + TR-RTE, TR-SCA | Records that declare a TEE platform and measurement |
 | 2 | Level 1 + TR-TXN, TR-ANC | Full records with SCITT transparency anchoring |
 
-At Level 0 you can set `runtime.platform` to `"software-only"` and skip hardware attestation entirely. At Level 1 you must supply a TEE measurement (a fingerprint of the code loaded into a trusted execution environment) from AMD SEV-SNP, Intel TDX, NVIDIA H100, or similar. Level 2 adds a SCITT receipt URI and a bound tool-call transcript hash.
+At Level 0 you can set `runtime.platform` to `"software-only"` and skip hardware attestation entirely. At Level 1 you must supply a TEE measurement (a fingerprint of the code loaded into a trusted execution environment) from AMD SEV-SNP, Intel TDX, NVIDIA H100, or similar. Level 2 adds a signed canonical registry-entry URI, authenticated entry resolution, a separate inclusion receipt, and a bound tool-call transcript hash.
 
 The `runner.run()` function respects this table. Modules not required at the requested level are never invoked.
 

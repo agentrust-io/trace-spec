@@ -115,6 +115,44 @@ def _load_entry(path: str | None) -> dict | None:
     return _load_json_object(path, "entry")
 
 
+def _load_entry_resolver(entry_dir: str | None) -> Callable[[str], bytes] | None:
+    """Build an exact-URI entry lookup from an unauthenticated local manifest."""
+    if entry_dir is None:
+        return None
+    root = pathlib.Path(entry_dir)
+    manifest_path = root / "entries.json"
+    try:
+        with open(manifest_path, "rb") as fh:
+            data = loads_strict(fh.read())
+    except OSError as exc:
+        click.echo(f"Error: cannot read entry manifest {manifest_path}: {exc}", err=True)
+        sys.exit(2)
+    except LoadError as exc:
+        click.echo(f"Error: entry manifest {manifest_path} is not valid JSON: {exc}", err=True)
+        sys.exit(2)
+    if not isinstance(data, dict):
+        click.echo(
+            f"Error: entry manifest {manifest_path} must be a JSON object, "
+            f"got {type(data).__name__}",
+            err=True,
+        )
+        sys.exit(2)
+    for uri, rel in data.items():
+        if not isinstance(rel, str) or _is_unsafe_relative(rel):
+            click.echo(
+                f"Error: entry manifest {manifest_path} maps {uri!r} to {rel!r}; "
+                "entries must be relative path strings inside the directory, with no "
+                "parent traversal",
+                err=True,
+            )
+            sys.exit(2)
+
+    def _resolve(uri: str) -> bytes:
+        return (root / data[uri]).read_bytes()
+
+    return _resolve
+
+
 def _load_policy_resolver(policy_dir: str | None) -> Callable[[str], bytes] | None:
     """Build a policy-bundle resolver from DIR/resolutions.json, or None when not supplied.
 
@@ -223,9 +261,19 @@ def main() -> None:
     type=click.Path(),
     help=(
         "Path to the registry entry (JSON, one registry-anchor-v1 section 4 line) the "
-        "receipt commits to. Required for TR-ANC-002 at Level 2: the receipt's "
-        "merkle_root and leaf_count must equal the entry's. The link from the "
-        "transparency URI to this entry is not checked."
+        "receipt commits to. This can diagnose inclusion, but it does not "
+        "authenticate publication in the named log or earn Level 2."
+    ),
+)
+@click.option(
+    "--entry-dir",
+    "entry_dir",
+    default=None,
+    type=click.Path(),
+    help=(
+        "Directory holding entries.json, an exact map from signed transparency "
+        "URIs to local entry snapshots. This diagnoses entry identity and proof "
+        "replay but does not authenticate log publication or earn Level 2."
     ),
 )
 @click.option(
@@ -257,6 +305,7 @@ def verify(
     expected_nonce: str | None,
     receipt: str | None,
     entry: str | None,
+    entry_dir: str | None,
     policy_dir: str | None,
     expected_policy_hash: str | None,
 ) -> None:
@@ -269,6 +318,7 @@ def verify(
 
     receipt_data = _load_receipt(receipt)
     entry_data = _load_entry(entry)
+    entry_resolver = _load_entry_resolver(entry_dir)
     policy_resolver = _load_policy_resolver(policy_dir)
     try:
         validate_expected_policy_hash(expected_policy_hash)
@@ -284,6 +334,7 @@ def verify(
         expected_nonce=expected_nonce,
         receipt=receipt_data,
         entry=entry_data,
+        entry_resolver=entry_resolver,
         policy_resolver=policy_resolver,
         expected_policy_hash=expected_policy_hash,
     )
@@ -336,8 +387,16 @@ def verify(
     "--entry",
     default=None,
     type=click.Path(),
-    help="Path to the registry entry (JSON) the receipt commits to. Required for "
-    "TR-ANC-002 at Level 2.",
+    help="Path to a registry entry for inclusion diagnostics; this cannot "
+    "authenticate publication in the named log or earn Level 2.",
+)
+@click.option(
+    "--entry-dir",
+    "entry_dir",
+    default=None,
+    type=click.Path(),
+    help="Directory holding entries.json and local entry snapshots for diagnostics; "
+    "this does not authenticate log publication or earn Level 2.",
 )
 @click.option(
     "--policy-dir",
@@ -370,6 +429,7 @@ def report(
     expected_nonce: str | None,
     receipt: str | None,
     entry: str | None,
+    entry_dir: str | None,
     policy_dir: str | None,
     expected_policy_hash: str | None,
 ) -> None:
@@ -387,6 +447,7 @@ def report(
 
     receipt_data = _load_receipt(receipt)
     entry_data = _load_entry(entry)
+    entry_resolver = _load_entry_resolver(entry_dir)
     policy_resolver = _load_policy_resolver(policy_dir)
     try:
         validate_expected_policy_hash(expected_policy_hash)
@@ -402,6 +463,7 @@ def report(
         expected_nonce=expected_nonce,
         receipt=receipt_data,
         entry=entry_data,
+        entry_resolver=entry_resolver,
         policy_resolver=policy_resolver,
         expected_policy_hash=expected_policy_hash,
     )

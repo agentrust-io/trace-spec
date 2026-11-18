@@ -31,18 +31,24 @@ def _entry_matching(receipt):
         "leaf_count": receipt["leaf_count"],
         "producer": "anchor-vectors/1.0.0",
         "batch_id": "anchor-vectors",
+        "log_id": "https://log.example.org/batches",
+        "entry_id": "anchor-vectors",
     }
 
 
 @pytest.mark.level2
 @pytest.mark.parametrize("vector", VECTORS, ids=lambda v: v["name"])
 def test_portable_inclusion_vector(vector):
+    entry = _entry_matching(vector["receipt"])
     finding = next(
         f
         for f in tr_anc.check(
             vector["claim"],
             receipt=vector["receipt"],
-            entry=_entry_matching(vector["receipt"]),
+            entry_resolver=(
+                None if entry is None else lambda _uri: json.dumps(entry).encode()
+            ),
+            entry_source_authenticated=True,
         )
         if f.code == "TR-ANC-002"
     )

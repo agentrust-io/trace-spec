@@ -1,5 +1,6 @@
 """Unit tests for the conformance runner."""
 
+import inspect
 import json
 import pathlib
 import time
@@ -146,6 +147,14 @@ def test_invalid_optional_runner_arguments_raise():
         run({}, "trace", level=0, receipt=[])  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="receipt must be a JSON object"):
         _run_levels({}, "trace", (0,), receipt=[])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry_resolver must be callable"):
+        run({}, "trace", level=0, entry_resolver={})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry_resolver must be callable"):
+        _run_levels({}, "trace", (0,), entry_resolver={})  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry_source_authenticated must be a boolean"):
+        run({}, "trace", level=0, entry_source_authenticated="yes")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry_source_authenticated must be a boolean"):
+        _run_levels({}, "trace", (0,), entry_source_authenticated=1)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="entry must be a JSON object"):
         run({}, "trace", level=0, entry="bad")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="entry must be a JSON object"):
@@ -154,3 +163,14 @@ def test_invalid_optional_runner_arguments_raise():
         run({}, "trace", level=0, policy_resolver="not-callable")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="policy_resolver must be callable"):
         _run_levels({}, "trace", (0,), policy_resolver=123)  # type: ignore[arg-type]
+
+
+def test_entry_resolver_does_not_shift_existing_positional_options():
+    from trace_tests.runner import _run_levels
+
+    expected_tail = [
+        "policy_resolver", "expected_policy_hash", "entry_resolver",
+        "entry_source_authenticated",
+    ]
+    assert list(inspect.signature(run).parameters)[-4:] == expected_tail
+    assert list(inspect.signature(_run_levels).parameters)[-4:] == expected_tail
