@@ -26,6 +26,18 @@ def valid_level0():
 def valid_cmcp_runtime():
     vector = load_vector("valid_cmcp_runtime.json")
     vector["trace"]["iat"] = int(time.time()) - 60
+    vector["trace"]["model"] = {
+        "provider": "example-provider",
+        "model_id": "example-model",
+    }
+    vector["trace"]["build_provenance"] = {
+        "slsa_level": 2,
+        "digest": "sha256:" + "d" * 64,
+    }
+    vector["trace"]["appraisal"] = {
+        "status": "affirming",
+        "verifier": "https://verifier.example.org",
+    }
     return vector
 
 

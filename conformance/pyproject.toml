@@ -49,6 +49,9 @@ test = ["pytest>=8.0", "pytest-cov"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/trace_tests"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"schemas/trace-claim.json" = "trace_tests/schemas/trace-claim.json"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
