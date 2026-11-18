@@ -40,15 +40,12 @@ def test_level_1_requires_verifier_nonce(fresh_level0_path):
     assert "requires the verifier's expected nonce" in result.output
 
 
-def test_unsigned_record_level_0_reports_unverified(fresh_level0_path):
+def test_unsigned_record_fails_level_0_even_when_reported_unverified(fresh_level0_path):
     result = CliRunner().invoke(main, ["verify", "--record", fresh_level0_path, "--level", "0"])
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
     assert "UNVERIFIED" in result.output
-    # The summary no longer says "cryptographically": under per-code
-    # registration a policy bundle that did not resolve is unverified too, and
-    # a line naming only signatures would be a published claim the code stopped
-    # making the moment TR-POL-003 existed.
-    assert "could not be executed against the evidence this record cites" in result.output
+    assert "TR-SIG-005: no signature present" in result.output
+    assert "Result: FAIL" in result.output
 
 
 def test_stale_record_fails(tmp_path):

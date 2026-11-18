@@ -38,7 +38,13 @@ jobs:
             (
               cd "$RUNNER_TEMP"
               "$RUNNER_TEMP/conformance-artifact/bin/trace-tests" --version
-              "$RUNNER_TEMP/conformance-artifact/bin/trace-tests" verify --record "$GITHUB_WORKSPACE/conformance/tests/vectors/valid_level0.json" --level 0 --max-age 2147483647
+              "$RUNNER_TEMP/conformance-artifact/bin/trace-tests" verify --record "$GITHUB_WORKSPACE/conformance/tests/vectors/signed_root.json" --level 0 --max-age 2147483647
+              if unsigned_result=$("$RUNNER_TEMP/conformance-artifact/bin/trace-tests" verify --record "$GITHUB_WORKSPACE/conformance/tests/vectors/valid_level0.json" --level 0 --max-age 2147483647 2>&1); then
+                printf 'Unsigned Level 0 record was accepted.\n' >&2
+                exit 1
+              fi
+              printf '%s\n' "$unsigned_result" | grep -Fq 'TR-SIG-005: no signature present'
+              printf '%s\n' "$unsigned_result" | grep -Fq 'Result: FAIL'
             )
             rm -rf "$RUNNER_TEMP/conformance-artifact"
           done

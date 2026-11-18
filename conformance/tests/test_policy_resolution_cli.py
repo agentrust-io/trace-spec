@@ -8,7 +8,7 @@ and stays green while the table it is supposed to be guarding is wrong.
 
 The measurement is a difference. The record is unsigned and carries no
 transcript, so it fails for reasons that have nothing to do with policy
-resolution — constant across both legs, and cancelling in the delta. What is
+resolution. Those reasons are constant across both legs and cancel in the delta. What is
 left is the one finding under test.
 """
 
@@ -94,25 +94,27 @@ def test_supplying_a_resolver_changes_the_failure_count_only_from_level_two(
 
 @pytest.mark.level0
 @pytest.mark.parametrize("with_policy_dir", [False, True])
-def test_level_zero_exits_zero_either_way(tmp_path, with_policy_dir):
-    """An unresolvable bundle must not sink a Level 0 record.
+def test_level_zero_unsigned_record_fails_either_way(tmp_path, with_policy_dir):
+    """An unresolvable bundle must not add a Level 0 failure.
 
     The record is unsigned, so TR-SIG-005 is unverified here too. Both codes
-    are tolerated at Level 0 and neither is a pass; the exit code is the
-    difference between "not proven" and "wrong".
+    remain unverified, but the mandatory signature check fails conformance at
+    Level 0 while the unresolved policy bundle does not.
     """
     record = _record_path(tmp_path, UNREACHABLE)
     result = _verify(record, 0, with_policy_dir=with_policy_dir)
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
     assert "UNVERIFIED" in result.output
+    assert _failures(result.output) == 1
 
 
 @pytest.mark.level0
-def test_a_resolvable_bundle_reports_a_pass_through_the_cli(tmp_path):
-    """The must-accept leg: supplying a resolver must not cost a record anything."""
+def test_a_resolvable_bundle_reports_tr_pol_pass_through_the_cli(tmp_path):
+    """The must-accept policy leg remains successful while the unsigned record fails."""
     record = _record_path(tmp_path, RESOLVES)
     with_dir = _verify(record, 0, with_policy_dir=True)
-    assert with_dir.exit_code == 0, with_dir.output
+    assert with_dir.exit_code == 1, with_dir.output
+    assert "TR-SIG-005: no signature present" in with_dir.output
     assert "TR-POL-003" not in with_dir.output, (
         "a passing TR-POL-003 names no code in its message, by house convention"
     )
