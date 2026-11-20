@@ -100,11 +100,11 @@ The table uses the specification's own terms. Each module's page explains them.
 | Module | ID | Tests |
 |---|---|---|
 | Envelope | `TR-ENV` | EAT structure, required fields, `iat` validity |
-| Signature | `TR-SIG` | ES256/ES384/EdDSA, key binding, chain |
+| Signature | `TR-SIG` | Ed25519/JCS signature against the record's `cnf.jwk`; public-key shape and private-key checks. Issuer trust and certificate chains are outside this module |
 | Runtime | `TR-RTE` | TEE platform, measurement format, RIM URI |
 | Policy | `TR-POL` | Bundle hash, enforcement mode, TEE binding |
-| Appraisal | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp |
-| Transcript | `TR-TXN` | Tool-call transcript hash binding (Phase 2+) |
+| Appraisal | `TR-APR` | Appraisal status, verifier URI, policy reference, timestamp, and platform measurement equality |
+| Transcript | `TR-TXN` | Tool-call transcript hash binding (required for Level 2 checks) |
 | Transparency | `TR-ANC` | SCITT receipt URI, inclusion proof |
 | Provenance | `TR-SCA` | SLSA level, builder URI, digest format |
 

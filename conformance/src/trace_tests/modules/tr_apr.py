@@ -152,11 +152,48 @@ def _timestamp_finding(appraisal: dict[str, Any]) -> Finding:
     )
 
 
+def _platform_measurement_finding(trace: dict[str, Any], appraisal: dict[str, Any]) -> Finding:
+    """Check that a signed per-layer appraisal names this record's measurement."""
+    if "platform_measurement" not in appraisal:
+        return Finding(
+            "TR-APR-006", Status.SKIP,
+            "appraisal.platform_measurement not present (optional)",
+        )
+
+    result = appraisal["platform_measurement"]
+    runtime = trace.get("runtime")
+    if not isinstance(result, dict) or not isinstance(runtime, dict):
+        return Finding(
+            "TR-APR-006", Status.FAIL,
+            "TR-APR-006: appraisal.platform_measurement and runtime must be objects "
+            "to compare their measurements",
+        )
+
+    appraised = result.get("measurement")
+    measured = runtime.get("measurement")
+    if not isinstance(appraised, str) or not isinstance(measured, str):
+        return Finding(
+            "TR-APR-006", Status.FAIL,
+            "TR-APR-006: appraisal.platform_measurement.measurement and "
+            "runtime.measurement must be strings to compare them",
+        )
+    if appraised != measured:
+        return Finding(
+            "TR-APR-006", Status.FAIL,
+            "TR-APR-006: appraisal.platform_measurement.measurement must equal "
+            "runtime.measurement",
+        )
+    return Finding(
+        "TR-APR-006", Status.PASS,
+        "appraisal.platform_measurement.measurement matches runtime.measurement",
+    )
+
+
 def check(trace: dict[str, Any], level: int) -> list[Finding]:
     """Return TR-APR findings for the evidence appraisal claim.
 
     *level* is the conformance level being checked. TR-APR-001 through
-    TR-APR-004 are structural and apply at every level; TR-APR-005 self-gates,
+    TR-APR-004 and TR-APR-006 are structural and apply at every level; TR-APR-005 self-gates,
     because `docs/levels.md` requires an affirming appraisal from Level 1 and
     its own minimum conformant Level 0 record carries `"none"`.
     """
@@ -226,6 +263,7 @@ def check(trace: dict[str, Any], level: int) -> list[Finding]:
         findings.append(_uri_finding("TR-APR-003", "policy_ref", appraisal.get("policy_ref")))
 
     findings.append(_timestamp_finding(appraisal))
+    findings.append(_platform_measurement_finding(trace, appraisal))
 
     if level < 1:
         findings.append(Finding(

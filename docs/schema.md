@@ -33,16 +33,16 @@ In short: whole numbers in a record have a size limit, and anything larger is wr
 | `runtime` | object | **yes** | Execution environment binding |
 | `policy` | object | **yes** | Governance policy binding |
 | `data_class` | string | **yes** | Data sensitivity classification |
-| `tool_transcript` | object | **yes** | Tool-call audit summary |
+| `tool_transcript` | object | no | Tool-call audit summary. Required for Level 2 transcript checks; omission makes no transcript commitment |
 | `delegation` | object | no | A2A profile: link to the delegating hop's Trust Record |
 | `origin` | object | no | Where the evidence came from, when that is not this runtime |
 | `references` | array | no | Facts outside this record that it points at. Assurance-neutral |
 | `reproducibility` | object | no | The claim that a named deterministic function of the run re-executes, over a pinned input closure, to a transcript with the stated digest. Producer-side; the result is an appraisal. Assurance-neutral |
 | `build_provenance` | object | **yes** | Build-time artifact provenance |
 | `appraisal` | object | **yes** | Verifier judgment |
-| `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Use `null`, never `""` |
+| `transparency` | string | no | Registry or SCITT anchor for the record. Optional below Level 2, where an unanchored record has no receipt to name. Omit the field; never use `null` or `""` |
 | `cnf` | object | **yes** | Confirmation method: contains the `jwk` signing key |
-| `signature` | string | **yes** | Base64url Ed25519 / ES256 / ES384 signature over the canonical record with only `signature` absent; `cnf` is included. An 86-character value (a 64-byte Ed25519 or ES256 signature) MUST be canonically encoded per RFC 4648 section 3.5: it MUST end in `A`, `Q`, `g`, or `w` |
+| `signature` | string | no | Embedded base64url Ed25519 signature over the canonical record with only `signature` absent; `cnf` is included. An enveloping signature lives outside this field. The 86-character encoding of 64 signature bytes MUST be canonical per RFC 4648 section 3.5: it MUST end in `A`, `Q`, `g`, or `w` |
 
 <a id="model"></a>
 
@@ -247,7 +247,7 @@ Each member of `layers`:
 
 ## `transparency` {#trace-field-transparency}
 
-String. URI of the SCITT transparency log entry anchoring this record. Omitted, or `null`, when the record is not anchored at issuance: anchoring may happen asynchronously. Never an empty string: the reference model rejects one (`min_length=1`).
+String. URI of the SCITT transparency log entry anchoring this record. Omit the field when the record is not anchored at issuance: anchoring may happen asynchronously. Do not use `null` or an empty string; the JSON Schema requires a string and the reference model rejects an empty one (`min_length=1`).
 
 <a id="cnf"></a>
 
@@ -263,7 +263,7 @@ For a hardware-backed deployment, authenticated platform evidence is expected to
 
 ### `cnf.jwk` members {#trace-field-cnf-jwk}
 
-`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key of one of those types with no material is refused by the schema; a `kty` outside the three passes the schema and is refused by the verifier, which accepts `OKP` only. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
+`kty` is required and decides which key-material members are: OKP keys carry `crv` and `x`, EC keys `crv`, `x` and `y`, RSA keys `n` and `e`. A key of one of those types with no material is refused by the schema. The base embedded-signature verifier accepts only `OKP`/`Ed25519`; EC keys remain structurally valid for separately defined enveloping profiles. A `kty` outside the three passes structural schema validation but is refused by the current reference verifier. Members beyond these are permitted, as any value section 3.2.2 can canonicalize, and are inside the signed record like everything else in `cnf`. The private-key parameters `d`, `p`, `q`, `dp`, `dq`, `qi` and `k` are refused: `cnf` is a public proof-of-possession key (RFC 8747).
 
 | Field | Type | Required | Description |
 |---|---|---|---|

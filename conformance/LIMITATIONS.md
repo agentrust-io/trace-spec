@@ -20,6 +20,12 @@ the disagreement is a bug worth reporting here.
 
 ## Where the checks stop
 
+**`TR-SIG` checks signature consistency, not issuer authority.**
+For an ordinary TRACE record it checks the signature against the public key in
+that same record's `cnf.jwk`. A pass cannot make that key a trusted issuer key;
+authenticated origin under spec section 3.3 requires a trust anchor the
+recipient obtained independently.
+
 **`TR-RTE` checks the shape of the attestation fields, not the attestation.**
 Attestation is the processor's signed statement of what code it is running. The suite checks that
 the record's fields describing it are well formed; it does not check the statement itself.
