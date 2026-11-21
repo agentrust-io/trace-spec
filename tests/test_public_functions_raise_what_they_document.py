@@ -306,9 +306,10 @@ KEYWORD_CALLS: dict[str, tuple[Callable[[], dict[str, Any]], tuple[str, ...]]] =
     "provenance.sign_record": (lambda: {"record": _PROVENANCE, "key": _KEY}, ("key",)),
     "provenance.verify_record": (
         lambda: {"record": _PROVENANCE_SIGNED, "trusted_jwk": _JWK, "revocation": None,
-                     "max_age_seconds": None, "max_future_skew_seconds": 300},
+                     "max_age_seconds": None, "max_future_skew_seconds": 300,
+                     "tee_verifier": None},
         ("trusted_jwk", "revocation", "max_age_seconds", "max_future_skew_seconds",
-         "now", "required_format"),
+         "now", "required_format", "tee_verifier"),
     ),
     "revocation.check_bundle": (
         lambda: {"bundle": _CTX["bundle"],

@@ -39,11 +39,15 @@ it. `kind` is a closed set, because the value of the field is that a verifier ca
 |---|---|---|
 | `publisher-asserted` | the server's own publisher | The publisher says this is their server and this is its catalog. Worth exactly what the publisher is worth, and no more. It is also the only kind that reaches an ecosystem whose operators will never adopt anything of ours. |
 | `observer-attested` | a third party that fetched and measured the server | Someone who is not the publisher looked. Catches a publisher who lies about their own artifact. Does not catch a server that behaves one way for the observer and another way for you. |
-| `tee-attested` | the server itself, from inside a TEE | The measurement is in the record and roots outside the operator. Strongest, and requires the operator to have adopted a confidential runtime. |
+| `tee-attested` | a provenance key independently bound to authenticated TEE evidence | A caller-selected platform verifier established the hardware measurement and its binding to the provenance signing key. Strongest, and unavailable from the publisher's statement alone. |
 
 **A verifier MUST NOT treat an absent record as any of these.** Absence is absence. A
 consumer that cannot distinguish "nobody asserted anything" from `publisher-asserted` has
 gained nothing from the format.
+
+The `attestation` object is signed runtime metadata, not by itself hardware evidence. Its
+shape, platform name and measurement are all values the publisher can write. A verifier
+MUST NOT report `tee-attested` from those values or the publisher signature alone.
 
 ## 2. Identity: what the record is about
 
@@ -104,7 +108,7 @@ claim about the deployment rather than about the code, and is only as good as th
 | `publisher` | yes | DID or SPIFFE URI of the signer. Not a display name: a name is not resolvable and a verifier cannot check one |
 | `tool_catalog.hash` | yes | Digest over the canonical tool list (§4) |
 | `tool_catalog.tool_count` | yes | Non-negative integer: number of tools. Redundant with the hash by design: a consumer that sees a plausible count and an unexpected hash learns more than one that sees only a mismatch <!-- CHANGED: #485 - type tool_catalog.tool_count as integer --> |
-| `attestation` | when `kind` is `tee-attested` | The evidence, in the shape TRACE v0.2 §3.1 `runtime` uses. `null` otherwise |
+| `attestation` | when `kind` is `tee-attested` | The publisher's runtime claim, in the shape TRACE v0.2 §3.1 `runtime` uses, to be matched against independently authenticated platform evidence. `null` otherwise |
 | `cnf.jwk` | yes | Public key the signature verifies under |
 | `signature` | yes | Over the RFC 8785 (JCS) canonical form with `signature` absent |
 
@@ -147,7 +151,12 @@ normalized behavioral hints under a new signed format identifier.
 5. Compare `tool_catalog.hash` against the tools the server actually offers you. **A
    mismatch is the finding.** It means the server you are talking to is not the server the
    record describes, whoever signed it.
-6. Weigh the result by `kind` (§1).
+6. Weigh the result by `kind` (§1). Before reporting `tee-attested`, use a platform
+   verifier selected by the relying party, never by the record, to authenticate the
+   quote or report against its platform trust chain, extract the platform and measurement,
+   match both to `attestation`, and prove that the evidence binds `cnf.jwk`. Missing,
+   invalid, mismatched or unbound evidence MUST reject `tee-attested`; it MUST NOT be
+   accepted from the runtime-shaped object or downgraded to another successful kind.
 
 Step 5 is the one that catches a live attack and the one most likely to be skipped, because
 it requires the consumer to hash what it received rather than trust what it read.

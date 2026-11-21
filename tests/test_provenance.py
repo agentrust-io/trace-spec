@@ -18,6 +18,7 @@ import rfc8785
 from agentrust_trace.models import RuntimeInfo
 from agentrust_trace.provenance import (
     FORMAT,
+    FORMAT_V2,
     ProvenanceError,
     ToolCatalogMismatch,
     build_record,
@@ -42,6 +43,15 @@ TOOLS = [
     {"name": "search", "description": "search the docs", "input_schema": {"type": "object"}},
     {"name": "fetch", "description": "fetch a page", "input_schema": {"type": "object"}},
 ]
+
+
+def _tee_report(attestation, provenance_jwk):
+    """Test double for a platform verifier that has authenticated these three facts."""
+    return {
+        "platform": attestation["platform"],
+        "measurement": attestation["measurement"],
+        "provenance_key_thumbprint": jwk_thumbprint(provenance_jwk),
+    }
 
 
 def _artifact():
@@ -1203,9 +1213,91 @@ def test_the_verifier_rejects_a_shape_valid_software_only_tee_attested_record() 
         verify_record(signed, key_to_jwk(key))
 
 
-def test_the_verifier_accepts_a_well_formed_tee_attested_record() -> None:
-    """The positive case must still verify end to end after the tightened check."""
+@pytest.mark.parametrize("format", [FORMAT, FORMAT_V2])
+def test_shape_only_tee_attestation_is_not_accepted_as_hardware_evidence(format: str) -> None:
+    """A trusted publisher can invent every value in the RuntimeInfo-shaped object."""
     key = generate_key()
+    signed = sign_record(
+        _record(
+            format=format,
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": DIGEST},
+        ),
+        key,
+    )
+    with pytest.raises(ProvenanceError, match="caller-supplied tee_verifier"):
+        verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize("format", [FORMAT, FORMAT_V2])
+def test_the_verifier_accepts_authenticated_tee_evidence_bound_to_the_key(format: str) -> None:
+    """Legitimate TEE provenance remains available through caller-selected verification."""
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    attestation = {"platform": "intel-tdx", "measurement": DIGEST}
+    signed = sign_record(
+        _record(format=format, kind="tee-attested", attestation=attestation), key
+    )
+    calls = []
+
+    def verify_platform(signed_attestation, provenance_jwk):
+        calls.append((signed_attestation, provenance_jwk))
+        return _tee_report(signed_attestation, provenance_jwk)
+
+    verify_record(signed, trusted, tee_verifier=verify_platform)
+    assert calls == [(attestation, signed["cnf"]["jwk"])]
+
+
+@pytest.mark.parametrize("kind", ["publisher-asserted", "observer-attested"])
+def test_non_tee_records_do_not_invoke_the_tee_verifier(kind: str) -> None:
+    key = generate_key()
+    signed = sign_record(_record(kind=kind), key)
+
+    def unexpected(_attestation, _jwk):
+        raise AssertionError("non-TEE records have no platform evidence to verify")
+
+    verify_record(signed, key_to_jwk(key), tee_verifier=unexpected)
+
+
+@pytest.mark.parametrize(
+    ("member", "substitute", "message"),
+    [
+        ("platform", "amd-sev-snp", "different platform"),
+        ("measurement", OTHER_DIGEST, "different measurement"),
+        ("provenance_key_thumbprint", "another-key", "trusted provenance key"),
+    ],
+)
+def test_tee_verifier_report_must_match_the_signed_claim_and_key(
+    member: str, substitute: str, message: str
+) -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    attestation = {"platform": "intel-tdx", "measurement": DIGEST}
+    signed = sign_record(_forged(kind="tee-attested", attestation=attestation), key)
+    report = _tee_report(attestation, trusted)
+    report[member] = substitute
+
+    with pytest.raises(ProvenanceError, match=message):
+        verify_record(signed, trusted, tee_verifier=lambda _attestation, _jwk: report)
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        None,
+        {},
+        {"platform": "intel-tdx", "measurement": DIGEST},
+        {
+            "platform": "intel-tdx",
+            "measurement": DIGEST,
+            "provenance_key_thumbprint": "key",
+            "authenticated": True,
+        },
+    ],
+)
+def test_tee_verifier_requires_an_unambiguous_complete_report(report: object) -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
     signed = sign_record(
         _forged(
             kind="tee-attested",
@@ -1213,7 +1305,50 @@ def test_the_verifier_accepts_a_well_formed_tee_attested_record() -> None:
         ),
         key,
     )
-    verify_record(signed, key_to_jwk(key))
+
+    with pytest.raises(ProvenanceError, match="tee_verifier must return"):
+        verify_record(signed, trusted, tee_verifier=lambda _attestation, _jwk: report)
+
+
+def test_tee_verifier_failure_is_closed_and_does_not_leak_its_message() -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": DIGEST},
+        ),
+        key,
+    )
+
+    def unavailable(_attestation, _jwk):
+        raise ConnectionError("private verifier endpoint details")
+
+    with pytest.raises(ProvenanceError, match="raised ConnectionError") as exc_info:
+        verify_record(signed, trusted, tee_verifier=unavailable)
+    assert "private verifier endpoint details" not in str(exc_info.value)
+
+
+def test_an_unauthenticated_record_never_reaches_the_tee_verifier() -> None:
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    signed = sign_record(
+        _forged(
+            kind="tee-attested",
+            attestation={"platform": "intel-tdx", "measurement": DIGEST},
+        ),
+        key,
+    )
+    signed["publisher"] = "did:web:attacker.example"
+    calls = []
+
+    def verifier(attestation, provenance_jwk):
+        calls.append((attestation, provenance_jwk))
+        return _tee_report(attestation, provenance_jwk)
+
+    with pytest.raises(ProvenanceError, match="signature does not verify"):
+        verify_record(signed, trusted, tee_verifier=verifier)
+    assert calls == []
 
 
 @pytest.mark.parametrize("consumer", ["builder", "verifier"])
@@ -1242,7 +1377,7 @@ def test_attestation_shape_constraints(consumer, field, bad_value) -> None:
             return _record(kind="tee-attested", attestation=value)
         # Sign directly: a builder refusal must not mask a verifier bypass.
         signed = sign_record(_forged(kind="tee-attested", attestation=value), key)
-        return verify_record(signed, key_to_jwk(key))
+        return verify_record(signed, key_to_jwk(key), tee_verifier=_tee_report)
 
     consume(attestation)
     with pytest.raises(ProvenanceError, match=field):

@@ -4,20 +4,20 @@ Implements ``spec/server-provenance-v1.md`` and ``spec/server-provenance-v2.md``
 A provenance record is a signed statement *about* an MCP server, not about an
 execution, so it is deliberately not a Trust Record and does not pretend to be one.
 
-The function that matters here is :func:`check_tool_catalog`. Everything else
-verifies that a document is internally consistent and signed by a key you already
-trust, which is table stakes; §5 step 5 of the specification is the step that
-catches a live attack, because it compares the record against the tools the
-server actually offered you rather than against itself. It is also the step an
-implementer skips first, so it is a separate, obvious call rather than a flag on
-another one.
+The live-server check is :func:`check_tool_catalog`; it compares the record against
+the tools the server actually offered. For ``tee-attested`` records,
+:func:`verify_record` also requires a caller-selected verifier to authenticate
+platform evidence and its binding to the provenance key. Every other kind remains
+a signed assertion by its publisher or observer.
 """
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import time
+from collections.abc import Callable
 from typing import Any
 
 import rfc8785
@@ -65,7 +65,7 @@ _PUBLISHER_RE = re.compile(r"^(did:[a-z0-9]+:.+|spiffe://[^/]+/.+)\Z")
 
 
 class ProvenanceError(ValueError):
-    """A provenance record is malformed, unsigned, or signed by the wrong key."""
+    """A provenance record or its required verification evidence was refused."""
 
 
 def _as_object(value: Any, field: str) -> dict[str, Any]:
@@ -352,6 +352,66 @@ def _check_structure(
     return timestamp
 
 
+def _verify_tee_evidence(
+    attestation: dict[str, Any],
+    embedded_jwk: dict[str, Any],
+    trusted_thumbprint: str,
+    tee_verifier: Callable[[dict[str, Any], dict[str, Any]], Any] | None,
+) -> None:
+    """Require an external verifier to authenticate and bind TEE evidence.
+
+    The record carries only a publisher-authored ``RuntimeInfo`` shape. The verifier is
+    caller-selected and obtains the quote or report, platform trust material, and reference
+    values from caller-controlled context. A successful report states which platform
+    measurement it authenticated and which provenance key that evidence binds; all three facts
+    must match the signed record and the caller's trusted key.
+    """
+    if tee_verifier is None:
+        raise ProvenanceError(
+            "kind='tee-attested' requires a caller-supplied tee_verifier. The attestation "
+            "object is publisher-asserted metadata until platform evidence is authenticated "
+            "and bound to the provenance signing key."
+        )
+
+    try:
+        report = tee_verifier(copy.deepcopy(attestation), copy.deepcopy(embedded_jwk))
+    except Exception as exc:
+        raise ProvenanceError(
+            "tee_verifier could not authenticate the platform evidence: "
+            f"it raised {type(exc).__name__}"
+        ) from exc
+
+    required = {"platform", "measurement", "provenance_key_thumbprint"}
+    if not isinstance(report, dict):
+        raise ProvenanceError(
+            "tee_verifier must return an object naming platform, measurement, and "
+            "provenance_key_thumbprint"
+        )
+    if set(report) != required:
+        members = sorted(str(member) for member in report)
+        raise ProvenanceError(
+            "tee_verifier must return exactly platform, measurement, and "
+            f"provenance_key_thumbprint; received members {members}"
+        )
+
+    if report["platform"] != attestation["platform"]:
+        raise ProvenanceError(
+            "tee_verifier authenticated a different platform than the signed attestation"
+        )
+    if report["measurement"] != attestation["measurement"]:
+        raise ProvenanceError(
+            "tee_verifier extracted a different measurement than the signed attestation"
+        )
+
+    bound_thumbprint = report["provenance_key_thumbprint"]
+    if not isinstance(bound_thumbprint, str):
+        raise ProvenanceError("tee_verifier provenance_key_thumbprint must be a string")
+    if bound_thumbprint != trusted_thumbprint:
+        raise ProvenanceError(
+            "tee_verifier did not bind the authenticated evidence to the trusted provenance key"
+        )
+
+
 def build_record(
     *,
     kind: str,
@@ -367,7 +427,7 @@ def build_record(
 
     Raises rather than emitting a record that cannot mean anything: an identity
     with neither an artifact nor an endpoint identifies nothing, and a
-    ``tee-attested`` record without attestation evidence is the claim without the
+    ``tee-attested`` record without attestation metadata is the claim without the
     thing that backs it.
     """
     if kind not in KINDS:
@@ -454,6 +514,7 @@ def verify_record(
     max_future_skew_seconds: int = 300,
     now: int | None = None,
     required_format: str | None = None,
+    tee_verifier: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None,
 ) -> RevocationCheck:
     """Verify structure and signature. Raises :class:`ProvenanceError` on failure.
 
@@ -468,6 +529,15 @@ def verify_record(
     *trusted_jwk* is required and is never taken from the record. Verifying a
     document against a key it supplies proves only that it is internally
     consistent, which is what a forged record is.
+
+    ``tee_verifier`` is required for ``kind='tee-attested'`` and is not invoked for
+    other kinds. It is selected by the caller, invoked once after the signature and
+    trusted-key match succeed, and receives deep copies of the signed
+    ``attestation`` object and ``cnf.jwk``. It must authenticate platform evidence
+    outside this shape-only record and return exactly ``platform``, ``measurement``,
+    and ``provenance_key_thumbprint``. The first two must be the values extracted from
+    that evidence; the thumbprint names the provenance key the evidence binds. Every
+    value must match the signed record and caller-trusted key or verification fails.
 
     ``revocation`` is consulted before the signature is checked, with exactly the
     semantics :func:`sign.verify_record` documents: a container of revoked
@@ -504,6 +574,8 @@ def verify_record(
             "string raises AttributeError, which is not the ProvenanceError this "
             "function documents and is not caught by a caller written against it."
         )
+    if tee_verifier is not None and not callable(tee_verifier):
+        raise ProvenanceError("tee_verifier must be callable or None")
 
     _check_format(record.get("format"), required_format)
     if record.get("kind") not in KINDS:
@@ -630,6 +702,11 @@ def verify_record(
         pub.verify(sig_bytes, body)
     except Exception as exc:  # cryptography raises InvalidSignature
         raise ProvenanceError(f"signature does not verify: {exc}") from exc
+
+    if record["kind"] == "tee-attested":
+        _verify_tee_evidence(
+            record["attestation"], embedded, trusted_thumbprint, tee_verifier
+        )
 
     if revocation is not None:
         return RevocationCheck(outcome="verified", evidence={"source": "store"})
