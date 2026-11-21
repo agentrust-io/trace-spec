@@ -156,7 +156,7 @@ def _block_code(block: Any, pinned: dict[str, dict[str, dict[str, Any]]]) -> str
         if not _validator().is_valid(block):
             return "schema_invalid"
         signed = _signing_bytes(block)
-    except (ValueError, RecursionError):  # no RFC 8785 form, or nested too deep
+    except (ValueError, TypeError, RecursionError):  # malformed shape or no RFC 8785 form
         return "schema_invalid"
     jwk = pinned.get(block["edge"], {}).get(block["sig"]["kid"])
     if jwk is None:

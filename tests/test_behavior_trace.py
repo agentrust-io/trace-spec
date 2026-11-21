@@ -249,3 +249,15 @@ def test_a_block_with_no_rfc_8785_form_is_a_value_error(value):
         bt.sign_block({"kind": "run_start", "x": value}, key)
     with pytest.raises(ValueError, match="RFC 8785"):
         bt.block_digest({"x": value})
+
+
+@pytest.mark.parametrize("where", ["ext", "provenance"])
+def test_non_string_member_names_are_schema_invalid(where: str) -> None:
+    blocks = copy.deepcopy(RUN_A["blocks"])
+    if where == "ext":
+        blocks[0]["body"]["ext"] = {1: "value"}
+    else:
+        blocks[0]["provenance"] = {1: "observed"}
+    assert bt.verify_run(blocks, RUN_A["pinned_keys"]) == {
+        "classification": "rejected", "codes": ["schema_invalid"],
+    }

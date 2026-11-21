@@ -239,3 +239,14 @@ test("only the block schema can reach jsonEqual", () => {
   const block = JSON.parse(readFileSync(join(schemaDir, "behavior-trace-block-experimental-v1.json"), "utf8"));
   assert.equal(uses(block), true, "the guard should see the block schema's uniqueItems");
 });
+
+for (const where of ["block", "signature"]) {
+  test(`symbol-keyed ${where} is schema_invalid, not an exception`, async () => {
+    const blocks = structuredClone(RUN_A.blocks);
+    const target = where === "block" ? blocks[0] : blocks[0].sig;
+    target[Symbol("extra")] = "value";
+    assert.deepEqual(await verifyRun(blocks, RUN_A.pinned_keys), {
+      classification: "rejected", codes: ["schema_invalid"],
+    });
+  });
+}

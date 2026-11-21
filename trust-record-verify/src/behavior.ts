@@ -140,6 +140,9 @@ function resolves(block: Record<string, unknown>, pointer: string): boolean {
 async function blockCode(block: unknown, pinned: Pinned): Promise<BehaviorCode | null> {
   let signed: Uint8Array;
   try {
+    // Validate the whole input, including sig and symbol-keyed members, before
+    // signingBytes copies only its enumerable string-keyed unsigned members.
+    canonicalize(block);
     if (!validateBlock(block)) {
       return "schema_invalid";
     }
