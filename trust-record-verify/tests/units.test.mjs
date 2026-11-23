@@ -30,6 +30,23 @@ async function rejects(promise, code) {
   });
 }
 
+test("canonicalJson still names the path of the value it refuses", () => {
+  assert.throws(() => canonicalJson({ a: [1, "\ud800"] }), /the value at a\.1 holds an unpaired surrogate/);
+  assert.throws(() => canonicalJson({ a: { "\udc00": 1 } }), /a member name in the value at a holds/);
+  assert.throws(() => canonicalJson({ a: [Infinity] }), /the value at a\.0 is Infinity/);
+});
+
+// Each value's path, member names included, was built for its error message
+// whether it failed or not: 300,000 zeros under a 300,000-character name took
+// about 11 s. Linear, it takes well under a tenth of a second. Timed here, as a
+// test timeout cannot interrupt synchronous work.
+test("canonicalJson stays linear in a member name's length", () => {
+  const n = 300_000;
+  const started = performance.now();
+  assert.equal(canonicalJson({ ["x".repeat(n)]: new Array(n).fill(0) }).length, n + 2 * n + 6);
+  assert.ok(performance.now() - started < 2000, "canonicalJson is not linear");
+});
+
 test("canonicalJson orders members by UTF-16 code unit", () => {
   assert.equal(canonicalJson({ b: 1, a: 2 }), '{"a":2,"b":1}');
   // The RFC 8785 sort is over UTF-16 code units. A supplementary-plane key

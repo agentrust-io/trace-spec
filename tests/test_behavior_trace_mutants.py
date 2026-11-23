@@ -64,6 +64,14 @@ MUTANTS: dict[str, tuple[str | None, str | None, str | None, str | None, list[st
         'if d not in by_digest or by_digest[d]["edge"] != edge:', "if d not in by_digest:",
         "if (byDigest.get(peers[edge])?.edge !== edge) {", "if (!byDigest.has(peers[edge])) {",
         ["23-heartbeat-wrong-edge"]),
+    "heartbeat may name run_end under any edge": (
+        'if d not in by_digest or by_digest[d]["edge"] != edge:',
+        'if d not in by_digest or (by_digest[d]["edge"] != edge'
+        ' and by_digest[d]["kind"] != "run_end"):',
+        "if (byDigest.get(peers[edge])?.edge !== edge) {",
+        "if (byDigest.get(peers[edge])?.edge !== edge"
+        ' && byDigest.get(peers[edge])?.kind !== "run_end") {',
+        ["46-heartbeat-end-under-other-edge"]),
     "run_end checked by seq only": (
         "if any(terminal != [i] for i in ends) or any(",
         'if any(blocks[i]["edge"] != "wrapper" or blocks[i]["seq"] != max(wrapper)'

@@ -25,7 +25,7 @@ def _load(path: pathlib.Path) -> dict[str, Any]:
 
 
 def test_vectors_were_found() -> None:
-    assert len(ALL) == 44
+    assert len(ALL) == 46
     assert len(VALID) == 7
 
 

@@ -11,7 +11,7 @@
 import { decodeBase64url } from "./base64url.js";
 import { digest, hex, importEd25519, verifyEd25519 } from "./crypto.js";
 import { fail, TraceVerificationError } from "./errors.js";
-import { validateBlock } from "./generated/validators.js";
+import { validateBlock } from "./generated/block-validator.js";
 import { canonicalize } from "./jcs.js";
 import { jwkThumbprint } from "./jwk.js";
 import { isPlainObject, own } from "./text.js";
@@ -140,12 +140,14 @@ function resolves(block: Record<string, unknown>, pointer: string): boolean {
 async function blockCode(block: unknown, pinned: Pinned): Promise<BehaviorCode | null> {
   let signed: Uint8Array;
   try {
-    // Validate the whole input, including sig and symbol-keyed members, before
-    // signingBytes copies only its enumerable string-keyed unsigned members.
-    canonicalize(block);
+    // The schema first: it bounds every member, so an oversized block is
+    // refused before anything is done with it. It cannot see symbol-keyed
+    // members, which signingBytes's copy would drop, so the whole block,
+    // sig included, must then have an RFC 8785 form too.
     if (!validateBlock(block)) {
       return "schema_invalid";
     }
+    canonicalize(block);
     signed = signingBytes(block as Record<string, unknown>);
   } catch (error) {
     if (error instanceof TraceVerificationError || error instanceof RangeError) {
@@ -250,9 +252,17 @@ export async function verifyRun(
 
   const chains = new Map<string, Map<number, number[]>>();
   run.forEach((b, i) => {
-    const bySeq = chains.get(b.edge) ?? new Map<number, number[]>();
-    bySeq.set(b.seq, [...(bySeq.get(b.seq) ?? []), i]);
-    chains.set(b.edge, bySeq);
+    let bySeq = chains.get(b.edge);
+    if (bySeq === undefined) {
+      bySeq = new Map<number, number[]>();
+      chains.set(b.edge, bySeq);
+    }
+    const idx = bySeq.get(b.seq);
+    if (idx === undefined) {
+      bySeq.set(b.seq, [i]);
+    } else {
+      idx.push(i);
+    }
   });
 
   for (const [edge, bySeq] of chains) {

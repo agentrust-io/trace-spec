@@ -50,11 +50,11 @@
     },
     "parents": {
       "type": "array",
+      "maxItems": 256,
       "items": {
         "$ref": "#/$defs/digest"
       },
-      "uniqueItems": true,
-      "maxItems": 256
+      "uniqueItems": true
     },
     "kind": {
       "enum": [
@@ -397,7 +397,8 @@
       "type": "object",
       "maxProperties": 32,
       "propertyNames": {
-        "maxLength": 64
+        "description": "An identifier's characters, and ~ for names a provenance pointer escapes: no spaces, so no free text.",
+        "pattern": "^[A-Za-z0-9._:/@+~-]{1,64}$"
       },
       "patternProperties": {
         "^": {

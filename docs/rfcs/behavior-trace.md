@@ -80,7 +80,7 @@ Every body is closed: a member not listed is a schema failure. Every body may al
 
 - A **commitment** is `hmac-sha256:` and 64 lowercase hex: a keyed digest of content, so that low-entropy content cannot be recovered by guessing. Every member that carries content (arguments, results, URLs, paths, model requests and responses) is a commitment.
 - An **identifier** is a token of 1 to 256 characters from `A-Z a-z 0-9 . _ : / @ + -`, with no spaces.
-- **`ext`** holds up to 32 producer-specific values, keys up to 64 characters, each value a commitment, an identifier, a boolean or a non-negative integer.
+- **`ext`** holds up to 32 producer-specific values. Each key is 1 to 64 characters from an identifier's set, plus `~`, so it has no spaces. Each value is a commitment, an identifier, a boolean or a non-negative integer.
 
 What the schema enforces and what it cannot: it guarantees that content members have the shape of a commitment and that no member carries free text. It cannot tell whether a commitment was really keyed and salted, since the verifier does not hold the key, or whether a producer encoded content into an identifier. Those are producer obligations.
 
@@ -141,7 +141,7 @@ Classification:
 
 **Exactly what `verified` establishes:** every block has the shape its kind requires and was signed by a key pinned for its edge; there is one `run_start` and every block names it; each edge's chain is complete from its first block to its last, with no fork; every parent and heartbeat peer is a block in the run; and the wrapper chain ends with the one `run_end`, which no block follows.
 
-**Input size.** The default limit is 100,000 blocks (`max_blocks` in Python, `maxBlocks` in TypeScript; `None` or `null` lifts it). On one laptop a valid run of 150,000 blocks took 79 s in TypeScript and 146 s in Python, most of it checking each block against its kind's body. The schema caps `parents` and `provenance` at 256 entries each, which bounds the one quadratic check. Bound the input's size in bytes before parsing it; the verifier sees parsed values, not bytes.
+**Input size.** The default limit is 100,000 blocks (`max_blocks` in Python, `maxBlocks` in TypeScript; `None` or `null` lifts it). On one laptop a valid run of 150,000 blocks took 79 s in TypeScript and 146 s in Python, most of it checking each block against its kind's body. The schema caps `parents` and `provenance` at 256 entries each, which bounds the one quadratic check: both verifiers stop at a block's first schema failure, and check the `parents` cap before comparing its items. Bound the input's size in bytes before parsing it; the verifier sees parsed values, not bytes.
 
 ## 5. What `verified` does not establish
 
@@ -152,8 +152,8 @@ Classification:
 
 ## 6. How the two implementations are held to each other
 
-- **Vectors.** Both run the 44 vectors in `examples/behavior-trace/` and must give the expected result for each: 5 `verified`, 2 `truncated` and 37 `rejected`. Every code has at least two vectors.
-- **Near-miss mutants.** `tests/test_behavior_trace_mutants.py` weakens each rule, one at a time, the way a careful reviewer might have written it: 21 mutants of the Python code and 19 of the compiled TypeScript (two Python rules, `$` anchoring and the bound on index digits, have no TypeScript counterpart). The Python mutants run at the lowest limit Python allows on converting digit strings to integers. Each must fail the vectors named beside it. The runner checks that the unmutated code passes, that every rewrite hits exactly one site, and that a mutant which breaks the verifier outright is reported killed.
+- **Vectors.** Both run the 46 vectors in `examples/behavior-trace/` and must give the expected result for each: 5 `verified`, 2 `truncated` and 39 `rejected`. Every code has at least two vectors.
+- **Near-miss mutants.** `tests/test_behavior_trace_mutants.py` weakens each rule, one at a time, the way a careful reviewer might have written it: 22 mutants of the Python code and 20 of the compiled TypeScript (two Python rules, `$` anchoring and the bound on index digits, have no TypeScript counterpart). The Python mutants run at the lowest limit Python allows on converting digit strings to integers. Each must fail the vectors named beside it. The runner checks that the unmutated code passes, that every rewrite hits exactly one site, and that a mutant which breaks the verifier outright is reported killed.
 - **Random runs.** `tests/test_behavior_trace_parity.py` builds 600 runs from seeded random changes to valid runs and requires both implementations to give the same result for each, and the runs to reach every code and all three classifications. Changes to a block's content re-sign it, so the run reaches the checks after the signature; one change deliberately does not, to keep the signature check in play. The same file runs 17 inputs at the line between a configuration error and a verdict and requires both to draw it in the same place.
 
 That is evidence over the inputs those tests use, not a proof of equivalence over every input.
@@ -161,3 +161,5 @@ That is evidence over the inputs those tests use, not a proof of equivalence ove
 ## 7. Later work
 
 Task contracts, deviation signals, heartbeat deadlines, anchoring in the registry, and action tickets.
+
+**Referencing a run.** `run_id` names a run's start, not the run: runs whose `run_start` blocks are identical share it, as vectors 01 and 02 do. A Trust Record's `references` entry needs an identifier and a digest for the whole run, which this draft does not define yet.

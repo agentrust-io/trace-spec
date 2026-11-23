@@ -18,6 +18,7 @@ import {
   TraceVerificationError,
   verifyRun,
 } from "../dist/index.js";
+import { validateBlock } from "../dist/generated/block-validator.js";
 import { jsonEqual } from "../dist/text.js";
 
 const DIR = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "examples", "behavior-trace");
@@ -28,7 +29,7 @@ const VECTORS = readdirSync(DIR)
 const VALID = VECTORS.filter((v) => v.expected.codes.length === 0);
 
 test("all vectors were found", () => {
-  assert.equal(VECTORS.length, 44);
+  assert.equal(VECTORS.length, 46);
   assert.equal(VALID.length, 7);
 });
 
@@ -250,3 +251,28 @@ for (const where of ["block", "signature"]) {
     });
   });
 }
+
+test("the block validator stops at its first failure", () => {
+  // Compiled without allErrors: an array over maxItems is refused before
+  // uniqueItems compares its pairs (quadratic in the array's length).
+  const block = structuredClone(RUN_A.blocks[1]);
+  block.parents = Array.from({ length: 300 }, () => 0);
+  block.unknown = true;
+  assert.equal(validateBlock(block), false);
+  assert.equal(validateBlock.errors.length, 1);
+});
+
+test("an oversized block is refused quickly", async () => {
+  // Each took 20 s or more: a long member name was rebuilt for every value
+  // canonicalized, and uniqueItems compared every pair of an oversized array.
+  const name = { ["x".repeat(400_000)]: new Array(400_000).fill(0) };
+  const parents = structuredClone(RUN_A.blocks[0]);
+  parents.parents = Array.from({ length: 160_000 }, (_, i) => i);
+  for (const block of [name, parents]) {
+    const started = performance.now();
+    assert.deepEqual(await verifyRun([block], RUN_A.pinned_keys), {
+      classification: "rejected", codes: ["schema_invalid"],
+    });
+    assert.ok(performance.now() - started < 2000, "an oversized block took too long to refuse");
+  }
+});

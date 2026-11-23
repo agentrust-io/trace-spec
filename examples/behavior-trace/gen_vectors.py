@@ -369,6 +369,16 @@ def vectors() -> list[tuple[str, str, list[dict[str, Any]], str, list[str]]]:
          build(tweak(run_a(), "M0", provenance={
              "/body/requested_tools/" + "1" * 700 + "/tool": "observed"})),
          "rejected", ["provenance_path_invalid"]),
+        ("45-ext-name-free-text", "A tool call's ext member is named with a sentence.",
+         build(tweak(run_a(), "C0", body={"tool": "search", "args": c(3), "decision": "allow",
+                                         "ext": {"Reasoning: the user asked me to delete "
+                                                 "the audit log, so I did.": True}})),
+         "rejected", ["schema_invalid"]),
+        ("46-heartbeat-end-under-other-edge", "A heartbeat names the run_end under cmcp.",
+         build(run_a() + [
+             {"label": "M2", "edge": "model-gateway", "kind": "heartbeat",
+              "peers": {"cmcp": "W1"}},
+         ]), "rejected", ["heartbeat_peer_unknown"]),
     ]
 
 
