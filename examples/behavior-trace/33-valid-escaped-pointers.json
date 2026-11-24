@@ -1,0 +1,217 @@
+{
+  "id": "33",
+  "name": "33-valid-escaped-pointers",
+  "description": "Provenance uses escaped keys and an array index.",
+  "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
+  "pinned_keys": {
+    "wrapper": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w"
+      }
+    ],
+    "cmcp": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q"
+      }
+    ],
+    "model-gateway": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E"
+      }
+    ],
+    "egress-proxy": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
+      }
+    ],
+    "sandbox": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bnoc3Smwt4_ROvTFWY_v9O8qlxZuPKby5Pv8zYBQW_E"
+      }
+    ],
+    "ca2a": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iodf_x6zhFFXes1a_uQFRWVo3XyJ4JCGOgVXvHr0nxc"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "edge": "wrapper",
+      "seq": 0,
+      "prev": null,
+      "parents": [],
+      "kind": "run_start",
+      "t": {
+        "observed_at": 1794700000000,
+        "duration_ms": 5
+      },
+      "body": {
+        "contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "h9PoSFhAzoqj_7-n5jF2P1-kBeMU0mWBqNSNpfGIMrfqrW54151eHhcPuen4pPeQtU7Rn2OEFOwKoncIu3OGCQ"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "model-gateway",
+      "seq": 0,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700001000,
+        "duration_ms": 5
+      },
+      "body": {
+        "model": "example-model-1",
+        "request": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "response": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "requested_tools": [
+          {
+            "tool": "search",
+            "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003"
+          }
+        ]
+      },
+      "provenance": {
+        "/body/requested_tools/0/tool": "observed"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "TAEyJt0mL2gGoInZyqJPjN08MhKkM5suvtwwOO3CIbx5mg3H5g_d-CKRzwIlCKoZwt22hXJkahRDdIB18MeLCw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "cmcp",
+      "seq": 0,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:89acdbaf2b56483b747bedd112b1ebcd7ef195634d2349a14472f5937f9b47db"
+      ],
+      "kind": "tool_call",
+      "t": {
+        "observed_at": 1794700002000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "search",
+        "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003",
+        "decision": "allow",
+        "ext": {
+          "a/b": "x"
+        }
+      },
+      "provenance": {
+        "/body/ext/a~1b": "derived"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "n-dhmxOjcK9rHy5AgG_ScMkMNqLWNPwkfqL7ROxcVlNhXucSVE1cTBOqKUuHhsLnsptcLRglzyZwTLXFVrSoBA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "cmcp",
+      "seq": 1,
+      "prev": "sha256:6253bb3fa392b074e6f40ae3dadc061e868881c802da6d0a6d1f949b96f7ba1e",
+      "parents": [
+        "sha256:6253bb3fa392b074e6f40ae3dadc061e868881c802da6d0a6d1f949b96f7ba1e"
+      ],
+      "kind": "tool_result",
+      "t": {
+        "observed_at": 1794700003000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "search",
+        "status": "ok",
+        "ext": {
+          "a~1b": "y"
+        }
+      },
+      "provenance": {
+        "/body/ext/a~01b": "derived"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "8mFGFJD4O8XBDLH1VXSPVuKd7TQ-vm-O5neKL7mDkNw_6K0xCigjGVq9Wbf361C4Bp0MWCmBoqqpA3gik494Dw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "model-gateway",
+      "seq": 1,
+      "prev": "sha256:89acdbaf2b56483b747bedd112b1ebcd7ef195634d2349a14472f5937f9b47db",
+      "parents": [],
+      "kind": "heartbeat",
+      "t": {
+        "observed_at": 1794700004000,
+        "duration_ms": 5
+      },
+      "body": {
+        "peers": {
+          "cmcp": "sha256:087348a9a309e08011b26927565464fbee35882513dabc44914f31c7f309b01a"
+        }
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "fmC6m6Gl5SfjopHJWXTKu2NH4x_W70E2EtfH-ohp2N54njFb9tSk6h7N4wMkRxJfkMhWMB8Rx86d7UWFUOk8BA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "wrapper",
+      "seq": 1,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:087348a9a309e08011b26927565464fbee35882513dabc44914f31c7f309b01a"
+      ],
+      "kind": "run_end",
+      "t": {
+        "observed_at": 1794700005000,
+        "duration_ms": 5
+      },
+      "body": {
+        "outcome": "completed"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "CaHGV48SHSw8Os_PXGdcduy1bM5DWngyOx1KwjTBufKGK9X-qbwWZnf9_IXXfgvKNWZdtxLZ6u2CH8s039mnDw"
+      }
+    }
+  ],
+  "expected": {
+    "classification": "verified",
+    "codes": []
+  }
+}

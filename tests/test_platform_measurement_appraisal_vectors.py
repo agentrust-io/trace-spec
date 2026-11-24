@@ -25,7 +25,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from agentrust_trace import TrustRecord, iter_errors
+from agentrust_trace import TrustRecord, iter_errors, verify_record
 from agentrust_trace.sign import _canonical_bytes, _pubkey_from_jwk
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -129,7 +129,7 @@ def test_the_model_returns_the_expected_verdict(path: pathlib.Path) -> None:
 
 
 def test_the_mismatch_vectors_fail_on_the_mismatch_and_nothing_else() -> None:
-    """The model is the only validator that sees this rule, so it must see this rule:
+    """The schema cannot see this rule, so the model's shared semantic check must:
     the same record with the result's measurement set back to runtime.measurement is
     accepted."""
     for path in VECTORS:
@@ -143,6 +143,32 @@ def test_the_mismatch_vectors_fail_on_the_mismatch_and_nothing_else() -> None:
         fixed["appraisal"]["platform_measurement"]["measurement"] = (
             record["runtime"]["measurement"])
         TrustRecord.model_validate(fixed)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        path
+        for path in VECTORS
+        if _load(path)["expected"]["codes"] == ["measurement_mismatch"]
+        or _load(path).get("twin_of") in {"21", "22"}
+    ],
+    ids=lambda path: path.stem,
+)
+def test_the_public_verifier_enforces_the_measurement_binding(path: pathlib.Path) -> None:
+    """Both signed mismatches are refused, while their matching signed twins verify."""
+    doc = _load(path)
+    record = doc["record"]
+    arguments = {
+        "public_key_or_jwk": record["cnf"]["jwk"],
+        "now": record["iat"],
+        "max_age_seconds": None,
+    }
+    if doc["expected"]["codes"] == ["measurement_mismatch"]:
+        with pytest.raises(ValueError, match="^measurement_mismatch:"):
+            verify_record(record, **arguments)
+        return
+    verify_record(record, **arguments)
 
 
 @pytest.mark.parametrize("path", VECTORS, ids=IDS)

@@ -434,6 +434,17 @@ class UnanchorableValue(ValueError):
 def _reject_unanchorable(value: Any, path: str = "$") -> None:
     if isinstance(value, bool):
         return
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raise UnanchorableValue(
+                f"{path} contains an unpaired UTF-16 surrogate, which registry-anchor-v1 "
+                "section 1 puts outside the profile: languages whose string type is UTF-8 "
+                "cannot represent an unpaired surrogate, so the digest is not reproducible "
+                "by a peer."
+            ) from None
+        return
     if isinstance(value, float):
         raise UnanchorableValue(
             f"{path} is a non-integer number ({value!r}). registry-anchor-v1 section 1 "
@@ -453,8 +464,18 @@ def _reject_unanchorable(value: Any, path: str = "$") -> None:
         )
     if isinstance(value, dict):
         for key, item in value.items():
+            if isinstance(key, str):
+                try:
+                    key.encode("utf-8")
+                except UnicodeEncodeError:
+                    raise UnanchorableValue(
+                        f"{path}.{key!r} contains an unpaired UTF-16 surrogate in an "
+                        "object key, which registry-anchor-v1 section 1 puts outside the "
+                        "profile: languages whose string type is UTF-8 cannot represent "
+                        "an unpaired surrogate."
+                    ) from None
             _reject_unanchorable(item, f"{path}.{key}")
-    elif isinstance(value, list):
+    elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
             _reject_unanchorable(item, f"{path}[{index}]")
 
@@ -926,6 +947,7 @@ def verify_record(
     # unknown fields, missing required claims, or invalid nested values as a
     # verified TRACE Trust Record. Signature presence and encoding are checked
     # first so the public API preserves its specific envelope errors.
+    from agentrust_trace.semantics import _validate_record_semantics
     from agentrust_trace.validate import validate_json
 
     try:
@@ -935,6 +957,7 @@ def verify_record(
         raise ValueError(
             f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
         ) from exc
+    _validate_record_semantics(record)
 
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.

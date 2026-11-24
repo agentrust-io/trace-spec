@@ -20,26 +20,39 @@ def _refuse_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return obj
 
 
+def _refuse_constants(token: str) -> Any:
+    raise LoadError(f"Invalid JSON: non-standard constant {token!r}")
+
+
 def loads_strict(raw: bytes) -> Any:
     """Parse untrusted JSON bytes, raising only :class:`LoadError`.
 
-    Three things ``json.loads`` does not do on its own:
+    Four things ``json.loads`` does not do on its own:
 
     * Duplicate member names are refused. ``json.loads`` keeps the last, the
       signature is checked over that, and a consumer whose parser keeps the
       first reads a value no signature covered. RFC 8785 is defined over
       I-JSON (RFC 7493), which forbids duplicates, so such a record has no
       canonical form to verify in the first place.
-    * Bytes that are not UTF-8 are a ``LoadError``, not ``UnicodeDecodeError``.
+    * Non-standard JSON constants (``NaN``, ``Infinity``, ``-Infinity``) are
+      refused as ``LoadError``.
+    * Non-``bytes`` inputs and bytes that are not UTF-8 are a ``LoadError``,
+      not ``AttributeError`` or ``UnicodeDecodeError``.
     * Nesting deep enough to exhaust the interpreter stack is a ``LoadError``,
       not ``RecursionError``.
     """
+    if not isinstance(raw, bytes):
+        raise LoadError(f"Invalid JSON: expected bytes, got {type(raw).__name__}")
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise LoadError(f"Invalid JSON: not UTF-8 ({exc})") from exc
     try:
-        return json.loads(text, object_pairs_hook=_refuse_duplicates)
+        return json.loads(
+            text,
+            object_pairs_hook=_refuse_duplicates,
+            parse_constant=_refuse_constants,
+        )
     except json.JSONDecodeError as exc:
         raise LoadError(f"Invalid JSON: {exc}") from exc
     except RecursionError as exc:

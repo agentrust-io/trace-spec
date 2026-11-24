@@ -165,7 +165,14 @@ def signature_encoding() -> list[Vector]:
                  lambda e: e["outcome"], lambda e: [e.get("failure")])
 
 
+def behavior_trace() -> list[Vector]:
+    """One boundary per code; `tests/test_behavior_trace.py` holds each to two vectors."""
+    return _load("behavior-trace",
+                 lambda e: e["classification"], lambda e: list(e["codes"]))
+
+
 SETS = {
+    "behavior-trace": (behavior_trace, None),
     "build-provenance-depth": (build_provenance_depth, _depth_boundary),
     "reproducibility-claim": (reproducibility_claim, None),
     "platform-measurement-appraisal": (platform_measurement_appraisal, None),
