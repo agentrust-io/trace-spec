@@ -13,4 +13,4 @@ Technically, the envelope is an EAT (Entity Attestation Token, an IETF format fo
 | TR-ENV-003 | `subject` matches SPIFFE URI or DID | `spiffe://trust.example/agent/x` or `did:key:z6Mk...` | bare string |
 | TR-ENV-004 | `cnf.jwk.kty` is present. This is not a gate over the schema's required set | `cnf.jwk.kty` set to any value | `cnf` absent, `cnf.jwk` absent or not an object, `kty` absent |
 | TR-ENV-005 | `cnf.jwk` carries no private key material | `cnf.jwk` with `kty`/`crv`/`x` only | `cnf.jwk` containing `d`, `p`, `q`, `dp`, `dq`, `qi` or `k` |
-| TR-ENV-006 | The complete extracted TRACE claim matches the packaged JSON Schema before the hand-written checks contribute to a level verdict | every required member is present and every object contains only allowed members | a required root member is missing or an unknown member is added |
+| TR-ENV-007 | The complete extracted TRACE claim matches the packaged JSON Schema before the hand-written checks contribute to a level verdict | every required member is present and every object contains only allowed members | a required root member is missing or an unknown member is added |

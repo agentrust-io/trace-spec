@@ -11,7 +11,7 @@ Look up a code from a failed or unverified check here: what it means and how to 
 | TR-ENV-003 | `subject` does not match SPIFFE URI or DID pattern | Use `spiffe://<trust-domain>/<path>` or a `did:` URI |
 | TR-ENV-004 | `cnf` is absent or not an object, `cnf.jwk` is absent or not an object, or `cnf.jwk.kty` is absent | Populate `cnf.jwk` with at least `kty`. This checks that one field, not the schema's full required set, which structural validation covers |
 | TR-ENV-005 | `cnf.jwk` carries private key material (`d`, `p`, `q`, `dp`, `dq`, `qi`, `k`) | Publish the public half only. RFC 8747 makes `cnf` a confirmation key, and a record is signed and usually anchored, so a key exposed this way must be treated as compromised and the identity revoked |
-| TR-ENV-006 | The complete TRACE claim violates the packaged JSON Schema, including a missing required member or a forbidden additional member | Produce every required field with its documented type and remove members the schema does not define. This gate runs before the hand-written checks at every level |
+| TR-ENV-007 | The complete TRACE claim violates the packaged JSON Schema, including a missing required member or a forbidden additional member | Produce every required field with its documented type and remove members the schema does not define. This gate runs before the hand-written checks at every level |
 
 ## TR-SIG: Signature
 

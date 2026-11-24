@@ -64,25 +64,25 @@ def check(trace: dict[str, Any]) -> list[Finding]:
     except (OSError, UnicodeError, json.JSONDecodeError, SchemaError):
         return [
             Finding(
-                "TR-ENV-006",
+                "TR-ENV-007",
                 Status.FAIL,
-                "TR-ENV-006: packaged TRACE schema is unavailable or invalid; "
+                "TR-ENV-007: packaged TRACE schema is unavailable or invalid; "
                 "whole-record validation could not be completed",
             )
         ]
     except RecursionError:
         return [
             Finding(
-                "TR-ENV-006",
+                "TR-ENV-007",
                 Status.FAIL,
-                "TR-ENV-006: record nests too deeply for whole-record schema validation",
+                "TR-ENV-007: record nests too deeply for whole-record schema validation",
             )
         ]
 
     if not errors:
         return [
             Finding(
-                "TR-ENV-006",
+                "TR-ENV-007",
                 Status.PASS,
                 "complete record matches the packaged TRACE schema",
             )
@@ -90,12 +90,12 @@ def check(trace: dict[str, Any]) -> list[Finding]:
 
     return [
         Finding(
-            "TR-ENV-006",
+            "TR-ENV-007",
             Status.FAIL,
             # Instance paths can contain attacker-supplied map keys, including
             # JWK extension names. Only schema-owned locations belong in a
             # report that may be shared without the original record.
-            f"TR-ENV-006: schema violation: {_error_detail(error)}",
+            f"TR-ENV-007: schema violation: {_error_detail(error)}",
         )
         for error in errors
     ]

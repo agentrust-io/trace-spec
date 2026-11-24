@@ -20,7 +20,7 @@ def _resign(record: dict[str, Any], key: Ed25519PrivateKey) -> None:
 
 
 def _schema_findings(results: dict[str, list[Finding]]) -> list[Finding]:
-    return [finding for finding in results["TR-ENV"] if finding.code == "TR-ENV-006"]
+    return [finding for finding in results["TR-ENV"] if finding.code == "TR-ENV-007"]
 
 
 @pytest.mark.parametrize("level", [0, 1, 2])
