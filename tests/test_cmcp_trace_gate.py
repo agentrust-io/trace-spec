@@ -90,7 +90,7 @@ def deployment(fixture, tmp_path, monkeypatch, request):
             tls_fingerprint="SHA256:AAAA/BBBB==",
             transport="http-sse",
             rotation_mode="key-pinned",
-            spiffe_id=None,
+            spiffe_id="spiffe://fixture.test/mcp/read",
         ),
         approved_definition=ApprovedDefinition(
             description="read", input_schema={}, output_schema=None

@@ -39,7 +39,10 @@ def test_composition_only_manifest_cannot_drive_requirements(fixture):
         manifest["profile"] = "composition-only"
         manifest["unbound_artifacts"] = list(UNBOUND)
 
-    with pytest.raises(ValueError, match="evidence_requirements needs its explicit"):
+    # agent-manifest refuses the block outside its own profile, as an unknown field.
+    with pytest.raises(
+        ValueError, match=r"evidence_requirements\s+Extra inputs are not permitted"
+    ):
         signed_packet(fixture, composition_with_requirements)
 
     def composition_only(manifest):
