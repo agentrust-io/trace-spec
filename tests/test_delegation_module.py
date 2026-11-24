@@ -25,8 +25,7 @@ def test_parent_record_hash_matches_published_vectors() -> None:
     leaf, parent = vec01["records"][0], vec01["records"][1]
     assert delegation.parent_record_hash(leaf, "sha256") == vec01["context"]["leaf"]
     assert (
-        delegation.parent_record_hash(parent, "sha256")
-        == leaf["delegation"]["parent_record_hash"]
+        delegation.parent_record_hash(parent, "sha256") == leaf["delegation"]["parent_record_hash"]
     )
 
     vec22 = _load("22-leaf-link-uses-sha384.json")
@@ -75,10 +74,7 @@ def test_verify_delegation_link_succeeds_for_sha256_and_sha384() -> None:
     vec22 = _load("22-leaf-link-uses-sha384.json")
     link22 = delegation.verify_delegation_link(vec22["records"][0], vec22["records"][1])
     assert link22.algorithm == "sha384"
-    assert (
-        link22.parent_record_hash
-        == vec22["records"][0]["delegation"]["parent_record_hash"]
-    )
+    assert link22.parent_record_hash == vec22["records"][0]["delegation"]["parent_record_hash"]
 
 
 def test_verify_delegation_link_refuses_absent_malformed_unsupported_or_mismatched() -> None:
@@ -283,15 +279,146 @@ def test_verify_delegation_chain_refuses_non_canonical_signature_and_unknown_mem
         delegation.verify_delegation_chain([mutated_leaf, parent], mutated_leaf, context)
 
     key = generate_key()
-    unsigned = {
-        k: v for k, v in leaf.items() if k not in ("signature", "cnf")
-    }
+    unsigned = {k: v for k, v in leaf.items() if k not in ("signature", "cnf")}
     unsigned["extra_top_level_member"] = "forbidden-by-schema"
     signed_with_extra = sign_record(unsigned, key)
     signed_with_extra["cnf"] = {"jwk": key_to_jwk(key)}
     with pytest.raises(delegation.DelegationError, match="schema"):
+        delegation.verify_delegation_chain([signed_with_extra, parent], signed_with_extra, context)
+
+
+@pytest.mark.parametrize(
+    "members",
+    [
+        ("d",),
+        ("p",),
+        ("q",),
+        ("dp",),
+        ("dq",),
+        ("qi",),
+        ("oth",),
+        ("k",),
+        ("d", "k"),
+        ("p", "q", "dp", "dq", "qi"),
+    ],
+)
+def test_verify_delegation_chain_rejects_private_jwk_members_in_trusted_root_keys(
+    members: tuple[str, ...],
+) -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    assert (
         delegation.verify_delegation_chain(
-            [signed_with_extra, parent], signed_with_extra, context
-        )
+            vec01["records"], vec01["context"]["leaf"], vec01["context"]
+        ).classification
+        == "verified"
+    )
+    sentinel = "secret-material-do-not-echo-999"
+    bad_ctx = copy.deepcopy(vec01["context"])
+    for member in members:
+        bad_ctx["trusted_root_keys"][0][member] = sentinel
+    with pytest.raises(delegation.DelegationError, match="private key material") as exc_info:
+        delegation.verify_delegation_chain(vec01["records"], vec01["context"]["leaf"], bad_ctx)
+    for member in members:
+        assert repr(member) in str(exc_info.value)
+    assert sentinel not in str(exc_info.value)
 
 
+def test_verify_delegation_chain_rejects_max_depth_above_safe_int() -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    ok_ctx = copy.deepcopy(vec01["context"])
+    ok_ctx["max_depth"] = 2**53 - 1
+    assert (
+        delegation.verify_delegation_chain(vec01["records"], ok_ctx["leaf"], ok_ctx).classification
+        == "verified"
+    )
+    for bad_depth in (2**53, 1.5, float("inf"), float("nan")):
+        bad_ctx = copy.deepcopy(vec01["context"])
+        bad_ctx["max_depth"] = bad_depth
+        with pytest.raises(delegation.DelegationError, match="max_depth"):
+            delegation.verify_delegation_chain(vec01["records"], bad_ctx["leaf"], bad_ctx)
+
+
+def test_verify_delegation_chain_accepts_whole_float_max_depth_and_credential_bounds() -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    float_ctx = copy.deepcopy(vec01["context"])
+    float_ctx["max_depth"] = 5.0
+    cid = next(iter(float_ctx["credentials"]))
+    float_ctx["credentials"][cid]["not_before"] = float(float_ctx["credentials"][cid]["not_before"])
+    float_ctx["credentials"][cid]["not_after"] = float(float_ctx["credentials"][cid]["not_after"])
+    assert (
+        delegation.verify_delegation_chain(
+            vec01["records"], float_ctx["leaf"], float_ctx
+        ).classification
+        == "verified"
+    )
+
+
+def test_verify_delegation_chain_rejects_duplicate_data_class_lattice_entries() -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    bad_ctx = copy.deepcopy(vec01["context"])
+    bad_ctx["data_class_lattice"] = ["public", "confidential", "public"]
+    with pytest.raises(delegation.DelegationError, match="must not contain duplicate entries"):
+        delegation.verify_delegation_chain(vec01["records"], bad_ctx["leaf"], bad_ctx)
+
+
+@pytest.mark.parametrize(
+    ("mutated_fields", "expected_match"),
+    [
+        ({"issuer": ""}, "non-empty string issuer and holder"),
+        ({"holder": ""}, "non-empty string issuer and holder"),
+        ({"not_before": -1}, "not_before"),
+        ({"not_before": 2**53}, "not_before"),
+        ({"not_before": 1.5}, "not_before"),
+        ({"not_before": True}, "not_before"),
+        ({"not_after": -1, "not_before": 0}, "not_after"),
+        ({"not_after": 2**53}, "not_after"),
+        ({"not_after": 1.5}, "not_after"),
+        ({"not_after": False}, "not_after"),
+        ({"not_before": 2000, "not_after": 1000}, "not_before must not exceed not_after"),
+    ],
+)
+def test_verify_delegation_chain_rejects_invalid_credential_identities_and_windows(
+    mutated_fields: dict[str, Any], expected_match: str
+) -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    bad_ctx = copy.deepcopy(vec01["context"])
+    cid = next(iter(bad_ctx["credentials"]))
+    bad_ctx["credentials"][cid].update(mutated_fields)
+    with pytest.raises(delegation.DelegationError, match=expected_match):
+        delegation.verify_delegation_chain(vec01["records"], bad_ctx["leaf"], bad_ctx)
+
+
+def test_verify_delegation_chain_stops_at_first_return_to_leaf_in_cycle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vec01 = _load("01-valid-single-hop.json")
+    leaf = copy.deepcopy(vec01["records"][0])
+    target_hash = leaf["delegation"]["parent_record_hash"]
+    monkeypatch.setattr(delegation, "parent_record_hash", lambda rec, alg="sha256": target_hash)
+
+    evaluated_stages: list[tuple[str, int, int]] = []
+    orig_evaluate = delegation._evaluate
+
+    def _recording_evaluate(
+        hop: delegation.Hop, rules: Any, stage: str
+    ) -> tuple[list[str], list[str]]:
+        evaluated_stages.append((stage, id(hop.record), hop.depth))
+        return orig_evaluate(hop, rules, stage)
+
+    monkeypatch.setattr(delegation, "_evaluate", _recording_evaluate)
+    result = delegation.verify_delegation_chain([leaf], target_hash, vec01["context"])
+    assert isinstance(result, delegation.ChainResult)
+    assert result.depth == 1
+    assert [s for s in evaluated_stages if s[0] == "record"] == [("record", id(leaf), 0)]
+    assert evaluated_stages == [
+        ("record", id(leaf), 0),
+        ("resolve", id(leaf), 1),
+        ("link", id(leaf), 1),
+    ]
+    assert len(result.failures) == len(set(result.failures))
+    assert result == delegation.ChainResult(
+        classification="authorization-invalid",
+        failures=["credential_issuer_mismatch"],
+        warnings=[],
+        depth=1,
+    )
