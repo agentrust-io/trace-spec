@@ -146,6 +146,7 @@ def test_production_composition_requires_verified_manifest(
                 envelope=raw,
                 enforcement_mode=d["cfg"].attestation.enforcement_mode,
                 now=datetime.fromtimestamp(g.NOW, UTC),
+                trusted_key_issuers=manifest_context.trusted_key_issuers,
             )
             assert binding.tool_catalog_hash == catalog.catalog_hash
             assert binding.tool_catalog_hash != projection["catalog_hash"]
