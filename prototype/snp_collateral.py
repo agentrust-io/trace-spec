@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Any
 
 from cryptography import x509
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.x509.oid import NameOID, ObjectIdentifier
 
@@ -137,8 +137,15 @@ def _cn(name: x509.Name) -> str:
 
 
 def _verify_signed_by(cert_or_crl: Any, issuer: x509.Certificate) -> bool:
-    key = issuer.public_key()
+    """True only when the issuer's key verifies the signature, never for one it cannot check."""
     try:
+        key = issuer.public_key()
+        # Both branches below verify with the signature's hash. An algorithm the library maps to
+        # none, Ed25519 and Ed448 among them, is one neither can verify. A key, an algorithm or a
+        # parameter the library cannot read raises, and so does verifying an RSASSA-PSS signature
+        # under an RSA key too small for its digest.
+        if cert_or_crl.signature_hash_algorithm is None:
+            return False
         if isinstance(key, rsa.RSAPublicKey):
             params = cert_or_crl.signature_algorithm_parameters
             key.verify(
@@ -159,7 +166,7 @@ def _verify_signed_by(cert_or_crl: Any, issuer: x509.Certificate) -> bool:
             )
         else:
             return False
-    except InvalidSignature:
+    except (InvalidSignature, UnsupportedAlgorithm, ValueError):
         return False
     return True
 
