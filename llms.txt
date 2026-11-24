@@ -28,6 +28,7 @@ TRACE (Trust Runtime Attestation and Compliance Evidence) is an open specificati
 - [Verifier-issued, holder-bound token](https://trace.agentrust-io.com/docs/rfcs/verifier-issued-trace-profile/index.md)
 - [Composite component appraisal](https://trace.agentrust-io.com/docs/rfcs/composite-component-appraisal/index.md)
 - [Tool-catalog observed digest](https://trace.agentrust-io.com/docs/rfcs/tool-catalog-observed-digest/index.md)
+- [Behavior-trace blocks](https://trace.agentrust-io.com/docs/rfcs/behavior-trace/index.md)
 
 ## Guides
 
