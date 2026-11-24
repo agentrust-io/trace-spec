@@ -18,21 +18,23 @@
  *       in the standard alphabet is reported as the encoding fault it is. The
  *       empty string decodes, to no bytes, and is left to the schema's pattern.
  *    5. The record conforms to the schema: `schema_invalid`, with the location.
- *    6. A trusted key: the caller's, or `cnf.jwk` only when `allowEmbeddedKey` is
+ *    6. Cross-field semantics the schema cannot express: `measurement_mismatch`
+ *       when a platform appraisal names a different runtime measurement (section 3.1.5).
+ *    7. A trusted key: the caller's, or `cnf.jwk` only when `allowEmbeddedKey` is
  *       set, and it is an Ed25519 key: `trusted_key_missing`,
  *       `trusted_key_unsupported`, `trusted_key_malformed`.
- *    7. Revocation (section 3.2.3), keyed on the trusted key and never on the
+ *    8. Revocation (section 3.2.3), keyed on the trusted key and never on the
  *       record's own `cnf.jwk`: a caller-supplied store, then a bundle.
  *       `key_revoked`, `revocation_unavailable`; any other bundle defect is
  *       reported in the result, not thrown.
- *    8. The confirmation key: `cnf.jwk` is an Ed25519 key with the same RFC 7638
+ *    9. The confirmation key: `cnf.jwk` is an Ed25519 key with the same RFC 7638
  *       thumbprint as the trusted key, because the binding is a signature made
  *       by the key in `cnf` (section 3.2.2): `cnf_key_unsupported`,
  *       `cnf_key_malformed`, `cnf_key_mismatch`.
- *    9. Freshness (section 3.2.2): `iat_invalid`, `record_in_future` past the
+ *   10. Freshness (section 3.2.2): `iat_invalid`, `record_in_future` past the
  *       allowed skew, `record_stale` past the maximum age, `nonce_mismatch` when a
  *       challenge nonce was issued.
- *   10. The signature verifies over the RFC 8785 form of the record with
+ *   11. The signature verifies over the RFC 8785 form of the record with
  *       `signature` absent (section 3.2.2): `canonicalization_failed`,
  *       `signature_invalid`.
  */
@@ -50,6 +52,7 @@ import {
 } from "./platform.js";
 import { checkRevocationBundle, NO_CHECK, type RevocationCheck } from "./revocation.js";
 import { recordSchemaViolations } from "./schema.js";
+import { recordSemanticViolations } from "./semantics.js";
 import { isPlainObject, isSet, own, timingSafeEqual } from "./text.js";
 
 /** The profile URI this build implements, and the only one `verifyRecord` accepts. */
@@ -326,10 +329,14 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     });
   }
 
-  // From here the schema holds for the members it saw. A schema validator reads
-  // through the prototype chain; the signature pre-image is built from own
-  // members only, so every member read from here on is own, and an inherited
-  // `cnf` or `iat` stands for nothing.
+  const [first] = recordSemanticViolations(record);
+  if (first !== undefined) {
+    fail(first.code, `the record violates TRACE v0.2 semantics at ${first.path}: ${first.message}`);
+  }
+
+  // From here the schema and cross-field semantics hold for the record's own
+  // members. Keep later reads on that same own-member set: the signature pre-image
+  // excludes inherited values, so an inherited `cnf` or `iat` stands for nothing.
   const cnf = own(record, "cnf");
   if (!isPlainObject(cnf)) {
     fail("schema_invalid", "the record does not conform to the TRACE v0.2 schema at cnf: not a plain object of the record's own", {

@@ -43,6 +43,7 @@ affirming appraisal.
 |---|---|
 | `eat_profile` is `tag:agentrust-io.com,2026:trace-v0.2`, and the v0.1 identifier is rejected rather than accepted | spec section 2, "the cutover is cutover, not coexistence" |
 | The record conforms to `schema/trace-claim.json`, Draft 2020-12, with `pattern` read as ECMA-262 and `format: uri` asserted | schema, and JSON Schema 2020-12 section 7 |
+| `appraisal.platform_measurement.measurement` exactly equals `runtime.measurement` | spec section 3.1.5 |
 | The signature is Ed25519 over the RFC 8785 form of the record with `signature` absent | spec section 3.2.2 |
 | The signature is canonical unpadded base64url: no padding, unused trailing bits zero | RFC 4648 sections 5 and 3.5 |
 | An integer outside the JCS safe range MUST be rejected rather than canonicalised | spec section 3.2.2, RFC 8785 Appendix B |

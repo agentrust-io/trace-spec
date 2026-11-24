@@ -947,6 +947,7 @@ def verify_record(
     # unknown fields, missing required claims, or invalid nested values as a
     # verified TRACE Trust Record. Signature presence and encoding are checked
     # first so the public API preserves its specific envelope errors.
+    from agentrust_trace.semantics import _validate_record_semantics
     from agentrust_trace.validate import validate_json
 
     try:
@@ -956,6 +957,7 @@ def verify_record(
         raise ValueError(
             f"record does not conform to the TRACE v0.2 schema at {location}: {exc.message}"
         ) from exc
+    _validate_record_semantics(record)
 
     # Resolve the trusted public key. A trusted key is required: a record cannot
     # authenticate itself with the key it embeds.
