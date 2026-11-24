@@ -45,7 +45,7 @@ The six labels agreed so far, what each one points at, and where it is defined:
 |---|---|---|---|
 | `authorized-intent` | An authorization decided before execution, held in another system | §3.1.2; one mapping in [`crosswalks/nkemba-institutional-reconstruction.md`](crosswalks/nkemba-institutional-reconstruction.md) | none committed |
 | `approval-outcome` | An attributable human approval attached to a step-up or defer decision | §3.1.2; the CHAP mapping in [`crosswalks/chap-review-decisions.md`](crosswalks/chap-review-decisions.md) | [`examples/chap-approval-outcome/`](../examples/chap-approval-outcome/) |
-| `behavior-trace` | A behavioural record of what the agent did, of which this record is the environment evidence | §3.1.2 | none committed |
+| `behavior-trace` | A behavioural record of what the agent did, of which this record is the environment evidence | §3.1.2; a draft format in [`rfcs/behavior-trace.md`](rfcs/behavior-trace.md) | none committed |
 | `condition-appraisal` | An independent check's finding on whether a stated condition is established by a stated subject | This document, below | [`examples/condition-appraisal/`](../examples/condition-appraisal/) |
 | `observed-effect` | A signed record of the state change an observer outside the agent saw over one interval | This document, below | [`examples/observed-effect/`](../examples/observed-effect/) |
 | `applicability-assessment` | An assessor's statement of whether a stated legal provision applies to a stated party, held in another system | This document, below | [`examples/applicability-assessment/`](../examples/applicability-assessment/) |
@@ -146,10 +146,14 @@ before it cover what was asked (`authorized-intent`), who approved (`approval-ou
 what the agent did (`behavior-trace`) and what a check found (`condition-appraisal`);
 this is the question a relying party asks after all four, what actually changed.
 
-Two neighbours it is not. A `behavior-trace` is a record of the agent's actions, often
-written by the agent or its host, and a state change can happen that no action in it
-accounts for, or fail to happen where one claims it did; an `observed-effect` is taken
-over the state itself, from outside the party it describes. And it is not a
+Two neighbours it is not. A `behavior-trace` is a record of the agent's actions. In the
+draft format in [`rfcs/behavior-trace.md`](rfcs/behavior-trace.md) each action is written
+and signed by an edge the agent passes through, such as a tool gateway or an egress
+proxy, never by the agent. Even so, it records the requests that crossed those edges,
+not what they changed: a state change can happen that no action in it accounts for,
+through an edge nobody instrumented or outside the run, or fail to happen where an action
+claims it did. An `observed-effect` is taken over the state itself, from outside the
+party it describes. And it is not a
 `condition-appraisal`: it states what changed and within what scope, and it holds the
 change against no criteria. A check over an observed interval, such as whether a write
 fell outside the permitted paths, is a `condition-appraisal` whose subject is the

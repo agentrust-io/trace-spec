@@ -1,7 +1,7 @@
 """Portable verifier-compatibility vectors (agentrust-io/trace-spec#116).
 
-These fixtures encode behaviour that is **proposed and under review**, not accepted
-normative text.
+These fixtures encode Obligations 2 and 3 of agentrust-io/trace-spec#116, which are
+**normative in `spec/trace-v0.2.md` §3.3** (Obligations 1 and 4 remain deferred).
 
 Unlike the vectors in `test_sign.py`, nothing here is written against this library's
 API: each fixture states a signed record, the profile set a verifier declares, and
@@ -168,7 +168,10 @@ def test_verifier_compatibility_vector(fixture_path: Path) -> None:
 
     assert fixture["profile"] == PROFILE
     assert fixture["proposal"]["issue"] == "agentrust-io/trace-spec#116"
-    assert "not accepted normative text" in fixture["proposal"]["status"]
+    assert (
+        fixture["proposal"]["status"]
+        == "Obligations 2 and 3 normative in spec/trace-v0.2.md §3.3; Obligations 1 and 4 deferred"
+    )
 
     _check_preconditions(fixture_path, fixture)
     _check_vector(fixture_path, fixture, _verify)

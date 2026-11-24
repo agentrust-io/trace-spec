@@ -977,6 +977,9 @@ def test_the_scan_knows_every_integer_member() -> None:
         # requirements schemas: integer-typed members the scan reads from `schema/`.
         ("observed_at",), ("expires_at",), ("exp",), ("appraised_at",),
         ("fresh_until",), ("maximum_age_seconds",),
+        # The experimental behavior-trace block schema.
+        ("seq",), ("t", "observed_at"), ("t", "duration_ms"),
+        ("bytes",), ("status",), ("usage", "input_tokens"), ("usage", "output_tokens"),
     }
 
 

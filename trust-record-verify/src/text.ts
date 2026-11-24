@@ -160,3 +160,21 @@ export function isSet(value: unknown): value is ReadonlySet<unknown> {
 export function own(object: Record<string, unknown>, key: string): unknown {
   return Object.hasOwn(object, key) ? object[key] : undefined;
 }
+
+/** Deep equality of two JSON values, used by the generated `uniqueItems` check. */
+export function jsonEqual(a: unknown, b: unknown): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, i) => jsonEqual(item, b[i]));
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const keys = Object.keys(a);
+    return (
+      keys.length === Object.keys(b).length &&
+      keys.every((key) => Object.hasOwn(b, key) && jsonEqual(a[key], b[key]))
+    );
+  }
+  return false;
+}
