@@ -1,0 +1,234 @@
+{
+  "id": "04",
+  "name": "04-truncated-tail-dropped",
+  "description": "Run B with its last three blocks dropped.",
+  "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
+  "pinned_keys": {
+    "wrapper": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w"
+      }
+    ],
+    "cmcp": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q"
+      }
+    ],
+    "model-gateway": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E"
+      }
+    ],
+    "egress-proxy": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
+      }
+    ],
+    "sandbox": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bnoc3Smwt4_ROvTFWY_v9O8qlxZuPKby5Pv8zYBQW_E"
+      }
+    ],
+    "ca2a": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iodf_x6zhFFXes1a_uQFRWVo3XyJ4JCGOgVXvHr0nxc"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "edge": "wrapper",
+      "seq": 0,
+      "prev": null,
+      "parents": [],
+      "kind": "run_start",
+      "t": {
+        "observed_at": 1794700000000,
+        "duration_ms": 5
+      },
+      "body": {
+        "contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "h9PoSFhAzoqj_7-n5jF2P1-kBeMU0mWBqNSNpfGIMrfqrW54151eHhcPuen4pPeQtU7Rn2OEFOwKoncIu3OGCQ"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "model-gateway",
+      "seq": 0,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700001000,
+        "duration_ms": 5
+      },
+      "body": {
+        "model": "example-model-1",
+        "request": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000005",
+        "response": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000006"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "51_TWF17b8300QL2LCIHJgpdUAORN17sOCtPKG8VcIi5Vr-83Ij949us_zTx4VZaHesWBkKymkm6Ni6YQgJyBw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "egress-proxy",
+      "seq": 0,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:6ae607ab5678006f29b26565940ff029108a4e1a0541bc48ebc4f2c13bbec057"
+      ],
+      "kind": "dns",
+      "t": {
+        "observed_at": 1794700002000,
+        "duration_ms": 5
+      },
+      "body": {
+        "query": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000007"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "d8Me3uJ82jhdsCstWyVMr3_I2ueeTYG5agM1-2r1_bY",
+        "value": "s4I788FaJU-_-COmgYdos-6LYrVTBVVK57TFZnE0tv9vp-VknbMZOMZ5LzRSN610rLNTEJm7ZmaoBH4e7Z6GDQ"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "egress-proxy",
+      "seq": 1,
+      "prev": "sha256:3d54063337c4882fcf7ddda33b7cd1eefa93d9c024972914811b6c837cd6b265",
+      "parents": [
+        "sha256:6ae607ab5678006f29b26565940ff029108a4e1a0541bc48ebc4f2c13bbec057"
+      ],
+      "kind": "dns",
+      "t": {
+        "observed_at": 1794700003000,
+        "duration_ms": 5
+      },
+      "body": {
+        "query": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000008",
+        "answers": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000009"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "d8Me3uJ82jhdsCstWyVMr3_I2ueeTYG5agM1-2r1_bY",
+        "value": "eysryiz6yjEJxajLkhu1X7Mv6E2-_rFQCffuplUFU9YxfOzuclrJIOOEbLp_tVixjyYjVMLDcIWLyNyJnGvYAA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "egress-proxy",
+      "seq": 2,
+      "prev": "sha256:e0955e3793e89fdd2f43053d7e67a5056f40d05c2b4f21341d1bc248932bf29b",
+      "parents": [
+        "sha256:6ae607ab5678006f29b26565940ff029108a4e1a0541bc48ebc4f2c13bbec057"
+      ],
+      "kind": "fetch",
+      "t": {
+        "observed_at": 1794700004000,
+        "duration_ms": 5
+      },
+      "body": {
+        "url": "hmac-sha256:000000000000000000000000000000000000000000000000000000000000000a",
+        "status": 200,
+        "content": "hmac-sha256:000000000000000000000000000000000000000000000000000000000000000b",
+        "bytes": 1024
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "d8Me3uJ82jhdsCstWyVMr3_I2ueeTYG5agM1-2r1_bY",
+        "value": "IZtP2WtLRIe2HeO6hLSBVP0MOLAOTXVqMfCH90sqKZui-Tv-HDlGIuC89x-rSy9K9iU_cq5CaLUDNwBCWyWODg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "model-gateway",
+      "seq": 1,
+      "prev": "sha256:6ae607ab5678006f29b26565940ff029108a4e1a0541bc48ebc4f2c13bbec057",
+      "parents": [
+        "sha256:d0de5e6ef34813a74c6979c4a022e8504deb05d9c5bc6aedc4ed9f3433fae8cc"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700005000,
+        "duration_ms": 5
+      },
+      "body": {
+        "model": "example-model-1",
+        "request": "hmac-sha256:000000000000000000000000000000000000000000000000000000000000000c",
+        "response": "hmac-sha256:000000000000000000000000000000000000000000000000000000000000000d",
+        "usage": {
+          "input_tokens": 512,
+          "output_tokens": 64
+        }
+      },
+      "provenance": {
+        "/body/usage/input_tokens": "asserted"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "NQSY290sV4IEPv7gOKW07863wAWy2I2nlKUxJCKpv-raY0l2u97LV7mkJItyx9NMatDuBry-hkSZftNMii_kCg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "edge": "cmcp",
+      "seq": 0,
+      "prev": "sha256:408582cf4624298f23957aa1712b2b166e399ec1c9f1735b20fd6d6555eafb06",
+      "parents": [
+        "sha256:a9ff9ecd87fef04ce9ec14286e9a7c3a000be71d7d20657782d78bcdeb74646e"
+      ],
+      "kind": "tool_call",
+      "t": {
+        "observed_at": 1794700006000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "read",
+        "args": "hmac-sha256:000000000000000000000000000000000000000000000000000000000000000e",
+        "decision": "allow"
+      },
+      "provenance": {
+        "/body/tool": "observed"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "YgGQkG4TCgxsQyARSaEfKR3KN2QUh-LhKxGgRABJqPPjEPBlm8M2ydGSUKdJJrK9LGk8AxPN1zZp4Y9SOwRDAw"
+      }
+    }
+  ],
+  "expected": {
+    "classification": "truncated",
+    "codes": []
+  }
+}

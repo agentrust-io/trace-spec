@@ -400,6 +400,32 @@ test("platform-measurement vectors", async (t) => {
   }
 });
 
+test("platform-measurement appraisal bindings", async (t) => {
+  const items = vectors("platform-measurement-appraisal").filter(
+    ({ vector }) =>
+      vector.expected.codes.includes("measurement_mismatch") ||
+      ["21", "22"].includes(vector.twin_of),
+  );
+  assert.equal(items.length, 4);
+  for (const { name, vector } of items) {
+    await t.test(name, async () => {
+      const record = vector.record;
+      const got = await outcome(
+        verifyRecord(record, {
+          trustedKey: record.cnf.jwk,
+          now: record.iat,
+          maxAgeSeconds: null,
+        }),
+      );
+      if (vector.expected.codes.includes("measurement_mismatch")) {
+        assert.deepEqual(got, { rejected: true, code: "measurement_mismatch" });
+      } else {
+        assert.equal(got.rejected, false, `matching measurement was rejected as ${got.code}`);
+      }
+    });
+  }
+});
+
 test("citationResolver and platformAppraiser run only after signature and freshness checks", async () => {
   const { vector } = vectors("citation-resolution").find(({ name }) => name === "16-all-three-resolved.json");
   const context = vector.context;

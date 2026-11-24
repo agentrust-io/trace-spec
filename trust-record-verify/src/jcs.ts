@@ -41,12 +41,15 @@ const SHORT_ESCAPES: Record<number, string> = {
   0x5c: "\\\\",
 };
 
-function serializeString(value: string, where: string): string {
+// *where* names the value in an error message. It is a function so that the
+// name, which holds the whole path, is built only on failure: built for every
+// value, it made canonicalization quadratic in the length of a member name.
+function serializeString(value: string, where: () => string): string {
   const bad = unpairedSurrogateAt(value);
   if (bad !== -1) {
     fail(
       "canonicalization_failed",
-      `${where} holds an unpaired surrogate at offset ${bad}; it has no UTF-8 form`,
+      `${where()} holds an unpaired surrogate at offset ${bad}; it has no UTF-8 form`,
     );
   }
   let out = '"';
@@ -62,14 +65,14 @@ function serializeString(value: string, where: string): string {
   return `${out}${value.slice(start)}"`;
 }
 
-function serializeNumber(value: number, where: string): string {
+function serializeNumber(value: number, where: () => string): string {
   if (!Number.isFinite(value)) {
-    fail("canonicalization_failed", `${where} is ${String(value)}, which has no JSON form`);
+    fail("canonicalization_failed", `${where()} is ${String(value)}, which has no JSON form`);
   }
   if (Number.isInteger(value) && Math.abs(value) > JCS_SAFE_INTEGER) {
     fail(
       "canonicalization_failed",
-      `${where} is an integer outside -${JCS_SAFE_INTEGER} to ${JCS_SAFE_INTEGER}; ` +
+      `${where()} is an integer outside -${JCS_SAFE_INTEGER} to ${JCS_SAFE_INTEGER}; ` +
         "section 3.2.2 requires such a value to be rejected, because distinct integers " +
         "past that bound share one canonical form",
     );
@@ -96,10 +99,10 @@ function serialize(
       parts.push(value ? "true" : "false");
       return;
     case "string":
-      parts.push(serializeString(value, describe(path)));
+      parts.push(serializeString(value, () => describe(path)));
       return;
     case "number":
-      parts.push(serializeNumber(value, describe(path)));
+      parts.push(serializeNumber(value, () => describe(path)));
       return;
     case "object":
       break;
@@ -138,7 +141,7 @@ function serialize(
       if (index > 0) {
         parts.push(",");
       }
-      parts.push(serializeString(name, `a member name in ${describe(path)}`));
+      parts.push(serializeString(name, () => `a member name in ${describe(path)}`));
       parts.push(":");
       path.push(name);
       serialize(node[name], path, ancestors, parts);
