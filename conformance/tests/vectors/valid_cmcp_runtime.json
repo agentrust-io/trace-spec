@@ -1,5 +1,5 @@
 {
-  "cmcp_version": "1.0",
+  "cmcp_version": "1.1",
   "trace": {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": 1748000000,
@@ -26,6 +26,18 @@
         "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
         "kid": "cmcp-d75a9947"
       }
+    },
+    "model": {
+      "provider": "example-provider",
+      "model_id": "example-model"
+    },
+    "build_provenance": {
+      "slsa_level": 2,
+      "digest": "sha256:e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8"
+    },
+    "appraisal": {
+      "status": "affirming",
+      "verifier": "https://verifier.example.org"
     }
   },
   "gateway": {
@@ -57,7 +69,8 @@
     },
     "attestation_generated_at": "2025-05-23T12:00:00Z",
     "attestation_validity_seconds": 3600,
-    "attestation_stale": false
+    "attestation_stale": false,
+    "trace_omitted": []
   },
-  "signature": "3IxZkIUnz9FUnYHmO-7cBO6Cyg80FGycchnUYMyQPGtFTH1gwGD0fBl8RQpBQhQh1zwCOuqO38Q4SHawnpdLDg"
+  "signature": "IpKPaSUk0ucVijvxDK5JsiqHT002SckLpgIWVLJjdYmgHyT8eOhDPoTnOeWPuYXY98wI0L2q-K6T9IUVnScQAw"
 }
