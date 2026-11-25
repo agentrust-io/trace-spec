@@ -152,7 +152,7 @@ Classification:
 
 ## 6. How the two implementations are held to each other
 
-- **Vectors.** Both run the 46 vectors in `examples/behavior-trace/` and must give the expected result for each: 5 `verified`, 2 `truncated` and 39 `rejected`. Every code has at least two vectors.
+- **Vectors.** Both run the 51 vectors in `examples/behavior-trace/` and must give the expected result for each: 7 `verified`, 2 `truncated` and 42 `rejected`. Every code has at least two vectors.
 - **Near-miss mutants.** `tests/test_behavior_trace_mutants.py` weakens each rule, one at a time, the way a careful reviewer might have written it: 22 mutants of the Python code and 20 of the compiled TypeScript (two Python rules, `$` anchoring and the bound on index digits, have no TypeScript counterpart). The Python mutants run at the lowest limit Python allows on converting digit strings to integers. Each must fail the vectors named beside it. The runner checks that the unmutated code passes, that every rewrite hits exactly one site, and that a mutant which breaks the verifier outright is reported killed.
 - **Random runs.** `tests/test_behavior_trace_parity.py` builds 600 runs from seeded random changes to valid runs and requires both implementations to give the same result for each, and the runs to reach every code and all three classifications. Changes to a block's content re-sign it, so the run reaches the checks after the signature; one change deliberately does not, to keep the signature check in play. The same file runs 17 inputs at the line between a configuration error and a verdict and requires both to draw it in the same place.
 
