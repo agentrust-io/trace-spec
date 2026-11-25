@@ -140,6 +140,17 @@ def verify_successor_artifact(
     decides trust and independence on that name, so a key the verifier accepts for one
     observer must not be able to sign under another observer's name.
     """
+    if not isinstance(trusted_observer_jwk, dict):
+        raise IntentBridgeError("trusted_observer_jwk must be an object")
+    try:
+        pub = _pubkey_from_jwk(trusted_observer_jwk)
+    except ValueError as exc:
+        raise IntentBridgeError(f"trusted_observer_jwk is unusable: {exc}") from exc
+    trusted_kid = trusted_observer_jwk.get("kid")
+    if not isinstance(trusted_kid, str) or not trusted_kid:
+        raise IntentBridgeError("trusted_observer_jwk kid must be a non-empty string")
+    expected_observer = _nonempty_string(trusted_observer, "trusted_observer")
+    expected_authorization_id = _nonempty_string(authorization_id, "authorization_id")
     root = _object(
         artifact,
         "successor artifact",
@@ -155,7 +166,6 @@ def verify_successor_artifact(
     )
     if root.get("profile") != SUCCESSOR_PROFILE:
         raise IntentBridgeError("unknown successor profile; best-effort parsing is refused")
-    expected_authorization_id = _nonempty_string(authorization_id, "authorization_id")
     actual_authorization_id = _nonempty_string(
         root.get("authorization_id"), "successor.authorization_id"
     )
@@ -167,9 +177,6 @@ def verify_successor_artifact(
     observer_key_id = _nonempty_string(
         root.get("observer_key_id"), "successor.observer_key_id"
     )
-    if not isinstance(trusted_observer_jwk, dict):
-        raise IntentBridgeError("trusted_observer_jwk must be an object")
-    expected_observer = _nonempty_string(trusted_observer, "trusted_observer")
     # By value, not by spelling (spec section 3.2.2), as in the envelope it is
     # compared with below: the signed body is its RFC 8785 form, which writes
     # `150.0` as `150`, so a type test here refused a spelling the signature covers.
@@ -185,8 +192,7 @@ def verify_successor_artifact(
             "successor.observed_at must be a non-negative integer within "
             f"the JCS safe-integer range: it is {observed_at}"
         )
-    trusted_kid = trusted_observer_jwk.get("kid")
-    if not isinstance(trusted_kid, str) or trusted_kid != observer_key_id:
+    if trusted_kid != observer_key_id:
         raise IntentBridgeError("observer_key_id does not identify the trusted observer key")
     if observer != expected_observer:
         raise IntentBridgeError(
@@ -203,10 +209,6 @@ def verify_successor_artifact(
         signature = _b64url_decode(signature_value, field="successor.signature")
     except ValueError as exc:
         raise IntentBridgeError(str(exc)) from exc
-    try:
-        pub = _pubkey_from_jwk(trusted_observer_jwk)
-    except ValueError as exc:
-        raise IntentBridgeError(f"trusted_observer_jwk is unusable: {exc}") from exc
     signed = {
         "profile": SUCCESSOR_PROFILE,
         "authorization_id": actual_authorization_id,
@@ -261,6 +263,7 @@ def _bind_successor_observation(
     This establishes integrity only. Trust, freshness, independence, and predicate
     sufficiency are deliberately evaluated separately.
     """
+    expected = _digest(expected_successor_digest, "expected_successor_digest")
     if not isinstance(after, dict):
         raise AuthorizationMismatch("successor envelope must be a successor observation object")
     required = {"observation", "observer", "observed_at"}
@@ -291,7 +294,6 @@ def _bind_successor_observation(
             "successor envelope observed_at must be a non-negative integer within "
             f"the JCS safe-integer range: it is {observed_at}"
         )
-    expected = _digest(expected_successor_digest, "expected_successor_digest")
     try:
         actual = digest_jcs(after)
     except IntentBridgeError:
@@ -337,6 +339,29 @@ def verify_bridge(
     transcript is required, its pre-execution/dispatch before half must be supplied.
     Post-execution successor evidence is verified as a separate observer-signed artifact.
     """
+    if not isinstance(trusted_authorizer_jwk, dict):
+        raise IntentBridgeError("trusted_authorizer_jwk must be an object")
+    try:
+        pub = _pubkey_from_jwk(trusted_authorizer_jwk)
+    except ValueError as exc:
+        raise IntentBridgeError(f"trusted_authorizer_jwk is unusable: {exc}") from exc
+    trusted_kid = trusted_authorizer_jwk.get("kid")
+    if not isinstance(trusted_kid, str) or not trusted_kid:
+        raise IntentBridgeError("trusted_authorizer_jwk kid must be a non-empty string")
+    invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
+    if invalid_now_type or (now is not None and (now < 0 or now > JCS_SAFE_INTEGER)):
+        raise IntentBridgeError(
+            "now must be a non-negative integer Unix timestamp within the JCS safe-integer range"
+        )
+    if not isinstance(declaration, dict):
+        raise IntentBridgeError("declaration must be an object")
+    if not isinstance(tool_call, dict):
+        raise IntentBridgeError("tool_call must be an object")
+    _digest(pic_intent_digest, "intent_digest")
+    _digest(pic_args_digest, "args_digest")
+    declaration_digest = digest_jcs(declaration)
+    tool_call_digest = digest_jcs(tool_call)
+
     root = _object(bridge, "bridge", {"profile", "authorization", "signature"})
     if root.get("profile") != BRIDGE_PROFILE:
         raise IntentBridgeError("unknown bridge profile; best-effort parsing is refused")
@@ -368,15 +393,8 @@ def verify_bridge(
     for field in ("authorization_id", "authorizer", "authorizer_key_id"):
         _nonempty_string(authorization[field], f"authorization.{field}")
     _decision(authorization["decision"])
-    if not isinstance(trusted_authorizer_jwk, dict):
-        raise IntentBridgeError("trusted_authorizer_jwk must be an object")
-    trusted_kid = trusted_authorizer_jwk.get("kid")
-    if not isinstance(trusted_kid, str) or trusted_kid != authorization["authorizer_key_id"]:
+    if trusted_kid != authorization["authorizer_key_id"]:
         raise IntentBridgeError("authorizer_key_id does not identify the trusted key")
-    try:
-        pub = _pubkey_from_jwk(trusted_authorizer_jwk)
-    except ValueError as exc:
-        raise IntentBridgeError(f"trusted_authorizer_jwk is unusable: {exc}") from exc
 
     # Hoisted out of the try below. Inside it, an authorization JCS cannot serialize
     # was reported as "the signature is invalid", which is a different fact and sends
@@ -406,11 +424,6 @@ def verify_bridge(
                 f"{field} must be a non-negative integer Unix timestamp: it is {timestamp}"
             )
         normalized_auth[field] = timestamp
-    invalid_now_type = not isinstance(now, (int, type(None))) or isinstance(now, bool)
-    if invalid_now_type or (now is not None and (now < 0 or now > JCS_SAFE_INTEGER)):
-        raise IntentBridgeError(
-            "now must be a non-negative integer Unix timestamp within the JCS safe-integer range"
-        )
     instant = int(time.time()) if now is None else now
     if instant < normalized_auth["authorized_at"]:
         raise IntentBridgeError("authorization is not yet valid")
@@ -422,12 +435,8 @@ def verify_bridge(
     scope = _object(authorization["scope"], "authorization.scope", {"tools", "impacts"})
     tools = _unique_nonempty_strings(scope.get("tools"), "authorization.scope.tools")
     impacts = _unique_nonempty_strings(scope.get("impacts"), "authorization.scope.impacts")
-    if not isinstance(tool_call, dict):
-        raise IntentBridgeError("tool_call must be an object")
     if tool_call.get("name") not in tools:
         raise AuthorizationMismatch("executed tool is outside the authorized tool scope")
-    if not isinstance(declaration, dict):
-        raise IntentBridgeError("declaration must be an object")
     if declaration.get("impact") not in impacts:
         raise AuthorizationMismatch("declaration impact is outside the authorized impact scope")
 
@@ -438,13 +447,11 @@ def verify_bridge(
         raise IntentBridgeError("authorization.pic.profile is not PIC-CJSON/1.0")
     for name, actual in (("intent_digest", pic_intent_digest), ("args_digest", pic_args_digest)):
         expected = _digest(pic.get(name), f"authorization.pic.{name}")
-        _digest(actual, name)
         if not compare_digest(expected, actual):
             raise AuthorizationMismatch(f"PIC {name} does not match the signed authorization")
 
-    tool_call_digest = digest_jcs(tool_call)
     digest_pairs = (
-        ("declaration_digest", digest_jcs(declaration)),
+        ("declaration_digest", declaration_digest),
         ("tool_call_digest", tool_call_digest),
     )
     for name, actual in digest_pairs:
