@@ -9,7 +9,17 @@ from typing import Any
 
 from trace_tests import accounting
 from trace_tests.loader import extract_trace
-from trace_tests.modules import tr_anc, tr_apr, tr_env, tr_pol, tr_rte, tr_sca, tr_sig, tr_txn
+from trace_tests.modules import (
+    tr_anc,
+    tr_apr,
+    tr_env,
+    tr_pol,
+    tr_rte,
+    tr_sca,
+    tr_schema,
+    tr_sig,
+    tr_txn,
+)
 from trace_tests.result import Finding
 
 # Modules that run at each level (cumulative).
@@ -73,7 +83,9 @@ def _run_core(
 
     if "TR-ENV" in active:
         results["TR-ENV"] = invoke(
-            "TR-ENV", lambda: env(trace, max_age_seconds=max_age_seconds)
+            "TR-ENV",
+            lambda: tr_schema.check(trace)
+            + env(trace, max_age_seconds=max_age_seconds),
         )
 
     if "TR-SIG" in active:

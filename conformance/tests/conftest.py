@@ -54,6 +54,7 @@ def _build_signed_cmcp_record(
         "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
         "iat": iat,
         "subject": "spiffe://cmcp.gateway/session/conformance-test",
+        "model": {"provider": "example-provider", "model_id": "example-model"},
         "runtime": {
             "platform": platform,
             "measurement": "sha256:" + "a" * 64,
@@ -63,8 +64,10 @@ def _build_signed_cmcp_record(
             "enforcement_mode": "enforce",
         },
         "data_class": "internal",
-        "model": {"provider": "example-provider", "model_id": "example-model"},
-        "build_provenance": {"slsa_level": 2, "digest": "sha256:" + "c" * 64},
+        "build_provenance": {
+            "slsa_level": 2,
+            "digest": "sha256:" + "c" * 64,
+        },
         "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, "kid": kid}},
         "appraisal": {"status": "affirming", "verifier": "https://verifier.example.org"},
     }
@@ -165,6 +168,7 @@ def _build_software_only_record() -> dict:
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
             "iat": iat,
             "subject": "spiffe://cmcp.gateway/session/level2-test",
+            "model": {"provider": "example-provider", "model_id": "example-model"},
             "runtime": {
                 "platform": "software-only",
                 "measurement": _SW_MEASUREMENT,
@@ -174,8 +178,10 @@ def _build_software_only_record() -> dict:
                 "enforcement_mode": "enforce",
             },
             "data_class": "internal",
-            "model": {"provider": "example-provider", "model_id": "example-model"},
-            "build_provenance": {"slsa_level": 0, "digest": "sha256:" + "c" * 64},
+            "build_provenance": {
+                "slsa_level": 0,
+                "digest": "sha256:" + "d" * 64,
+            },
             "cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": x, "kid": kid}},
             "appraisal": {"status": "affirming", "verifier": "https://verifier.example.org"},
         },
