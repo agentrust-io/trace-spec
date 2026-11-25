@@ -90,13 +90,15 @@ An anchor is recorded as one JSON object carrying these required fields:
 |---|---|---|
 | `ts` | string | Anchoring time, ISO-8601 UTC with `Z` suffix |
 | `merkle_root` | string | `sha256:<hex>` root of the batch tree (§3) |
-| `leaf_count` | integer | Number of leaves in the batch, `>= 1` |
-| `producer` | string | Identifier of the party that produced and submitted the batch |
-| `batch_id` | string | Producer-scoped unique identifier for the batch |
+| `leaf_count` | integer | Number of leaves in the batch, `1 <= leaf_count <= 9007199254740991` (`2^53 - 1`) |
+| `producer` | string | Identifier of the party that produced and submitted the batch (identifier rule below) |
+| `batch_id` | string | Producer-scoped unique identifier for the batch (identifier rule below) |
 
 ```json
 {"ts":"2026-06-12T18:30:00Z","merkle_root":"sha256:9c4f...","leaf_count":1,"producer":"cmcp-gateway/0.1.0","batch_id":"2026-06-12-001"}
 ```
+
+**Identifier rule.** `producer` and `batch_id` MUST each contain at least one character other than `U+0020` SPACE, and MUST NOT contain an ASCII control character (`U+0000` to `U+001F` or `U+007F`). The rule is stated in code points so that every language gives the same answer: a character outside ASCII, including `U+00A0`, `U+0085` and `U+FEFF`, is a character other than `U+0020`, and a string made only of such characters satisfies it, whatever a language's `strip`, `trim` or `isBlank` does with them. Spaces inside an identifier, as in `Example Gateway 1.0`, are permitted.
 
 An entry may also carry optional log-profile fields such as `canonicalization_id` (identifying the leaf canonicalization profile) and `mmr_checkpoint` (or other transparency-log checkpoint metadata). A verifier that does not consume optional entry fields ignores them rather than rejecting the entry.
 
@@ -112,7 +114,7 @@ A producer gives each claim holder an inclusion proof:
 {"leaf_index": 0, "audit_path": ["sha256:<hex>", "sha256:<hex>"]}
 ```
 
-- `leaf_index`: 0-based position of the claim's leaf in the batch.
+- `leaf_index`: 0-based position of the claim's leaf in the batch (`0 <= leaf_index <= 9007199254740991`).
 - `audit_path`: the RFC 6962 audit path, ordered leaf-to-root: at each tree level, the sibling hash needed to recompute the parent. A level where the node was promoted, and therefore had no sibling, contributes no path element. A single-leaf batch has an empty `audit_path`.
 
 ### 5.1 Verification algorithm

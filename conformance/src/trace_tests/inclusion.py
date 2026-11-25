@@ -45,38 +45,49 @@ def _outside_profile(value: Any) -> str | None:
     """Name the first value registry-anchor-v1 section 1 excludes, or None.
 
     Non-integer numbers (NaN and the infinities among them), integers outside
-    -(2**53 - 1) to 2**53 - 1, and unpaired UTF-16 surrogates are outside the
-    anchor-leaf profile: two implementations of the five serialization rules
-    write different bytes or cannot represent them, so a proof over them only
-    proves what Python's ``json.dumps`` wrote. Iterative, because the claim is
+    -(2**53 - 1) to 2**53 - 1, and unpaired UTF-16 surrogates (U+D800..U+DFFF)
+    are outside the anchor-leaf profile: two implementations of the serialization
+    rules write different bytes for them, so a proof over them only proves what
+    Python's ``json.dumps`` wrote. Iterative, because the claim is
     attacker-controlled and may be deep.
     """
-    stack = [value]
+    active: set[int] = set()
+    stack: list[tuple[Any, bool]] = [(value, False)]
     while stack:
-        v = stack.pop()
+        v, exiting = stack.pop()
+        if exiting:
+            active.discard(id(v))
+            continue
         if isinstance(v, bool) or v is None:
             continue
         if isinstance(v, str):
-            try:
-                v.encode("utf-8")
-            except UnicodeEncodeError:
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in v):
                 return "unpaired UTF-16 surrogate"
             continue
         if isinstance(v, int):
             if not -_SAFE_INT <= v <= _SAFE_INT:
-                return f"integer {v} is outside the safe-integer range"
+                return "integer outside the safe-integer range -(2**53 - 1) to 2**53 - 1"
         elif isinstance(v, float):
             return f"non-integer number {v!r}"
         elif isinstance(v, dict):
+            obj_id = id(v)
+            if obj_id in active:
+                return "circular reference"
             for k in v:
-                if isinstance(k, str):
-                    try:
-                        k.encode("utf-8")
-                    except UnicodeEncodeError:
-                        return "unpaired UTF-16 surrogate in object key"
-            stack.extend(v.values())
+                if not isinstance(k, str):
+                    return f"non-string object key of type {type(k).__name__}"
+                if any(0xD800 <= ord(ch) <= 0xDFFF for ch in k):
+                    return "unpaired UTF-16 surrogate in object key"
+            active.add(obj_id)
+            stack.append((v, True))
+            stack.extend((item, False) for item in v.values())
         elif isinstance(v, (list, tuple)):
-            stack.extend(v)
+            obj_id = id(v)
+            if obj_id in active:
+                return "circular reference"
+            active.add(obj_id)
+            stack.append((v, True))
+            stack.extend((item, False) for item in v)
     return None
 
 
@@ -103,7 +114,10 @@ def canonical_claim_bytes(claim: dict[str, Any]) -> bytes:
 
 def decode_hash(value: object) -> bytes:
     """Decode ``sha256:<64 lowercase hex>`` to 32 raw bytes."""
-    if not isinstance(value, str) or not _HASH_RE.fullmatch(value):
+    if not isinstance(value, str):
+        # Never render a non-string: an oversized int raises ValueError in repr().
+        raise InclusionError(f"malformed hash value: expected a string, got {type(value).__name__}")
+    if not _HASH_RE.fullmatch(value):
         raise InclusionError(f"malformed hash value: {value!r}")
     return bytes.fromhex(value.split(":", 1)[1])
 
@@ -170,14 +184,29 @@ def parse_proof(receipt: object) -> tuple[int, list[bytes], int | None, bytes | 
     if not isinstance(raw_path, list):
         raise InclusionError(f"audit_path must be an array, got {type(raw_path).__name__}")
 
-    leaf_count = receipt.get("leaf_count")
-    if "leaf_count" in receipt and (type(leaf_count) is not int):
+    # The range messages name the field and bounds but never the rejected value:
+    # formatting an int past sys.get_int_max_str_digits() raises a bare ValueError,
+    # which would escape the InclusionError contract callers catch.
+    leaf_index = receipt["leaf_index"]
+    if type(leaf_index) is not int or not 0 <= leaf_index <= _SAFE_INT:
         raise InclusionError(
-            f"receipt leaf_count must be an integer, got {type(leaf_count).__name__}"
+            "receipt leaf_index must be a non-negative integer <= 2**53 - 1"
+        )
+
+    leaf_count = receipt.get("leaf_count")
+    if "leaf_count" in receipt and (
+        type(leaf_count) is not int or not 1 <= leaf_count <= _SAFE_INT
+    ):
+        raise InclusionError(
+            "receipt leaf_count must be an integer >= 1 and <= 2**53 - 1"
+        )
+    if leaf_count is not None and leaf_index >= leaf_count:
+        raise InclusionError(
+            f"receipt leaf_index {leaf_index} must be less than leaf_count {leaf_count}"
         )
 
     return (
-        receipt["leaf_index"],
+        leaf_index,
         [decode_hash(node) for node in raw_path],
         leaf_count,
         decode_hash(receipt["merkle_root"]) if "merkle_root" in receipt else None,
@@ -239,6 +268,18 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
         if not isinstance(entry[key], str) or not entry[key]:
             raise InclusionError(f"registry entry {key} must be a non-empty string")
 
+    # Section 4 states the identifier rule in code points, so that no language's
+    # strip(), trim() or isBlank() decides it: U+0020 alone counts as empty, and
+    # only the ASCII controls U+0000 to U+001F and U+007F are refused.
+    for key in ("producer", "batch_id"):
+        val = entry[key]
+        if all(ch == " " for ch in val):
+            raise InclusionError(
+                f"registry entry {key} must contain a character other than U+0020 SPACE"
+            )
+        if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in val):
+            raise InclusionError(f"registry entry {key} must not contain ASCII control characters")
+
     if not _is_utc_timestamp(entry["ts"]):
         raise InclusionError(
             "registry entry ts must be an ISO-8601 UTC timestamp ending in Z, "
@@ -246,9 +287,9 @@ def parse_entry(entry: object) -> tuple[bytes, int, str, str]:
         )
 
     leaf_count = entry["leaf_count"]
-    if not isinstance(leaf_count, int) or isinstance(leaf_count, bool) or leaf_count < 1:
+    if type(leaf_count) is not int or not 1 <= leaf_count <= _SAFE_INT:
         raise InclusionError(
-            f"registry entry leaf_count must be an integer >= 1, got {leaf_count!r}"
+            "registry entry leaf_count must be an integer >= 1 and <= 2**53 - 1"
         )
 
     return decode_hash(entry["merkle_root"]), leaf_count, entry["producer"], entry["batch_id"]
