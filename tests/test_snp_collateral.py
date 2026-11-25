@@ -441,6 +441,274 @@ def test_appraise_collateral_rejects_vcek_with_negative_or_non_minimal_der_tcb(
         s.appraise_collateral(_pkt(b"\x02\x01\x80", 128), pol, now=NOW)
 
 
+@pytest.mark.parametrize(
+    ("change", "expected_reason"),
+    [
+        ("vcek_issuer_as_integer", "platform_evidence_format"),
+        ("vcek_issuer_as_bit_string", "platform_evidence_format"),
+        ("ask_subject_as_integer", "platform_evidence_format"),
+        ("ask_subject_as_bit_string", "platform_evidence_format"),
+        ("ask_issuer_as_integer", "platform_evidence_format"),
+        ("ask_issuer_as_bit_string", "platform_evidence_format"),
+        ("ark_subject_as_integer", "product_chain"),
+        ("ark_subject_as_bit_string", "product_chain"),
+        ("crl_issuer_as_integer", "crl_format"),
+        ("crl_issuer_as_bit_string", "crl_format"),
+        ("vcek_version_1", "platform_evidence_format"),
+        ("vcek_version_3", "platform_evidence_format"),
+        ("ask_version_1", "platform_evidence_format"),
+        ("ask_version_3", "platform_evidence_format"),
+        ("crl_version_0", "crl_format"),
+        ("crl_version_2", "crl_format"),
+        ("crl_this_update_in_year_0", "crl_format"),
+        ("crl_next_update_in_year_0", "crl_format"),
+        ("ask_serial_negative", "platform_evidence_format"),
+        # The same at the parent commit, and held here so that they stay the same.
+        ("ask_subject_as_integer_under_an_unknown_product", "vcek_product"),
+        ("ask_issuer_as_integer_under_a_subject_for_another_product", "product_chain"),
+        ("ask_subject_with_two_common_names", "certificate_common_name"),
+        ("crl_next_update_in_year_0_signed_by_another_key", "crl_signature"),
+        ("crl_this_update_in_year_0_without_next_update", "crl_stale"),
+        ("ask_serial_negative_signed_by_another_key", "product_chain"),
+        ("ark_of_another_product_line_subject_as_integer", None),
+        ("vcek_subject_as_integer_signed_again", None),
+        ("ark_issuer_as_integer", None),
+    ],
+)
+def test_appraise_collateral_denies_a_certificate_or_crl_the_library_cannot_read(
+    monkeypatch: pytest.MonkeyPatch, change: str, expected_reason: str | None
+) -> None:
+    """A valid synthetic chain is changed, and the appraisal must answer, not raise.
+
+    A name: the tag of its common name's value becomes INTEGER or BIT STRING. The certificate or
+    CRL still loads, and the library raises only when the name is read, ValueError for the first
+    and TypeError for the second. A version: the number becomes one next to the valid one, which
+    the library refuses on load with x509.InvalidVersion, not a ValueError. An update time in
+    year 0000 loads and raises ValueError when asked for, and so does the lookup of a negative
+    serial number: both in a CRL or a certificate the pinned ARK signed.
+
+    The cases after the comment come out the same at the parent commit, three of them with a
+    result. They are here so that the reason or the result does not move.
+    """
+    import sys
+    import warnings
+    from types import ModuleType
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID, ObjectIdentifier
+
+    milan, _ = packets()
+    report = base64.b64decode(milan["hcl_b64"])[32 : 32 + 1184]
+
+    wcm_mod = ModuleType("wcm")
+    certs_mod = ModuleType("wcm._certificates")
+    snp_mod = ModuleType("wcm.snp")
+    certs_mod.load_pem_certificate = (  # type: ignore[attr-defined]
+        lambda pem, **kw: x509.load_pem_x509_certificate(pem)
+    )
+    snp_mod.extract_snp_report_from_hcl = (  # type: ignore[attr-defined]
+        lambda hcl: hcl[32 : 32 + 1184]
+    )
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm._certificates", certs_mod)
+    monkeypatch.setitem(sys.modules, "wcm.snp", snp_mod)
+
+    ark_key = ec.generate_private_key(ec.SECP384R1())
+    ask_key = ec.generate_private_key(ec.SECP384R1())
+    vcek_key = ec.generate_private_key(ec.SECP384R1())
+    other_key = ec.generate_private_key(ec.SECP384R1())
+    vcek_extensions = {
+        s._VCEK_OIDS["bootloader"]: b"\x02\x01\x04",
+        s._VCEK_OIDS["tee"]: b"\x02\x01\x00",
+        s._VCEK_OIDS["snp"]: b"\x02\x01\x18",
+        s._VCEK_OIDS["microcode"]: b"\x02\x02\x00\xdb",
+        s._HWID_OID: report[s._CHIP_ID : s._CHIP_ID + 64],
+    }
+
+    def name(*common_names: str) -> x509.Name:
+        return x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn) for cn in common_names])
+
+    def certificate(
+        subject: x509.Name,
+        issuer: x509.Name,
+        key: ec.EllipticCurvePrivateKey,
+        signer: ec.EllipticCurvePrivateKey,
+        extensions: dict[str, bytes] | None = None,
+    ) -> x509.Certificate:
+        builder = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(key.public_key())
+            .serial_number(2)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+        )
+        for oid, value in (extensions or {}).items():
+            builder = builder.add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(oid), value), critical=False
+            )
+        return builder.sign(signer, hashes.SHA384())
+
+    def revocation_list(
+        this_update: datetime = NOW - timedelta(hours=1),
+        next_update: datetime = NOW + timedelta(days=7),
+    ) -> x509.CertificateRevocationList:
+        return (
+            x509.CertificateRevocationListBuilder()
+            .issuer_name(name("ARK-Milan"))
+            .last_update(this_update)
+            .next_update(next_update)
+            .sign(ark_key, hashes.SHA384())
+        )
+
+    def tlv(tag: int, content: bytes) -> bytes:
+        size = len(content)
+        if size < 0x80:
+            length = bytes([size])
+        elif size < 0x100:
+            length = bytes([0x81, size])
+        else:
+            length = bytes([0x82, size >> 8, size & 0xFF])
+        return bytes([tag]) + length + content
+
+    def signed_again(
+        der: bytes, signed: bytes, old: bytes, new: bytes, signer: ec.EllipticCurvePrivateKey
+    ) -> bytes:
+        """The certificate or CRL with `old` replaced by `new` in its signed part, signed again."""
+        assert signed.count(old) == 1
+        header = 2 if signed[1] < 0x80 else 2 + (signed[1] & 0x7F)
+        changed = tlv(0x30, signed[header:].replace(old, new))
+        rest = der[der.index(signed) + len(signed) :]
+        algorithm = rest[: 2 + rest[1]]
+        signature = signer.sign(changed, ec.ECDSA(hashes.SHA384()))
+        return tlv(0x30, changed + algorithm + tlv(0x03, b"\x00" + signature))
+
+    def with_byte(der: bytes, index: int, value: int) -> bytes:
+        return der[:index] + bytes([value]) + der[index + 1 :]
+
+    def with_name_tag(der: bytes, common_name: str, tag: int, last: bool = False) -> bytes:
+        """The tag of one common name's value changed. The value is a UTF8String, tag 0x0c."""
+        value = b"\x0c" + bytes([len(common_name)]) + common_name.encode()
+        assert der.count(value) == (2 if last else 1)
+        return with_byte(der, der.rindex(value), tag)
+
+    def with_version(der: bytes, signed: bytes, number: int) -> bytes:
+        """The version is the signed part's first field, inside a [0] wrapper in a certificate."""
+        start = der.index(signed) + (2 if signed[1] < 0x80 else 2 + (signed[1] & 0x7F))
+        return with_byte(der, start + (4 if der[start] == 0xA0 else 2), number)
+
+    encoding = serialization.Encoding.DER
+    ark = certificate(name("ARK-Milan"), name("ARK-Milan"), ark_key, ark_key)
+    ask = certificate(name("SEV-Milan"), name("ARK-Milan"), ask_key, ark_key)
+    vcek = certificate(name("SEV-VCEK"), name("SEV-Milan"), vcek_key, ask_key, vcek_extensions)
+    crl = revocation_list()
+    built = {"ark": ark, "ask": ask, "vcek": vcek}
+    parts = {part: made.public_bytes(encoding) for part, made in built.items()}
+    parts["crl"] = crl.public_bytes(encoding)
+    other_arks: dict[str, x509.Certificate] = {}
+
+    def appraise() -> dict[str, object]:
+        def pem(certificate_der: bytes) -> str:
+            body = base64.encodebytes(certificate_der).decode("ascii")
+            return f"-----BEGIN CERTIFICATE-----\n{body}-----END CERTIFICATE-----\n"
+
+        pol = s.CollateralPolicy(
+            floors={"Milan": FLOOR},
+            arks={"Milan": x509.load_der_x509_certificate(parts["ark"]), **other_arks},
+            crls={"Milan": parts["crl"]},
+        )
+        pkt = {
+            "hcl_b64": milan["hcl_b64"],
+            "vcek_pem": pem(parts["vcek"]),
+            "intermediates_pem": [pem(parts["ask"])],
+        }
+        with warnings.catch_warnings():
+            # The library warns when it loads a certificate whose serial number is not positive.
+            warnings.simplefilter("ignore")
+            return s.appraise_collateral(pkt, pol, now=NOW)
+
+    assert appraise()["product"] == "Milan"
+
+    tags = {"as_integer": 0x02, "as_bit_string": 0x03}
+    in_2050 = datetime(2050, 1, 1, tzinfo=UTC)
+    # From 2050 on the library writes a time as GeneralizedTime, tag 0x18, year in four digits.
+    year_2050, year_0 = b"\x18\x0f2050", b"\x18\x0f0000"
+    if change == "ask_subject_as_integer_under_an_unknown_product":
+        turin = certificate(name("SEV-VCEK"), name("SEV-Turin"), vcek_key, ask_key, vcek_extensions)
+        parts["vcek"] = turin.public_bytes(encoding)
+        parts["ask"] = with_name_tag(parts["ask"], "SEV-Milan", 0x02)
+    elif change == "ask_issuer_as_integer_under_a_subject_for_another_product":
+        genoa = certificate(name("SEV-Genoa"), name("ARK-Milan"), ask_key, ark_key)
+        parts["ask"] = with_name_tag(genoa.public_bytes(encoding), "ARK-Milan", 0x02)
+    elif change == "ask_subject_with_two_common_names":
+        two = certificate(name("SEV-Milan", "second"), name("ARK-Milan"), ask_key, ark_key)
+        parts["ask"] = two.public_bytes(encoding)
+    elif change == "ark_of_another_product_line_subject_as_integer":
+        genoa_ark = certificate(name("ARK-Genoa"), name("ARK-Genoa"), ark_key, ark_key)
+        unreadable = with_name_tag(genoa_ark.public_bytes(encoding), "ARK-Genoa", 0x02, last=True)
+        other_arks["Genoa"] = x509.load_der_x509_certificate(unreadable)
+    elif change == "vcek_subject_as_integer_signed_again":
+        # The function does not read the VCEK's subject, so one it could not read changes nothing.
+        readable, unreadable = b"\x0c\x08SEV-VCEK", b"\x02\x08SEV-VCEK"
+        parts["vcek"] = signed_again(
+            parts["vcek"], vcek.tbs_certificate_bytes, readable, unreadable, ask_key
+        )
+    elif change == "crl_this_update_in_year_0":
+        made = revocation_list(this_update=in_2050, next_update=in_2050.replace(2051))
+        parts["crl"] = signed_again(
+            made.public_bytes(encoding), made.tbs_certlist_bytes, year_2050, year_0, ark_key
+        )
+    elif change.startswith("crl_next_update_in_year_0"):
+        made = revocation_list(next_update=in_2050)
+        signer = other_key if change.endswith("_signed_by_another_key") else ark_key
+        parts["crl"] = signed_again(
+            made.public_bytes(encoding), made.tbs_certlist_bytes, year_2050, year_0, signer
+        )
+    elif change == "crl_this_update_in_year_0_without_next_update":
+        # With no nextUpdate the CRL is stale before thisUpdate is asked for.
+        made = revocation_list(this_update=in_2050, next_update=in_2050.replace(2051))
+        both = year_2050 + b"0101000000Z" + b"\x18\x0f20510101000000Z"
+        parts["crl"] = signed_again(
+            made.public_bytes(encoding),
+            made.tbs_certlist_bytes,
+            both,
+            year_0 + b"0101000000Z",
+            ark_key,
+        )
+    elif change.startswith("ask_serial_negative"):
+        # [0] { INTEGER 2 } is the version and the INTEGER after it the serial number: 2 becomes -2.
+        positive, negative = bytes.fromhex("a003020102020102"), bytes.fromhex("a0030201020201fe")
+        signer = other_key if change.endswith("_signed_by_another_key") else ark_key
+        parts["ask"] = signed_again(
+            parts["ask"], ask.tbs_certificate_bytes, positive, negative, signer
+        )
+    elif change == "ark_issuer_as_integer":
+        # The function does not read the pinned ARK's issuer. Its validity follows it, which
+        # tells it from the subject, the same name; the ARK is signed again by its own key.
+        readable, unreadable = b"\x0c\x09ARK-Milan\x30\x1e", b"\x02\x09ARK-Milan\x30\x1e"
+        parts["ark"] = signed_again(
+            parts["ark"], ark.tbs_certificate_bytes, readable, unreadable, ark_key
+        )
+    else:
+        part, field, how = change.split("_", 2)
+        if field == "version":
+            signed = crl.tbs_certlist_bytes if part == "crl" else built[part].tbs_certificate_bytes
+            parts[part] = with_version(parts[part], signed, int(how))
+        else:
+            # The issuer comes before the subject; the self-signed ARK carries one name twice.
+            names_the_ask = (part, field) in {("vcek", "issuer"), ("ask", "subject")}
+            holder = "SEV-Milan" if names_the_ask else "ARK-Milan"
+            parts[part] = with_name_tag(parts[part], holder, tags[how], last=part == "ark")
+
+    if expected_reason is None:
+        assert appraise()["product"] == "Milan"
+    else:
+        with pytest.raises(s.CollateralDenied, match=f"^{expected_reason}$"):
+            appraise()
+
+
 def test_tcb_component_validates_appraisal_packet_and_identifiers():
     milan, _ = packets()
     valid_appraisal = {
