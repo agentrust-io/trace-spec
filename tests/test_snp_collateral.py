@@ -511,12 +511,30 @@ def test_tcb_component_validates_appraisal_packet_and_identifiers():
     [
         ("wrong_signer", "product_chain"),
         ("extra_issuer_rdn", "product_chain"),
+        ("ask_not_signed_by_the_pinned_ark", "product_chain"),
+        ("ask_signed_by_the_ark_pinned_for_another_product", "product_chain"),
+        ("ask_extra_issuer_rdn", "product_chain"),
+        ("ask_issuer_lacks_an_rdn_of_the_ark_subject", "product_chain"),
+        ("ask_issuer_differs_from_the_ark_subject_in_one_value", "product_chain"),
+        ("ark_pinned_under_the_name_of_another_product", "product_chain"),
+        ("no_ark_pinned_for_the_product", "product_chain"),
         ("non_canonical_hcl_b64", "platform_evidence_format"),
+        ("version_0", "platform_evidence_format"),
         ("version_1", "platform_evidence_format"),
+        ("version_2", None),
+        ("version_3", None),
+        ("version_4", None),
+        ("version_5", None),
+        ("version_5_mitigation_bit_set", None),
+        ("version_5_another_mitigation_bit_set", None),
+        ("version_2_cpuid_of_another_product", None),
+        ("version_3_cpuid_of_another_product", "cpuid_product_mismatch"),
+        ("version_4_cpuid_of_another_product", "cpuid_product_mismatch"),
+        ("version_5_cpuid_of_another_product", "cpuid_product_mismatch"),
     ],
 )
 def test_appraise_collateral_verifies_vcek_issuer_and_signature_and_report_bounds(
-    monkeypatch: pytest.MonkeyPatch, case: str, expected_reason: str
+    monkeypatch: pytest.MonkeyPatch, case: str, expected_reason: str | None
 ) -> None:
     import sys
     from types import ModuleType
@@ -556,6 +574,64 @@ def test_appraise_collateral_verifies_vcek_issuer_and_signature_and_report_bound
         ]
     )
     vcek_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-VCEK")])
+    extra_ark_name = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Milan"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Other"),
+        ]
+    )
+    pinned_ark_name = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Milan"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Pinned"),
+        ]
+    )
+    genoa_ark_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Genoa")])
+    genoa_ark_key = ec.generate_private_key(ec.SECP384R1())
+
+    def _build_ark(subject: x509.Name, key: ec.EllipticCurvePrivateKey) -> x509.Certificate:
+        return (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(subject)
+            .public_key(key.public_key())
+            .serial_number(1)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+            .sign(key, hashes.SHA384())
+        )
+
+    def _pinning(
+        arks: dict[str, x509.Certificate],
+        crl_issuer: x509.Name | None = None,
+        floor: s.TcbFloor = FLOOR,
+    ) -> s.CollateralPolicy:
+        """These ARKs pinned; the CRL is issued under `crl_issuer` when one is given."""
+        crl = crl_der
+        if crl_issuer is not None:
+            crl = (
+                x509.CertificateRevocationListBuilder()
+                .issuer_name(crl_issuer)
+                .last_update(NOW - timedelta(hours=1))
+                .next_update(NOW + timedelta(days=7))
+                .sign(ark_key, hashes.SHA384())
+                .public_bytes(serialization.Encoding.DER)
+            )
+        return s.CollateralPolicy(floors={"Milan": floor}, arks=arks, crls={"Milan": crl})
+
+    def _build_ask(issuer: x509.Name, signer: ec.EllipticCurvePrivateKey) -> str:
+        return (
+            x509.CertificateBuilder()
+            .subject_name(ask_name)
+            .issuer_name(issuer)
+            .public_key(ask_key.public_key())
+            .serial_number(2)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+            .sign(signer, hashes.SHA384())
+            .public_bytes(serialization.Encoding.PEM)
+            .decode("ascii")
+        )
 
     ark_cert = (
         x509.CertificateBuilder()
@@ -637,21 +713,122 @@ def test_appraise_collateral_verifies_vcek_issuer_and_signature_and_report_bound
     }
     assert s.appraise_collateral(valid_pkt, pol, now=NOW)["product"] == "Milan"
 
+    bad_pol = pol
+    # The report as captured is version 3, and its mitigation vector is clear. Under a floor it
+    # meets, the mitigation alone decides the verdict. Each entry: os_mitigation, status, reasons.
+    unproven = ("unproven_report_version", "contraindicated", ["os_mitigation_unproven"])
+    absent = ("absent", "contraindicated", ["os_mitigation_absent"])
+    accepted = {
+        "version_2": unproven,
+        "version_3": unproven,
+        "version_4": unproven,
+        "version_5": absent,
+        "version_5_mitigation_bit_set": ("proved", "affirming", []),
+        "version_5_another_mitigation_bit_set": absent,
+        "version_2_cpuid_of_another_product": unproven,
+    }
     if case == "wrong_signer":
         bad_pkt = {**valid_pkt, "vcek_pem": _build_vcek(ask_name, wrong_ask_key)}
     elif case == "extra_issuer_rdn":
         bad_pkt = {**valid_pkt, "vcek_pem": _build_vcek(extra_issuer_name, ask_key)}
+    elif case == "ask_not_signed_by_the_pinned_ark":
+        bad_pkt = {**valid_pkt, "intermediates_pem": [_build_ask(ark_name, wrong_ask_key)]}
+    elif case == "ask_signed_by_the_ark_pinned_for_another_product":
+        bad_pkt = {**valid_pkt, "intermediates_pem": [_build_ask(ark_name, genoa_ark_key)]}
+        bad_pol = _pinning({"Milan": ark_cert, "Genoa": _build_ark(genoa_ark_name, genoa_ark_key)})
+    elif case == "ask_extra_issuer_rdn":
+        bad_pkt = {**valid_pkt, "intermediates_pem": [_build_ask(extra_ark_name, ark_key)]}
+    elif case == "ask_issuer_lacks_an_rdn_of_the_ark_subject":
+        # In these three the CRL is issued under the pinned ARK's name, so that the check the case
+        # is about is the only one between the packet and a result.
+        bad_pkt = valid_pkt
+        bad_pol = _pinning({"Milan": _build_ark(pinned_ark_name, ark_key)}, pinned_ark_name)
+    elif case == "ask_issuer_differs_from_the_ark_subject_in_one_value":
+        bad_pkt = {**valid_pkt, "intermediates_pem": [_build_ask(extra_ark_name, ark_key)]}
+        bad_pol = _pinning({"Milan": _build_ark(pinned_ark_name, ark_key)}, pinned_ark_name)
+    elif case == "ark_pinned_under_the_name_of_another_product":
+        bad_pkt = {**valid_pkt, "intermediates_pem": [_build_ask(genoa_ark_name, ark_key)]}
+        bad_pol = _pinning({"Milan": _build_ark(genoa_ark_name, ark_key)}, genoa_ark_name)
+    elif case == "no_ark_pinned_for_the_product":
+        # The chain's own ARK is pinned, for another product line only.
+        bad_pkt = valid_pkt
+        bad_pol = _pinning({"Genoa": ark_cert})
     elif case == "non_canonical_hcl_b64":
         bad_pkt = {**valid_pkt, "hcl_b64": milan["hcl_b64"][:-2] + "B="}
     else:
-        v1_hcl = bytearray(hcl_raw)
-        v1_hcl[32 + s._VERSION : 32 + s._VERSION + 4] = (1).to_bytes(4, "little")
-        bad_pkt = {
+        version = int(case.split("_")[1])
+        versioned_hcl = bytearray(hcl_raw)
+        versioned_hcl[32 + s._VERSION : 32 + s._VERSION + 4] = version.to_bytes(4, "little")
+        if case.endswith("_cpuid_of_another_product"):
+            versioned_hcl[32 + s._CPUID : 32 + s._CPUID + 2] = bytes(s.PRODUCTS["Genoa"])
+        if case.endswith("_another_mitigation_bit_set"):
+            versioned_hcl[32 + s._CURRENT_MIT] |= 1 << 0
+        elif case.endswith("_mitigation_bit_set"):
+            versioned_hcl[32 + s._CURRENT_MIT] |= 1 << 2
+        versioned_pkt = {
             **valid_pkt,
-            "hcl_b64": base64.b64encode(bytes(v1_hcl)).decode("ascii"),
+            "hcl_b64": base64.b64encode(bytes(versioned_hcl)).decode("ascii"),
         }
+        if expected_reason is None:
+            # The report's SNP SVN is 0x18, below FLOOR's and equal to this one.
+            met = _pinning({"Milan": ark_cert}, floor=dataclasses.replace(FLOOR, snp=0x18))
+            appraised = s.appraise_collateral(versioned_pkt, met, now=NOW)
+            assert appraised["report_version"] == version
+            got = (appraised["os_mitigation"], appraised["status"], appraised["reasons"])
+            assert got == accepted[case]
+            return
+        bad_pkt = versioned_pkt
     with pytest.raises(s.CollateralDenied, match=f"^{expected_reason}$"):
-        s.appraise_collateral(bad_pkt, pol, now=NOW)
+        s.appraise_collateral(bad_pkt, bad_pol, now=NOW)
+
+
+@pytest.mark.parametrize(
+    ("now", "max_age", "accepted"),
+    [
+        # max_age None is max_age not given: the default, 300.
+        (1, None, True),
+        (9_007_199_254_740_991 - 300, None, True),
+        (9_007_199_254_740_991 - 300 + 1, None, False),
+        (9_007_199_254_740_991 - 86400, 86400, True),
+        (9_007_199_254_740_991 - 86400 + 1, 86400, False),
+        (9_007_199_254_740_991 - 1, 1, True),
+        (9_007_199_254_740_991 - 1 + 1, 1, False),
+        (1_790_683_200, 86401, False),
+        (1_790_683_200, 0, False),
+        (1_790_683_200, -1, False),
+        (1_790_683_200, True, False),
+        (True, None, False),
+        ("1790683200", None, False),
+    ],
+)
+def test_tcb_component_takes_now_and_max_age_at_the_ends_of_their_ranges(
+    now: object, max_age: int | None, accepted: bool
+) -> None:
+    """The first second, the last that leaves fresh_until a safe integer, and the one after.
+
+    Then max_age at its smallest and outside its range, a bool given for each of the two, and
+    a string given for now.
+    """
+    milan, _ = packets()
+    age = {} if max_age is None else {"max_age": max_age}
+
+    def component() -> object:
+        return s.tcb_component(
+            {"profile": s.PROFILE, "status": "affirming", "reasons": []},
+            milan,
+            instance="azure-vm/test",
+            authority="https://verifier.example.test",
+            now=now,
+            **age,
+        )
+
+    if accepted:
+        made = component()
+        fresh_until = now + (300 if max_age is None else max_age)
+        assert (made.appraised_at, made.fresh_until) == (now, fresh_until)  # type: ignore[attr-defined]
+    else:
+        with pytest.raises(s.CollateralDenied, match="^clock_or_age$"):
+            component()
 
 
 @pytest.mark.parametrize(
