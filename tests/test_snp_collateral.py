@@ -687,3 +687,276 @@ def test_tcb_component_rejects_zero_or_overflow_now_and_wrong_profile(
             authority="https://verifier.example.test",
             now=bad_now,
         )
+
+
+# What the signature check cannot verify, as (issuer key kind, part of the chain, defect, reason).
+# A signature defect names the certificate or CRL that carries the signature. A key defect names
+# the issuer certificate whose own key it is: the ASK for the VCEK, the ARK for the ASK.
+_SIGNED_PARTS = (("vcek", "product_chain"), ("ask", "product_chain"), ("crl", "crl_signature"))
+_UNVERIFIABLE = (
+    [
+        (issuer_keys, part, defect, reason)
+        for issuer_keys in ("ec", "rsa")
+        for part, reason in _SIGNED_PARTS
+        for defect in (
+            "ed25519_signature",
+            "ed448_signature",
+            "unknown_signature_algorithm",
+            "id_alg_unsigned_identifier",
+        )
+    ]
+    + [
+        ("rsa", part, defect, reason)
+        for part, reason in _SIGNED_PARTS
+        for defect in ("pss_unknown_mask_function", "pss_unknown_mask_hash")
+    ]
+    + [("rsa", part, "pss_outer_parameters_absent", "product_chain") for part in ("vcek", "ask")]
+    + [
+        (issuer_keys, part, "outer_identifier_id_alg_unsigned", "product_chain")
+        for issuer_keys in ("ec", "rsa")
+        for part in ("vcek", "ask")
+    ]
+    + [
+        ("ec", part, defect, "product_chain")
+        for part in ("ask", "ark")
+        for defect in (
+            "key_of_unknown_algorithm",
+            "key_point_off_the_curve",
+            "key_neither_rsa_nor_ec",
+        )
+    ]
+    + [
+        ("rsa", part, "rsa_key_too_small_for_the_pss_digest", "product_chain")
+        for part in ("ask", "ark")
+    ]
+)
+
+
+@pytest.mark.parametrize(("issuer_keys", "part", "defect", "expected_reason"), _UNVERIFIABLE)
+def test_appraise_collateral_denies_what_its_signature_check_cannot_verify(
+    monkeypatch: pytest.MonkeyPatch,
+    issuer_keys: str,
+    part: str,
+    defect: str,
+    expected_reason: str,
+) -> None:
+    """One part of an otherwise valid chain leaves a signature that cannot be verified.
+
+    The VCEK, the ASK or the CRL carries an Ed25519 or an Ed448 signature; or a signature whose
+    algorithm identifier was changed after signing, to one the library does not know or to
+    id-alg-unsigned, which it maps to no hash; or an RSASSA-PSS signature whose mask generation
+    function, or the hash that function uses, was changed after signing to one the library does
+    not know. Or the VCEK or the ASK carries its issuer's own signature under an outer identifier
+    changed after signing: to id-alg-unsigned, under an EC and under an RSA issuer, or to
+    RSASSA-PSS without its parameters, under an RSA issuer. Or the ASK or the ARK carries an EC
+    key relabelled as an unknown algorithm, an EC point that is not on its curve, an RSA key too
+    small for the digest of an RSASSA-PSS signature, or a key that is neither RSA nor EC. Each
+    is denied with the reason a forged signature gets, and no other exception leaves
+    appraise_collateral.
+    """
+    import sys
+    from types import ModuleType
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, padding, rsa
+    from cryptography.x509.oid import NameOID, ObjectIdentifier
+
+    milan, _ = packets()
+    report = base64.b64decode(milan["hcl_b64"])[32 : 32 + 1184]
+    reported = s._tcb(report[s._REPORTED_TCB : s._REPORTED_TCB + 8])
+
+    wcm_mod = ModuleType("wcm")
+    certs_mod = ModuleType("wcm._certificates")
+    snp_mod = ModuleType("wcm.snp")
+    certs_mod.load_pem_certificate = (  # type: ignore[attr-defined]
+        lambda pem, **kw: x509.load_pem_x509_certificate(pem)
+    )
+    snp_mod.extract_snp_report_from_hcl = (  # type: ignore[attr-defined]
+        lambda hcl: hcl[32 : 32 + 1184]
+    )
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm._certificates", certs_mod)
+    monkeypatch.setitem(sys.modules, "wcm.snp", snp_mod)
+
+    IssuerKey = ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey
+    Builder = x509.CertificateBuilder | x509.CertificateRevocationListBuilder
+    der_encoding = serialization.Encoding.DER
+    # DER object identifiers: ecdsa-with-SHA384, sha384WithRSAEncryption, id-RSASSA-PSS, id-mgf1,
+    # id-sha384, id-ecPublicKey and id-alg-unsigned.
+    ecdsa_with_sha384 = bytes.fromhex("06082a8648ce3d040303")
+    sha384_with_rsa = bytes.fromhex("06092a864886f70d01010c")
+    rsassa_pss = bytes.fromhex("06092a864886f70d01010a")
+    mgf1 = bytes.fromhex("06092a864886f70d010108")
+    sha384 = bytes.fromhex("0609608648016503040202")
+    ec_public_key = bytes.fromhex("06072a8648ce3d0201")
+    id_alg_unsigned = bytes.fromhex("06082b06010505070624")
+
+    def issuer_key() -> IssuerKey:
+        if issuer_keys == "ec":
+            return ec.generate_private_key(ec.SECP384R1())
+        return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    ark_key, ask_key = issuer_key(), issuer_key()
+    vcek_key = ec.generate_private_key(ec.SECP384R1())
+    another_key = ec.generate_private_key(ec.SECP384R1())
+    # 256 bits, fewer than the 400 an RSASSA-PSS signature needs for a SHA-384 digest: verifying
+    # one under it raises.
+    small_rsa_key = rsa.RSAPublicNumbers(65537, (1 << 255) + 1).public_key()
+    ed25519_key = ed25519.Ed25519PrivateKey.generate()
+    hashless = {
+        "ed25519_signature": ed25519_key,
+        "ed448_signature": ed448.Ed448PrivateKey.generate(),
+    }
+    ark_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Milan")])
+    ask_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-Milan")])
+    vcek_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-VCEK")])
+
+    def renamed(
+        der: bytes,
+        identifier: bytes,
+        times: int,
+        to: bytes | None = None,
+        only: tuple[int, ...] = (),
+    ) -> bytes:
+        """The same DER with one object identifier changed wherever it stands.
+
+        Or, with `only`, at those of the places it stands, counted from 1. To `to`, of the same
+        length, or else to itself with 127 as its last arc. The change is made after signing, so
+        the signature no longer covers the bytes it stands on.
+        """
+        assert der.count(identifier) == times, (defect, der.count(identifier))
+        new = to or identifier[:-1] + b"\x7f"
+        pieces = der.split(identifier)
+        return pieces[0] + b"".join(
+            (new if not only or place in only else identifier) + piece
+            for place, piece in enumerate(pieces[1:], 1)
+        )
+
+    def with_outer_algorithm(der: bytes, identifier: bytes, to: bytes) -> bytes:
+        """The same certificate with its outer signature algorithm replaced by `to` alone.
+
+        The outer algorithm is the last place `identifier` stands, and the signature does not
+        cover it, so the signature stays the issuer's own. The one length written again is the
+        outermost. Not for a CRL: the library does not load one whose two signature algorithms
+        differ.
+        """
+        start = der.rindex(identifier) - 2
+        end = start + 2 + der[start + 1]
+        rest = der[4:start] + bytes([0x30, len(to)]) + to + der[end:]
+        assert der[:2] == b"\x30\x82" and der[start] == 0x30 and len(rest) > 0xFF, defect
+        return der[:2] + len(rest).to_bytes(2, "big") + rest
+
+    def signed(builder: Builder, issuer: IssuerKey, how: str) -> bytes:
+        """Sign as `issuer` does, unless `how` names a signature defect. Returns DER."""
+        if how in hashless:
+            return builder.sign(hashless[how], None).public_bytes(der_encoding)
+        if how == "id_alg_unsigned_identifier":
+            der = builder.sign(another_key, hashes.SHA384()).public_bytes(der_encoding)
+            return renamed(der, ecdsa_with_sha384, 2, id_alg_unsigned)
+        if how == "outer_identifier_id_alg_unsigned":
+            # ECDSA, or PKCS #1 v1.5 under an RSA issuer: a signature that verifies with SHA-384
+            # once the outer identifier is ignored.
+            der = builder.sign(issuer, hashes.SHA384()).public_bytes(der_encoding)
+            label = sha384_with_rsa if isinstance(issuer, rsa.RSAPrivateKey) else ecdsa_with_sha384
+            return with_outer_algorithm(der, label, id_alg_unsigned)
+        if isinstance(issuer, rsa.RSAPrivateKey):
+            pss = padding.PSS(mgf=padding.MGF1(hashes.SHA384()), salt_length=48)
+            der = builder.sign(issuer, hashes.SHA384(), rsa_padding=pss).public_bytes(der_encoding)
+            algorithm = rsassa_pss
+        else:
+            der = builder.sign(issuer, hashes.SHA384()).public_bytes(der_encoding)
+            algorithm = ecdsa_with_sha384
+        # A certificate and a CRL each name their signature algorithm in two places.
+        if how == "unknown_signature_algorithm":
+            return renamed(der, algorithm, 2)
+        if how == "pss_unknown_mask_function":
+            return renamed(der, mgf1, 2)
+        if how == "pss_unknown_mask_hash":
+            # id-sha384 stands four times: the hash and the mask function's hash, in two places.
+            return renamed(der, sha384, 4, only=(2, 4))
+        if how == "pss_outer_parameters_absent":
+            return with_outer_algorithm(der, rsassa_pss, rsassa_pss)
+        return der
+
+    def with_own_key(der: bytes, how: str) -> bytes:
+        """The certificate as it is, unless `how` names a defect of the key it carries."""
+        if how == "key_of_unknown_algorithm":
+            return renamed(der, ec_public_key, 1)
+        if how == "key_point_off_the_curve":
+            # The uncompressed P-384 point follows 03 62 00 04; change the first byte of x.
+            at = der.index(bytes.fromhex("03620004"), der.index(ec_public_key)) + 4
+            return der[:at] + bytes([der[at] ^ 0xFF]) + der[at + 1 :]
+        return der
+
+    def certificate(
+        subject: x509.Name,
+        issuer_name: x509.Name,
+        public_key: ec.EllipticCurvePublicKey | rsa.RSAPublicKey | ed25519.Ed25519PublicKey,
+        issuer: IssuerKey,
+        how: str,
+        extensions: list[tuple[str, bytes]] | None = None,
+    ) -> bytes:
+        if how == "rsa_key_too_small_for_the_pss_digest":
+            public_key = small_rsa_key
+        if how == "key_neither_rsa_nor_ec":
+            public_key = ed25519_key.public_key()
+        builder = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer_name)
+            .public_key(public_key)
+            .serial_number(2)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+        )
+        for oid, value in extensions or []:
+            builder = builder.add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(oid), value), critical=False
+            )
+        return with_own_key(signed(builder, issuer, how), how)
+
+    def pem(der: bytes) -> str:
+        body = base64.encodebytes(der).decode("ascii")
+        return f"-----BEGIN CERTIFICATE-----\n{body}-----END CERTIFICATE-----\n"
+
+    def der_small_uint(value: int) -> bytes:
+        return b"\x02\x01" + bytes([value]) if value < 0x80 else b"\x02\x02\x00" + bytes([value])
+
+    vcek_extensions = [(oid, der_small_uint(reported[name])) for name, oid in s._VCEK_OIDS.items()]
+    vcek_extensions.append((s._HWID_OID, report[s._CHIP_ID : s._CHIP_ID + 64]))
+
+    def chain(bad: str | None) -> tuple[dict[str, object], s.CollateralPolicy]:
+        """A valid packet and policy, or the same with the defect in the part named."""
+
+        def how(name: str) -> str:
+            return defect if name == bad else "as the issuer signs"
+
+        ark = certificate(ark_name, ark_name, ark_key.public_key(), ark_key, how("ark"))
+        ask = certificate(ask_name, ark_name, ask_key.public_key(), ark_key, how("ask"))
+        vcek = certificate(
+            vcek_name, ask_name, vcek_key.public_key(), ask_key, how("vcek"), vcek_extensions
+        )
+        crl = (
+            x509.CertificateRevocationListBuilder()
+            .issuer_name(ark_name)
+            .last_update(NOW - timedelta(hours=1))
+            .next_update(NOW + timedelta(days=7))
+        )
+        packet: dict[str, object] = {
+            "hcl_b64": milan["hcl_b64"],
+            "vcek_pem": pem(vcek),
+            "intermediates_pem": [pem(ask)],
+        }
+        pol = s.CollateralPolicy(
+            floors={"Milan": FLOOR},
+            arks={"Milan": x509.load_der_x509_certificate(ark)},
+            crls={"Milan": signed(crl, ark_key, how("crl"))},
+        )
+        return packet, pol
+
+    packet, pol = chain(None)
+    assert s.appraise_collateral(packet, pol, now=NOW)["product"] == "Milan"
+
+    packet, pol = chain(part)
+    with pytest.raises(s.CollateralDenied, match=f"^{expected_reason}$"):
+        s.appraise_collateral(packet, pol, now=NOW)
