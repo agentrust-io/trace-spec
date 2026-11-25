@@ -1,12 +1,18 @@
 """Experimental SEV-SNP platform collateral appraisal: TCB floors, revocation, product.
 
 Runs after azure_execution_binding.authenticate_ak has authenticated the report
-(AMD root, VCEK, report signature, debug bit, VMPL). This module enforces what
-that chain alone does not: the VCEK's certified TCB equals the signed reported
-TCB, the chip and CPUID agree with the certifying product line, the reported
-TCB meets the relying party's published floors, the ASK is not on AMD's current
-ARK-signed CRL, and a mitigation that also needs a guest OS change is proved by
-the report's mitigation vector or reported as unproved.
+(AMD root, VCEK, report signature, debug bit, VMPL). It does not check the
+report's signature, the debug bit or the VMPL again, and it checks no
+certificate's validity period. It does check the chain's names and signatures
+again, against the ARK its policy pins for the product: the VCEK's issuer is
+the ASK's subject and the ASK signed it, and the ASK's issuer is that ARK's
+subject and that ARK signed it. Beyond the chain it enforces what the chain
+alone does not: the VCEK's certified TCB equals the signed reported TCB, the
+report's chip is the one the VCEK certifies, the CPUID in a report of version
+3 or later is the certifying product line's, the reported TCB meets the
+relying party's published floors, the ASK is not on AMD's current ARK-signed
+CRL, and a mitigation that also needs a guest OS change is proved by the
+report's mitigation vector or reported as unproved.
 
 AMD publishes no VCEK leaf revocation list: a VCEK is superseded through TCB
 floors, which is why the floor check is the leaf-level control.
