@@ -533,7 +533,7 @@ Each profile MUST declare which binding form it uses. A record with no verifiabl
 
 **Freshness.** Records MUST carry `iat`. Verifiers MUST enforce a maximum record age: a record whose `iat` is older than the maximum age MUST be rejected. The default maximum age is 24 hours; a deployment profile MAY specify a different value. Verifiers MUST also reject a record whose `iat` is later than the verifier's current time plus an allowed clock-skew tolerance. The default tolerance is 5 minutes; a deployment profile MAY specify a different value. Without the upper bound, a far-future `iat` creates a record that remains fresh until that time plus the maximum age. Verifiers SHOULD additionally support challenge-nonce binding for online verification: the verifier supplies a nonce, the issuer echoes it in `runtime.nonce`, and the verifier checks the echo. When a challenge nonce was issued, a record that omits or mismatches it MUST be rejected.
 
-**Conformance alignment.** The TRACE conformance suite (trace-tests) already enforces both rules: records without a verifiable signature fail at conformance level 1 and above, and the default 24-hour max-age is enforced.
+**Conformance alignment.** The TRACE conformance suite (trace-tests) already enforces both rules: records without a verifiable signature fail at every conformance level, and the default 24-hour max-age is enforced.
 
 #### 3.2.3 Revocation of record-signing keys
 

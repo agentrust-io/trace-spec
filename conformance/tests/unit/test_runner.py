@@ -6,6 +6,7 @@ import time
 
 import pytest
 
+from trace_tests.modules.unverified import finding_counts_as_level_failure
 from trace_tests.runner import run
 
 VECTORS_DIR = pathlib.Path(__file__).parent.parent / "vectors"
@@ -29,20 +30,21 @@ def valid_cmcp_runtime():
     return vector
 
 
-def test_level0_trace_format_passes(valid_level0):
+def test_level0_trace_format_runs_required_modules(valid_level0):
     results = run(valid_level0, "trace", level=0)
     assert "TR-ENV" in results
     assert "TR-SIG" in results
     assert "TR-POL" in results
     assert "TR-RTE" not in results
-    failures = [f for findings in results.values() for f in findings if f.failed()]
-    assert not failures, failures
+    direct_failures = [f for findings in results.values() for f in findings if f.failed()]
+    assert not direct_failures, direct_failures
 
 
-def test_level0_trace_format_is_marked_unverified(valid_level0):
+def test_level0_unsigned_trace_is_unverified_and_counts_as_failure(valid_level0):
     results = run(valid_level0, "trace", level=0)
     unverified = [f for f in results["TR-SIG"] if f.unverified()]
     assert unverified, "unsigned plain trace records must carry an UNVERIFIED TR-SIG finding"
+    assert all(finding_counts_as_level_failure(f, 0) for f in unverified)
 
 
 @pytest.mark.parametrize("level", [1, 2])

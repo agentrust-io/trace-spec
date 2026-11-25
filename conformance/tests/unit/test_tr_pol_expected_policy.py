@@ -195,7 +195,7 @@ def test_a_finding_threshold_only_tightens_its_code():
     looser = Finding("TR-SIG-005", Status.UNVERIFIED, "m", unverified_fails_from_level=2)
     assert [finding_counts_as_level_failure(tighter, lv) for lv in (0, 1, 2)] == [True] * 3
     assert [finding_counts_as_level_failure(looser, lv) for lv in (0, 1, 2)] == [
-        False, True, True,
+        True, True, True,
     ]
 
 

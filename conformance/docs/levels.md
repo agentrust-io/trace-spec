@@ -63,7 +63,7 @@ Level 0 records are signed with a key kept in ordinary software rather than in s
 - `runtime.platform` is a TEE value (e.g. `amd-sev-snp`) but Level 0 is requested: TR-RTE-001 does not apply, but TR-ENV still checks the envelope
 - `policy.enforcement_mode` is `"strict"` or `"monitor"`: TR-POL-002
 - `cnf.jwk` missing, of an unsupported key type, or carrying private key material (`d`): TR-SIG-004
-- Signature does not verify against `cnf.jwk`: TR-SIG-005
+- Signature is absent or does not verify against `cnf.jwk`: TR-SIG-005
 - `policy.policy_uri` is not an absolute URI, or the bundle it resolves to does not have the digest `policy.bundle_hash` declares: TR-POL-003. The malformed case is reported with or without a resolver: a reference the record got wrong needs no network to detect
 - `--expected-policy-hash` was supplied and names another policy, or it uses a different algorithm from `policy.bundle_hash` and the bundle needed to compare it could not be resolved: TR-POL-003. The second case is unverified rather than failed, and it fails the run from Level 0
 
@@ -175,7 +175,7 @@ which that stops being tolerable is a property of the check.
 
 | Code | UNVERIFIED fails the run from level |
 |------|-------------------------------------|
-| TR-SIG-005 | 1 |
+| TR-SIG-005 | 0 |
 | TR-POL-003 | 2 |
 
 A code absent from this table fails from Level 1.

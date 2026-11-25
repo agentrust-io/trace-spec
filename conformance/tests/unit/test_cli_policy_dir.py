@@ -48,7 +48,8 @@ def test_a_resolvable_bundle_passes_tr_pol_003(tmp_path):
     d = _policy_dir(tmp_path, {URI: "policy-bundle-base.json"})
     result = _run(rec, d)
     assert "TR-POL-003" not in result.output or "PASS" in result.output
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
+    assert "TR-SIG-005: no signature present" in result.output
 
 
 def test_a_uri_the_manifest_does_not_hold_is_unverified(tmp_path):
@@ -132,5 +133,6 @@ def test_without_policy_dir_the_check_skips_rather_than_failing(tmp_path):
     digest = "sha256:" + hashlib.sha256(BUNDLE).hexdigest()
     rec = _record(tmp_path, policy_uri=URI, bundle_hash=digest)
     result = _run(rec)
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
+    assert "TR-SIG-005: no signature present" in result.output
     assert "no resolver supplied" in result.output

@@ -127,9 +127,9 @@ Each finding prints its **module**, its status, and its message:
 
 ```
   TR-ENV  PASS        eat_profile sentinel matches
-  TR-ENV  PASS        cnf.jwk.kty present ('EC')
-  TR-SIG  PASS        cnf.jwk key type is supported (kty='EC', crv='P-256')
-  TR-SIG  UNVERIFIED  TR-SIG-005: no signature present; this record is NOT cryptographically verified
+  TR-ENV  PASS        cnf.jwk.kty present ('OKP')
+  TR-SIG  PASS        cnf.jwk key type is supported (kty='OKP', crv='Ed25519')
+  TR-SIG  PASS        Ed25519 signature verified
   TR-POL  PASS        policy.bundle_hash has valid digest format
 ```
 
