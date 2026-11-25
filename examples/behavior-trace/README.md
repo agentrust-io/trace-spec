@@ -20,5 +20,8 @@ copying it. Keys come from fixed seeds, so the bytes are the same on every run.
 
 Each file holds `blocks`, the `pinned_keys` trusted for each edge, and `expected`: a
 `classification` (`verified`, `truncated` or `rejected`) and the sorted `codes`. There are
-46: 5 verified, 2 truncated and 39 rejected, with at
+51: 7 verified, 2 truncated and 42 rejected, with at
 least two vectors for every code.
+
+Vectors 47 to 49 reject empty, 65-character and `a=b` extension names.
+Vectors 50 and 51 accept `~` and a 64-character name as boundary controls.
