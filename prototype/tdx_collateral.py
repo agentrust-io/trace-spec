@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from cryptography import x509
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.x509.oid import NameOID
@@ -346,7 +346,11 @@ def _time(value: Any, name: str) -> int:
 
 
 def _cn(cert: x509.Certificate) -> str:
-    names = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    try:
+        names = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    except (ValueError, TypeError):
+        # The library reads a name when it is asked for, not when the certificate loads.
+        return ""
     return str(names[0].value) if len(names) == 1 else ""
 
 
@@ -411,15 +415,28 @@ def _crl(
 ) -> x509.CertificateRevocationList:
     try:
         crl = x509.load_der_x509_crl(raw)
-    except ValueError as exc:
+        # The library reads a name when it is asked for, not when the CRL loads. Ask here, so a
+        # CRL whose issuer cannot be read is refused like one that does not load.
+        crl_issuer = crl.issuer
+    except (ValueError, TypeError, x509.InvalidVersion) as exc:
         raise CollateralDenied(f"{name}_format") from exc
-    if crl.issuer != issuer.subject or not crl.is_signature_valid(
-        issuer.public_key()  # type: ignore[arg-type]
-    ):
+    try:
+        signed = crl_issuer == issuer.subject and crl.is_signature_valid(
+            issuer.public_key()  # type: ignore[arg-type]
+        )
+    except (ValueError, TypeError, UnsupportedAlgorithm) as exc:
+        # Its subject or its key cannot be read, or the key is of a kind that signs nothing.
+        raise CollateralDenied(f"{name}_signature") from exc
+    if not signed:
         raise CollateralDenied(f"{name}_signature")
-    if crl.next_update_utc is None or not (
-        crl.last_update_utc.timestamp() <= at < crl.next_update_utc.timestamp()
-    ):
+    try:
+        current = crl.next_update_utc is not None and (
+            crl.last_update_utc.timestamp() <= at < crl.next_update_utc.timestamp()
+        )
+    except ValueError as exc:
+        # The library loads an update time in year 0000 and cannot give it.
+        raise CollateralDenied(f"{name}_format") from exc
+    if not current:
         raise CollateralDenied(f"{name}_expired")
     return crl
 
