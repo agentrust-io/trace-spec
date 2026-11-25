@@ -136,6 +136,18 @@ def _cn(name: x509.Name) -> str:
     return str(values[0].value)
 
 
+def _name(holder: Any, which: str, reason: str) -> x509.Name:
+    """A certificate's or a CRL's issuer or subject; one the library cannot read is denied.
+
+    The library reads a name when it is asked for, not when the certificate or the CRL loads.
+    """
+    try:
+        name: x509.Name = getattr(holder, which)
+    except (ValueError, TypeError) as exc:
+        raise CollateralDenied(reason) from exc
+    return name
+
+
 def _verify_signed_by(cert_or_crl: Any, issuer: x509.Certificate) -> bool:
     key = issuer.public_key()
     try:
@@ -196,7 +208,7 @@ def appraise_collateral(
         report = extract_snp_report_from_hcl(hcl_raw)
         vcek = load_pem_certificate(packet["vcek_pem"].encode(), allow_non_positive_serial=True)
         asks = [load_pem_certificate(p.encode()) for p in packet["intermediates_pem"]]
-    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+    except (KeyError, ValueError, TypeError, AttributeError, x509.InvalidVersion) as exc:
         raise CollateralDenied("platform_evidence_format") from exc
     if len(report) < _CURRENT_MIT + 8 or len(asks) != 1:
         raise CollateralDenied("platform_evidence_format")
@@ -206,18 +218,19 @@ def appraise_collateral(
         raise CollateralDenied("platform_evidence_format")
 
     # Product line: VCEK issuer, ASK subject and issuer, pinned ARK and CPUID must agree.
-    issuer = _cn(vcek.issuer)
+    # Each name is read through _name first; a plain read below repeats one that has succeeded.
+    issuer = _cn(_name(vcek, "issuer", "platform_evidence_format"))
     if not issuer.startswith("SEV-") or issuer[4:] not in PRODUCTS:
         raise CollateralDenied("vcek_product")
     product = issuer[4:]
     ark = policy.arks.get(product)
     if (
         ark is None
-        or _cn(ask.subject) != issuer
+        or _cn(_name(ask, "subject", "platform_evidence_format")) != issuer
         or vcek.issuer != ask.subject
         or not _verify_signed_by(vcek, ask)
-        or _cn(ask.issuer) != "ARK-" + product
-        or ask.issuer != ark.subject
+        or _cn(_name(ask, "issuer", "platform_evidence_format")) != "ARK-" + product
+        or ask.issuer != _name(ark, "subject", "product_chain")
         or not _verify_signed_by(ask, ark)
     ):
         raise CollateralDenied("product_chain")
@@ -250,13 +263,25 @@ def appraise_collateral(
         raise CollateralDenied("crl_missing")
     try:
         crl = x509.load_der_x509_crl(der)
-    except ValueError as exc:
+    except (ValueError, x509.InvalidVersion) as exc:
         raise CollateralDenied("crl_format") from exc
-    if crl.issuer != ark.subject or not _verify_signed_by(crl, ark):
+    if _name(crl, "issuer", "crl_format") != ark.subject or not _verify_signed_by(crl, ark):
         raise CollateralDenied("crl_signature")
-    if crl.next_update_utc is None or not crl.last_update_utc <= now < crl.next_update_utc:
+    try:
+        current = crl.next_update_utc is not None and (
+            crl.last_update_utc <= now < crl.next_update_utc
+        )
+    except ValueError as exc:
+        # The library loads an update time in year 0000 and cannot give it.
+        raise CollateralDenied("crl_format") from exc
+    if not current:
         raise CollateralDenied("crl_stale")
-    if crl.get_revoked_certificate_by_serial_number(ask.serial_number) is not None:
+    try:
+        revoked = crl.get_revoked_certificate_by_serial_number(ask.serial_number)
+    except ValueError as exc:
+        # The library looks up no negative serial number.
+        raise CollateralDenied("platform_evidence_format") from exc
+    if revoked is not None:
         raise CollateralDenied("ask_revoked")
 
     reasons = [
