@@ -471,6 +471,229 @@ def test_unpinned_root_is_rejected():
     denied("tcb_info_chain", run, s, STANDARD, root=other)
 
 
+@pytest.mark.parametrize("name", ["pck_crl", "root_ca_crl"])
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ("crl_version_0", "format"),
+        ("crl_version_2", "format"),
+        ("crl_issuer_as_integer", "format"),
+        ("crl_issuer_as_bit_string", "format"),
+        ("crl_this_update_in_year_0", "format"),
+        ("crl_next_update_in_year_0", "format"),
+        ("issuer_subject_as_integer", "signature"),
+        ("issuer_subject_as_bit_string", "signature"),
+        ("issuer_key_off_the_curve", "signature"),
+        ("issuer_key_of_unknown_algorithm", "signature"),
+        ("issuer_key_x25519", "signature"),
+        ("issuer_key_x448", "signature"),
+        # Denied at the parent commit as well. Held here because the lines that deny them changed.
+        ("crl_not_der", "format"),
+        ("crl_signed_by_another_key", "signature"),
+        ("crl_under_another_issuer_name", "signature"),
+        ("crl_next_update_in_year_0_signed_by_another_key", "signature"),
+        ("crl_this_update_in_year_0_signed_by_another_key", "signature"),
+        ("crl_without_next_update", "expired"),
+        ("crl_without_next_update_signed_by_another_key", "signature"),
+        ("crl_this_update_in_year_0_without_next_update", "expired"),
+        ("at_one_second_before_this_update", "expired"),
+        ("at_next_update", "expired"),
+        ("crl_signed_by_another_key_at_one_second_before_this_update", "signature"),
+        ("crl_signed_by_another_key_at_next_update", "signature"),
+    ],
+)
+def test_crl_denies_a_crl_or_an_issuer_the_library_cannot_read(
+    change: str, reason: str, name: str
+) -> None:
+    """A CRL, its issuer certificate or the time it is checked at is changed: deny, do not raise.
+
+    The library refuses a CRL version next to the valid one on load, with x509.InvalidVersion and
+    not a ValueError. It reads a name only when asked: with the tag of the common name's value
+    changed to INTEGER or to BIT STRING the CRL or the certificate still loads, and reading the
+    name raises ValueError or TypeError. It loads an update time in year 0000 and raises
+    ValueError when asked for it. Reading a key raises ValueError for a point off its curve and
+    UnsupportedAlgorithm for an algorithm the library does not know, and verifying under an
+    X25519 or an X448 key, which sign nothing, raises TypeError.
+
+    The changes after the comment are denied at the parent commit as well, each with the reason
+    it has here. They are here so that the reason does not move.
+    """
+    from datetime import timedelta
+
+    from cryptography.hazmat.primitives.asymmetric import x448, x25519
+
+    now = datetime(2026, 9, 30, 5, 0, tzinfo=UTC)
+    root_key = ec.generate_private_key(ec.SECP256R1())
+    ca_key = ec.generate_private_key(ec.SECP256R1())
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic PCK CA")])
+    other_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Some Other CA")])
+
+    def certificate(public_key: object) -> x509.Certificate:
+        return (
+            x509.CertificateBuilder()
+            .subject_name(ca_name)
+            .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic Root")]))
+            .public_key(public_key)  # type: ignore[arg-type]
+            .serial_number(2)
+            .not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=30))
+            .sign(root_key, hashes.SHA256())
+        )
+
+    def revocation_list(
+        issuer_name: x509.Name = ca_name,
+        signer: ec.EllipticCurvePrivateKey = ca_key,
+        this_update: datetime = now - timedelta(hours=1),
+        next_update: datetime = now + timedelta(days=7),
+    ) -> x509.CertificateRevocationList:
+        return (
+            x509.CertificateRevocationListBuilder()
+            .issuer_name(issuer_name)
+            .last_update(this_update)
+            .next_update(next_update)
+            .sign(signer, hashes.SHA256())
+        )
+
+    def with_byte(der: bytes, index: int, value: int) -> bytes:
+        return der[:index] + bytes([value]) + der[index + 1 :]
+
+    def signed_again(
+        made: x509.CertificateRevocationList,
+        old: bytes,
+        new: bytes,
+        signer: ec.EllipticCurvePrivateKey = ca_key,
+    ) -> bytes:
+        """The CRL with `old` replaced by `new` in its signed part, then signed again."""
+        der = made.public_bytes(serialization.Encoding.DER)
+        signed = made.tbs_certlist_bytes
+        assert signed.count(old) == 1
+        header = 2 if signed[1] < 0x80 else 2 + (signed[1] & 0x7F)
+        changed = _der_tlv(0x30, signed[header:].replace(old, new))
+        rest = der[der.index(signed) + len(signed) :]
+        algorithm = rest[: 2 + rest[1]]
+        signature = signer.sign(changed, ec.ECDSA(hashes.SHA256()))
+        return _der_tlv(0x30, changed + algorithm + _der_tlv(0x03, b"\x00" + signature))
+
+    issuer = certificate(ca_key.public_key())
+    crl = revocation_list()
+    issuer_der = issuer.public_bytes(serialization.Encoding.DER)
+    crl_der = crl.public_bytes(serialization.Encoding.DER)
+    this_update = int(crl.last_update_utc.timestamp())
+    next_update = int(crl.next_update_utc.timestamp())  # type: ignore[union-attr]
+    at = int(now.timestamp())
+    for inside in (this_update, at, next_update - 1):
+        assert t._crl(crl_der, issuer, inside, name).issuer == ca_name
+
+    # The common name's value is a UTF8String, tag 0x0c.
+    name_tag = {"as_integer": 0x02, "as_bit_string": 0x03}
+    in_2050 = datetime(2050, 1, 1, tzinfo=UTC)
+    # From 2050 on the library writes a time as GeneralizedTime, tag 0x18, year in four digits.
+    year_2050, year_0 = b"\x18\x0f2050", b"\x18\x0f0000"
+    common_name = b"\x0c\x10Synthetic PCK CA"
+    assert crl_der.count(common_name) == 1 and issuer_der.count(common_name) == 1
+    if change.startswith("crl_version_"):
+        # The version is the first field of the signed part.
+        signed = crl.tbs_certlist_bytes
+        start = crl_der.index(signed) + (2 if signed[1] < 0x80 else 2 + (signed[1] & 0x7F))
+        assert crl_der[start : start + 3] == b"\x02\x01\x01"
+        crl_der = with_byte(crl_der, start + 2, int(change.removeprefix("crl_version_")))
+    elif change.startswith("crl_issuer_"):
+        tag = name_tag[change.removeprefix("crl_issuer_")]
+        crl_der = with_byte(crl_der, crl_der.index(common_name), tag)
+    elif change == "crl_this_update_in_year_0_without_next_update":
+        made = revocation_list(this_update=in_2050, next_update=in_2050.replace(2051))
+        both = year_2050 + b"0101000000Z" + b"\x18\x0f2051" + b"0101000000Z"
+        crl_der = signed_again(made, both, year_0 + b"0101000000Z")
+    elif change.startswith("crl_this_update_in_year_0"):
+        signer = root_key if change.endswith("_signed_by_another_key") else ca_key
+        made = revocation_list(this_update=in_2050, next_update=in_2050.replace(2051))
+        crl_der = signed_again(made, year_2050, year_0, signer)
+    elif change.startswith("crl_next_update_in_year_0"):
+        signer = root_key if change.endswith("_signed_by_another_key") else ca_key
+        crl_der = signed_again(revocation_list(next_update=in_2050), year_2050, year_0, signer)
+    elif change.startswith("crl_without_next_update"):
+        # The library's builder writes no CRL without one: the field is cut out of a CRL it wrote.
+        signer = root_key if change.endswith("_signed_by_another_key") else ca_key
+        made = revocation_list(next_update=in_2050)
+        crl_der = signed_again(made, year_2050 + b"0101000000Z", b"", signer)
+    elif change == "crl_not_der":
+        crl_der = b"not a CRL"
+    elif change.startswith("crl_signed_by_another_key"):
+        crl_der = revocation_list(signer=root_key).public_bytes(serialization.Encoding.DER)
+        if change.endswith("_at_one_second_before_this_update"):
+            at = this_update - 1
+        elif change.endswith("_at_next_update"):
+            at = next_update
+    elif change == "crl_under_another_issuer_name":
+        crl_der = revocation_list(issuer_name=other_name).public_bytes(serialization.Encoding.DER)
+    elif change == "at_one_second_before_this_update":
+        at = this_update - 1
+    elif change == "at_next_update":
+        at = next_update
+    elif change.startswith("issuer_subject_"):
+        tag = name_tag[change.removeprefix("issuer_subject_")]
+        issuer_der = with_byte(issuer_der, issuer_der.index(common_name), tag)
+    elif change == "issuer_key_off_the_curve":
+        point = ca_key.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+        )
+        last = issuer_der.index(point) + len(point) - 1
+        issuer_der = with_byte(issuer_der, last, issuer_der[last] ^ 0x01)
+    elif change == "issuer_key_of_unknown_algorithm":
+        ec_public_key = bytes.fromhex("06072a8648ce3d0201")  # id-ecPublicKey, 1.2.840.10045.2.1
+        assert issuer_der.count(ec_public_key) == 1
+        issuer_der = with_byte(issuer_der, issuer_der.index(ec_public_key) + 8, 0x7F)
+    else:
+        kind = {
+            "issuer_key_x25519": x25519.X25519PrivateKey,
+            "issuer_key_x448": x448.X448PrivateKey,
+        }
+        issuer_der = certificate(kind[change].generate().public_key()).public_bytes(
+            serialization.Encoding.DER
+        )
+
+    denied(
+        f"{name}_{reason}", t._crl, crl_der, x509.load_der_x509_certificate(issuer_der), at, name
+    )
+
+
+@pytest.mark.parametrize(
+    ("tag", "common_name"),
+    [
+        pytest.param(0x0C, "Synthetic PCK CA", id="as_built"),
+        pytest.param(0x02, "", id="as_integer"),
+        pytest.param(0x03, "", id="as_bit_string"),
+    ],
+)
+def test_cn_is_empty_for_a_subject_the_library_cannot_read(tag: int, common_name: str) -> None:
+    """A certificate whose subject raises when read has no common name; _cn must not raise.
+
+    The tag of the common name's value: UTF8String as built, then INTEGER, which reading the
+    subject answers with ValueError, and BIT STRING, which it answers with TypeError.
+    """
+    from datetime import timedelta
+
+    now = datetime(2026, 9, 30, 5, 0, tzinfo=UTC)
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic PCK CA")])
+    der = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic Root")]))
+        .public_key(key.public_key())
+        .serial_number(2)
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=30))
+        .sign(key, hashes.SHA256())
+        .public_bytes(serialization.Encoding.DER)
+    )
+    value = b"\x0c\x10Synthetic PCK CA"
+    assert der.count(value) == 1
+    at = der.index(value)
+    changed = x509.load_der_x509_certificate(der[:at] + bytes([tag]) + der[at + 1 :])
+    assert t._cn(changed) == common_name
+
+
 def test_collateral_for_another_platform_is_rejected():
     s = packet("standard")
 
