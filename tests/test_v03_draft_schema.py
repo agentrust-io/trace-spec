@@ -53,6 +53,10 @@ def test_draft_differs_from_canonical_only_in_its_declared_members():
     stripped["properties"]["eat_profile"] = canonical["properties"]["eat_profile"]
     del stripped["properties"]["runtime"]["properties"]["evidence"]
     del stripped["properties"]["manifest"]
+    entry = stripped["properties"]["references"]["items"]
+    del entry["properties"]["validation"]
+    del entry["allOf"]
+    entry["required"] = canonical["properties"]["references"]["items"]["required"]
     assert stripped == canonical
 
 

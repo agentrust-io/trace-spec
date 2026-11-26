@@ -83,6 +83,7 @@ CASES: list[tuple[str, object, bool]] = [
     ("rel condition-appraisal", [_entry(rel="condition-appraisal")], True),
     ("rel observed-effect", [_entry(rel="observed-effect")], True),
     ("rel applicability-assessment", [_entry(rel="applicability-assessment")], True),
+    ("rel position-commitment", [_entry(rel="position-commitment")], True),
     ("sha384 digest", [_entry(digest="sha384:" + "b" * 96)], True),
     # rel is a registry rather than a closed set (spec 3.1.2, unlike 3.1.1 on kind),
     # so a value this schema has never heard of is accepted rather than rejected.
@@ -102,6 +103,12 @@ CASES: list[tuple[str, object, bool]] = [
     ("malformed digest", [_entry(digest="sha256:zz")], False),
     ("uppercase digest hex", [_entry(digest="sha256:" + "A" * 64)], False),
     ("unknown member in entry", [_entry(note="human comment")], False),
+    # `validation` is the v0.3 draft's member (#321). Under v0.2 it is an unknown
+    # member, which is what makes the draft a version gate: a v0.2 artifact rejects
+    # a record that uses it, with or without a resolver beside it.
+    ("v0.3 validation member", [_entry(validation="recompute")], False),
+    ("v0.3 recompute entry without resolver",
+     [{"rel": "position-commitment", "id": "x", "validation": "recompute"}], False),
     # Rule 4 tells a producer to omit the entry, not the block, and nothing in 3.1.2
     # says the array must be non-empty. The schema does not get to assert what the
     # normative text does not, which is this PR's own argument pointed the other way.
@@ -275,7 +282,7 @@ def test_the_registered_rel_values_stay_documented_in_all_three_places() -> None
 
     registered = (
         "authorized-intent", "approval-outcome", "behavior-trace", "condition-appraisal",
-        "observed-effect", "applicability-assessment",
+        "observed-effect", "applicability-assessment", "position-commitment",
     )
     rel = SCHEMA["properties"]["references"]["items"]["properties"]["rel"]
     assert "enum" not in rel, (

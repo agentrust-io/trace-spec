@@ -221,6 +221,7 @@ A `references` entry is a pointer, not evidence. What the signature attests is t
 | `resolver` | yes | Identifier of the party obliged to resolve `id`. |
 | `retention` | no | Period for which `resolver` undertakes to keep `id` resolvable, as an ISO 8601 duration. |
 | `digest` | no | Digest of the referenced object, when the producer holds it at issue time. |
+| `validation` | no | **v0.3 draft only.** How `id` is checked. Absent means by resolution through `resolver`, the only mode this version defines. `recompute` is defined under "Entries validated by recomputation" below. <!-- CHANGED: #321 - validation proposed for v0.3 --> |
 
 Registered `rel` values:
 
@@ -230,6 +231,7 @@ Registered `rel` values:
 - **`condition-appraisal`**. An independent check's finding on whether a stated condition is established by a stated subject: a test run, a schema validation, a contract check. The referenced object binds the condition and the subject by digest and carries the outcome in the checker's own vocabulary. <!-- CHANGED: #226 - condition-appraisal registered -->
 - **`observed-effect`**. A signed record of the state change an observer outside the agent saw over one interval: the state before and after, the paths observed, and the authority change ran under. <!-- CHANGED: #402 - observed-effect registered -->
 - **`applicability-assessment`**. An assessor's statement of whether a stated legal provision applies to a stated party, held in another system: the party and its role in the instrument's own term, the jurisdiction, the provision and the date of the text read, the basis, and the outcome in a closed vocabulary the object names. <!-- CHANGED: #445 - applicability-assessment registered -->
+- **`position-commitment`**. A commitment to a position in an externally ordered sequence, taken before the digest of this record exists. `id` is the commitment to that position, validated by recomputation from a proof the holder carries and that commits this record, rather than by resolution. Under this version the entry earns nothing a pointer does not: recomputation is not a check this version defines, rule 3 governs, and `resolver` is still required, so a producer that retains nothing omits the entry. <!-- CHANGED: #321 - position-commitment registered -->
 
 1. `references` MUST NOT affect `runtime.platform`. A record carrying `references` and no `origin` block is `self` and carries whatever platform value it actually earned.
 2. The record signature MUST cover `references`, under the canonicalisation in §3.2.2.
@@ -244,7 +246,58 @@ Rule 3 is what makes the block safe to add. A reference that could invalidate a 
 
 **`resolver` names who must retain, not who adjudicates.** The field is a retention undertaking: it identifies the party obliged to keep `id` resolvable, alongside `retention` as the period they undertake to keep it so. It is not a verification authority, and the two read as the same field until they are separated. The conformance suite refuses the opposite arrangement for a different field: TR-POL-003 takes its resolver from the caller and never derives it from the record, because a record that names its own checker can name one that agrees with it. Naming yourself as the party who must retain an artifact is ordinary and non-circular; naming yourself as the party who decides whether it is true is the circularity that rule refuses. An operator naming themselves as `resolver` for their own artifact is therefore within this section and would still be refused under TR-POL-003's rule, and both are correct. Rule 4 is aimed at a producer who can name no obliged party at all, not at one who is that party.
 
-**Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together.
+**Entries validated by recomputation (v0.3 draft).** <!-- CHANGED: #321 - recompute validation proposed for v0.3 -->
+
+Every rule above treats `id` as an address: something a party holds and a verifier fetches. When `id` is a digest the verifier recomputes from a proof the holder already carries, nothing is fetched, nothing is retained, and no party is obliged to do either. An entry marks that case with `validation: "recompute"`. The field is carried by `schema/trace-claim-v0.3-draft.json` and binds nothing until v0.3 is adopted. The v0.2 schema rejects an entry that carries it, which makes this a version gate rather than a patch: every existing record keeps validating, and a v0.2 verifier rejects a record that uses the field.
+
+It is a field and not a `rel` because how an entry is checked and what it relates to are separate questions. Putting the check into a relation's name would make the relation silently change the verification rule. Any relation, registered or not, may carry it.
+
+For an entry with `validation: "recompute"`:
+
+1. A verifier MUST validate `id` by recomputation from evidence it holds, never by resolution, and the recomputation MUST bind the entry to the record carrying it: the evidence MUST commit this record's digest. Establishing that the committed object exists is not enough. The evidence is public once presented, so any record could carry the same entry and pass a check that stops there. This record's digest is the one §3.1.3 defines for a parent record: SHA-256 (or SHA-384) of the RFC 8785 canonical form of the complete record as published, `signature` member included.
+
+   "Evidence" names everything the holder presents for this entry, the **evidence bundle** -- one proof object or several, taken at one time or at more than one. Both facts rule 1 requires -- recomputing `id`, and binding the record's digest -- are checked against that one bundle as a whole; nothing requires a single object within it to carry both. A construction that commits to a sequence position in one proof and binds the record's digest in a second, taken afterward, satisfies this rule exactly as a construction that carries both facts in one object does, provided a verifier can recompute `id` from the bundle and the bundle commits this record's digest. Rule 3 below, including the malformed/unrecognized case in its second bullet, applies to the bundle: a verifier that cannot recompute from one object in it because another object the recomputation also depends on is missing or unreadable is in that second case, not holding a partial result.
+2. No party is obliged to retain anything, so rule 4 does not apply, and `resolver` and `retention` MUST be absent. On this entry they would state an undertaking nobody has made.
+3. The ways the check can end MUST be kept apart:
+   - The verifier cannot recompute because it does not hold the evidence. The entry is treated as absent. That is not a finding against the record, and rule 3 applies to it as it does to an entry that cannot be resolved.
+   - The verifier holds evidence but cannot recompute from it: the evidence is malformed, truncated, or in a format the verifier does not implement. Nothing was recomputed, so this is neither an absence (the holder did present something) nor a contradiction (there is no disagreement to report, only an inability to check). A verifier MUST report this distinctly from both, so that a relying party can tell "nothing was held" apart from "something was held that could not be read."
+   - The recomputation runs and disagrees. That is a contradiction in the record, and a verifier MUST report it as one and MUST NOT report it as absent or unresolvable.
+
+   This is the distinction [`docs/rfcs/a2a-delegation-profile.md`](../docs/rfcs/a2a-delegation-profile.md) §4.3 draws on the delegation surface, where evidence that resolves and contradicts fails and evidence that cannot be read downgrades. One sentence covering every outcome is how a verifier ends up reporting tampering as absence, or an unreadable proof as either.
+
+Rules 1 and 2 hold unchanged. A recomputation that agrees establishes the binding its relation defines and nothing more: it does not change `runtime.platform`, and the second half of rule 3 still holds, so the entry is not attested evidence of what the execution did.
+
+**What a contradiction here does and does not fail.** Stated plainly, to settle the
+three readings raised across review (trace-spec#595: does a recompute contradiction
+(a) reject the whole record under §3.3, (b) fail an appraisal the way a
+`build_provenance` contradiction does, or (c) stand as an entry-level finding the
+record's own §3.3 checks never see: the answer is (c), and this is not something a
+conformant verifier may instead choose (a) or (b) for.
+
+A recompute entry is still a `references` entry, so §3.1.2's own rule 3 and its
+rationale apply to it: "A reference that could invalidate a record would hand whoever
+controls the target a way to invalidate evidence they do not hold" (the paragraph
+following the four numbered rules), and rule 3's "MUST NOT reject a record because an
+entry ... cannot be resolved" extends, by that same reasoning, to an entry that
+resolves and disagrees. A contradiction here is therefore a finding against the entry,
+not grounds by itself to fail the record's §3.3 verification (a): the record's
+signature binding, freshness, and chain-of-trust checks run independently of what
+`references` holds and MUST still be run and reported on their own terms, whatever the
+entry's outcome. Nor is it (b), comparable to a `build_provenance` contradiction
+failing `appraisal.status` under §3.3.1: `references` carries no `appraisal`-like field
+of its own in this version, so a recompute contradiction has nowhere equivalent to be
+filed as a failed appraisal, and MUST NOT be reported by overloading `appraisal.status`
+or any other §3.3 result to stand in for it. What rule 3 fixes is narrower and absolute
+regardless: the contradiction MUST be surfaced as a contradiction, under the relation's
+own name, and MUST NOT be silently dropped or merged into a record-level pass. That
+leaves (c): a position-commitment contradiction is reported as itself, alongside
+whatever the record's own §3.3 checks independently conclude, and nothing about the
+record's own validity follows from it. A relying party that treats a
+position-commitment contradiction as disqualifying is applying its own policy on top
+of a conformant verifier's report, not something this section requires of the
+verifier.
+
+**Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference checked by resolution is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together. An entry validated by recomputation, proposed above, sits outside the resolver half of this gap: no party undertakes to retain anything, so there is no undertaking to break. It does not escape the need for bytes. Recomputing later still needs the proof, so the holder who wants the entry checked keeps the proof bytes, and a verifier handed none treats the entry as absent.
 
 #### 3.1.3 `delegation.parent_record_hash`: what the digest covers
 

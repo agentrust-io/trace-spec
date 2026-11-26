@@ -1,0 +1,26 @@
+{
+  "type": "position-commitment-proof",
+  "slot": {
+    "type": "position-slot",
+    "sequence": "https://beacon.example.org/sequence/1",
+    "position": 8816,
+    "sequence_value": "sha256:18ece5d4fa1925723ec04de1383d2f5208b16341876cd53174de52a9ea390f2a",
+    "committer": "https://slots.enclave.example",
+    "committer_key_id": "2pnANDR1rqwnBIQZzv2v7MTHnuhoFeCW0gMfcHvW8f0",
+    "allocated_at": "2026-10-20T09:00:40Z",
+    "signature": "7gliAEETWiWmLb-7CqL3CVWGtetAHSqGt9Ens2R7phKpaZepKVXwQH_m7FeeYI7K0SZzdoymY2P87w3VMUyYBA"
+  },
+  "binding": {
+    "type": "position-binding",
+    "slot_commitment": "sha384:46e75df96232cd9f746664065d2505e3fb400db02321e4f16c5613d8dcf6c75f74686b08b22d1792272aeba456ab71a8",
+    "record_digest": "sha384:8476b97cd41a65a468e81a1089613f42c04bc1ae01a0ff391bf8980a823ea2dca3fcba3b70110ec8e373aeaa0b906b97",
+    "committer_key_id": "2pnANDR1rqwnBIQZzv2v7MTHnuhoFeCW0gMfcHvW8f0",
+    "bound_at": "2026-10-20T09:05:04Z",
+    "signature": "b5DXodlZ5D_a8OoVLHG6WLtaWiBuMkHiNloMF4dJ4Y4Gb_fPeECKbBIRNynDP_cknvGcZiadV4lJOFJtpcQyAg"
+  },
+  "committer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "3fbaE_Jek7CQEm8TCSZywsFrzwTY8aIgfXwOabciWbM"
+  }
+}

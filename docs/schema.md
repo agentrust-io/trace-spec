@@ -145,11 +145,13 @@ An array of pointers to facts held outside this record: an authorization decided
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`, `observed-effect`, `applicability-assessment`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
+| `rel` | string | **yes** | Registered values: `authorized-intent`, `approval-outcome`, `behavior-trace`, `condition-appraisal`, `observed-effect`, `applicability-assessment`, `position-commitment`. A registry rather than a closed set, so the schema does not restrict which relation is named: only that one is: the value must be non-empty |
 | `id` | string | **yes** | Identifier of the referenced fact within the resolver's system |
 | `resolver` | string | **yes** | Identifier of the party obliged to resolve `id` |
 | `retention` | string | no | ISO 8601 duration the resolver undertakes to keep `id` resolvable. An undertaking only; nothing enforces it |
 | `digest` | string | no | `sha256:` or `sha384:` digest of the referenced object, when the producer holds it at issue time |
+
+The v0.3 draft schema adds one optional member, `validation`, whose only value is `recompute`: `id` is then checked by recomputation from evidence the verifier holds and that commits this record, rather than by resolution, and `resolver` and `retention` must be absent. This schema rejects the member. Section 3.1.2, "Entries validated by recomputation", has the rules.
 
 `rel` is open where `origin.kind` is closed. Section 3.1.1 says `kind` is a closed set "because the value of the field is that a verifier can key on it"; section 3.1.2 calls `rel`'s values a registry and does not say that, so a new relation is a spec change and not also a schema change. What each registered value's referenced object is, what a verifier may conclude from it, and how a name is added are in [`references-registry.md`](references-registry.md).
 

@@ -75,6 +75,15 @@ checking any archived record, including these.
   `does-not-apply` and an `undetermined` assessment that verify identically to `applies`,
   unresolvable, and an issuer whose key the relying party does not hold. Every digest
   recomputes; see that directory's README and `docs/references-registry.md`.
+- `position-commitment/`: seven signed v0.3 draft Trust Records, each carrying a
+  `position-commitment` entry with `validation: "recompute"` and no resolver, beside the
+  proofs a holder presents and a separate `relying-party.json` holding the committer keys,
+  the identity it holds each one for, and the sequence the relying party supplies itself: a
+  position established, the same proof on another record, no proof held, a proof altered to
+  an earlier position, a proof whose only committer key is the one it carries, the same
+  commitment taken under SHA-384, and a validly signed proof naming a different committer
+  than the one the relying party holds its key for. Every digest recomputes; see that
+  directory's README and `docs/references-registry.md`.
 - `signature-encoding/`: three signed Trust Records that separate a canonically-encoded
   embedded signature from two non-canonical respellings of the same 64 bytes. Proposed,
   not accepted normative text (#247); carries a `scan_published_signatures.py` tool

@@ -1,0 +1,144 @@
+# A position in an externally ordered sequence as a `position-commitment` entry
+
+A TRACE Trust Record can carry a commitment to a position it took in an externally
+ordered sequence before its own digest existed. These fixtures show that composition
+under the v0.3 draft. Each record carries one `references` entry with
+`rel: "position-commitment"` and `validation: "recompute"`, no `resolver` and no
+`retention`, and its `id` is the RFC 8785 canonical form of the slot object inside the
+proof the holder carries, digested with the algorithm its own prefix names: SHA-256 for
+every case but `06`, which exercises the SHA-384 alternative section 3.1.3 permits.
+
+The relation is defined in [`docs/references-registry.md`](../../docs/references-registry.md),
+and recomputation in §3.1.2, "Entries validated by recomputation". The v0.2 schema
+refuses every record here, which is the version gate; the records validate against
+[`schema/trace-claim-v0.3-draft.json`](../../schema/trace-claim-v0.3-draft.json) and bind
+nothing until v0.3 is adopted.
+
+This set is one illustrative, independently specified construction: a single proof
+object carries both the slot and the binding, and the relying party's independence
+from the proof comes from a committer key and a sequence copy it holds outright
+(`relying-party.json`). The registration does not require that shape -- splitting the
+position and the record binding across more than one proof, or establishing the
+committer key and the ordering through a verified attestation rather than a
+relying-party-held copy, satisfies the same four facts and the same four outcomes (see
+"The referenced object" in the registry). This set does not demonstrate either of
+those, and is not a description of any one producer's deployed system.
+
+Everything derives from one published seed through
+[`gen_position_commitment_vectors.py`](gen_position_commitment_vectors.py), so the set
+regenerates byte for byte; the sequence, the committing enclave and the records are
+illustrative, and every digest and signature recomputes from the committed files.
+[`tests/test_position_commitment_fixtures.py`](../../tests/test_position_commitment_fixtures.py)
+recomputes every verdict from those bytes rather than reading it from `expected.json`,
+and re-runs the generator against the committed files.
+
+## Two inputs, kept apart
+
+| File | Supplied by | What it is |
+|---|---|---|
+| `proof-*.json` | The holder | The slot, the committer's binding, and `committer_jwk`, a key the proof supplies for itself |
+| `relying-party.json` | The relying party | The committer keys it trusts, by RFC 7638 thumbprint, and its own copy of the sequence: the value published at each position |
+
+Only the second can make a position independently established. A proof whose digests
+all agree and whose signatures verify under the key it carries is consistent with
+itself, and anyone holding a key can produce one. Case `05` is that proof.
+
+## The proof
+
+| Member | What it is |
+|---|---|
+| `slot.sequence`, `slot.position`, `slot.sequence_value` | The external sequence, the position taken, and the value the sequence published there, so the slot cannot predate that position |
+| `slot.committer`, `slot.committer_key_id` | The party that allocated the slot, and the thumbprint of its Ed25519 key |
+| `slot.allocated_at`, `slot.signature` | When it was allocated, and the committer's signature over the RFC 8785 form of the slot without this member |
+| `binding.slot_commitment` | The slot's digest, equal to the entry's `id` |
+| `binding.record_digest` | This record's digest: the §3.1.3 preimage, the complete record as published with `signature` included |
+| `binding.bound_at`, `binding.signature` | When the committer bound the slot to the record, and its signature over the binding |
+| `committer_jwk` | The key the proof supplies; checked against `committer_key_id`, never trusted for it |
+
+The slot exists before the record and the binding after it, which is how `id` can be
+inside the record while the proof commits the record's digest.
+
+No resolver undertakes to keep any of this, so the entry names none. Later
+recomputation still needs the proof bytes: the holder keeps them, and a verifier
+handed none has nothing to recompute (case `03`).
+
+## Fixture cases
+
+Expected results are machine-readable in [`expected.json`](expected.json). Every
+record's signature verifies under the producer key, and every record validates against
+the v0.3 draft schema; what differs is the proof the holder presents and what the
+relying party holds.
+
+| Record | Proof presented | Slot recomputes to `id` | Binds this record | Committer key held independently | Signatures | Sequence position | Verdict |
+|---|---|---|---|---|---|---|---|
+| `01-position-established.json` | `proof-01.json` | yes | yes | yes | verify | matches | position established |
+| `02-same-proof-other-record.json` | `proof-01.json` | yes | **no** | not checked | not checked | not checked | contradiction: commits another record |
+| `03-proof-not-held.json` | **none** | n/a | n/a | n/a | n/a | n/a | position absent |
+| `04-proof-altered.json` | `proof-04-altered.json` | **no** | not checked | not checked | not checked | not checked | contradiction: commitment mismatch |
+| `05-committer-key-self-supplied.json` | `proof-05.json` | yes | yes | **no** | verify under the proof's own key | matches | consistent, not established |
+| `06-sha384-commitment.json` | `proof-06.json` | yes (SHA-384) | yes (SHA-384) | yes | verify | matches | position established |
+| `07-committer-identity-mismatch.json` | `proof-07.json` | yes | yes | yes, but names another identity | verify | matches | contradiction: committer identity mismatch |
+
+`01` is the matching record. The slot recomputes to the entry's `id`, the binding
+commits this record's digest, both signatures verify under a committer key the
+relying party holds, and the sequence value in the slot is the one the relying party's
+own copy holds at that position.
+
+`02` is another record carrying `01`'s entry byte for byte, presented with `01`'s
+proof. The commitment recomputes, so a check that stopped there would pass it. The
+binding commits `01`'s digest, not `02`'s, and that is a contradiction in the record.
+
+`03` carries a real commitment whose proof the verifier is never handed. The entry is
+absent. That is not a finding against the record, and it is a different answer from
+the contradictions in `02` and `04`.
+
+`04` was issued against `proof-04.json`, which establishes its position. The proof
+presented, `proof-04-altered.json`, differs only in `slot.position`, rewritten to an
+earlier one: a backdate. The slot no longer recomputes to the `id` the record signed,
+and the result is a contradiction, never an absence.
+
+`05` recomputes and binds, and both signatures verify, but only under
+`committer_jwk`, the key the proof carries. The relying party holds no key for that
+committer, so the agreement establishes consistency and not ordering. Adding that key
+to the relying party's trust would turn the verdict into position established; the
+tests show that step is the relying party's to take, never the proof's.
+
+`06` is otherwise `01` again, with every digest in the chain -- the commitment, the
+record digest, and the binding's own copies of both -- taken with SHA-384 instead of
+SHA-256. A verifier that recognizes only the prefix it was built to check, rather than
+the algorithm actually named, would reject this case or silently mismatch it; the
+tests also cover a commitment whose prefix names an algorithm this set does not use at
+all, which must never be retried under SHA-256 to make it match by accident.
+
+`07` is signed by the one key `relying-party.json` independently trusts -- the
+signature and every digest check out exactly as `01`'s do -- but the slot's
+`committer` names a different identity than the one the relying party holds that key
+for. Trusting a key and knowing who holds it are different facts: `relying-party.json`
+records both for the key it trusts, and `07` is a contradiction, not a lesser outcome,
+because the key *is* independently trusted here. An empty `committer`, and the
+structural checks that keep it from being accepted as one, are covered by the test
+suite rather than by a committed record.
+
+Further verdicts are exercised in memory by the tests, not by a committed record: a
+slot that names the trusted committer's key id but is signed by another key
+(contradiction: signature invalid); a slot under the trusted key whose sequence value
+differs from the relying party's copy, including under a self-supplied committer key,
+where the sequence mismatch is reported rather than softened to "not established"
+(contradiction: sequence mismatch); and a proof the verifier holds but cannot parse or
+whose `type` it does not implement -- missing or wrong-shaped `slot`, `binding`, or
+`committer_jwk` fields, or an unrecognized proof format. That last one is a fourth
+outcome distinct from all of the above: nothing is recomputed, so it is not a
+contradiction, and the holder did present something, so it is not `03`'s absence
+either. It is reported as `position-absent-proof-unusable`.
+
+None of these outcomes changes `runtime.platform` or makes the entry attested evidence
+of what the execution did.
+
+## Running the checks
+
+```
+python -m pytest tests/test_position_commitment_fixtures.py
+```
+
+To regenerate, run the generator with no arguments. It is deterministic, so the
+committed files only change when the generator does.

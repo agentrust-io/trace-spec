@@ -10,8 +10,10 @@ produces.
 
 The draft's own members, taken from the committed draft:
 ``$id``, ``title``, ``description``, ``properties.eat_profile``,
-``properties.runtime.properties.evidence``, and ``properties.manifest``.
-Everything else comes from canonical.
+``properties.runtime.properties.evidence``, ``properties.manifest``, and, on a
+``references`` entry, ``validation``, ``required`` and ``allOf`` (#321).
+Everything else comes from canonical, so a relation registered in canonical
+reaches the draft without a second edit.
 
 Usage: python scripts/gen_v03_draft_schema.py [--check]
 """
@@ -71,6 +73,16 @@ def build(canonical: dict[str, Any], draft: dict[str, Any]) -> dict[str, Any]:
     result["properties"] = _copy_member(
         result["properties"], draft["properties"], "manifest"
     )
+
+    # #321: an entry validated by recomputation names no resolver. The entry's own
+    # members stay canonical; only the new field and the resolver rule are the draft's.
+    entry = result["properties"]["references"]["items"]
+    draft_entry = draft["properties"]["references"]["items"]
+    entry["required"] = copy.deepcopy(draft_entry["required"])
+    entry["properties"] = _copy_member(
+        entry["properties"], draft_entry["properties"], "validation"
+    )
+    entry["allOf"] = copy.deepcopy(draft_entry["allOf"])
     return result
 
 

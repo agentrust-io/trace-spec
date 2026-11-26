@@ -1,0 +1,26 @@
+{
+  "type": "position-commitment-proof",
+  "slot": {
+    "type": "position-slot",
+    "sequence": "https://beacon.example.org/sequence/1",
+    "position": 8815,
+    "sequence_value": "sha256:19005d39bba5b2410fefc9eb68cebe70ab915233c40608c17691251470bd0051",
+    "committer": "https://slots.unknown.example",
+    "committer_key_id": "zgPUbLN-YTV7R-vWp7mYla8VjpgValaW_cF4R6X3mTg",
+    "allocated_at": "2026-10-20T09:00:30Z",
+    "signature": "zwOWtxz2TCWjdZk8_08YydGMQwMA0_4aAEULFxLjJty3Ipr7rPvMjemoodOR3OJo2q16taXDZIWaFTyO73VfAA"
+  },
+  "binding": {
+    "type": "position-binding",
+    "slot_commitment": "sha256:128de392656b4b653cede1012e46c794db83c827e7b312f8194eda635e65654a",
+    "record_digest": "sha256:3320a3349052eef11bb7025c9d9ab652149c1746bc39b8167ecf836ae6226816",
+    "committer_key_id": "zgPUbLN-YTV7R-vWp7mYla8VjpgValaW_cF4R6X3mTg",
+    "bound_at": "2026-10-20T09:05:03Z",
+    "signature": "UWhQWO6O2CdufzdnIFxY0-pB25gwd8GtrrYt6CFGYyHJyTh6V_cAa_Omx3uBXjPoh9JcSHKY6zcNo_b_IQoDBg"
+  },
+  "committer_jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "D-5ime3kN0efQ2Z27nPFiecGttiAcbE86yH2sPUMVX0"
+  }
+}
