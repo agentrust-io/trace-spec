@@ -13,8 +13,8 @@
  *
  *   1. Shape, against the bundle schema and the statement schema it refers to.
  *   2. One log per bundle: every statement names the bundle's `log_id`.
- *   3. Who signed the set: an `ed25519` signature by a key the caller trusts,
- *      over the RFC 8785 form of the bundle with `sig` absent.
+ *   3. Who signed the set: an `ed25519`, `ES256` or `ES384` signature by a key
+ *      the caller trusts, over the RFC 8785 form of the bundle with `sig` absent.
  *   4. What the set says about this key. A statement naming it rejects the
  *      record, whatever the bundle's age: the statement was authenticated with
  *      the bundle, and section 3.2.3 gives a statement no expiry.
@@ -30,7 +30,7 @@
  */
 
 import { decodeBase64url } from "./base64url.js";
-import { digest, hex, importEd25519, verifyEd25519 } from "./crypto.js";
+import { digest, hex, importEcdsa, importEd25519, verifyEcdsa, verifyEd25519 } from "./crypto.js";
 import { fail, TraceVerificationError } from "./errors.js";
 import { canonicalize } from "./jcs.js";
 import { keyIdentifiers } from "./jwk.js";
@@ -189,20 +189,25 @@ export async function checkRevocationBundle(
     max_bundle_age_seconds: maxBundleAgeSeconds,
   };
 
-  // 3. Who signed the set. Only Ed25519 is verified here. The schema also admits
-  // ES256 and ES384; a signature nobody checked grounds nothing, so those are
-  // reported as unsupported rather than skipped.
+  // 3. Who signed the set. The schema admits ed25519, ES256 and ES384; an
+  // algorithm outside that set, or a trusted bundle key that is not a valid
+  // public key for the algorithm the bundle names, is reported as unsupported
+  // rather than skipped.
   const alg = shaped.sig.alg;
-  if (alg !== "ed25519") {
+  if (alg !== "ed25519" && alg !== "ES256" && alg !== "ES384") {
     return unverified("bundle_signature_unsupported", { ...base, alg });
   }
   const signerJwk = await trustedBundleKey(shaped.bundle_key_id, trustedBundleKeys);
   if (signerJwk === undefined) {
     return unverified("bundle_key_untrusted", { ...base, bundle_key_id: shaped.bundle_key_id });
   }
+  const curve = alg === "ed25519" ? null : alg === "ES256" ? "P-256" : "P-384";
   let signer: CryptoKey;
   try {
-    signer = await importEd25519(signerJwk, "bundle_key");
+    signer =
+      curve === null
+        ? await importEd25519(signerJwk, "bundle_key")
+        : await importEcdsa(signerJwk, curve, "bundle_key");
   } catch (error) {
     if (error instanceof TraceVerificationError && error.code !== "crypto_unavailable") {
       return unverified("bundle_signature_unsupported", { ...base, alg, key: error.message });
@@ -211,7 +216,13 @@ export async function checkRevocationBundle(
   }
   const signature = decodeBase64url(shaped.sig.value);
   const unsigned = Object.fromEntries(Object.entries(shaped).filter(([name]) => name !== "sig"));
-  const signed = signature !== null && (await verifyEd25519(signer, signature, canonicalize(unsigned)));
+  const message = canonicalize(unsigned);
+  const signed =
+    signature !== null &&
+    (curve === null
+      ? await verifyEd25519(signer, signature, message)
+      : signature.length === (curve === "P-256" ? 64 : 96) &&
+        (await verifyEcdsa(signer, curve === "P-256" ? "SHA-256" : "SHA-384", signature, message)));
   if (!signed) {
     return unverified("bundle_signature_invalid", { ...base, bundle_key_id: shaped.bundle_key_id });
   }

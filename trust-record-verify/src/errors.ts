@@ -18,6 +18,7 @@ export const FAILURE_CODES = [
   "signature_missing",
   "signature_malformed",
   "schema_invalid",
+  "measurement_mismatch",
   // Trust anchoring.
   "trusted_key_missing",
   "trusted_key_unsupported",

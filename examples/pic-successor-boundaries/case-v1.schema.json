@@ -138,7 +138,8 @@
             "successor-observer-mismatch",
             "observation-stale",
             "observation-future",
-            "pic-digest-syntax"
+            "pic-digest-syntax",
+            "authorizer-key-mismatch"
           ]
         }
       },

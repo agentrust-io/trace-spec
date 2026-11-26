@@ -41,7 +41,7 @@ retains, since error message text is not something two implementations agree on.
 
 | `outcome` | 3.2.3 says | vectors |
 |---|---|---|
-| `verified` | "verified against revocation bundle valid at T" | 01, 02, 03, 10, 13 |
+| `verified` | "verified against revocation bundle valid at T" | 01, 02, 03, 10, 13, 29, 30 |
 | `unverified_for_revocation` | "MUST report the record as unverified for revocation rather than as verified" | 04 to 09, 15 to 24 |
 | `no_check_performed` | "MUST report that it performed no revocation check" | 14, 25 |
 | `rejected` | the key is named by a statement on the bundle's log; no entry ID is available, so the 3.2.3 fallback applies | 11, 12, 26, 27, 28 |

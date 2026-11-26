@@ -16,12 +16,14 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from .verifier_token import Component
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519, padding, rsa
 
 ISSUER = "https://confidentialcomputing.googleapis.com"
 DOMAIN = b"trace-execution-binding-v1\x00"
 PROFILE = "gca-confidential-space-launch-experimental-v1"
+_JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 class ExecutionDenied(ValueError):
@@ -37,7 +39,11 @@ def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def _decode(value: str) -> bytes:
+def _no_nonfinite(_token: str) -> Any:
+    raise ExecutionDenied("jwt_framing")
+
+
+def _decode(value: Any) -> bytes:
     if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", value):
         raise ExecutionDenied("invalid_base64url")
     decoded = base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
@@ -84,10 +90,21 @@ class LaunchPolicy:
 def authenticate_token(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(token, str) or len(token) > 65536:
         raise ExecutionDenied("token_size")
+    if (
+        not isinstance(jwks, dict)
+        or not isinstance(jwks.get("keys"), list)
+        or any(not isinstance(k, dict) for k in jwks["keys"])
+    ):
+        raise ExecutionDenied("jwks_format")
     parts = token.split(".")
     if len(parts) != 3:
         raise ExecutionDenied("jwt_framing")
-    header = json.loads(_decode(parts[0]), object_pairs_hook=_pairs)
+    try:
+        header = json.loads(
+            _decode(parts[0]), object_pairs_hook=_pairs, parse_constant=_no_nonfinite
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ExecutionDenied("jwt_framing") from error
     if not isinstance(header, dict) or header.get("alg") != "RS256":
         raise ExecutionDenied("algorithm")
     if not isinstance(header.get("kid"), str) or not header["kid"]:
@@ -98,19 +115,35 @@ def authenticate_token(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
     if len(matches) != 1:
         raise ExecutionDenied("unknown_or_ambiguous_signer")
     key = matches[0]
+    if _JWK_PRIVATE_PARAMS.intersection(key):
+        raise ExecutionDenied("private_jwk_material")
     if (
         key.get("kty") != "RSA"
         or key.get("alg", "RS256") != "RS256"
         or key.get("use", "sig") != "sig"
     ):
         raise ExecutionDenied("key_type")
-    n, e = int.from_bytes(_decode(key["n"]), "big"), int.from_bytes(_decode(key["e"]), "big")
+    n_bytes, e_bytes = _decode(key.get("n")), _decode(key.get("e"))
+    if not n_bytes or not e_bytes or n_bytes[0] == 0 or e_bytes[0] == 0:
+        raise ExecutionDenied("key_encoding")
+    n, e = int.from_bytes(n_bytes, "big"), int.from_bytes(e_bytes, "big")
     if n.bit_length() < 2048 or e != 65537:
         raise ExecutionDenied("weak_key")
-    rsa.RSAPublicNumbers(e, n).public_key().verify(
-        _decode(parts[2]), (parts[0] + "." + parts[1]).encode(), padding.PKCS1v15(), hashes.SHA256()
-    )
-    claims = json.loads(_decode(parts[1]), object_pairs_hook=_pairs)
+    try:
+        rsa.RSAPublicNumbers(e, n).public_key().verify(
+            _decode(parts[2]),
+            (parts[0] + "." + parts[1]).encode(),
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+    except (InvalidSignature, ValueError) as error:
+        raise ExecutionDenied("signature") from error
+    try:
+        claims = json.loads(
+            _decode(parts[1]), object_pairs_hook=_pairs, parse_constant=_no_nonfinite
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ExecutionDenied("jwt_framing") from error
     if not isinstance(claims, dict):
         raise ExecutionDenied("claims_type")
     return claims
@@ -130,7 +163,14 @@ def appraise_launch(
     This pure appraisal function does not implement replay storage.
     """
     try:
-        if type(now) is not int or now < 0 or type(policy.max_age) is not int or policy.max_age < 1:
+        if not isinstance(packet, dict):
+            raise ExecutionDenied("malformed_or_unauthenticated_evidence")
+        if (
+            type(now) is not int
+            or not 0 <= now <= 9007199254740991
+            or type(policy.max_age) is not int
+            or policy.max_age < 1
+        ):
             raise ExecutionDenied("clock_or_policy")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", policy.image_digest):
             raise ExecutionDenied("policy_digest")
@@ -152,6 +192,8 @@ def appraise_launch(
         if any(type(value) is not int for value in times):
             raise ExecutionDenied("time_type")
         issued, not_before, expiry = (cast(int, value) for value in times)
+        if any(not 0 <= t <= 9007199254740991 for t in (issued, not_before, expiry)):
+            raise ExecutionDenied("time_bounds")
         if not (issued <= now < expiry and not_before <= now and issued <= expiry):
             raise ExecutionDenied("time_bounds")
         if now - issued >= policy.max_age:
@@ -187,7 +229,15 @@ def appraise_launch(
         signed = (
             DOMAIN + hashlib.sha256(token.encode()).digest() + bytes.fromhex(expected_challenge)
         )
-        signature = base64.b64decode(packet["holder_signature_b64"], validate=True)
+        sig_b64 = packet.get("holder_signature_b64")
+        if not isinstance(sig_b64, str):
+            raise ExecutionDenied("holder_signature")
+        try:
+            signature = base64.b64decode(sig_b64, validate=True)
+        except ValueError as error:
+            raise ExecutionDenied("holder_signature") from error
+        if len(signature) != 64 or base64.b64encode(signature).decode("ascii") != sig_b64:
+            raise ExecutionDenied("holder_signature")
         ed25519.Ed25519PublicKey.from_public_bytes(public).verify(signature, signed)
         return {
             "profile": PROFILE,

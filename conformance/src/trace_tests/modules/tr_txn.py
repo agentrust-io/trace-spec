@@ -19,23 +19,32 @@ def check(trace: dict[str, Any]) -> list[Finding]:
     txn = trace.get("tool_transcript")
 
     if txn is None:
-        return [Finding("TR-TXN-001", Status.FAIL, "TR-TXN-001: tool_transcript is required at Level 2")]
+        return [
+            Finding(
+                "TR-TXN-001", Status.FAIL, "TR-TXN-001: tool_transcript is required at Level 2"
+            )
+        ]
 
     if not isinstance(txn, dict):
         return [Finding("TR-TXN-001", Status.FAIL, "TR-TXN-001: tool_transcript must be an object")]
 
     h = txn.get("hash", "")
-    if _DIGEST_RE.fullmatch(str(h)):
-        findings.append(Finding("TR-TXN-001", Status.PASS, "tool_transcript.hash has valid digest format"))
+    if isinstance(h, str) and _DIGEST_RE.fullmatch(h):
+        findings.append(
+            Finding("TR-TXN-001", Status.PASS, "tool_transcript.hash has valid digest format")
+        )
     else:
         findings.append(Finding(
             "TR-TXN-001", Status.FAIL,
-            f"TR-TXN-001: tool_transcript.hash must match sha256:<64hex> or sha384:<96hex>, got {h!r}",
+            "TR-TXN-001: tool_transcript.hash must match sha256:<64hex> or sha384:<96hex>, "
+            f"got {h!r}",
         ))
 
     call_count = txn.get("call_count")
-    if call_count is None:
-        findings.append(Finding("TR-TXN-002", Status.SKIP, "tool_transcript.call_count not present (optional)"))
+    if "call_count" not in txn:
+        findings.append(
+            Finding("TR-TXN-002", Status.SKIP, "tool_transcript.call_count not present (optional)")
+        )
     # bool is an int subclass, so True would otherwise report as a call count of
     # one and False as zero. A record that says true here is malformed, and a
     # conformance suite that silently reads it as a number is answering a

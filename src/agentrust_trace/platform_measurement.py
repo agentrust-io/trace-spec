@@ -142,9 +142,11 @@ def check_platform_measurement(
     if appraiser is None:
         return NOT_ATTEMPTED
     runtime = record.get("runtime")
-    if not isinstance(runtime, dict) or runtime.get("measurement") is None:
+    if not isinstance(runtime, dict):
         return PlatformMeasurementCheck(outcome="not_attempted", cause="field_absent")
-    measurement = runtime["measurement"]
+    measurement = runtime.get("measurement")
+    if not isinstance(measurement, str) or not measurement:
+        return PlatformMeasurementCheck(outcome="not_attempted", cause="field_absent")
 
     try:
         report = appraiser(copy.deepcopy(runtime))

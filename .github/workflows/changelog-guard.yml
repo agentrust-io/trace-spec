@@ -1,0 +1,57 @@
+name: Changelog guard
+
+# CHANGELOG.md is written on main at merge by the merging Maintainer, from the
+# entry the pull request proposes in its description (CONTRIBUTING.md, step 5 of
+# a normative contribution). A pull request that edits the file conflicts with
+# every other open pull request that does, so this check fails when the diff
+# against the base touches it, unless a Maintainer has put the `changelog` label
+# on the pull request (a release, or a correction to the file itself). It reads
+# the diff and writes nothing, so it needs no write token and runs on
+# pull_request, not pull_request_target.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+# There is no concurrency group, on purpose. Dependabot labels a pull request as
+# it opens it, so one pull request starts several runs at once, and with
+# cancel-in-progress the cancelled ones kept this required check from passing and
+# held the merge. Each run reads only its own event and takes seconds, so all of
+# them finish. Nor does a job-level `if` skip label events other than
+# `changelog`: a skipped run passes a required check, so any label added to a
+# pull request that edits the file would clear its failure.
+
+jobs:
+  guard:
+    name: Changelog guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Full history, so the merge base with the base branch is present.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fail if CHANGELOG.md is in the diff and the pull request is not labelled changelog
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELLED: ${{ contains(github.event.pull_request.labels.*.name, 'changelog') }}
+        run: |
+          base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+          if git diff --name-only "$base" "$HEAD_SHA" | grep -qx 'CHANGELOG.md'; then
+            if [ "$LABELLED" = "true" ]; then
+              echo "CHANGELOG.md is in the diff and the pull request carries the changelog label."
+            else
+              echo "::error::CHANGELOG.md is in the diff. Put the entry in the description under '## Changelog entry' and leave the file to the merging Maintainer, or ask a Maintainer for the changelog label. See CONTRIBUTING.md, step 5 of a normative contribution."
+              exit 1
+            fi
+          else
+            echo "CHANGELOG.md is not in the diff."
+          fi

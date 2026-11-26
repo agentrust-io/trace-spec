@@ -1,0 +1,88 @@
+{
+  "id": "TRACE-RBUN-029",
+  "name": "es256-bundle-verified",
+  "description": "A fresh bundle signed with ES256 by a trusted P-256 EC bundle key. The fixed-width 64-byte IEEE P1363 signature verifies over the canonical unsigned bundle.",
+  "spec": "spec/trace-v0.2.md#323-revocation-of-record-signing-keys",
+  "context": {
+    "now": 1785000000,
+    "max_bundle_age_seconds": 86400,
+    "max_future_skew_seconds": 300,
+    "trusted_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw",
+      "kid": "issuer-key-2026"
+    },
+    "trusted_bundle_keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "iS-vT9WeYN70WCruOj-S4pQP3RtHsGc_coVIwGFUz-c",
+        "y": "f9KKGMZWDx_7yhEPl0hFUeFiIFoXFgSn6rjDsEfI8Hk"
+      }
+    ],
+    "bundle": {
+      "type": "TraceRevocationBundle/1.0",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "statements": [],
+      "bundle_key_id": "X3523SACQCMnPy2rwgTel3VeSkOwddPQl9W1oVphh1E",
+      "sig": {
+        "alg": "ES256",
+        "value": "1AKXyVyXs5dpPE_lF5q75LnTpqNBv3N9Wydf_7sI50xy4LtZicn8Tq0sQFuqwWstnUPWED6l3PiHakkh8A5BFg"
+      }
+    }
+  },
+  "records": [
+    {
+      "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
+      "iat": 1784996400,
+      "subject": "spiffe://acme.example/agent/issuer",
+      "model": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-4-6"
+      },
+      "runtime": {
+        "platform": "software-only",
+        "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "policy": {
+        "bundle_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "enforcement_mode": "enforce"
+      },
+      "data_class": "internal",
+      "build_provenance": {
+        "slsa_level": 0,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "appraisal": {
+        "status": "affirming",
+        "verifier": "https://verifier.example/v1"
+      },
+      "cnf": {
+        "jwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "kSLjMUUzj7yIOGvh9Ff8WSHnNKiFBR0kchby761Uuaw"
+        }
+      },
+      "signature": "cNXX2aeZWv47FIFqe1DSAtHDlG7FUcw3U75o5g4r-9r3cAqoXFLSC2ZlIY9fjiPOI9KiaP_XttbMmZruOSvyCQ"
+    }
+  ],
+  "expected": {
+    "rejected": false,
+    "codes": [],
+    "outcome": "verified",
+    "cause": null,
+    "evidence": {
+      "bundle_digest": "sha256:5ae980f2bb472d6092344bf596e3c52a95a6b6e4304ee0be7add6beee9274595",
+      "log_id": "https://log.example/trace",
+      "issued_at": 1784996400,
+      "valid_until": 1785086400,
+      "now": 1785000000,
+      "max_bundle_age_seconds": 86400,
+      "statements_count": 0
+    }
+  }
+}

@@ -169,3 +169,124 @@ def test_issuer_configuration_refuses_malformed_fields(fixture, field):
     for value in [None, {}, [], True]:
         with pytest.raises(v.ProfileError, match="issuer_configuration_invalid"):
             replace(issuer, **{field: value})
+
+
+def test_canonical_32_byte_nonce_enforced_in_proof_and_relying_party(fixture):
+    proof_body, signed_proof = proof(fixture)
+    ctx = context(fixture)
+    rp = v.RelyingParty(ctx)
+    # Valid 32-byte canonical base64url nonce succeeds
+    rp.challenge(
+        nonce="A" * 43,
+        session_id="session-1",
+        action_digest=proof_body["action_digest"],
+        issued_at=g.NOW,
+        expires_at=g.NOW + 30,
+    )
+    # 43-char string with non-zero unused pad bits ("A"*42 + "B") is rejected
+    with pytest.raises(v.ProfileError, match="nonce_shape"):
+        rp.challenge(
+            nonce="A" * 42 + "B",
+            session_id="session-1",
+            action_digest=proof_body["action_digest"],
+            issued_at=g.NOW,
+            expires_at=g.NOW + 30,
+        )
+    bad_proof = dict(proof_body, nonce="A" * 42 + "B")
+    with pytest.raises(ValueError):
+        v.Proof.model_validate(bad_proof)
+
+
+def test_relying_party_challenge_and_verify_proof_reject_boolean_or_invalid_inputs(fixture):
+    raw = unb64(fixture["envelope_b64"])
+    token = v.Token.model_validate(fixture["token"])
+    ctx = context(fixture)
+    proof_body, signed_proof = proof(fixture)
+    rp = v.RelyingParty(ctx)
+
+    for idx, bad_session in enumerate(("", 123, None)):
+        with pytest.raises(v.ProfileError, match="input_invalid"):
+            rp.challenge(
+                nonce=f"{idx}A" + "A" * 41,
+                session_id=bad_session,  # type: ignore[arg-type]
+                action_digest=proof_body["action_digest"],
+                issued_at=g.NOW,
+                expires_at=g.NOW + 30,
+            )
+
+    with pytest.raises(v.ProfileError, match="input_invalid"):
+        rp.challenge(
+            nonce="Q" * 43,
+            session_id="session-1",
+            action_digest="not-a-digest",
+            issued_at=g.NOW,
+            expires_at=g.NOW + 30,
+        )
+
+    for idx, (bad_issued, bad_expires) in enumerate(
+        ((False, True), (-10, -5), (g.NOW, True), (g.NOW, 2**53))
+    ):
+        with pytest.raises(v.ProfileError, match="challenge_interval"):
+            rp.challenge(
+                nonce=f"{idx}Q" + "A" * 41,
+                session_id="session-1",
+                action_digest=proof_body["action_digest"],
+                issued_at=bad_issued,
+                expires_at=bad_expires,
+            )
+
+    for kw, bad_val in (
+        ("now", True),
+        ("challenge_issued_at", False),
+        ("challenge_expires_at", True),
+        ("now", 2**53),
+        ("nonce", "A" * 42 + "B"),
+    ):
+        kwargs = {
+            "proof_bytes": signed_proof,
+            "token_bytes": raw,
+            "token": token,
+            "nonce": proof_body["nonce"],
+            "audience": ctx.audience,
+            "session_id": "session-1",
+            "action_digest": proof_body["action_digest"],
+            "challenge_issued_at": 1,
+            "challenge_expires_at": 2,
+            "now": 1,
+        }
+        kwargs[kw] = bad_val
+        with pytest.raises(v.ProfileError, match="verification_inputs_invalid"):
+            v.verify_proof(**kwargs)  # type: ignore[arg-type]
+
+
+def test_execution_appraisal_rejects_nonfinite_jwt_json_and_unsafe_integer_times():
+    import base64
+    from prototype.execution_appraisal import (
+        ExecutionDenied,
+        LaunchPolicy,
+        appraise_launch,
+        authenticate_token,
+    )
+
+    def _b64u(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+    bad_header = _b64u(b'{"alg":"RS256","kid":"k1","x":NaN}') + "." + _b64u(b"{}") + ".AAAA"
+    with pytest.raises(ExecutionDenied, match="jwt_framing"):
+        authenticate_token(bad_header, {"keys": []})
+
+    policy = LaunchPolicy(
+        audience="aud-1",
+        image_digest="sha256:" + "a" * 64,
+        args=("run",),
+        subject="https://www.googleapis.com/compute/v1/projects/p1/zones/us-central1-a/instances/i1",
+        instance_id="12345",
+    )
+    with pytest.raises(ExecutionDenied, match="clock_or_policy"):
+        appraise_launch(
+            {},
+            {"keys": []},
+            policy,
+            expected_challenge="a" * 64,
+            now=2**53,
+        )

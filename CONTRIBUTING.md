@@ -70,6 +70,80 @@ work, such as another contributor or a new AI agent session given the
 repository and the sources the description cites. Say in the description what
 that reader found and what you changed because of it.
 
+## Reviewing your own pull request
+
+In short: before you open it, read the change the way a reviewer will, and
+put what you found in the description. None of this is a condition for
+review. "Before a pull request is reviewed" says what is.
+
+1. Every number in the description was measured on the commit you are
+   opening, by a command you name, with its unit: tests or cases, lines or
+   occurrences. After an amend, measure again. Where a tool printed the
+   number, read what it counted. The Review bar job summary, for one, is
+   built from the tests the pull request itself supplies, as
+   `tools/review_bar.py` says.
+
+2. Write the inputs that were run, not the class they belong to. A list of
+   the values a check now rejects can be checked and cannot be wider than
+   what was run; "rejects malformed input" can be neither.
+
+3. An issue, pull request or discussion the description names is part of the
+   pull request. Read each one, and whatever it names as its own origin,
+   before writing the description: what it settled you are not reopening,
+   and what it asked for you are answering.
+
+4. One behaviour is stated in several places, and an edit leaves one of them
+   stale. The suite pins the two packaged copies of `schema/trace-claim.json`
+   to it, one as parsed JSON and one byte for byte, so those turn red, and
+   holds `docs/schema.md` to a row per field, a mention per enum value and,
+   for two tables, the required flags. A wrong description stays green unless
+   it omits a digest algorithm its field's pattern admits. For the rest, the
+   README of the example set you touched, the docs page that describes the
+   behaviour, the changelog entry and the description, assume nothing checks them
+   unless you find the test, and read each after the last edit, counts and
+   names first.
+
+5. For a sentence in the specification, a schema description or a docs page
+   that says what the code does, find the code that implements it and run
+   that code against what the sentence now says. Some tests hold a page to
+   the schema, as `tests/test_build_provenance_depth_doc.py` does for three
+   pages, or run its code blocks, as `tests/test_docs_quickstart.py` does.
+   Unless one holds yours, nothing runs the sentence. If nothing implements
+   it, say so in the description.
+
+6. For a check the change adds or touches, say what it reports when it
+   cannot decide. The library has two answers, each documented where it is
+   used, and one function can give both: the profile, trust-anchoring and
+   freshness checks of `sign.verify_record` fail closed, while its revocation
+   result is a value of its own, with the cause where there is one,
+   `unverified_for_revocation` or `no_check_performed`, as a citation's
+   `unresolvable` or `not_attempted` are. Say which one the change gives, and
+   point at the test that pins it. Then name a class of input your tests did
+   not feed. `tools/sweep_public_surface.py` prints what each public parameter
+   accepts and is the place to start.
+
+7. A check that has never been seen to fail has not been verified. The
+   mutation runner for the conformance modules,
+   `conformance/measurement/scripts/mutate_modules.py`, refuses to report on
+   a baseline that is not green or on a rewrite that changed nothing, and
+   purges caches before every run. A check you write yourself needs the
+   same: see it fail once before you cite it.
+
+8. Keep reading until a read changes nothing. Then the read by someone who
+   has seen none of your work, which "Before a pull request is reviewed"
+   asks for. Give them the repository at the commit, the diff, the
+   description and the sources it cites, and nothing of yours: notes and
+   conclusions handed to a reader come back as agreement. Ask for the
+   strongest reply a reviewer could make to each claim, every sentence that
+   is false, imprecise or wider than what was measured, and what a reviewer
+   would attack first. What comes back is a set of claims: re-run any
+   measurement you act on before it enters the description. Then say what
+   the reader found, what you changed, and what you did not change and why.
+
+The long form of this section, written so that an agent session can follow
+it and carrying the brief for that read, is
+[AGENT_CONTRIBUTING.md](https://github.com/agentrust-io/trace-spec/blob/main/AGENT_CONTRIBUTING.md).
+
 ## Using AI to contribute
 
 Use agents. A lot of this was built with them and saying otherwise would be dishonest.
@@ -106,7 +180,7 @@ Steps for a normative contribution:
 2. Allow a minimum 5 business days for comment. Breaking changes, including anything touching wire format, cryptographic algorithms, or Trust Record required fields, carry a minimum 30-day comment period. See [Backward compatibility](GOVERNANCE.md#backward-compatibility) for the conditions under which a breaking change is considered at all.
 3. Name the sponsoring organization in the PR. If a proposal is accepted without a sponsor, a Maintainer may sponsor and carry the PR, and the proposer is credited in the `CHANGELOG.md` entry. A normative PR opened without a sponsor is not rejected on that basis: reviewers will say so on the PR and either identify a sponsor or convert it to an informative change.
 4. Submit the PR. Mark changed normative text with an HTML comment: `<!-- CHANGED: #NNN - description -->`.
-5. Update `CHANGELOG.md`.
+5. Put the `CHANGELOG.md` entry you propose in the pull request description under `## Changelog entry`, one bullet in the file's style, and do not edit `CHANGELOG.md` itself. The merging Maintainer writes the entry under `[Unreleased]` on `main` at merge, crediting the author, so open pull requests never conflict on the one file they would all touch. A pull request that has to carry the file, a release for instance, is labelled `changelog` by a Maintainer, and the `Changelog guard` check passes it on that label.
 6. Breaking changes require Project Lead approval and an explicit backward-compatibility statement naming what breaks and what implementers must do.
 
 **No sponsor is required for** editorial changes, examples, conformance tests, tooling, schema changes tracking an already-merged spec change, and informative additions such as crosswalks and mappings to external schemas. Informative text carries no RFC 2119 keywords and binds no implementation, so it is the right home for a mapping that is still settling. Most contributions are in this set.

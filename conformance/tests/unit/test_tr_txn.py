@@ -69,6 +69,15 @@ def test_uppercase_digest_fails():
     assert any(f.code == "TR-TXN-001" for f in failed)
 
 
+def test_non_string_hash_with_digest_str_fails():
+    class _DigestLike:
+        def __str__(self) -> str:
+            return VALID_HASH_256
+
+    failed = [f for f in check(_txn(hash=_DigestLike())) if f.failed()]
+    assert any(f.code == "TR-TXN-001" for f in failed)
+
+
 # --- TR-TXN-002, optional but constrained when present ---------------------
 
 
@@ -77,6 +86,11 @@ def test_absent_call_count_is_skipped_not_failed():
     codes = {f.code: f for f in check(_txn())}
     assert "TR-TXN-002" in codes
     assert not codes["TR-TXN-002"].failed()
+
+
+def test_explicit_null_call_count_fails():
+    failed = [f for f in check(_txn(call_count=None)) if f.failed()]
+    assert any(f.code == "TR-TXN-002" for f in failed)
 
 
 def test_negative_call_count_fails():

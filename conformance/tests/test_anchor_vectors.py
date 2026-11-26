@@ -16,12 +16,34 @@ VECTORS = [
 ]
 
 
+def _entry_matching(receipt):
+    """The registry entry whose root and count the receipt carries, or None.
+
+    These vectors measure inclusion only, so the entry agrees with the receipt by
+    construction and TR-ANC-002 turns on the proof replay. Entry binding has its
+    own worlds in test_tr_anc_entry_binding.py.
+    """
+    if not isinstance(receipt, dict) or not {"merkle_root", "leaf_count"} <= receipt.keys():
+        return None
+    return {
+        "ts": "2026-10-15T00:00:00Z",
+        "merkle_root": receipt["merkle_root"],
+        "leaf_count": receipt["leaf_count"],
+        "producer": "anchor-vectors/1.0.0",
+        "batch_id": "anchor-vectors",
+    }
+
+
 @pytest.mark.level2
 @pytest.mark.parametrize("vector", VECTORS, ids=lambda v: v["name"])
 def test_portable_inclusion_vector(vector):
     finding = next(
         f
-        for f in tr_anc.check(vector["claim"], receipt=vector["receipt"])
+        for f in tr_anc.check(
+            vector["claim"],
+            receipt=vector["receipt"],
+            entry=_entry_matching(vector["receipt"]),
+        )
         if f.code == "TR-ANC-002"
     )
     assert finding.status.value == vector["expected"]["tr_anc_002"]

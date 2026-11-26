@@ -67,7 +67,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 EXIT_STATUS = {"valid": 0, "invalid": 1, "undecidable": 2}
 CHAIN_HASH_PREFIX = "sha256:"
-SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+SHA256_HEX = re.compile(r"[0-9a-f]{64}\Z")
+ED25519_SIG_HEX = re.compile(r"[0-9a-f]{128}\Z")
+B64URL = re.compile(r"[A-Za-z0-9_-]+\Z")
+PRIVATE_JWK_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 Verdict = tuple[str, str | None]
 
@@ -98,16 +101,22 @@ def envelope_hash(envelope: Any) -> str:
 
 def signature_verifies(envelope: dict[str, Any], key: Ed25519PublicKey) -> bool:
     """Whether ``signature.sig`` is PureEdDSA over JCS(``payload``) under ``key``."""
+    sig = envelope["signature"]["sig"]
+    if not isinstance(sig, str) or ED25519_SIG_HEX.fullmatch(sig) is None:
+        return False
     try:
-        key.verify(bytes.fromhex(envelope["signature"]["sig"]), jcs(envelope["payload"]))
-    except (InvalidSignature, ValueError):
+        key.verify(bytes.fromhex(sig), jcs(envelope["payload"]))
+    except (InvalidSignature, ValueError, RecursionError, UnicodeEncodeError):
         return False
     return True
 
 
 def chain_link_matches(link: Any, predecessor: Any) -> bool:
     """Whether ``link`` names ``predecessor`` in either encoding Section 6.7 accepts."""
-    digest = envelope_hash(predecessor)
+    try:
+        digest = envelope_hash(predecessor)
+    except (ValueError, RecursionError, UnicodeEncodeError):
+        return False
     return link in (CHAIN_HASH_PREFIX + digest, digest)
 
 
@@ -186,13 +195,18 @@ def issuer_key(jwks: Any, kid: str) -> IssuerKey:
     jwk = next((k for k in entries if isinstance(k, dict) and k.get("kid") == kid), None)
     if jwk is None:
         raise Undecidable("unknown_kid")
+    if PRIVATE_JWK_PARAMS.intersection(jwk):
+        raise Undecidable("malformed_key_set")
     x = jwk.get("x")
     if jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519" or not isinstance(x, str):
         raise Undecidable("unsupported_key")
+    if B64URL.fullmatch(x) is None or len(x) % 4 == 1:
+        raise Undecidable("malformed_key_set")
     try:
-        public = Ed25519PublicKey.from_public_bytes(
-            base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
-        )
+        raw = base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
+        if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != x:
+            raise Undecidable("malformed_key_set")
+        public = Ed25519PublicKey.from_public_bytes(raw)
     except (binascii.Error, ValueError) as exc:
         raise Undecidable("malformed_key_set") from exc
     return IssuerKey(
@@ -202,10 +216,22 @@ def issuer_key(jwks: Any, kid: str) -> IssuerKey:
     )
 
 
+def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate key: {key!r}")
+        obj[key] = value
+    return obj
+
+
 def _read_json(path: str | os.PathLike[str]) -> Any:
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        return json.loads(
+            Path(path).read_text(encoding="utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+        )
+    except (OSError, UnicodeDecodeError, ValueError, RecursionError) as exc:
         raise Undecidable("malformed") from exc
 
 

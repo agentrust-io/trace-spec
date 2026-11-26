@@ -269,7 +269,8 @@ def _check_structure(
                 f"identity.artifact must be an object, got {type(artifact).__name__}"
             )
         _nonempty_string(artifact.get("package"), "artifact.package")
-        if not _DIGEST_RE.match(str(artifact.get("digest", ""))):
+        artifact_digest = artifact.get("digest")
+        if not isinstance(artifact_digest, str) or not _DIGEST_RE.match(artifact_digest):
             raise ProvenanceError(
                 "artifact.digest must be a sha256: digest of the entrypoint. For an "
                 "interpreted server that is the script, not the interpreter: every such "
@@ -281,7 +282,8 @@ def _check_structure(
                 f"identity.endpoint must be an object, got {type(endpoint).__name__}"
             )
         _nonempty_string(endpoint.get("url"), "endpoint.url")
-        if not _DIGEST_RE.match(str(endpoint.get("spki_sha256", ""))):
+        spki = endpoint.get("spki_sha256")
+        if not isinstance(spki, str) or not _DIGEST_RE.match(spki):
             raise ProvenanceError(
                 "endpoint.spki_sha256 must be a sha256: digest of the Subject Public Key "
                 "Info. A URL on its own is not an identity."
@@ -513,14 +515,15 @@ def verify_record(
     if not identity.get("artifact") and not identity.get("endpoint"):
         raise ProvenanceError("identity carries neither an artifact nor an endpoint")
     issued_at = _check_structure(
-        kind=str(record.get("kind")),
+        kind=record["kind"],
         artifact=identity.get("artifact"),
         endpoint=identity.get("endpoint"),
         attestation=record.get("attestation"),
         issued_at=record.get("issued_at"),
     )
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
-    if not _DIGEST_RE.match(str(catalog.get("hash", ""))):
+    catalog_hash = catalog.get("hash")
+    if not isinstance(catalog_hash, str) or not _DIGEST_RE.match(catalog_hash):
         raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     _tool_count(catalog)
 
@@ -544,9 +547,6 @@ def verify_record(
             f"max_age_seconds={max_age_seconds}"
         )
 
-    # Revocation, before the signature rather than after. A signature made by a
-    # revoked key stays cryptographically valid for ever, so the verifier is the
-    # only place the fact can be applied.
     if isinstance(trusted_jwk, dict):
         private = sorted(_JWK_PRIVATE_PARAMS.intersection(trusted_jwk))
         if private:
@@ -554,6 +554,15 @@ def verify_record(
                 f"trusted_jwk must not contain private key material: found {', '.join(private)}. "
                 "trusted_jwk must be a public confirmation key."
             )
+    try:
+        pub = _pubkey_from_jwk(trusted_jwk)
+    except ValueError as exc:
+        raise ProvenanceError(f"trusted_jwk is unusable: {exc}") from exc
+    trusted_thumbprint = jwk_thumbprint(trusted_jwk)
+
+    # Revocation, before the signature rather than after. A signature made by a
+    # revoked key stays cryptographically valid for ever, so the verifier is the
+    # only place the fact can be applied.
     if revocation is not None:
         try:
             _check_not_revoked(trusted_jwk, revocation)
@@ -584,19 +593,14 @@ def verify_record(
     from hmac import compare_digest
 
     try:
-        matched = compare_digest(jwk_thumbprint(embedded), jwk_thumbprint(trusted_jwk))
+        _pubkey_from_jwk(embedded)
     except ValueError as exc:
         raise ProvenanceError(f"the record's embedded key is unusable: {exc}") from exc
-    if not matched:
+    if not compare_digest(jwk_thumbprint(embedded), trusted_thumbprint):
         raise ProvenanceError(
             "the record's embedded key is not the trusted key. A record signed by "
             "some other key is a record about a server somebody else is describing."
         )
-
-    try:
-        pub = _pubkey_from_jwk(trusted_jwk)
-    except ValueError as exc:
-        raise ProvenanceError(f"trusted_jwk is unusable: {exc}") from exc
     try:
         body = _canonical_bytes({k: v for k, v in record.items() if k != "signature"})
     except rfc8785.CanonicalizationError as exc:
@@ -666,6 +670,10 @@ def check_tool_catalog(
     actual = tool_catalog_hash(tools, format=record["format"])
     catalog = _as_object(record.get("tool_catalog"), "tool_catalog")
     expected = catalog.get("hash")
+    if "hash" in catalog and (
+        not isinstance(expected, str) or not _DIGEST_RE.match(expected)
+    ):
+        raise ProvenanceError("tool_catalog.hash is not a sha256: digest")
     if actual != expected:
         declared_count = catalog.get("tool_count")
         raise ToolCatalogMismatch(

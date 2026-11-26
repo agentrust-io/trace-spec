@@ -454,3 +454,106 @@ def test_bundle_digest_still_refuses_uncanonicalizable_input():
     ctx["bundle"]["log_id"] += "\ud800"
     with pytest.raises(ValueError):
         bundle_digest(ctx["bundle"])
+
+
+def test_bundle_pubkey_from_jwk_rejects_private_ec_members() -> None:
+    from agentrust_trace.revocation import _bundle_pubkey_from_jwk
+    from agentrust_trace.sign import _JWK_PRIVATE_PARAMS
+
+    sentinel = "super-secret-ec-private-material-999"
+    for vec_name, alg in (
+        ("29-es256-bundle-verified.json", "ES256"),
+        ("30-es384-bundle-verified.json", "ES384"),
+    ):
+        doc = _load(VECTORS / vec_name)
+        ec_jwk = doc["context"]["trusted_bundle_keys"][0]
+        assert _bundle_pubkey_from_jwk(ec_jwk, alg) is not None
+
+        for member in sorted(_JWK_PRIVATE_PARAMS):
+            leaked = {**ec_jwk, member: sentinel}
+            with pytest.raises(ValueError, match="private key material") as exc_info:
+                _bundle_pubkey_from_jwk(leaked, alg)
+            assert repr(member) in str(exc_info.value)
+            assert sentinel not in str(exc_info.value)
+
+            with pytest.raises(ValueError, match="private key material") as check_exc:
+                check_bundle(
+                    doc["context"]["bundle"],
+                    trusted_key_identifiers=["issuer-key-2026"],
+                    trusted_bundle_keys=[leaked],
+                    now=doc["context"]["now"],
+                    max_bundle_age_seconds=doc["context"]["max_bundle_age_seconds"],
+                    max_future_skew_seconds=doc["context"]["max_future_skew_seconds"],
+                )
+            assert repr(member) in str(check_exc.value)
+            assert sentinel not in str(check_exc.value)
+
+
+def test_bundle_pubkey_from_jwk_rejects_non_dict_jwk() -> None:
+    from agentrust_trace.revocation import _bundle_pubkey_from_jwk
+
+    for alg in ("ES256", "ES384"):
+        for bad in (None, "not-a-jwk", [], 123):
+            with pytest.raises(ValueError, match="JWK must be a JSON object"):
+                _bundle_pubkey_from_jwk(bad, alg)  # type: ignore[arg-type]
+
+
+def test_bundle_validator_rejects_trailing_newline_in_bundle_sig_value() -> None:
+    from agentrust_trace.revocation import _bundle_validator
+
+    doc11 = _load(VECTORS / "11-statement-names-trusted-key-by-thumbprint.json")
+    bundle_sig_nl = json.loads(json.dumps(doc11["context"]["bundle"]))
+    bundle_sig_nl["sig"]["value"] += "\n"
+    errors_top = list(_bundle_validator().iter_errors(bundle_sig_nl))
+    assert any(
+        list(e.absolute_path) == ["sig", "value"] and e.validator == "pattern"
+        for e in errors_top
+    )
+
+    doc_top = json.loads(json.dumps(doc11))
+    doc_top["context"]["bundle"] = bundle_sig_nl
+    res_top = _run(doc_top)
+    assert res_top.revocation.outcome == "unverified_for_revocation"
+    assert res_top.revocation.cause == "bundle_malformed"
+    assert res_top.revocation.evidence["path"] == "sig/value"
+
+
+def test_bundle_validator_rejects_trailing_newline_in_statement_sig_value() -> None:
+    from agentrust_trace.revocation import _bundle_validator
+
+    doc11 = _load(VECTORS / "11-statement-names-trusted-key-by-thumbprint.json")
+    stmt_sig_nl = json.loads(json.dumps(doc11["context"]["bundle"]))
+    stmt_sig_nl["statements"][0]["sig"]["value"] += "\n"
+    errors_stmt = list(_bundle_validator().iter_errors(stmt_sig_nl))
+    assert any(
+        list(e.absolute_path) == ["statements", 0, "sig", "value"] and e.validator == "pattern"
+        for e in errors_stmt
+    )
+
+    doc_stmt = json.loads(json.dumps(doc11))
+    doc_stmt["context"]["bundle"] = stmt_sig_nl
+    res_stmt = _run(doc_stmt)
+    assert res_stmt.revocation.outcome == "unverified_for_revocation"
+    assert res_stmt.revocation.cause == "bundle_malformed"
+    assert res_stmt.revocation.evidence["path"] == "statements/0/sig/value"
+
+
+def test_check_bundle_normalizes_whole_float_timestamps_in_evidence() -> None:
+    for vec_name, expected_outcome in (
+        ("01-fresh-well-inside-both-bounds.json", "verified"),
+        ("04-deployment-bound-tripped-wide.json", "unverified_for_revocation"),
+    ):
+        doc = _load(VECTORS / vec_name)
+        expected_issued = doc["context"]["bundle"]["issued_at"]
+        expected_until = doc["context"]["bundle"]["valid_until"]
+        doc["context"]["bundle"]["issued_at"] = float(expected_issued)
+        doc["context"]["bundle"]["valid_until"] = float(expected_until)
+
+        result = _run(doc)
+        assert result.revocation.outcome == expected_outcome
+        ev = result.revocation.evidence
+        assert ev["issued_at"] == expected_issued
+        assert ev["valid_until"] == expected_until
+        assert type(ev["issued_at"]) is int
+        assert type(ev["valid_until"]) is int
+

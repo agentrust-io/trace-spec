@@ -26,9 +26,14 @@ is switched off, keeping any names it adds (one for each rejection added), or
 why it cannot be given. See "Before a pull request is reviewed" in
 CONTRIBUTING.md. Otherwise write "Not a code or schema fix". -->
 
+## Changelog entry
+
+<!-- One bullet in CHANGELOG.md's style, for the merging Maintainer to add under
+[Unreleased] on main at merge. Do not edit CHANGELOG.md in the pull request: open
+pull requests conflict on it otherwise. Write "None" for an editorial change. -->
+
 ## Checklist
 
 - [ ] DCO sign-off on all commits (`git commit -s`)
-- [ ] `CHANGELOG.md` updated (for any normative change)
 - [ ] Breaking changes marked with `<!-- CHANGED: #NNN: description -->` in spec text
 - [ ] Backward compatibility statement included (for breaking changes)

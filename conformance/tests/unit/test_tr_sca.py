@@ -65,3 +65,12 @@ def test_string_slsa_level_fails():
 def test_missing_slsa_level_fails():
     failed = [f for f in check({"build_provenance": {}}) if f.failed()]
     assert any(f.code == "TR-SCA-001" for f in failed)
+
+
+def test_non_string_digest_with_digest_str_fails():
+    class _DigestLike:
+        def __str__(self) -> str:
+            return VALID_DIGEST
+
+    failed = [f for f in check(_prov(digest=_DigestLike())) if f.failed()]
+    assert any(f.code == "TR-SCA-002" for f in failed)

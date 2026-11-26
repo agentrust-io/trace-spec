@@ -1,0 +1,13 @@
+{
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "kid": "sb:issuer:QUGuJV1P6e6c",
+      "x": "BgMyln8UiBc3a3YIH8KmQrzLFs1nhyadXXgGJFu2idc",
+      "use": "sig",
+      "valid_from": "2026-07-01T00:00:00Z",
+      "valid_until": "2036-07-01T00:00:00Z"
+    }
+  ]
+}

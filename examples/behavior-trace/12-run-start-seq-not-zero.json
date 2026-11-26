@@ -1,0 +1,205 @@
+{
+  "id": "12",
+  "name": "12-run-start-seq-not-zero",
+  "description": "The run_start has seq 1 instead of 0.",
+  "rfc": "docs/rfcs/behavior-trace.md#4-verifying-a-run",
+  "pinned_keys": {
+    "wrapper": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w"
+      }
+    ],
+    "cmcp": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q"
+      }
+    ],
+    "model-gateway": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E"
+      }
+    ],
+    "egress-proxy": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "ypOsFwUYcHHWe4PH_w7-gQjo7EUwV113JoeTM9vavnw"
+      }
+    ],
+    "sandbox": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bnoc3Smwt4_ROvTFWY_v9O8qlxZuPKby5Pv8zYBQW_E"
+      }
+    ],
+    "ca2a": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "iodf_x6zhFFXes1a_uQFRWVo3XyJ4JCGOgVXvHr0nxc"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "edge": "wrapper",
+      "seq": 1,
+      "prev": null,
+      "parents": [],
+      "kind": "run_start",
+      "t": {
+        "observed_at": 1794700000000,
+        "duration_ms": 5
+      },
+      "body": {
+        "contract": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "M9WrVCq50s0z_cyH_ka7ue9fXHGDNqzlttavppDfA65vRSM67GzsSpX1iKTfqexH4fvxjOoUdGBhtZyXfApEDQ"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "edge": "model-gateway",
+      "seq": 0,
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "parents": [
+        "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9"
+      ],
+      "kind": "model_call",
+      "t": {
+        "observed_at": 1794700001000,
+        "duration_ms": 5
+      },
+      "body": {
+        "model": "example-model-1",
+        "request": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "response": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "requested_tools": [
+          {
+            "tool": "search",
+            "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003"
+          }
+        ]
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "Wd2kdNBGQi-B9C2wEEEQdEGNzyOsZt3ehYI2PufKCNOw0SI5IKJR9tZKij880rMQfVvWT-ZUr-oyJcCP12jIAg"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "edge": "cmcp",
+      "seq": 0,
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "parents": [
+        "sha256:d7a8782ca2c6c988ecf1d9d5cc92123b86be89a776447417fcaeea82a91c9335"
+      ],
+      "kind": "tool_call",
+      "t": {
+        "observed_at": 1794700002000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "search",
+        "args": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000003",
+        "decision": "allow"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "LVVXYuLxT8yjgZ5FfFLoe2kKOoz3lmYyrgInVDZ3JozdE3tTrppW4M57qdS4Ey_amBRF8xRiFWjdc1I44VEBAw"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "edge": "cmcp",
+      "seq": 1,
+      "prev": "sha256:1189ea21f74dd4c6e1f05544b29fb27d977db9ea9f7d0deecfce28771d8b8a4d",
+      "parents": [
+        "sha256:1189ea21f74dd4c6e1f05544b29fb27d977db9ea9f7d0deecfce28771d8b8a4d"
+      ],
+      "kind": "tool_result",
+      "t": {
+        "observed_at": 1794700003000,
+        "duration_ms": 5
+      },
+      "body": {
+        "tool": "search",
+        "status": "ok",
+        "result": "hmac-sha256:0000000000000000000000000000000000000000000000000000000000000004"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "aVBtapLd11SUVKIMGJfPzOEDuN0sXcmzJQNVT-_sKEU",
+        "value": "JbLeM9dPt10Z-XxHlCutCXE-Qp_NfkDEu9p-7C0eyCoAXw7tjTkodOal-j4nL5gA3i0ArL9HpA57uFriR2mvAA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "edge": "model-gateway",
+      "seq": 1,
+      "prev": "sha256:d7a8782ca2c6c988ecf1d9d5cc92123b86be89a776447417fcaeea82a91c9335",
+      "parents": [],
+      "kind": "heartbeat",
+      "t": {
+        "observed_at": 1794700004000,
+        "duration_ms": 5
+      },
+      "body": {
+        "peers": {
+          "cmcp": "sha256:8f83a453c76b89d598dfccae97fd05cfb4c6bb7a7b92e033bffbfd0394ee6fe9"
+        }
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "nRIE2VmKdMjL1JD7tbV7fXVgXxmv0GKnMFWRUJMTf9Q",
+        "value": "I5FiVs-O9uRBx8bGk53Fz_fXF-TWS7k4A0yefqOxN9XwlAY-jlnBViltunAKZdoqE9peIDcgrdPpClN_UCvmBA"
+      }
+    },
+    {
+      "v": "behavior-trace-block/experimental-v1",
+      "run_id": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "edge": "wrapper",
+      "seq": 2,
+      "prev": "sha256:6363e29dfab61545ad9d36c0d44f802893e312be22e21c3e71ef95d0c41dcee9",
+      "parents": [
+        "sha256:8f83a453c76b89d598dfccae97fd05cfb4c6bb7a7b92e033bffbfd0394ee6fe9"
+      ],
+      "kind": "run_end",
+      "t": {
+        "observed_at": 1794700005000,
+        "duration_ms": 5
+      },
+      "body": {
+        "outcome": "completed"
+      },
+      "sig": {
+        "alg": "Ed25519",
+        "kid": "UDDReOZl1ipXAfp9wYsm13sDBMK5og--QWdBjzuf6o4",
+        "value": "yG6qUBs4fsuMwLIDdEjbgsyflAubOgwZtNNUxu7HXUEisihM8-jznqxe-0KZNfgqMdY9xUBvobJKZ2-iTpjeAw"
+      }
+    }
+  ],
+  "expected": {
+    "classification": "rejected",
+    "codes": [
+      "run_start_invalid"
+    ]
+  }
+}

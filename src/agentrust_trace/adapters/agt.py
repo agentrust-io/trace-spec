@@ -14,8 +14,11 @@ from typing import Any, Literal
 from agentrust_trace._patterns import _PYTHON_PATTERNS
 from agentrust_trace.adapters._validation import (
     _check_call_count,
+    _check_data_class,
     _check_policy_bundle_bytes,
     _check_transparency,
+    _check_uri,
+    _check_utf8_str,
 )
 from agentrust_trace.models import (
     JCS_SAFE_INTEGER,
@@ -45,6 +48,12 @@ def _check_agent_did(value: object) -> None:
             "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "
             "It becomes the record subject, which is what a verifier keys on."
         )
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(
+            "agent_did must be valid UTF-8 without lone surrogates"
+        ) from exc
 
 
 def _check_audit_entries(value: object) -> None:
@@ -192,7 +201,17 @@ class TraceAGTAdapter:
             transparency: SCITT receipt URI. ``None`` means unanchored, which is correct
                 below Level 2 and leaves the key out of the record.
         """
+        _check_utf8_str(model_provider, "model_provider")
+        _check_utf8_str(model_id, "model_id")
+        _check_utf8_str(model_version, "model_version", optional=True)
+        _check_data_class(data_class)
+        _check_utf8_str(
+            build_provenance_builder, "build_provenance_builder", optional=True
+        )
+        _check_uri(build_provenance_uri, "build_provenance_uri", optional=True)
         _check_transparency(transparency)
+        _check_uri(appraisal_verifier, "appraisal_verifier", optional=False)
+        _check_uri(appraisal_policy_ref, "appraisal_policy_ref", optional=True)
         self._model = ModelInfo(
             provider=model_provider,
             model_id=model_id,
@@ -204,6 +223,15 @@ class TraceAGTAdapter:
             digest=build_provenance_digest,
             builder=build_provenance_builder,
             provenance_uri=build_provenance_uri,
+        )
+        PolicyInfo(
+            bundle_hash="sha256:" + "0" * 64,
+            enforcement_mode=enforcement_mode,  # type: ignore[arg-type]
+        )
+        Appraisal(
+            status=appraisal_status,
+            verifier=appraisal_verifier,
+            policy_ref=appraisal_policy_ref,
         )
         self._transparency = transparency
         self._appraisal_status = appraisal_status
@@ -239,7 +267,44 @@ class TraceAGTAdapter:
         _check_merkle_chain_tip(session.merkle_chain_tip)
         _check_call_count(session.call_count)
         _check_iat(session.iat)
+        if not isinstance(self._model, ModelInfo):
+            raise ValueError(
+                f"model must be a ModelInfo, got {type(self._model).__name__}"
+            )
+        if not isinstance(self._build_provenance, BuildProvenance):
+            raise ValueError(
+                "build_provenance must be a BuildProvenance, got "
+                f"{type(self._build_provenance).__name__}"
+            )
+        _check_utf8_str(self._model.provider, "model_provider")
+        _check_utf8_str(self._model.model_id, "model_id")
+        _check_utf8_str(self._model.version, "model_version", optional=True)
+        _check_data_class(self._data_class)
+        _check_utf8_str(
+            self._build_provenance.builder,
+            "build_provenance_builder",
+            optional=True,
+        )
+        _check_uri(
+            self._build_provenance.provenance_uri,
+            "build_provenance_uri",
+            optional=True,
+        )
         _check_transparency(self._transparency)
+        _check_uri(self._appraisal_verifier, "appraisal_verifier", optional=False)
+        _check_uri(self._appraisal_policy_ref, "appraisal_policy_ref", optional=True)
+
+        model = ModelInfo(
+            provider=self._model.provider,
+            model_id=self._model.model_id,
+            version=self._model.version,
+        )
+        build_provenance = BuildProvenance(
+            slsa_level=self._build_provenance.slsa_level,
+            digest=self._build_provenance.digest,
+            builder=self._build_provenance.builder,
+            provenance_uri=self._build_provenance.provenance_uri,
+        )
 
         call_count = (
             session.call_count
@@ -251,7 +316,7 @@ class TraceAGTAdapter:
             "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
             "iat": session.iat,
             "subject": session.agent_did,
-            "model": self._model.model_dump(exclude_none=True),
+            "model": model.model_dump(exclude_none=True),
             "runtime": RuntimeInfo(
                 platform="software-only",
                 measurement=self._measurement(session.merkle_chain_tip),
@@ -265,7 +330,7 @@ class TraceAGTAdapter:
                 hash=self._transcript_hash(session.audit_entries),
                 call_count=call_count,
             ).model_dump(exclude_none=True),
-            "build_provenance": self._build_provenance.model_dump(exclude_none=True),
+            "build_provenance": build_provenance.model_dump(exclude_none=True),
             "appraisal": Appraisal(
                 status=self._appraisal_status,
                 verifier=self._appraisal_verifier,

@@ -29,18 +29,22 @@ against AMD, Intel or a TPM manufacturer root. A record can satisfy `TR-RTE` at 
 syntactically perfect measurement that no hardware ever produced. Verifying the quote against the
 silicon vendor is the relying party's job, and `cmcp_verify` is where that happens.
 
-**`TR-ANC-002` proves inclusion relative to the receipt you hand it.**
-In plain terms: it proves the record is in the log the receipt describes, not that the log is a
-real public one.
-It replays the audit path against the Merkle root carried in that receipt. It does not fetch the
-`transparency` URI, and it does not establish that the root is one a public log actually
-published. A self-consistent receipt over a tree the submitter built themselves will pass. What
-the check rules out is a record that has been modified since anchoring, or that was never in the
-tree the receipt commits to. Establishing that the tree is real is a separate step and is not in
-scope here.
+**`TR-ANC-002` proves inclusion relative to the receipt and entry you hand it.**
+In plain terms: it proves the record is in the registry entry you supplied, not that the entry is
+the one the record names, nor that the log is a real public one.
+It requires the receipt's `merkle_root` and `leaf_count` to equal the supplied entry's, and
+replays the audit path against that root. It does not fetch the `transparency` URI. Nothing in
+the Anchor Format yet identifies an entry from that URI, so the check cannot establish that the
+supplied entry is the one the record names; the pass message says so, and closing that link is
+tracked as finding 21 of trace-spec#448. It also does not establish that a public log actually
+published the entry. A self-consistent receipt and entry over a tree the submitter built
+themselves will pass. What the check rules out is a record that has been modified since
+anchoring, a record that was never in the tree, and a receipt whose root or count differs from
+the entry it is presented with. Establishing that the entry is real and is the named one is a
+separate step and is not in scope here.
 
 `TR-ANC-001` is explicit that it checks the pointer rather than the anchor. Supplying no receipt
-fails `TR-ANC-002`, so Level 2 cannot be reached on a well formed URI alone.
+or no entry fails `TR-ANC-002`, so Level 2 cannot be reached on a well formed URI alone.
 
 ## Statuses that are easy to misread
 

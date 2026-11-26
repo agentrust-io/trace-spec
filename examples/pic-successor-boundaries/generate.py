@@ -106,6 +106,7 @@ def generate(out=ROOT):
             "009-observer-relabel": "successor-observer-mismatch",
             "010-stale-observation": "observation-stale",
             "011-future-observation": "observation-future",
+            "012-authorizer-key-mismatch": "authorizer-key-mismatch",
         }.get(name, "pic-digest-syntax")
         cases.append(
             {
@@ -179,6 +180,17 @@ def generate(out=ROOT):
         if name.startswith("009"):
             expected.update(successor_bound=False, outcome=None)
         add(name, data, expected)
+    # Re-signed with the published authorizer key, so the signature still verifies
+    # against the trusted JWK; only the signed key ID no longer names that JWK's kid.
+    renamed = base({"reachable": True})
+    body = {k: v for k, v in renamed["bridge"].items() if k != "signature"}
+    body["authorization"]["authorizer_key_id"] = "auth-key-other"
+    renamed["bridge"] = sign(body, AUTH)
+    add(
+        "012-authorizer-key-mismatch",
+        renamed,
+        {"authorization_bound": False, "successor_bound": None, "outcome": None},
+    )
     for case in cases:
         (out / (case["id"] + ".json")).write_text(
             json.dumps(case, indent=2) + "\n", encoding="utf-8", newline="\n"

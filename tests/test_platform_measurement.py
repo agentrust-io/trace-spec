@@ -308,8 +308,19 @@ def test_P9_a_non_callable_appraiser_is_refused_at_entry(junk: Any) -> None:
 def test_P9_a_non_object_record_is_refused_and_a_missing_measurement_is_field_absent() -> None:
     with pytest.raises(ValueError):
         check_platform_measurement(["not", "a", "record"], None)  # type: ignore[arg-type]
-    absent = check_platform_measurement({"runtime": {}}, lambda runtime: None)
-    assert (absent.outcome, absent.cause) == ("not_attempted", "field_absent")
+    for bad_runtime in (
+        {},
+        {"measurement": None},
+        {"measurement": ""},
+        {"measurement": 123},
+        {"measurement": True},
+        {"measurement": ["sha256:aa"]},
+    ):
+        absent = check_platform_measurement(
+            {"runtime": bad_runtime},
+            lambda rt: {"measurement": rt.get("measurement"), "layers": {"pcr:0": "established"}},
+        )
+        assert (absent.outcome, absent.cause) == ("not_attempted", "field_absent")
 
 
 def test_P10_a_record_that_fails_verification_never_reaches_the_appraiser() -> None:

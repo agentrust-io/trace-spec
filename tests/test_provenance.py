@@ -572,12 +572,139 @@ def test_a_genuinely_different_embedded_key_is_still_refused() -> None:
 
 
 def test_an_unusable_embedded_key_is_refused_rather_than_crashing() -> None:
-    """A `cnf.jwk` with no usable `kty` has no thumbprint; that is a refusal."""
+    """A `cnf.jwk` with an unsupported `kty` is refused by `_pubkey_from_jwk`."""
     key = generate_key()
     signed = sign_record(_record(), key)
     signed["cnf"]["jwk"] = {"kty": "RSA-not-supported", "n": "..."}
     with pytest.raises(ProvenanceError, match="unusable"):
         verify_record(signed, key_to_jwk(key))
+
+
+@pytest.mark.parametrize(
+    "unusable_trusted_jwk",
+    [
+        None,
+        123,
+        "not-a-jwk",
+        [],
+        True,
+        {},
+        {"kty": "unknown"},
+        {"kty": "OKP", "crv": "Ed25519"},
+        {"kty": "OKP", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},
+        {"kty": "OKP", "crv": "Ed25519", "x": ""},
+        {"kty": "OKP", "crv": "Ed25519", "x": 123},
+        {"kty": "RSA", "n": "abc", "e": "AQAB"},
+        {"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"},
+        {"kty": "OKP", "crv": "X25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "not-valid-base64url!"},
+    ],
+    ids=[
+        "none",
+        "int",
+        "str",
+        "list",
+        "bool",
+        "empty-dict",
+        "unknown-kty",
+        "missing-x",
+        "missing-crv",
+        "empty-x",
+        "int-x",
+        "rsa",
+        "ec",
+        "x25519",
+        "short-x",
+        "padded-x",
+        "non-canonical-low-bits-x",
+        "invalid-b64url-x",
+    ],
+)
+def test_verify_record_rejects_unusable_trusted_jwk_before_revocation_and_cnf_comparison(
+    unusable_trusted_jwk: object,
+) -> None:
+    """An unusable caller-supplied `trusted_jwk` must be reported as `trusted_jwk is unusable`
+    against a validly signed record before consulting `revocation` or comparing against
+    `record["cnf"]["jwk"]`, rather than blaming `the record's embedded key`."""
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    signed = sign_record(_record(issued_at=1_760_000_000), key)
+
+    with pytest.raises(ProvenanceError, match=r"^trusted_jwk is unusable:"):
+        verify_record(signed, unusable_trusted_jwk, now=1_760_000_000)  # type: ignore[arg-type]
+
+    called = False
+
+    def _revocation_store(_identifier: str) -> bool:
+        nonlocal called
+        called = True
+        return False
+
+    with pytest.raises(ProvenanceError, match=r"^trusted_jwk is unusable:"):
+        verify_record(
+            signed,
+            unusable_trusted_jwk,  # type: ignore[arg-type]
+            revocation=_revocation_store,
+            now=1_760_000_000,
+        )
+    assert not called
+
+    result = verify_record(signed, trusted, revocation=_revocation_store, now=1_760_000_000)
+    assert called
+    assert result.outcome == "verified"
+
+
+@pytest.mark.parametrize(
+    "unusable_embedded_jwk",
+    [
+        {"kty": "RSA", "n": "abc", "e": "AQAB"},
+        {"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"},
+        {"kty": "OKP", "crv": "X25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAA"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+        {"kty": "OKP", "crv": "Ed25519", "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"},
+        {"kty": "OKP", "crv": "Ed25519", "x": "not-valid-base64url!"},
+    ],
+    ids=[
+        "rsa",
+        "ec",
+        "x25519",
+        "short-x",
+        "padded-x",
+        "non-canonical-low-bits-x",
+        "invalid-b64url-x",
+    ],
+)
+def test_verify_record_rejects_unusable_embedded_cnf_jwk_that_has_a_thumbprint(
+    unusable_embedded_jwk: dict[str, str],
+) -> None:
+    """`jwk_thumbprint` accepts RSA, EC, X25519, and arbitrary non-empty `x` strings.
+    `verify_record` must validate `record["cnf"]["jwk"]` with `_pubkey_from_jwk` before
+    comparing thumbprints so a non-Ed25519 or non-canonical `cnf.jwk` is reported as
+    `the record's embedded key is unusable` rather than `not the trusted key`."""
+    key = generate_key()
+    trusted = key_to_jwk(key)
+    record = {**_record(issued_at=1_760_000_000), "cnf": {"jwk": unusable_embedded_jwk}}
+    body = _canonical_bytes(record)
+    signed = {
+        **record,
+        "signature": base64.urlsafe_b64encode(key.sign(body)).rstrip(b"=").decode(),
+    }
+
+    with pytest.raises(ProvenanceError, match=r"^the record's embedded key is unusable:"):
+        verify_record(signed, trusted, now=1_760_000_000)
+
+    valid_signed = sign_record(_record(issued_at=1_760_000_000), key)
+    verify_record(valid_signed, trusted, now=1_760_000_000)
+    with pytest.raises(ProvenanceError, match=r"^the record's embedded key is not the trusted key"):
+        verify_record(
+            {**valid_signed, "cnf": {"jwk": key_to_jwk(generate_key())}},
+            trusted,
+            now=1_760_000_000,
+        )
 
 # --- freshness and revocation, the affordances sign.verify_record already has -----
 #
