@@ -267,7 +267,35 @@ For an entry with `validation: "recompute"`:
 
 Rules 1 and 2 hold unchanged. A recomputation that agrees establishes the binding its relation defines and nothing more: it does not change `runtime.platform`, and the second half of rule 3 still holds, so the entry is not attested evidence of what the execution did.
 
-**What a contradiction here does and does not fail.** A recompute entry is still a `references` entry, so §3.1.2's own rule 3 and its rationale apply to it: "A reference that could invalidate a record would hand whoever controls the target a way to invalidate evidence they do not hold" (the paragraph following the four numbered rules), and rule 3's "MUST NOT reject a record because an entry ... cannot be resolved" extends, by that same reasoning, to an entry that resolves and disagrees. A contradiction here is therefore a finding against the entry, not grounds by itself to fail the record's §3.3 verification: the record's signature binding, freshness, and chain-of-trust checks run independently of what `references` holds, the same separation §3.3.1 draws for a `build_provenance` contradiction, which fails the appraisal (`appraisal.status`) and not the record's §3.3 checks above it. What rule 3 fixes is narrower and absolute regardless: the contradiction MUST be surfaced as a contradiction, under the relation's own name, and MUST NOT be silently dropped or merged into a record-level pass. A relying party that treats a position-commitment contradiction as disqualifying is applying its own policy on top of a conformant verifier's report, not something this section requires of the verifier.
+**What a contradiction here does and does not fail.** Stated plainly, to settle the
+three readings raised across review (trace-spec#595: does a recompute contradiction
+(a) reject the whole record under §3.3, (b) fail an appraisal the way a
+`build_provenance` contradiction does, or (c) stand as an entry-level finding the
+record's own §3.3 checks never see: the answer is (c), and this is not something a
+conformant verifier may instead choose (a) or (b) for.
+
+A recompute entry is still a `references` entry, so §3.1.2's own rule 3 and its
+rationale apply to it: "A reference that could invalidate a record would hand whoever
+controls the target a way to invalidate evidence they do not hold" (the paragraph
+following the four numbered rules), and rule 3's "MUST NOT reject a record because an
+entry ... cannot be resolved" extends, by that same reasoning, to an entry that
+resolves and disagrees. A contradiction here is therefore a finding against the entry,
+not grounds by itself to fail the record's §3.3 verification (a): the record's
+signature binding, freshness, and chain-of-trust checks run independently of what
+`references` holds and MUST still be run and reported on their own terms, whatever the
+entry's outcome. Nor is it (b), comparable to a `build_provenance` contradiction
+failing `appraisal.status` under §3.3.1: `references` carries no `appraisal`-like field
+of its own in this version, so a recompute contradiction has nowhere equivalent to be
+filed as a failed appraisal, and MUST NOT be reported by overloading `appraisal.status`
+or any other §3.3 result to stand in for it. What rule 3 fixes is narrower and absolute
+regardless: the contradiction MUST be surfaced as a contradiction, under the relation's
+own name, and MUST NOT be silently dropped or merged into a record-level pass. That
+leaves (c): a position-commitment contradiction is reported as itself, alongside
+whatever the record's own §3.3 checks independently conclude, and nothing about the
+record's own validity follows from it. A relying party that treats a
+position-commitment contradiction as disqualifying is applying its own policy on top
+of a conformant verifier's report, not something this section requires of the
+verifier.
 
 **Unsettled, and deliberately named rather than hidden.** `retention` states an undertaking and nothing in this specification enforces it. A reference checked by resolution is worth only the ability to resolve it later, and transparency-log practice shows that gap is real rather than theoretical: a record can remain valid and become unreachable when the index that addressed it is removed. §7 open question 3 covers the same ground for `transparency` and the two should be resolved together. An entry validated by recomputation, proposed above, sits outside the resolver half of this gap: no party undertakes to retain anything, so there is no undertaking to break. It does not escape the need for bytes. Recomputing later still needs the proof, so the holder who wants the entry checked keeps the proof bytes, and a verifier handed none treats the entry as absent.
 

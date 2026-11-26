@@ -200,7 +200,15 @@ def _proof_is_usable(proof: dict) -> bool:
     binding = proof.get("binding")
     if not isinstance(binding, dict) or binding.get("type") != "position-binding":
         return False
-    if any(not isinstance(binding.get(k), str) for k in _REQUIRED_BINDING_STRINGS):
+    # Same non-empty requirement as the slot's required strings, for the same reason:
+    # an empty `record_digest` or `slot_commitment` is not evidence of anything, and
+    # without this check it reached `_recompute_usable` and was reported as a
+    # contradiction -- "the binding commits a different record" -- when nothing
+    # meaningful was recomputed at all (review on this round).
+    if any(
+        not isinstance(binding.get(k), str) or binding.get(k) == ""
+        for k in _REQUIRED_BINDING_STRINGS
+    ):
         return False
     committer_jwk = proof.get("committer_jwk")
     if not isinstance(committer_jwk, dict):
@@ -320,28 +328,37 @@ def _recompute_usable(
     kid = slot["committer_key_id"]
     independent = relying_party["committer_keys"].get(kid)
     result["committer_key_independent"] = independent is not None
-    # Trusting a key and knowing who holds it are different facts (registry, "The
-    # referenced object": a reference to the verification key is one required fact,
-    # an identifier for the committing party is another). `slot["committer"]` is
-    # signed, so a proof cannot change it without invalidating the signature, but
-    # nothing before this point has checked it says what the relying party expects
-    # for this specific key -- a key it independently trusts can still sign a slot
-    # naming a different committer, and that was previously accepted as consistent.
-    # With no independently trusted key (case 05's shape), there is no independent
-    # identity to check the claim against either, so this is `False` the same way
-    # `committer_key_independent` is: nothing here is established independently of
-    # the proof.
-    result["committer_identity_matches"] = (
-        independent is not None and independent.get("committer") == slot["committer"]
-    )
-    if independent is not None and not result["committer_identity_matches"]:
-        return {**result, "verdict": "contradiction-committer-identity-mismatch"}
     jwk = independent if independent is not None else proof["committer_jwk"]
+    # Signatures first, identity after: `slot["committer"]` is a field *inside* the
+    # signed body, so until the slot's signature verifies under this key, it is an
+    # unauthenticated claim, not a fact about who the key belongs to. Comparing it
+    # to the identity `relying_party` holds for the key -- and returning a
+    # contradiction on that comparison alone -- before the signature check would
+    # report "this trusted key signed a different identity" when no signature by
+    # that key has been established at all; an attacker who edits `committer`
+    # without a valid signature would be reported as an authenticated identity
+    # mismatch rather than what actually happened, a forged or broken signature
+    # (review on this round).
     if _thumbprint(jwk) != kid or binding["committer_key_id"] != kid:
         return {**result, "signatures_verify": False, "verdict": "contradiction-signature-invalid"}
     result["signatures_verify"] = _signed_by(slot, jwk) and _signed_by(binding, jwk)
     if not result["signatures_verify"]:
         return {**result, "verdict": "contradiction-signature-invalid"}
+    # Only now is `slot["committer"]` authenticated: the signature above covers the
+    # whole slot body, `committer` included, under the key just verified. Trusting a
+    # key and knowing who holds it are different facts (registry, "The referenced
+    # object": a reference to the verification key is one required fact, an
+    # identifier for the committing party is another) -- a key the relying party
+    # independently trusts can still sign a slot naming a different committer, and
+    # that was previously accepted as consistent. With no independently trusted key
+    # (case 05's shape), there is no independent identity to check the claim
+    # against either, so this is `False` the same way `committer_key_independent`
+    # is: nothing here is established independently of the proof.
+    result["committer_identity_matches"] = (
+        independent is not None and independent.get("committer") == slot["committer"]
+    )
+    if independent is not None and not result["committer_identity_matches"]:
+        return {**result, "verdict": "contradiction-committer-identity-mismatch"}
 
     sequence = relying_party["sequence"]
     # `_proof_is_usable` has already established `slot["position"]` is, by value, a
@@ -512,6 +529,26 @@ def test_absence_and_contradiction_are_different_answers() -> None:
                 "note", functools.reduce(lambda inner, _: [inner], range(10_000), "x")
             ),
             id="slot-has-an-additional-member-nested-past-the-recursion-limit",
+        ),
+        # Review on this round: the binding's required strings were checked for type
+        # but not emptiness, unlike the slot's. An empty value here is not evidence
+        # of anything; letting it through reached `_recompute_usable` and was
+        # reported as a contradiction -- "disagrees" -- when nothing was recomputed.
+        pytest.param(
+            lambda p: p["binding"].__setitem__("slot_commitment", ""),
+            id="binding-slot-commitment-is-empty",
+        ),
+        pytest.param(
+            lambda p: p["binding"].__setitem__("record_digest", ""),
+            id="binding-record-digest-is-empty",
+        ),
+        pytest.param(
+            lambda p: p["binding"].__setitem__("committer_key_id", ""),
+            id="binding-committer-key-id-is-empty",
+        ),
+        pytest.param(
+            lambda p: p["binding"].__setitem__("signature", ""),
+            id="binding-signature-is-empty",
         ),
     ],
 )
@@ -698,6 +735,53 @@ def test_trusting_a_key_is_not_the_same_fact_as_trusting_who_holds_it() -> None:
         established = _case(name)
         assert established["committer_key_independent"] is True
         assert established["committer_identity_matches"] is True
+
+
+def test_an_unsigned_identity_mismatch_is_reported_as_an_invalid_signature() -> None:
+    """`slot["committer"]` is only an authenticated claim once the slot's signature
+    verifies under the key it names. A forged slot that claims the trusted key's id,
+    names a committer identity that key is not held for, but is actually signed by a
+    different key entirely, must not be reported as
+    `contradiction-committer-identity-mismatch`: that would say an authenticated
+    signed claim disagreed with the trusted identity, when in fact no signature by
+    the trusted key was ever established over that claim at all. It must be
+    reported as what actually happened: the signature does not verify. Review on
+    this round: the identity comparison previously ran, and could return, before
+    the signature check -- `07`'s own fixture does not expose this, because its
+    identity mismatch happens to carry a genuinely valid signature; this builds a
+    slot like `test_a_forged_slot_under_the_trusted_key_id_is_a_contradiction`'s,
+    but with a mismatched `committer` added, since a forgery that happens to leave
+    `committer` alone does not exercise the ordering either."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from agentrust_trace import key_to_jwk
+
+    forger = Ed25519PrivateKey.from_private_bytes(b"\x02" * 32)
+    kid = next(iter(RELYING_PARTY["committer_keys"]))
+    trusted_identity = RELYING_PARTY["committer_keys"][kid]["committer"]
+    proof = copy.deepcopy(_load("proof-01.json"))
+    body = {k: v for k, v in proof["slot"].items() if k != "signature"}
+    body["committer_key_id"] = kid
+    assert body["committer"] == trusted_identity  # sanity: proof-01 starts matching
+    body["committer"] = trusted_identity + ".forged"
+    proof["slot"] = {
+        **body,
+        "signature": base64.urlsafe_b64encode(forger.sign(rfc8785.dumps(body)))
+        .rstrip(b"=")
+        .decode(),
+    }
+    proof["committer_jwk"] = key_to_jwk(forger)
+    record = copy.deepcopy(_load("01-position-established.json"))
+    record["references"][0]["id"] = _jcs_sha256(proof["slot"])
+    proof["binding"]["slot_commitment"] = record["references"][0]["id"]
+    proof["binding"]["record_digest"] = _jcs_sha256(record)
+    observed = _recompute(record, proof, RELYING_PARTY)
+    assert observed["committer_key_independent"] is True
+    assert observed["signatures_verify"] is False
+    assert observed["verdict"] == "contradiction-signature-invalid"
+    # Not the identity-mismatch verdict -- the unauthenticated claim is never
+    # compared at all, because the signature check above returns first.
+    assert observed["committer_identity_matches"] is None
 
 
 def test_a_slot_off_the_relying_partys_sequence_is_a_contradiction() -> None:
