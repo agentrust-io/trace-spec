@@ -59,6 +59,17 @@
       "signatures_verify": true,
       "sequence_position_matches": true,
       "verdict": "position-consistent-not-established"
+    },
+    "06-sha384-commitment.json": {
+      "proof": "proof-06.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": true,
+      "binds_this_record": true,
+      "committer_key_independent": true,
+      "signatures_verify": true,
+      "sequence_position_matches": true,
+      "verdict": "position-established"
     }
   }
 }

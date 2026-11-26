@@ -539,6 +539,18 @@ def _is_canonicalizable_value(value: Any) -> bool:
 
     ``bool`` is checked first: it is an ``int`` subclass in Python and not a number
     in JSON, and the schema's ``boolean`` alternative already admits it.
+
+    A string holding an unpaired UTF-16 surrogate passes the schema's own ``string``
+    branch -- JSON Schema has no practical way to exclude one -- and is deliberately
+    left passing here too, for the same reason: rejecting it would make this
+    function stricter than the schema it mirrors, the exact disagreement the
+    whole-float case above was written to close, just in the other direction. The
+    schema and this function agree a surrogate is a canonicalizable string; what
+    fails, predictably and by design, is canonicalizing it. `_canonical_bytes` in
+    `sign.py` raises `rfc8785.CanonicalizationError` for exactly this value, the
+    same documented refusal every other value JCS has no form for gets, not an
+    uncaught exception -- so there is nothing to pre-empt here that the signing
+    path does not already refuse on its own.
     """
     if isinstance(value, bool) or value is None or isinstance(value, str):
         return True

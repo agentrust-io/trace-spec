@@ -326,10 +326,15 @@ needs the proof, so a holder who wants the entry checked keeps the proof bytes, 
 verifier handed none treats the entry as absent.
 
 The committed example, [`examples/position-commitment/`](../examples/position-commitment/),
-shows one concrete shape for these facts: a slot whose digest is the `id`, and a
-binding the committer signs once the record exists, which commits the slot and this
-record's digest. A producer whose sequence or committer emits another shape that
-carries these facts is within this definition.
+shows one concrete shape for these facts: a single proof object whose slot digest is
+the `id`, and a binding the committer signs once the record exists, which commits the
+slot and this record's digest. A producer whose sequence or committer emits another
+shape that carries these facts is within this definition -- including one that splits
+the position and the record binding across more than one proof object, each taken at
+its own time, as long as a verifier can still recompute all four facts from what the
+holder carries. The example set does not exercise that split; it is one illustrative,
+independently specified construction, not a description of any one producer's
+deployed system.
 
 ### What a verifier may conclude
 
@@ -352,8 +357,14 @@ each reported separately:
    proof is consistent with this record. Whether the position was taken for this
    record, and where it sits in the sequence, rests on trust the relying party
    supplies itself: a committer key and a copy of the sequence it holds independently
-   of the proof. A proof checked under a key it carries for itself establishes
-   consistency, not an independently established ordering. This holds regardless of
+   of the proof. The committed example resolves that independence the simplest way, a
+   key and a sequence copy the relying party holds outright, but the registration does
+   not require that shape: a committer key established through a verified attestation,
+   or an ordering taken from attested proofs rather than a relying-party-held sequence
+   copy, resolves the same independence if a verifier can check the attestation itself.
+   A proof checked under a key it carries for itself, with no independent attestation
+   or held copy to check it against, establishes consistency, not an independently
+   established ordering. This holds regardless of
    whether that key is independently trusted: an independently held sequence that
    disagrees with the slot is a contradiction (outcome 4) whether or not the
    committer key is also independently held, because the sequence value and the key's

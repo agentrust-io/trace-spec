@@ -1,0 +1,41 @@
+{
+  "eat_profile": "tag:agentrust-io.com,2026:trace-v0.3",
+  "iat": 1792487100,
+  "subject": "spiffe://trust.example.org/agent/settlement/6",
+  "model": {
+    "provider": "example",
+    "model_id": "example-model"
+  },
+  "runtime": {
+    "platform": "software-only",
+    "measurement": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "policy": {
+    "bundle_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enforcement_mode": "enforce"
+  },
+  "data_class": "confidential",
+  "build_provenance": {
+    "slsa_level": 1,
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "appraisal": {
+    "status": "none",
+    "verifier": "https://verifier.example.org"
+  },
+  "cnf": {
+    "jwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "4lYwTNnFrnAzuzGYnCjHgaKjy2cCsjf9e7QrQ4z-sP8"
+    }
+  },
+  "references": [
+    {
+      "rel": "position-commitment",
+      "id": "sha384:46e75df96232cd9f746664065d2505e3fb400db02321e4f16c5613d8dcf6c75f74686b08b22d1792272aeba456ab71a8",
+      "validation": "recompute"
+    }
+  ],
+  "signature": "HdGoe6LJ6zgQmWcNmhECDxX9nKlyLrWssUwMERCRXu-HIneBqQwLMBwl6EpQNudmR0_s9VamGzhEBk0eZhVLDA"
+}

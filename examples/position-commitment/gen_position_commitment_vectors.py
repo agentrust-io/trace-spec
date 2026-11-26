@@ -1,4 +1,4 @@
-"""Generate examples/position-commitment: five signed v0.3 draft Trust Records, each
+"""Generate examples/position-commitment: six signed v0.3 draft Trust Records, each
 carrying one `position-commitment` entry with `validation: "recompute"`, the proofs a
 holder presents for them, and the trust a relying party supplies for itself.
 
@@ -47,8 +47,20 @@ def b64u(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
+# Section 3.1.3 permits SHA-256 or SHA-384 for a record's digest, and the same
+# algorithm choice applies to the commitment this entry's `id` recomputes (section
+# 3.1.2, rule 1). `06-sha384-commitment.json` is the set's only case that exercises
+# the alternative; every other case keeps SHA-256, byte for byte as already committed.
+_DIGEST_ALGORITHMS: dict[str, Any] = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
+
+
+def jcs_digest(value: Any, algorithm: str = "sha256") -> str:
+    hasher = _DIGEST_ALGORITHMS[algorithm]
+    return f"{algorithm}:" + hasher(rfc8785.dumps(value)).hexdigest()
+
+
 def jcs_sha256(value: Any) -> str:
-    return "sha256:" + hashlib.sha256(rfc8785.dumps(value)).hexdigest()
+    return jcs_digest(value, "sha256")
 
 
 def key(label: str) -> Ed25519PrivateKey:
@@ -110,14 +122,18 @@ def record(producer: Ed25519PrivateKey, subject: str, commitment: str) -> dict[s
     return sign_record(unsigned, producer)
 
 
-def record_digest(rec: dict[str, Any]) -> str:
+def record_digest(rec: dict[str, Any], algorithm: str = "sha256") -> str:
     """Spec section 3.1.3: RFC 8785 canonical form of the complete record as published,
     `signature` member included."""
-    return jcs_sha256(rec)
+    return jcs_digest(rec, algorithm)
 
 
 def proof(
-    slot_obj: dict[str, Any], rec: dict[str, Any], signer: Ed25519PrivateKey, at: str
+    slot_obj: dict[str, Any],
+    rec: dict[str, Any],
+    signer: Ed25519PrivateKey,
+    at: str,
+    algorithm: str = "sha256",
 ) -> dict[str, Any]:
     """What the holder carries: the slot, and the committer's binding of the slot to the
     record digest, taken once the record exists. `committer_jwk` is the key the proof
@@ -125,8 +141,8 @@ def proof(
     binding = signed(
         {
             "type": "position-binding",
-            "slot_commitment": jcs_sha256(slot_obj),
-            "record_digest": record_digest(rec),
+            "slot_commitment": jcs_digest(slot_obj, algorithm),
+            "record_digest": record_digest(rec, algorithm),
             "committer_key_id": slot_obj["committer_key_id"],
             "bound_at": at,
         },
@@ -173,6 +189,12 @@ def build() -> dict[str, Any]:
     rec5 = record(producer, subject + "/5", jcs_sha256(slot5))
     proof5 = proof(slot5, rec5, other_committer, "2026-10-20T09:05:03Z")
 
+    # Section 3.1.3's SHA-384 alternative, exercised end to end: the commitment, the
+    # record digest, and the binding's own copy of both all carry a `sha384:` prefix.
+    slot6 = slot(8816, COMMITTER, committer, "2026-10-20T09:00:40Z")
+    rec6 = record(producer, subject + "/6", jcs_digest(slot6, "sha384"))
+    proof6 = proof(slot6, rec6, committer, "2026-10-20T09:05:04Z", algorithm="sha384")
+
     committer_jwk = key_to_jwk(committer)
     relying_party = {
         "note": (
@@ -182,7 +204,9 @@ def build() -> dict[str, Any]:
         "committer_keys": {thumbprint(committer_jwk): committer_jwk},
         "sequence": {
             "id": SEQUENCE,
-            "positions": {str(p): sequence_value(p) for p in (8700, 8812, 8813, 8814, 8815)},
+            "positions": {
+                str(p): sequence_value(p) for p in (8700, 8812, 8813, 8814, 8815, 8816)
+            },
         },
     }
 
@@ -247,6 +271,17 @@ def build() -> dict[str, Any]:
                 "sequence_position_matches": True,
                 "verdict": "position-consistent-not-established",
             },
+            "06-sha384-commitment.json": {
+                "proof": "proof-06.json",
+                "record_signature_verifies": True,
+                "proof_held": True,
+                "commitment_recomputes": True,
+                "binds_this_record": True,
+                "committer_key_independent": True,
+                "signatures_verify": True,
+                "sequence_position_matches": True,
+                "verdict": "position-established",
+            },
         },
     }
 
@@ -256,10 +291,12 @@ def build() -> dict[str, Any]:
         "03-proof-not-held.json": rec3,
         "04-proof-altered.json": rec4,
         "05-committer-key-self-supplied.json": rec5,
+        "06-sha384-commitment.json": rec6,
         "proof-01.json": proof1,
         "proof-04.json": proof4,
         "proof-04-altered.json": proof4_altered,
         "proof-05.json": proof5,
+        "proof-06.json": proof6,
         "relying-party.json": relying_party,
         "expected.json": expected,
     }

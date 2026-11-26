@@ -198,3 +198,20 @@ def test_the_schema_and_the_model_agree_on_every_case(jwk: dict[str, Any], accep
         f"schema={schema_ok} model={model_ok}, expected {accepted}. A confirmation key one "
         "artifact takes and the other refuses fails somewhere the producer did not choose."
     )
+
+
+def test_an_extra_member_with_an_unpaired_surrogate_fails_at_signing_not_at_validation() -> None:
+    """Both the schema and `models.JWK` accept a JWK extra member holding an unpaired
+    UTF-16 surrogate -- `_is_canonicalizable_value`'s docstring explains why rejecting
+    it would disagree with the schema, which has no way to exclude it either. What
+    actually happens to such a value: `_canonical_bytes` refuses it with the same
+    `rfc8785.CanonicalizationError` every other uncanonicalizable value gets, not an
+    uncaught exception. This is that claim, checked directly, so a future change to
+    the signing path that turned it into a bare crash would be caught here."""
+    from agentrust_trace.sign import _canonical_bytes
+    from rfc8785 import CanonicalizationError
+
+    jwk = {**BASE["cnf"]["jwk"], "extra": "\ud800"}
+    assert TrustRecord.model_validate(_with_jwk(jwk))  # accepted, per the parity test above
+    with pytest.raises(CanonicalizationError):
+        _canonical_bytes(jwk)

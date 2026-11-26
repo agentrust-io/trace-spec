@@ -383,7 +383,7 @@
             "enum": [
               "recompute"
             ],
-            "description": "DRAFT (#321). How id is checked. Absent: by resolution through resolver, as in v0.2. recompute: id is validated by recomputation from evidence the verifier holds, and that evidence must commit this record (spec section 3.1.2). No party is obliged to retain anything, so resolver and retention are absent. A verifier that cannot recompute because it lacks the evidence treats the entry as absent; a recomputation that runs and disagrees is a contradiction and is never reported as an absence."
+            "description": "DRAFT (#321). How id is checked. Absent: by resolution through resolver, as in v0.2. recompute: id is validated by recomputation from evidence the verifier holds, and that evidence must commit this record (spec section 3.1.2). No party is obliged to retain anything, so resolver and retention are absent. A verifier that cannot recompute because it lacks the evidence treats the entry as absent; a recomputation that runs and disagrees is a contradiction and is never reported as an absence; evidence the verifier holds but cannot parse or interpret is neither, and MUST be reported distinctly from both."
           }
         },
         "additionalProperties": false,

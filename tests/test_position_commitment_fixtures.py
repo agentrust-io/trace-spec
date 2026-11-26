@@ -16,6 +16,7 @@ tests/test_runtime_evidence_vectors.py does for the other v0.3 draft set.
 from __future__ import annotations
 
 import base64
+import binascii
 import copy
 import hashlib
 import json
@@ -30,7 +31,7 @@ import rfc8785
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from agentrust_trace.sign import _canonical_bytes
+from agentrust_trace.sign import JCS_SAFE_INTEGER, _canonical_bytes
 
 REPO = Path(__file__).resolve().parents[1]
 DIR = REPO / "examples" / "position-commitment"
@@ -57,6 +58,23 @@ def _load(name: str) -> dict:
 
 def _jcs_sha256(obj: object) -> str:
     return "sha256:" + hashlib.sha256(rfc8785.dumps(obj)).hexdigest()
+
+
+# Section 3.1.3 permits SHA-256 or SHA-384, and "the digest algorithm named in the
+# prefix MUST match the algorithm used, and a verifier MUST reject a record whose
+# prefix names an algorithm it does not support rather than fall back to another."
+# `06-sha384-commitment.json` is this set's only SHA-384 case; `_jcs_sha256` above is
+# kept as-is for the SHA-256 cases and the fixtures that build raw `sha256:` values by
+# hand, so none of those recomputations change shape.
+_DIGEST_ALGORITHMS = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
+
+
+def _digest_matches(obj: object, prefixed: str) -> bool:
+    algorithm, _, _ = prefixed.partition(":")
+    hasher = _DIGEST_ALGORITHMS.get(algorithm)
+    if hasher is None:
+        return False
+    return f"{algorithm}:" + hasher(rfc8785.dumps(obj)).hexdigest() == prefixed
 
 
 def _b64u_decode(text: str) -> bytes:
@@ -89,7 +107,20 @@ def _signed_by(obj: dict, jwk: dict) -> bool:
 # truncated or malformed. Either way nothing is recomputed, and that is the fact the
 # verdict has to carry rather than crashing or guessing a shape onto the bytes.
 _SUPPORTED_PROOF_TYPE = "position-commitment-proof"
-_REQUIRED_SLOT_STRINGS = ("sequence", "sequence_value", "committer_key_id", "signature")
+# The registry (docs/references-registry.md, "The referenced object") requires four
+# facts of the proof, one of them "the committing party: an identifier and a reference
+# to its verification key". The wire format in examples/position-commitment/ carries
+# that as two separate strings -- `committer` (the identifier) and `committer_key_id`
+# (the key reference) -- not one; an earlier pass of this gate required only the
+# latter, which left a slot with no committing-party identifier structurally
+# "usable" (review on #595).
+_REQUIRED_SLOT_STRINGS = (
+    "sequence",
+    "sequence_value",
+    "committer",
+    "committer_key_id",
+    "signature",
+)
 _REQUIRED_BINDING_STRINGS = ("slot_commitment", "record_digest", "committer_key_id", "signature")
 
 
@@ -116,7 +147,13 @@ def _proof_is_usable(proof: dict) -> bool:
     if any(not isinstance(slot.get(k), str) for k in _REQUIRED_SLOT_STRINGS):
         return False
     # `bool` is an `int` subclass in Python and not a sequence position in JSON.
-    if isinstance(slot.get("position"), bool) or not isinstance(slot.get("position"), int):
+    # A position outside the JCS safe-integer domain (spec section 3.2.2, "What counts
+    # as an integer") cannot be canonicalized and compared without ambiguity, the same
+    # domain `_is_canonicalizable_value` in models.py holds a JWK's extra members to.
+    position = slot.get("position")
+    if isinstance(position, bool) or not isinstance(position, int):
+        return False
+    if not -JCS_SAFE_INTEGER <= position <= JCS_SAFE_INTEGER:
         return False
     binding = proof.get("binding")
     if not isinstance(binding, dict) or binding.get("type") != "position-binding":
@@ -127,6 +164,26 @@ def _proof_is_usable(proof: dict) -> bool:
     if not isinstance(committer_jwk, dict):
         return False
     if any(not isinstance(committer_jwk.get(k), str) for k in ("kty", "crv", "x")):
+        return False
+    # This verifier implements exactly one key type, the one every committed proof
+    # uses; a `committer_jwk` of another type is a format it was never taught to
+    # read, same as an unrecognized `type` above -- unusable, not a forged signature.
+    if (committer_jwk.get("kty"), committer_jwk.get("crv")) != ("OKP", "Ed25519"):
+        return False
+    # `_signed_by` hands `x` and each `signature` straight to base64url decoding and
+    # an Ed25519 constructor that only checks length, not shape -- a syntactically
+    # fine but undecodable or wrong-length value raises `binascii.Error` or
+    # `ValueError` there uncaught. Review on #595 (malformed key: `x="a"` fails to
+    # decode at all; `x="abc"` decodes to 2 bytes, not the 32 Ed25519 requires).
+    # Checked once here, for the one key and the two signatures, so `_signed_by`
+    # never has to re-validate what this gate has already let through.
+    try:
+        x_len = len(_b64u_decode(committer_jwk["x"]))
+        slot_sig_len = len(_b64u_decode(slot["signature"]))
+        binding_sig_len = len(_b64u_decode(binding["signature"]))
+    except (ValueError, binascii.Error):
+        return False
+    if x_len != 32 or slot_sig_len != 64 or binding_sig_len != 64:
         return False
     return True
 
@@ -170,14 +227,16 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
         return {**result, "verdict": "position-absent-proof-unusable"}
     slot, binding = proof["slot"], proof["binding"]
 
-    result["commitment_recomputes"] = _jcs_sha256(slot) == entry["id"]
+    # `entry["id"]`'s own prefix names the algorithm; an unrecognized one never
+    # matches rather than being retried under SHA-256 (section 3.1.3, quoted above
+    # `_digest_matches`).
+    result["commitment_recomputes"] = _digest_matches(slot, entry["id"])
     if not result["commitment_recomputes"]:
         return {**result, "verdict": "contradiction-commitment-mismatch"}
 
     # Section 3.1.3's preimage: the complete record as published, signature included.
-    result["binds_this_record"] = (
-        binding["slot_commitment"] == entry["id"]
-        and binding["record_digest"] == _jcs_sha256(record)
+    result["binds_this_record"] = binding["slot_commitment"] == entry["id"] and _digest_matches(
+        record, binding["record_digest"]
     )
     if not result["binds_this_record"]:
         return {**result, "verdict": "contradiction-commits-another-record"}
@@ -267,11 +326,49 @@ def test_absence_and_contradiction_are_different_answers() -> None:
             lambda p: p["slot"].pop("committer_key_id"), id="slot-missing-committer-key-id"
         ),
         pytest.param(lambda p: p["slot"].pop("signature"), id="slot-missing-signature"),
+        pytest.param(lambda p: p["slot"].pop("committer"), id="slot-missing-committer"),
         pytest.param(
             lambda p: p.__setitem__("type", "position-commitment-proof-v999"),
             id="unsupported-proof-type",
         ),
         pytest.param(lambda p: p.pop("committer_jwk"), id="missing-committer-jwk"),
+        pytest.param(
+            lambda p: p["slot"].__setitem__("position", JCS_SAFE_INTEGER + 1),
+            id="position-above-the-safe-integer-range",
+        ),
+        pytest.param(
+            lambda p: p["slot"].__setitem__("position", -JCS_SAFE_INTEGER - 1),
+            id="position-below-the-safe-integer-range",
+        ),
+        pytest.param(
+            lambda p: p["committer_jwk"].__setitem__("x", "a"),
+            id="committer-jwk-x-is-not-valid-base64url",
+        ),
+        pytest.param(
+            # Decodes to 2 bytes, not the 32 an Ed25519 public key requires.
+            lambda p: p["committer_jwk"].__setitem__(
+                "x", base64.urlsafe_b64encode(b"ab").rstrip(b"=").decode()
+            ),
+            id="committer-jwk-x-decodes-to-the-wrong-length",
+        ),
+        pytest.param(
+            lambda p: p["slot"].__setitem__("signature", "not valid base64url!!"),
+            id="slot-signature-is-not-valid-base64url",
+        ),
+        pytest.param(
+            lambda p: p["slot"].__setitem__(
+                "signature", base64.urlsafe_b64encode(b"short").rstrip(b"=").decode()
+            ),
+            id="slot-signature-decodes-to-the-wrong-length",
+        ),
+        pytest.param(
+            lambda p: p["binding"].__setitem__("signature", "not valid base64url!!"),
+            id="binding-signature-is-not-valid-base64url",
+        ),
+        pytest.param(
+            lambda p: p["committer_jwk"].__setitem__("kty", "RSA"),
+            id="committer-jwk-is-not-the-supported-okp-ed25519-type",
+        ),
     ],
 )
 def test_a_held_but_unusable_proof_is_neither_absent_nor_a_contradiction(
@@ -379,6 +476,34 @@ def test_a_forged_slot_under_the_trusted_key_id_is_a_contradiction() -> None:
     assert observed["committer_key_independent"] is True
     assert observed["signatures_verify"] is False
     assert observed["verdict"] == "contradiction-signature-invalid"
+
+
+def test_sha384_commitment_establishes_the_position() -> None:
+    """`06` exercises section 3.1.3's SHA-384 alternative end to end: the commitment,
+    the record digest, and the binding's own copies of both all carry a `sha384:`
+    prefix, and the position is established exactly as `01`'s SHA-256 case is."""
+    record, proof = _load("06-sha384-commitment.json"), _load("proof-06.json")
+    assert record["references"][0]["id"].startswith("sha384:")
+    assert proof["binding"]["record_digest"].startswith("sha384:")
+    observed = _recompute(record, proof, RELYING_PARTY)
+    assert observed["commitment_recomputes"] is True
+    assert observed["binds_this_record"] is True
+    assert observed["verdict"] == "position-established"
+
+
+def test_an_unsupported_digest_algorithm_is_not_retried_under_sha256() -> None:
+    """Section 3.1.3: 'the digest algorithm named in the prefix MUST match the
+    algorithm used, and a verifier MUST reject a record whose prefix names an
+    algorithm it does not support rather than fall back to another.' A commitment
+    whose prefix names an algorithm this verifier does not implement must therefore
+    never match, even when the SHA-256 digest underneath it would have."""
+    record = copy.deepcopy(_load("01-position-established.json"))
+    proof = copy.deepcopy(_load("proof-01.json"))
+    sha256_hex = record["references"][0]["id"].split(":", 1)[1]
+    record["references"][0]["id"] = f"sha512:{sha256_hex}"
+    observed = _recompute(record, proof, RELYING_PARTY)
+    assert observed["commitment_recomputes"] is False
+    assert observed["verdict"] == "contradiction-commitment-mismatch"
 
 
 def test_a_slot_off_the_relying_partys_sequence_is_a_contradiction() -> None:
