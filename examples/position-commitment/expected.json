@@ -12,6 +12,7 @@
       "commitment_recomputes": true,
       "binds_this_record": true,
       "committer_key_independent": true,
+      "committer_identity_matches": true,
       "signatures_verify": true,
       "sequence_position_matches": true,
       "verdict": "position-established"
@@ -23,6 +24,7 @@
       "commitment_recomputes": true,
       "binds_this_record": false,
       "committer_key_independent": null,
+      "committer_identity_matches": null,
       "signatures_verify": null,
       "sequence_position_matches": null,
       "verdict": "contradiction-commits-another-record"
@@ -34,6 +36,7 @@
       "commitment_recomputes": null,
       "binds_this_record": null,
       "committer_key_independent": null,
+      "committer_identity_matches": null,
       "signatures_verify": null,
       "sequence_position_matches": null,
       "verdict": "position-absent"
@@ -45,6 +48,7 @@
       "commitment_recomputes": false,
       "binds_this_record": null,
       "committer_key_independent": null,
+      "committer_identity_matches": null,
       "signatures_verify": null,
       "sequence_position_matches": null,
       "verdict": "contradiction-commitment-mismatch"
@@ -56,6 +60,7 @@
       "commitment_recomputes": true,
       "binds_this_record": true,
       "committer_key_independent": false,
+      "committer_identity_matches": false,
       "signatures_verify": true,
       "sequence_position_matches": true,
       "verdict": "position-consistent-not-established"
@@ -67,9 +72,22 @@
       "commitment_recomputes": true,
       "binds_this_record": true,
       "committer_key_independent": true,
+      "committer_identity_matches": true,
       "signatures_verify": true,
       "sequence_position_matches": true,
       "verdict": "position-established"
+    },
+    "07-committer-identity-mismatch.json": {
+      "proof": "proof-07.json",
+      "record_signature_verifies": true,
+      "proof_held": true,
+      "commitment_recomputes": true,
+      "binds_this_record": true,
+      "committer_key_independent": true,
+      "committer_identity_matches": false,
+      "signatures_verify": null,
+      "sequence_position_matches": null,
+      "verdict": "contradiction-committer-identity-mismatch"
     }
   }
 }

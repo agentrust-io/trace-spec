@@ -1,4 +1,4 @@
-"""Generate examples/position-commitment: six signed v0.3 draft Trust Records, each
+"""Generate examples/position-commitment: seven signed v0.3 draft Trust Records, each
 carrying one `position-commitment` entry with `validation: "recompute"`, the proofs a
 holder presents for them, and the trust a relying party supplies for itself.
 
@@ -195,17 +195,30 @@ def build() -> dict[str, Any]:
     rec6 = record(producer, subject + "/6", jcs_digest(slot6, "sha384"))
     proof6 = proof(slot6, rec6, committer, "2026-10-20T09:05:04Z", algorithm="sha384")
 
+    # A slot validly signed by the one key the relying party independently trusts,
+    # naming a different committer identity than the one the relying party holds
+    # that key for. The signature is genuine; only the claimed identity is not the
+    # one this key is trusted to speak for.
+    slot7 = slot(8817, OTHER_COMMITTER, committer, "2026-10-20T09:00:50Z")
+    rec7 = record(producer, subject + "/7", jcs_sha256(slot7))
+    proof7 = proof(slot7, rec7, committer, "2026-10-20T09:05:05Z")
+
     committer_jwk = key_to_jwk(committer)
     relying_party = {
         "note": (
             "Supplied by the relying party, never read from a proof: the committer keys "
-            "it trusts and its own copy of the ordered sequence."
+            "it trusts, which identity it holds each one for, and its own copy of the "
+            "ordered sequence. Trusting a key is not the same fact as knowing who holds "
+            "it; `committer` here is what the relying party itself associates with the "
+            "key, independent of whatever identifier a slot signed under that key claims."
         ),
-        "committer_keys": {thumbprint(committer_jwk): committer_jwk},
+        "committer_keys": {
+            thumbprint(committer_jwk): {"committer": COMMITTER, **committer_jwk},
+        },
         "sequence": {
             "id": SEQUENCE,
             "positions": {
-                str(p): sequence_value(p) for p in (8700, 8812, 8813, 8814, 8815, 8816)
+                str(p): sequence_value(p) for p in (8700, 8812, 8813, 8814, 8815, 8816, 8817)
             },
         },
     }
@@ -215,6 +228,7 @@ def build() -> dict[str, Any]:
         "commitment_recomputes": None,
         "binds_this_record": None,
         "committer_key_independent": None,
+        "committer_identity_matches": None,
         "signatures_verify": None,
         "sequence_position_matches": None,
     }
@@ -228,6 +242,7 @@ def build() -> dict[str, Any]:
                 "commitment_recomputes": True,
                 "binds_this_record": True,
                 "committer_key_independent": True,
+                "committer_identity_matches": True,
                 "signatures_verify": True,
                 "sequence_position_matches": True,
                 "verdict": "position-established",
@@ -239,6 +254,7 @@ def build() -> dict[str, Any]:
                 "commitment_recomputes": True,
                 "binds_this_record": False,
                 "committer_key_independent": None,
+                "committer_identity_matches": None,
                 "signatures_verify": None,
                 "sequence_position_matches": None,
                 "verdict": "contradiction-commits-another-record",
@@ -256,6 +272,7 @@ def build() -> dict[str, Any]:
                 "commitment_recomputes": False,
                 "binds_this_record": None,
                 "committer_key_independent": None,
+                "committer_identity_matches": None,
                 "signatures_verify": None,
                 "sequence_position_matches": None,
                 "verdict": "contradiction-commitment-mismatch",
@@ -267,6 +284,7 @@ def build() -> dict[str, Any]:
                 "commitment_recomputes": True,
                 "binds_this_record": True,
                 "committer_key_independent": False,
+                "committer_identity_matches": False,
                 "signatures_verify": True,
                 "sequence_position_matches": True,
                 "verdict": "position-consistent-not-established",
@@ -278,9 +296,22 @@ def build() -> dict[str, Any]:
                 "commitment_recomputes": True,
                 "binds_this_record": True,
                 "committer_key_independent": True,
+                "committer_identity_matches": True,
                 "signatures_verify": True,
                 "sequence_position_matches": True,
                 "verdict": "position-established",
+            },
+            "07-committer-identity-mismatch.json": {
+                "proof": "proof-07.json",
+                "record_signature_verifies": True,
+                "proof_held": True,
+                "commitment_recomputes": True,
+                "binds_this_record": True,
+                "committer_key_independent": True,
+                "committer_identity_matches": False,
+                "signatures_verify": None,
+                "sequence_position_matches": None,
+                "verdict": "contradiction-committer-identity-mismatch",
             },
         },
     }
@@ -292,11 +323,13 @@ def build() -> dict[str, Any]:
         "04-proof-altered.json": rec4,
         "05-committer-key-self-supplied.json": rec5,
         "06-sha384-commitment.json": rec6,
+        "07-committer-identity-mismatch.json": rec7,
         "proof-01.json": proof1,
         "proof-04.json": proof4,
         "proof-04-altered.json": proof4_altered,
         "proof-05.json": proof5,
         "proof-06.json": proof6,
+        "proof-07.json": proof7,
         "relying-party.json": relying_party,
         "expected.json": expected,
     }

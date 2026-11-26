@@ -77,6 +77,7 @@ relying party holds.
 | `04-proof-altered.json` | `proof-04-altered.json` | **no** | not checked | not checked | not checked | not checked | contradiction: commitment mismatch |
 | `05-committer-key-self-supplied.json` | `proof-05.json` | yes | yes | **no** | verify under the proof's own key | matches | consistent, not established |
 | `06-sha384-commitment.json` | `proof-06.json` | yes (SHA-384) | yes (SHA-384) | yes | verify | matches | position established |
+| `07-committer-identity-mismatch.json` | `proof-07.json` | yes | yes | yes, but names another identity | verify | matches | contradiction: committer identity mismatch |
 
 `01` is the matching record. The slot recomputes to the entry's `id`, the binding
 commits this record's digest, both signatures verify under a committer key the
@@ -108,6 +109,15 @@ SHA-256. A verifier that recognizes only the prefix it was built to check, rathe
 the algorithm actually named, would reject this case or silently mismatch it; the
 tests also cover a commitment whose prefix names an algorithm this set does not use at
 all, which must never be retried under SHA-256 to make it match by accident.
+
+`07` is signed by the one key `relying-party.json` independently trusts -- the
+signature and every digest check out exactly as `01`'s do -- but the slot's
+`committer` names a different identity than the one the relying party holds that key
+for. Trusting a key and knowing who holds it are different facts: `relying-party.json`
+records both for the key it trusts, and `07` is a contradiction, not a lesser outcome,
+because the key *is* independently trusted here. An empty `committer`, and the
+structural checks that keep it from being accepted as one, are covered by the test
+suite rather than by a committed record.
 
 Further verdicts are exercised in memory by the tests, not by a committed record: a
 slot that names the trusted committer's key id but is signed by another key

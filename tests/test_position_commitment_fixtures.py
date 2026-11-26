@@ -18,6 +18,7 @@ from __future__ import annotations
 import base64
 import binascii
 import copy
+import functools
 import hashlib
 import json
 import subprocess
@@ -46,6 +47,7 @@ OUTCOME_KEYS = (
     "commitment_recomputes",
     "binds_this_record",
     "committer_key_independent",
+    "committer_identity_matches",
     "signatures_verify",
     "sequence_position_matches",
     "verdict",
@@ -70,15 +72,37 @@ _DIGEST_ALGORITHMS = {"sha256": hashlib.sha256, "sha384": hashlib.sha384}
 
 
 def _digest_matches(obj: object, prefixed: str) -> bool:
+    """`obj` is `slot` or `record`, read from a proof a holder supplied; `_canonical_bytes`
+    is used rather than raw `rfc8785.dumps` so a value neither canonicalizes, such as a
+    non-finite number a permissive JSON parser admitted, raises the single
+    `rfc8785.CanonicalizationError` `_recompute` already catches, the same as every
+    other value JCS has no form for -- not a bare, differently-shaped exception from
+    this one call site."""
     algorithm, _, _ = prefixed.partition(":")
     hasher = _DIGEST_ALGORITHMS.get(algorithm)
     if hasher is None:
         return False
-    return f"{algorithm}:" + hasher(rfc8785.dumps(obj)).hexdigest() == prefixed
+    return f"{algorithm}:" + hasher(_canonical_bytes(obj)).hexdigest() == prefixed
 
 
 def _b64u_decode(text: str) -> bytes:
-    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    """Strict unpadded base64url, not merely permissive decoding. Python's own
+    `urlsafe_b64decode` "discards" (its own documentation's word) any character
+    outside the base64url alphabet before checking padding, so a string with stray
+    characters spliced into an otherwise valid encoding, or one that substitutes the
+    standard `+`/`/` alphabet for `-`/`_`, decodes to the same bytes as the clean
+    canonical original instead of being refused (review on the third round:
+    `"YWJj!!!!"` decodes to the same `b"abc"` as `"YWJj"`). Re-encoding the decoded
+    bytes and comparing the result to the input catches all three at once -- stray
+    characters, the wrong alphabet, and non-canonical padding or unused trailing
+    bits -- without hand-rolling a validator for each: whatever this round-trips to
+    is the one canonical base64url spelling of those bytes, and anything else was
+    never that spelling to begin with.
+    """
+    decoded = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    if base64.urlsafe_b64encode(decoded).rstrip(b"=").decode("ascii") != text:
+        raise ValueError(f"not canonical base64url: {text!r}")
+    return decoded
 
 
 def _thumbprint(jwk: dict) -> str:
@@ -88,10 +112,14 @@ def _thumbprint(jwk: dict) -> str:
 
 
 def _signed_by(obj: dict, jwk: dict) -> bool:
+    """`obj` is `slot` or `binding`, read from a proof a holder supplied. `_canonical_bytes`,
+    not raw `rfc8785.dumps`, for the reason `_digest_matches` gives: a value elsewhere
+    in `obj` that cannot be canonicalized must raise the one exception `_recompute`
+    catches, not crash this call differently than that one does."""
     body = {k: v for k, v in obj.items() if k != "signature"}
     try:
         Ed25519PublicKey.from_public_bytes(_b64u_decode(jwk["x"])).verify(
-            _b64u_decode(obj["signature"]), rfc8785.dumps(body)
+            _b64u_decode(obj["signature"]), _canonical_bytes(body)
         )
     except InvalidSignature:
         return False
@@ -144,14 +172,28 @@ def _proof_is_usable(proof: dict) -> bool:
     slot = proof.get("slot")
     if not isinstance(slot, dict) or slot.get("type") != "position-slot":
         return False
-    if any(not isinstance(slot.get(k), str) for k in _REQUIRED_SLOT_STRINGS):
+    # A required string must also be non-empty: an empty `committer` is not an
+    # identifier, and the same holds for an empty signature or sequence id. The
+    # structural check alone -- `isinstance(..., str)` -- let `""` through (review on
+    # the second round).
+    if any(not isinstance(slot.get(k), str) or slot.get(k) == "" for k in _REQUIRED_SLOT_STRINGS):
         return False
-    # `bool` is an `int` subclass in Python and not a sequence position in JSON.
-    # A position outside the JCS safe-integer domain (spec section 3.2.2, "What counts
-    # as an integer") cannot be canonicalized and compared without ambiguity, the same
-    # domain `_is_canonicalizable_value` in models.py holds a JWK's extra members to.
+    # Section 3.2.2, "What counts as an integer": integer-by-value, not by JSON
+    # spelling -- `8812`, `8812.0`, and `8.812e3` are the same integer, and RFC 8785
+    # canonicalizes all three to the same form. A verifier that accepts only
+    # Python's own `int` type rejects the latter two as unusable, disagreeing with
+    # its own spec the same way the first round's JWK fix was written to stop (review
+    # on the third round). `bool` is still rejected: it is an `int` subclass in
+    # Python and not a sequence position in JSON. A position outside the JCS
+    # safe-integer domain cannot be canonicalized and compared without ambiguity, the
+    # same domain `_is_canonicalizable_value` in models.py holds a JWK's extra
+    # members to.
     position = slot.get("position")
-    if isinstance(position, bool) or not isinstance(position, int):
+    if isinstance(position, bool):
+        return False
+    if isinstance(position, float) and position.is_integer():
+        position = int(position)
+    if not isinstance(position, int):
         return False
     if not -JCS_SAFE_INTEGER <= position <= JCS_SAFE_INTEGER:
         return False
@@ -226,7 +268,41 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
     if not _proof_is_usable(proof):
         return {**result, "verdict": "position-absent-proof-unusable"}
     slot, binding = proof["slot"], proof["binding"]
+    try:
+        return _recompute_usable(record, entry, slot, binding, proof, relying_party, result)
+    except rfc8785.CanonicalizationError:
+        # `_proof_is_usable` validates every field the recomputation itself reads;
+        # it does not walk every additional member a producer might have put
+        # elsewhere in `slot` or `binding`. A non-finite number a permissive JSON
+        # parser admits, an unpaired surrogate, or nesting deep enough to exhaust
+        # the canonicalizer all fail here, inside `_canonical_bytes`, rather than at
+        # that gate -- possibly after `_recompute_usable` has already set some of
+        # `result`'s other keys from a check that ran before the one that failed. A
+        # partial, un-crashed-at-the-time check is not a weaker finding than a check
+        # that never started: every key but `proof_held` is reset to `None`, so this
+        # case is reported exactly as any other unusable proof is, whatever progress
+        # happened to be made before the value that could not be interpreted was
+        # reached. Nothing was recomputed with any confidence, so it is not a
+        # contradiction either.
+        return {
+            **dict.fromkeys(OUTCOME_KEYS),
+            "proof_held": True,
+            "verdict": "position-absent-proof-unusable",
+        }
 
+
+def _recompute_usable(
+    record: dict,
+    entry: dict,
+    slot: dict,
+    binding: dict,
+    proof: dict,
+    relying_party: dict,
+    result: dict,
+) -> dict:
+    """The rest of `_recompute`, once `_proof_is_usable` has passed: every value this
+    function and its helpers canonicalize can still raise `rfc8785.CanonicalizationError`
+    for a member that gate does not check (see the docstring at the call site)."""
     # `entry["id"]`'s own prefix names the algorithm; an unrecognized one never
     # matches rather than being retried under SHA-256 (section 3.1.3, quoted above
     # `_digest_matches`).
@@ -244,6 +320,22 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
     kid = slot["committer_key_id"]
     independent = relying_party["committer_keys"].get(kid)
     result["committer_key_independent"] = independent is not None
+    # Trusting a key and knowing who holds it are different facts (registry, "The
+    # referenced object": a reference to the verification key is one required fact,
+    # an identifier for the committing party is another). `slot["committer"]` is
+    # signed, so a proof cannot change it without invalidating the signature, but
+    # nothing before this point has checked it says what the relying party expects
+    # for this specific key -- a key it independently trusts can still sign a slot
+    # naming a different committer, and that was previously accepted as consistent.
+    # With no independently trusted key (case 05's shape), there is no independent
+    # identity to check the claim against either, so this is `False` the same way
+    # `committer_key_independent` is: nothing here is established independently of
+    # the proof.
+    result["committer_identity_matches"] = (
+        independent is not None and independent.get("committer") == slot["committer"]
+    )
+    if independent is not None and not result["committer_identity_matches"]:
+        return {**result, "verdict": "contradiction-committer-identity-mismatch"}
     jwk = independent if independent is not None else proof["committer_jwk"]
     if _thumbprint(jwk) != kid or binding["committer_key_id"] != kid:
         return {**result, "signatures_verify": False, "verdict": "contradiction-signature-invalid"}
@@ -252,9 +344,14 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
         return {**result, "verdict": "contradiction-signature-invalid"}
 
     sequence = relying_party["sequence"]
+    # `_proof_is_usable` has already established `slot["position"]` is, by value, a
+    # safe integer -- `int` or an integral `float` such as `8812.0` -- so normalizing
+    # with `int()` before building the lookup key treats both spellings alike. Without
+    # it, `str(8812.0)` is `"8812.0"`, which no key in `positions` would ever match,
+    # silently turning an accepted float position into a sequence mismatch.
     result["sequence_position_matches"] = (
         slot["sequence"] == sequence["id"]
-        and sequence["positions"].get(str(slot["position"])) == slot["sequence_value"]
+        and sequence["positions"].get(str(int(slot["position"]))) == slot["sequence_value"]
     )
     # The sequence is the relying party's own independent copy, held regardless of
     # which key signed the slot, so a value it disagrees with is a contradiction
@@ -328,6 +425,9 @@ def test_absence_and_contradiction_are_different_answers() -> None:
         pytest.param(lambda p: p["slot"].pop("signature"), id="slot-missing-signature"),
         pytest.param(lambda p: p["slot"].pop("committer"), id="slot-missing-committer"),
         pytest.param(
+            lambda p: p["slot"].__setitem__("committer", ""), id="slot-committer-is-empty"
+        ),
+        pytest.param(
             lambda p: p.__setitem__("type", "position-commitment-proof-v999"),
             id="unsupported-proof-type",
         ),
@@ -368,6 +468,50 @@ def test_absence_and_contradiction_are_different_answers() -> None:
         pytest.param(
             lambda p: p["committer_jwk"].__setitem__("kty", "RSA"),
             id="committer-jwk-is-not-the-supported-okp-ed25519-type",
+        ),
+        pytest.param(
+            # Decodes to the right 32 bytes, with four extra characters outside the
+            # base64url alphabet discarded along the way rather than rejected --
+            # `base64.urlsafe_b64decode`'s own documented behavior.
+            lambda p: p["committer_jwk"].__setitem__(
+                "x", p["committer_jwk"]["x"][:-4] + "!!!!" + p["committer_jwk"]["x"][-4:]
+            ),
+            id="committer-jwk-x-has-stray-characters-spliced-in",
+        ),
+        pytest.param(
+            # The same 32 bytes, spelled with the standard `+`/`/` alphabet in place
+            # of base64url's `-`/`_` wherever the original uses one.
+            lambda p: p["committer_jwk"].__setitem__(
+                "x", p["committer_jwk"]["x"].replace("-", "+").replace("_", "/")
+            ),
+            id="committer-jwk-x-uses-the-standard-alphabet-not-base64url",
+        ),
+        pytest.param(
+            # Decodes to the right 64 bytes; the extra padding is simply not part of
+            # this wire format's unpadded convention.
+            lambda p: p["slot"].__setitem__("signature", p["slot"]["signature"] + "=="),
+            id="slot-signature-has-non-canonical-padding",
+        ),
+        pytest.param(
+            # `_proof_is_usable` checks every required field, not every field. An
+            # additional member elsewhere in `slot` is outside that gate, and a
+            # non-finite float -- which `json.loads` admits as a legal extension,
+            # the spec's wire format does not -- has no RFC 8785 form at all.
+            lambda p: p["slot"].__setitem__("note", float("nan")),
+            id="slot-has-an-additional-member-with-a-non-finite-value",
+        ),
+        pytest.param(
+            lambda p: p["binding"].__setitem__("note", float("inf")),
+            id="binding-has-an-additional-member-with-a-non-finite-value",
+        ),
+        pytest.param(
+            # Nested well past the interpreter's recursion limit; `_canonical_bytes`
+            # reports this the same way it reports every other value JCS has no form
+            # for, not a bare `RecursionError`.
+            lambda p: p["slot"].__setitem__(
+                "note", functools.reduce(lambda inner, _: [inner], range(10_000), "x")
+            ),
+            id="slot-has-an-additional-member-nested-past-the-recursion-limit",
         ),
     ],
 )
@@ -421,7 +565,10 @@ def test_a_self_supplied_key_is_consistency_not_ordering() -> None:
     record, proof = _load("05-committer-key-self-supplied.json"), _load("proof-05.json")
     assert proof["slot"]["committer_key_id"] not in RELYING_PARTY["committer_keys"]
     trusting = copy.deepcopy(RELYING_PARTY)
-    trusting["committer_keys"][proof["slot"]["committer_key_id"]] = proof["committer_jwk"]
+    trusting["committer_keys"][proof["slot"]["committer_key_id"]] = {
+        "committer": proof["slot"]["committer"],
+        **proof["committer_jwk"],
+    }
     assert _recompute(record, proof, trusting)["verdict"] == "position-established"
     assert _recompute(record, proof, RELYING_PARTY)["verdict"] == (
         "position-consistent-not-established"
@@ -504,6 +651,53 @@ def test_an_unsupported_digest_algorithm_is_not_retried_under_sha256() -> None:
     observed = _recompute(record, proof, RELYING_PARTY)
     assert observed["commitment_recomputes"] is False
     assert observed["verdict"] == "contradiction-commitment-mismatch"
+
+
+@pytest.mark.parametrize("position", [8812, 8812.0, 8.812e3])
+def test_position_is_accepted_by_value_not_by_json_spelling(position: float) -> None:
+    """Section 3.2.2, 'What counts as an integer': integer-by-value, not by JSON
+    spelling. `8812`, `8812.0`, and `8.812e3` are the same integer, and RFC 8785
+    canonicalizes all three to the identical `b'...8812...'` bytes -- confirmed
+    directly below, not assumed. A structural gate that accepts only the first
+    spelling disagrees with the spec it implements, the same way the first round's
+    JWK fix was written to stop (review on the third round)."""
+    assert rfc8785.dumps({"position": 8812}) == rfc8785.dumps({"position": position})
+    proof = copy.deepcopy(_load("proof-01.json"))
+    proof["slot"]["position"] = position
+    assert _proof_is_usable(proof) is True
+
+
+def test_an_integer_valued_float_position_establishes_the_same_position() -> None:
+    """Carries the point above through the whole pipeline, not just the structural
+    gate: because RFC 8785 canonicalizes `8812` and `8812.0` identically, the slot's
+    existing signature -- computed over the canonical bytes, never the Python type --
+    still verifies after this substitution, and the sequence lookup must key on the
+    same normalized value the commitment digest already treats the two spellings as
+    equal under."""
+    record, proof = _load("01-position-established.json"), copy.deepcopy(_load("proof-01.json"))
+    proof["slot"]["position"] = 8812.0
+    observed = _recompute(record, proof, RELYING_PARTY)
+    assert observed["verdict"] == "position-established"
+
+
+def test_trusting_a_key_is_not_the_same_fact_as_trusting_who_holds_it() -> None:
+    """`07` is validly signed by the one key `relying-party.json` independently
+    trusts -- the signature and every digest check out -- but the signed `committer`
+    field names a different identity than the one the relying party holds that key
+    for. The registry requires both an identifier for the committing party and a
+    reference to its verification key as independent facts; checking only the
+    latter previously let a trusted key vouch for any identity a slot claimed under
+    it. This is a contradiction, not the consistency-only outcome a self-supplied
+    key gets, because the key here *is* independently trusted -- what fails is the
+    identity it was asked to vouch for."""
+    observed = _case("07-committer-identity-mismatch.json")
+    assert observed["committer_key_independent"] is True
+    assert observed["committer_identity_matches"] is False
+    assert observed["verdict"] == "contradiction-committer-identity-mismatch"
+    for name in ("01-position-established.json", "06-sha384-commitment.json"):
+        established = _case(name)
+        assert established["committer_key_independent"] is True
+        assert established["committer_identity_matches"] is True
 
 
 def test_a_slot_off_the_relying_partys_sequence_is_a_contradiction() -> None:
