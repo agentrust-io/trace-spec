@@ -90,10 +90,17 @@ committer, so the agreement establishes consistency and not ordering. Adding tha
 to the relying party's trust would turn the verdict into position established; the
 tests show that step is the relying party's to take, never the proof's.
 
-Two further verdicts are exercised in memory by the tests: a slot that names the
-trusted committer's key id but is signed by another key (contradiction: signature
-invalid), and a slot under the trusted key whose sequence value differs from the
-relying party's copy (contradiction: sequence mismatch).
+Further verdicts are exercised in memory by the tests, not by a committed record: a
+slot that names the trusted committer's key id but is signed by another key
+(contradiction: signature invalid); a slot under the trusted key whose sequence value
+differs from the relying party's copy, including under a self-supplied committer key,
+where the sequence mismatch is reported rather than softened to "not established"
+(contradiction: sequence mismatch); and a proof the verifier holds but cannot parse or
+whose `type` it does not implement -- missing or wrong-shaped `slot`, `binding`, or
+`committer_jwk` fields, or an unrecognized proof format. That last one is a fourth
+outcome distinct from all of the above: nothing is recomputed, so it is not a
+contradiction, and the holder did present something, so it is not `03`'s absence
+either. It is reported as `position-absent-proof-unusable`.
 
 None of these outcomes changes `runtime.platform` or makes the entry attested evidence
 of what the execution did.

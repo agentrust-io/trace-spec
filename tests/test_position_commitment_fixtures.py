@@ -21,6 +21,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import jsonschema
@@ -79,6 +80,57 @@ def _signed_by(obj: dict, jwk: dict) -> bool:
     return True
 
 
+# The one proof wire format this verifier implements (examples/position-commitment/
+# gen_position_commitment_vectors.py and every committed proof-*.json). The registry
+# deliberately leaves the sequence and the committer free to define their own wire
+# format for the proof a holder carries, so an unrecognized `type` is not a forgery;
+# it is a format this verifier was never taught to read, and it gets the same
+# "unusable" outcome as a proof this verifier was taught to read but that arrived
+# truncated or malformed. Either way nothing is recomputed, and that is the fact the
+# verdict has to carry rather than crashing or guessing a shape onto the bytes.
+_SUPPORTED_PROOF_TYPE = "position-commitment-proof"
+_REQUIRED_SLOT_STRINGS = ("sequence", "sequence_value", "committer_key_id", "signature")
+_REQUIRED_BINDING_STRINGS = ("slot_commitment", "record_digest", "committer_key_id", "signature")
+
+
+def _proof_is_usable(proof: dict) -> bool:
+    """Structural gate before `_recompute` reaches into `proof["slot"]["..."]` and
+    `proof["binding"]["..."]`. Section 3.1.2 rule 3 names exactly two outcomes for a
+    recompute entry: the evidence is not held (absent), or it was recomputed and
+    disagreed (contradiction). A proof that *is* held but cannot be parsed or
+    interpreted -- a missing or wrong-shaped `slot`/`binding`/`committer_jwk`, or a
+    `type` this verifier does not implement -- is neither: nothing is recomputed, so
+    it is not a contradiction, and reporting it as a contradiction would fail a
+    record over bytes the verifier never actually checked. It is kept distinct from
+    `position-absent` (case 03, no proof at all) only in the verdict string, per the
+    review on #595: the two must not collapse into one reason a relying party cannot
+    tell apart.
+    """
+    if not isinstance(proof, dict):
+        return False
+    if proof.get("type") != _SUPPORTED_PROOF_TYPE:
+        return False
+    slot = proof.get("slot")
+    if not isinstance(slot, dict) or slot.get("type") != "position-slot":
+        return False
+    if any(not isinstance(slot.get(k), str) for k in _REQUIRED_SLOT_STRINGS):
+        return False
+    # `bool` is an `int` subclass in Python and not a sequence position in JSON.
+    if isinstance(slot.get("position"), bool) or not isinstance(slot.get("position"), int):
+        return False
+    binding = proof.get("binding")
+    if not isinstance(binding, dict) or binding.get("type") != "position-binding":
+        return False
+    if any(not isinstance(binding.get(k), str) for k in _REQUIRED_BINDING_STRINGS):
+        return False
+    committer_jwk = proof.get("committer_jwk")
+    if not isinstance(committer_jwk, dict):
+        return False
+    if any(not isinstance(committer_jwk.get(k), str) for k in ("kty", "crv", "x")):
+        return False
+    return True
+
+
 def _record_verifies(record: dict) -> None:
     """The v0.3 draft envelope: schema-valid, and signed under the key the relying party
     holds for the producer, not the one the record embeds."""
@@ -99,6 +151,12 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
     disagrees is a contradiction and is never reported as an absence. Agreement under a
     committer key the proof supplies for itself is consistency only: ordering is
     established only under a key and a sequence the relying party holds independently.
+
+    A proof that is held but cannot be parsed -- malformed, truncated, or in a format
+    this verifier does not implement -- is a third outcome the rule above does not
+    name directly: it is not absent (the holder did carry something) and it is not a
+    contradiction (nothing was recomputed to disagree with anything). See
+    `_proof_is_usable`.
     """
     (entry,) = record["references"]
     assert entry["rel"] == "position-commitment"
@@ -108,6 +166,8 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
     if proof is None:
         return {**result, "proof_held": False, "verdict": "position-absent"}
     result["proof_held"] = True
+    if not _proof_is_usable(proof):
+        return {**result, "verdict": "position-absent-proof-unusable"}
     slot, binding = proof["slot"], proof["binding"]
 
     result["commitment_recomputes"] = _jcs_sha256(slot) == entry["id"]
@@ -137,10 +197,18 @@ def _recompute(record: dict, proof: dict | None, relying_party: dict) -> dict:
         slot["sequence"] == sequence["id"]
         and sequence["positions"].get(str(slot["position"])) == slot["sequence_value"]
     )
-    if not result["committer_key_independent"]:
-        return {**result, "verdict": "position-consistent-not-established"}
+    # The sequence is the relying party's own independent copy, held regardless of
+    # which key signed the slot, so a value it disagrees with is a contradiction
+    # whether or not the committer key is independently trusted. Rule 3 ("recompute
+    # entries") never softens a disagreement to an absence or a lesser outcome, and an
+    # untrusted-key verdict is exactly that: checking committer-key independence first
+    # let an independently-held sequence mismatch be swallowed by it. The key verdict
+    # only decides what a *matching* sequence establishes (trust vs. mere
+    # consistency); it does not gate whether a mismatch is reported at all.
     if not result["sequence_position_matches"]:
         return {**result, "verdict": "contradiction-sequence-mismatch"}
+    if not result["committer_key_independent"]:
+        return {**result, "verdict": "position-consistent-not-established"}
     return {**result, "verdict": "position-established"}
 
 
@@ -188,6 +256,42 @@ def test_absence_and_contradiction_are_different_answers() -> None:
         assert _case(name)["proof_held"] is True
 
 
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda p: p.pop("binding"), id="missing-binding"),
+        pytest.param(lambda p: p.__setitem__("binding", []), id="binding-is-a-list"),
+        pytest.param(lambda p: p.__setitem__("binding", {}), id="binding-is-empty"),
+        pytest.param(lambda p: p.pop("slot"), id="missing-slot"),
+        pytest.param(
+            lambda p: p["slot"].pop("committer_key_id"), id="slot-missing-committer-key-id"
+        ),
+        pytest.param(lambda p: p["slot"].pop("signature"), id="slot-missing-signature"),
+        pytest.param(
+            lambda p: p.__setitem__("type", "position-commitment-proof-v999"),
+            id="unsupported-proof-type",
+        ),
+        pytest.param(lambda p: p.pop("committer_jwk"), id="missing-committer-jwk"),
+    ],
+)
+def test_a_held_but_unusable_proof_is_neither_absent_nor_a_contradiction(
+    mutate: Callable[[dict], None],
+) -> None:
+    """Findings from the Nov 2/Nov 6 reviews of #595 (drk-ram, chernistry): a proof the
+    verifier holds but cannot parse or interpret must not crash `_recompute` (a
+    `KeyError`/`TypeError` is not a conformance outcome), must not be reported as
+    `position-established` (an unrecognized `type` must not be silently accepted),
+    and must not collapse into `position-absent` (case 03) -- the relying party did
+    receive bytes, which is a different fact than receiving nothing."""
+    record = _load("01-position-established.json")
+    proof = copy.deepcopy(_load("proof-01.json"))
+    mutate(proof)
+    observed = _recompute(record, proof, RELYING_PARTY)
+    assert observed["proof_held"] is True
+    assert observed["verdict"] == "position-absent-proof-unusable"
+    assert observed["commitment_recomputes"] is None, "nothing was recomputed"
+
+
 def test_the_same_proof_on_another_record_fails_only_on_the_binding() -> None:
     """`02` carries `01`'s entry byte for byte and is handed `01`'s proof. The commitment
     recomputes, so a check that stopped at the slot would pass it; only the record
@@ -225,6 +329,26 @@ def test_a_self_supplied_key_is_consistency_not_ordering() -> None:
     assert _recompute(record, proof, RELYING_PARTY)["verdict"] == (
         "position-consistent-not-established"
     )
+
+
+def test_a_self_supplied_key_does_not_soften_a_sequence_mismatch() -> None:
+    """A proof whose committer key is self-supplied (05) is `position-consistent-not-
+    established` when its sequence value agrees with the relying party's own copy
+    (`test_a_self_supplied_key_is_consistency_not_ordering`). It must not stay that
+    verdict when the two disagree: the relying party's sequence is independent of
+    whichever key signed the slot, and rule 3 never lets a disagreement with it be
+    reported as a lesser outcome than a contradiction. Reproduces drk-ram's review of
+    #595: change the relying party's value at position 8815 (05's position) and the
+    verdict must move to `contradiction-sequence-mismatch`, not stay
+    `position-consistent-not-established`."""
+    record, proof = _load("05-committer-key-self-supplied.json"), _load("proof-05.json")
+    position = str(proof["slot"]["position"])
+    relying_party = copy.deepcopy(RELYING_PARTY)
+    relying_party["sequence"]["positions"][position] = "sha256:" + "0" * 64
+    observed = _recompute(record, proof, relying_party)
+    assert observed["committer_key_independent"] is False
+    assert observed["sequence_position_matches"] is False
+    assert observed["verdict"] == "contradiction-sequence-mismatch"
 
 
 def test_a_forged_slot_under_the_trusted_key_id_is_a_contradiction() -> None:

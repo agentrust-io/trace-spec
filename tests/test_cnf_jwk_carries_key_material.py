@@ -141,6 +141,33 @@ JWK_CASES = [
     pytest.param({"kty": "RSA", "e": "AQAB"}, False, id="rsa-without-n"),
     pytest.param({"kty": "RSA", "n": 123, "e": "AQAB"}, False, id="rsa-with-a-non-string-modulus"),
     pytest.param({"kty": "AKP", "pub": "x"}, True, id="a-kty-neither-artifact-names"),
+    pytest.param({**BASE["cnf"]["jwk"], "use": "sig"}, True, id="okp-with-a-string-extra"),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "nested": {"a": [1, "b", None, True]}},
+        True,
+        id="okp-with-a-canonicalizable-nested-extra",
+    ),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "weird": 1.5}, False, id="okp-with-a-float-extra"
+    ),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "bignum": 9007199254740993},
+        False,
+        id="okp-with-an-unsafe-integer-extra",
+    ),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "nested": {"a": [1.5]}},
+        False,
+        id="okp-with-a-float-nested-inside-an-extra",
+    ),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "whole": 1.0}, True, id="okp-with-a-whole-valued-float-extra"
+    ),
+    pytest.param(
+        {**BASE["cnf"]["jwk"], "huge": 9007199254740992.0},
+        False,
+        id="okp-with-a-whole-valued-float-extra-out-of-range",
+    ),
 ]
 
 

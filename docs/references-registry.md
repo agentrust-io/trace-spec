@@ -334,28 +334,41 @@ defines, rule 3 of §3.1.2 governs, and `resolver` is still required, so a produ
 that retains nothing must omit the entry. The registration is useful under v0.2 only
 so that two implementations mean the same thing by the name.
 
-Under the v0.3 draft, an entry carrying `validation: "recompute"` has three outcomes,
+Under the v0.3 draft, an entry carrying `validation: "recompute"` has four outcomes,
 each reported separately:
 
 1. **The verifier does not hold the proof.** The entry is absent. That is not a
    finding against the record.
-2. **The recomputation agrees and the proof commits this record's digest.** The
+2. **The verifier holds the proof but cannot recompute from it** (§3.1.2 rule 3):
+   malformed, truncated, or in a format the verifier does not implement. Nothing was
+   recomputed, so this is reported distinctly from both the absence above and the
+   contradictions below -- the holder did present something, which a relying party
+   needs to be able to tell apart from presenting nothing.
+3. **The recomputation agrees and the proof commits this record's digest.** The
    proof is consistent with this record. Whether the position was taken for this
    record, and where it sits in the sequence, rests on trust the relying party
    supplies itself: a committer key and a copy of the sequence it holds independently
    of the proof. A proof checked under a key it carries for itself establishes
-   consistency, not an independently established ordering.
-3. **The recomputation runs and disagrees, or the proof commits another record's
-   digest.** A contradiction in the record, never reported as an absence.
+   consistency, not an independently established ordering. This holds regardless of
+   whether that key is independently trusted: an independently held sequence that
+   disagrees with the slot is a contradiction (outcome 4) whether or not the
+   committer key is also independently held, because the sequence value and the key's
+   trust are two separate facts the relying party holds on its own.
+4. **The recomputation runs and disagrees, or the proof commits another record's
+   digest.** A contradiction in the record, never reported as an absence, and never
+   downgraded to the lesser outcome above because the committer key happened not to
+   be independently trusted.
 
-The example set holds each of these apart: a proof that establishes the position
+The example set holds most of these apart: a proof that establishes the position
 under an independently held key and sequence, the same proof carried by another
 record, no proof held, a proof altered to an earlier position, and a proof whose only
-committer key is the one it carries. The records' signatures verify in every case.
+committer key is the one it carries. The records' signatures verify in every case. A
+held-but-unusable proof and a sequence mismatch under a self-supplied key are exercised
+by the test suite rather than by a committed record.
 
-The second outcome is the property the producer gave up by omitting the entry under
-v0.2: telling a backdate from a late commit by a contradiction inside the record,
-rather than bounding the commit by rule.
+The consistency outcome (3 above) is the property the producer gave up by omitting the
+entry under v0.2: telling a backdate from a late commit by a contradiction inside the
+record, rather than bounding the commit by rule.
 
 ## Adding a name
 

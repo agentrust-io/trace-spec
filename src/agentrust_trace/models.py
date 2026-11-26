@@ -519,6 +519,39 @@ class Appraisal(_TraceModel):
 _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
+def _is_canonicalizable_value(value: Any) -> bool:
+    """Mirrors ``canonicalizableValue`` (``schema/trace-claim.json``): the shape an
+    unnamed JWK member must have, recursively, to be something section 3.2.2 can
+    canonicalize without ambiguity. The schema's ``integer`` branch has no
+    ``number`` counterpart, but JSON Schema decides ``"type": "integer"`` by value
+    and not by a language's number type (spec section 3.2.2, "What counts as an
+    integer"): ``jsonschema`` itself accepts a whole-valued float such as ``1.0``
+    there, and only a value with a nonzero fractional part, or one a double cannot
+    represent exactly as a JSON number (``NaN``, an infinity), fails every branch.
+    A first version of this rejected every ``float`` outright, which is stricter
+    than the schema it mirrors and would have refused ``1.0`` where the schema
+    admits it -- the same disagreement in the opposite direction from the one this
+    function exists to close. An integer-valued float is therefore folded into the
+    same range check as a Python ``int``, matching ``_json_integer`` above and
+    ``_integer_value`` in ``sign.py``, which this schema range mirrors for the
+    named integer fields.
+
+    ``bool`` is checked first: it is an ``int`` subclass in Python and not a number
+    in JSON, and the schema's ``boolean`` alternative already admits it.
+    """
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return True
+    if isinstance(value, int):
+        return -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER
+    if isinstance(value, float):
+        return value.is_integer() and -JCS_SAFE_INTEGER <= value <= JCS_SAFE_INTEGER
+    if isinstance(value, list):
+        return all(_is_canonicalizable_value(item) for item in value)
+    if isinstance(value, dict):
+        return all(_is_canonicalizable_value(item) for item in value.values())
+    return False
+
+
 class JWK(_TraceModel):
     # JWK params vary by key type (EC, OKP, RSA): allow unknown members per RFC 7517
     model_config = ConfigDict(extra="allow")
@@ -552,6 +585,24 @@ class JWK(_TraceModel):
             raise ValueError(
                 f"jwk must not contain private key material: found {', '.join(private)}. "
                 "cnf.jwk is a public proof-of-possession key."
+            )
+        # extra="allow" admits any Python value RFC 7517 lets a JWK carry under an
+        # unnamed member; the schema holds that member to canonicalizableValue
+        # (no `number`, integers held to the safe-integer domain). A model that
+        # accepted what the schema rejects would send the failure downstream to
+        # whichever canonicalizer the producer happens to be using, as the
+        # JCS_SAFE_INTEGER comment above states for the named integer fields.
+        uncanonicalizable = sorted(
+            key
+            for key, value in (self.model_extra or {}).items()
+            if not _is_canonicalizable_value(value)
+        )
+        if uncanonicalizable:
+            raise ValueError(
+                f"jwk member(s) {', '.join(uncanonicalizable)} are not canonicalizable: "
+                "RFC 8785 §3.2.2.3 float serialization is not canonical and no field in "
+                "this specification is typed `number`, and an integer must stay within "
+                f"the safe-integer domain (-{JCS_SAFE_INTEGER} to {JCS_SAFE_INTEGER})."
             )
         return self
 
