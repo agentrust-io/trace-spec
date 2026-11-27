@@ -176,10 +176,8 @@ asks of you and what it proves by itself.
 `transparency` defaults to `None`, which leaves the key out of the record. That is
 correct below Level 2: an unanchored record has no receipt to name.
 
-Note: `schema/trace-claim.json` still lists `transparency` in `required`, so an
-unanchored record validates against the model and not against the published JSON Schema.
-That divergence is tracked in `tests/test_sandbox_adapter.py` and is not introduced by
-this adapter.
+The published JSON Schema and reference model both allow the field to be absent.
+An unanchored record cannot satisfy the Level 2 anchoring check.
 
 ## Worked example
 

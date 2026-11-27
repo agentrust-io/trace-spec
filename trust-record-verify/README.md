@@ -27,6 +27,7 @@ const result = await verifyRecord(record, {
 result.profile;                   // the record's eat_profile, accepted by this verifier
 result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
 result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
+result.trustedKeySource;          // "caller" for the independently trusted key
 result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
 result.citations;                 // per-surface citation resolution outcomes (section 3.1.2)
 result.platformMeasurement;       // platform measurement appraisal outcome
@@ -36,6 +37,11 @@ A rejection is a `TraceVerificationError` carrying a stable `code`. A resolved r
 has to be read: `revocation.outcome` is the verifier's appraisal input, and section 3.2.3
 states that `unverified_for_revocation` and `no_check_performed` MUST NOT be reported as an
 affirming appraisal.
+
+`allowEmbeddedKey: true` is an explicit diagnostic mode when the caller has no
+independently trusted key. It checks the signature against the record's own
+`cnf.jwk` and returns `trustedKeySource: "record"`; that establishes internal
+consistency, not authenticated origin or a section 3.3 verification pass.
 
 ## What it checks, and where each rule comes from
 

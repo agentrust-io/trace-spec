@@ -1,6 +1,6 @@
 """Signature-encoding vectors (spec section 3.2.2, proposal #247).
 
-An Ed25519 or ES256 embedded signature is 64 bytes; base64url without padding
+An Ed25519 base embedded signature is 64 bytes; base64url without padding
 spends 86 characters (516 bits) on those 512 bits, so the final character
 carries 4 bits nothing signs. RFC 4648 section 3.5 requires those unused bits
 to be zero. `examples/signature-encoding/` carries three vectors that share the
@@ -217,7 +217,7 @@ _NON_CANONICAL = _load(NON_CANONICAL_PATHS[0])["record"]["signature"]
         # the final character only at the length of a 64-byte signature.
         (_NON_CANONICAL[:-1], True),
         (_NON_CANONICAL + "A", True),
-        ("A" * 128, True),  # the length of a 96-byte ES384 signature: no unused bits
+        ("A" * 128, True),  # structural pattern permits this length; verifier does not
         ("", False),
         # An end anchor that tolerates a final line terminator would let these through.
         *[(_CANONICAL + tail, False) for tail in ("\n", "\r", "\u2028", "\u2029")],

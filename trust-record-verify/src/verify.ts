@@ -81,7 +81,8 @@ export interface VerifyOptions {
   /**
    * Verify against the record's own `cnf.jwk` when no trusted key is given. That
    * proves the record is internally consistent, not who produced it, and the
-   * result reports it as `trustedKeySource: "record"`.
+   * result reports it as `trustedKeySource: "record"`. This diagnostic result
+   * is not an authenticated verification pass under spec section 3.3.
    */
   readonly allowEmbeddedKey?: boolean;
   /** Verification moment in Unix seconds. Defaults to the clock. */
