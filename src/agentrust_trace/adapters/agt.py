@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from agentrust_trace._patterns import _PYTHON_PATTERNS
+from agentrust_trace._identity import _is_subject
 from agentrust_trace.adapters._validation import (
     _check_call_count,
     _check_data_class,
@@ -36,13 +36,10 @@ from agentrust_trace.sign import _canonical_bytes
 # failure this check exists to stop -- so the floor is the contract's, not zero.
 TRACE_MIN_IAT = 1700000000
 
-_SUBJECT_RE = _PYTHON_PATTERNS[r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"]
-
-
 def _check_agent_did(value: object) -> None:
     if not isinstance(value, str):
         raise ValueError(f"agent_did must be a string, got {type(value).__name__}")
-    if not _SUBJECT_RE.match(value):
+    if not _is_subject(value):
         raise ValueError(
             f"agent_did {value!r} must be a SPIFFE URI "
             "('spiffe://<trust-domain>/<path>') or a DID ('did:<method>:<id>'). "

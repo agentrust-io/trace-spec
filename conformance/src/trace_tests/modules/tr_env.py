@@ -13,8 +13,21 @@ _PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
 # agentrust-trace reference model, which already refuses these.
 _JWK_PRIVATE_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
-# Applied with fullmatch: $ alone also matches before a trailing newline.
-_SUBJECT_RE = re.compile(r'^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$')
+# SPIFFE workload IDs and DID Core DIDs. Applied with fullmatch so this standalone
+# conformance package has the same grammar as schema/trace-claim.json without
+# depending on the reference implementation.
+_SPIFFE_SEGMENT = (
+    r"(?:[A-Za-z0-9_-]|"
+    r"[A-Za-z0-9_-][A-Za-z0-9_\x2E-]|"
+    r"\x2E[A-Za-z0-9_-]|"
+    r"[A-Za-z0-9_\x2E-]{3,})"
+)
+_DID_IDCHAR = r"(?:[A-Za-z0-9_\x2E-]|%[0-9A-Fa-f]{2})"
+_SUBJECT_RE = re.compile(
+    rf"^(?:spiffe://[a-z0-9_\x2E-]{{1,255}}/{_SPIFFE_SEGMENT}"
+    rf"(?:/{_SPIFFE_SEGMENT})*|"
+    rf"did:[a-z0-9]+:(?:{_DID_IDCHAR}|:)*{_DID_IDCHAR})$"
+)
 _IAT_MIN = 1_700_000_000
 #: The schema's unconditional required tree (spec 3.1: every field is required
 #: unless marked OPTIONAL): each member reached through `required`, from the root

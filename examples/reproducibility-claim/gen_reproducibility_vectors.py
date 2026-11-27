@@ -52,7 +52,7 @@ SEED = hashlib.sha256(b"trace-spec reproducibility-claim fixture key").digest()
 #: Fixed issue time. Nothing in this set turns on the clock.
 IAT = 1785000000
 
-SUBJECT = "spiffe://orchestrator.example/run/2026-09-18T09:00:00Z/exec/plan"
+SUBJECT = "spiffe://orchestrator.example/run/2026-09-18T09-00-00Z/exec/plan"
 VERIFIER = "https://verifier.example/re-execution"
 RESOLVER = "https://artifacts.example.org"
 

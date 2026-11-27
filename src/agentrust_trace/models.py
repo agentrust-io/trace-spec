@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 from functools import partial
 
+from agentrust_trace._identity import _SUBJECT_PATTERN, _require_subject
 from agentrust_trace._patterns import _PYTHON_PATTERNS, _require_pattern
 from agentrust_trace.semantics import _require_platform_measurement_binding
 
@@ -23,16 +24,11 @@ _DIGEST_RE = r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$"
 # and run through the same adapted pattern the schema validator uses.
 _TPM_LAYER_RE = r"^pcr:([0-9]|1[0-9]|2[0-3])$"
 
-# A workload identity, not a namespace. A SPIFFE ID names a trust domain *and* a
-# workload path within it, and a DID names a method and an identifier within that
-# method, so neither is complete at its prefix: `spiffe://example.org` names a trust
-# domain and no workload, and `did:` names nothing at all. The method name is held to
-# lowercase because DID Core section 3.1 fixes `method-char` to `%x61-7A / DIGIT` and
-# requires every DID to conform to that ABNF; the method-specific identifier is not
-# constrained here, so `did:key:z6Mk...` keeps its case. Mirrored verbatim in
-# `schema/trace-claim.json` and its copy, and held there by
+# The schema-facing pattern mirrors the shared parser's grammar; the after-validator
+# runs the parser as the authoritative Python boundary rather than treating a regex
+# prefix as URI parsing. The schema copies are held equal by
 # `tests/test_the_schema_and_the_models_agree.py`.
-_SUBJECT_RE = r"^(spiffe://[^/]+/.+|did:[a-z0-9]+:.+)$"
+_SUBJECT_RE = _SUBJECT_PATTERN
 # ISO 8601 duration, spelled out by alternation rather than with a negative
 # lookahead so that the same pattern string can be used here and in the JSON
 # Schema: pydantic's default regex engine (Rust) has no look-around, so a
@@ -575,7 +571,7 @@ class TrustRecord(_TraceModel):
     iat: Annotated[JsonInt, Field(ge=1700000000, le=JCS_SAFE_INTEGER)]
     subject: Annotated[
         str, Field(pattern=_SUBJECT_RE),
-        AfterValidator(partial(_require_pattern, pattern=_SUBJECT_RE)),
+        AfterValidator(_require_subject),
     ]
     model: ModelInfo
     runtime: RuntimeInfo

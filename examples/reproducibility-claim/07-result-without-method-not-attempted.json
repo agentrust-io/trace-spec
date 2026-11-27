@@ -5,7 +5,7 @@
   "record": {
     "eat_profile": "tag:agentrust-io.com,2026:trace-v0.2",
     "iat": 1785000000,
-    "subject": "spiffe://orchestrator.example/run/2026-09-18T09:00:00Z/exec/plan",
+    "subject": "spiffe://orchestrator.example/run/2026-09-18T09-00-00Z/exec/plan",
     "model": {
       "provider": "anthropic",
       "model_id": "claude-sonnet-4-6"
@@ -56,7 +56,7 @@
         "x": "rXsn8NO3GIFD15eLVHfps15OcGD6xn8b8R93Unzpv3E"
       }
     },
-    "signature": "z7x8p_M2Yv9URcrC1YFwrcg3tCzFVx3nXztZ14EdGwkADho-4aKPkqGDD-r8MnFj_kYCUl5nmLLc_Yeki_XsDg"
+    "signature": "CiNNHotYnGgs2hWysVopcLWn2gL48YAeRKaRY25r5Z5boGLPVdBwxD2yTYXYrvvWIzdfDmwtPBqf0002EpxCDw"
   },
   "expected": {
     "outcome": "reject",
