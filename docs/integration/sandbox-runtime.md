@@ -171,10 +171,10 @@ asks of you and what it proves by itself.
 | ----- | ------------------------------------------------ | ---------------------- | -------------------------------------- |
 | 0     | nothing extra                                    | `software-only`       | None claimed -- honestly unattested |
 | 1     | a `SandboxAttestation`                           | the attested platform | Record shape only. Real Level 1 assurance requires the supplied evidence to have been independently verified by your own attestation verifier before construction, *and* that verification to bind the record-signing key to the attested environment -- this adapter defines no such binding |
-| 2     | Level 1 plus `transparency=` a SCITT receipt URI | the attested platform | Same as Level 1, plus a transparency receipt -- the receipt does not itself verify the hardware evidence |
+| 2     | Level 1 plus `transparency=` the pre-reserved canonical registry-entry URI | the attested platform | Same as Level 1, plus authenticated entry resolution and a transparency receipt -- the receipt does not itself verify the hardware evidence |
 
 `transparency` defaults to `None`, which leaves the key out of the record. That is
-correct below Level 2: an unanchored record has no receipt to name.
+correct below Level 2: an unanchored record has no registry entry to name.
 
 Note: `schema/trace-claim.json` still lists `transparency` in `required`, so an
 unanchored record validates against the model and not against the published JSON Schema.

@@ -63,6 +63,8 @@ def _run_core(
     expected_nonce: str | None,
     receipt: dict[str, Any] | None,
     entry: dict[str, Any] | None,
+    entry_resolver: Callable[[str], bytes] | None,
+    entry_source_authenticated: bool,
     policy_resolver: Callable[[str], bytes] | None,
     expected_policy_hash: str | None = None,
 ) -> dict[str, list[Finding]]:
@@ -107,7 +109,15 @@ def _run_core(
 
     if "TR-ANC" in active:
         results["TR-ANC"] = invoke(
-            "TR-ANC", lambda: anc(trace, receipt=receipt, entry=entry, subject=record)
+            "TR-ANC",
+            lambda: anc(
+                trace,
+                receipt=receipt,
+                entry=entry,
+                subject=record,
+                entry_resolver=entry_resolver,
+                entry_source_authenticated=entry_source_authenticated,
+            ),
         )
 
     return results
@@ -123,6 +133,8 @@ def _validate_runner_inputs(
     expected_nonce: Any,
     receipt: Any,
     entry: Any,
+    entry_resolver: Any,
+    entry_source_authenticated: Any,
     policy_resolver: Any,
 ) -> None:
     if not isinstance(record, dict):
@@ -147,6 +159,10 @@ def _validate_runner_inputs(
         raise ValueError(
             f"entry must be a JSON object or None, got {type(entry).__name__}"
         )
+    if entry_resolver is not None and not callable(entry_resolver):
+        raise ValueError("entry_resolver must be callable or None")
+    if type(entry_source_authenticated) is not bool:
+        raise ValueError("entry_source_authenticated must be a boolean")
     if policy_resolver is not None and not callable(policy_resolver):
         raise ValueError("policy_resolver must be callable or None")
 
@@ -161,12 +177,22 @@ def run(
     entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
     expected_policy_hash: str | None = None,
+    entry_resolver: Callable[[str], bytes] | None = None,
+    entry_source_authenticated: bool = False,
 ) -> dict[str, list[Finding]]:
     """Run all modules required for *level* and return findings keyed by module ID."""
     if type(level) is not int or level not in _LEVEL_MODULES:
         raise ValueError(f"Unknown conformance level {level!r}; valid: 0, 1, 2")
     _validate_runner_inputs(
-        record, fmt, max_age_seconds, expected_nonce, receipt, entry, policy_resolver
+        record,
+        fmt,
+        max_age_seconds,
+        expected_nonce,
+        receipt,
+        entry,
+        entry_resolver,
+        entry_source_authenticated,
+        policy_resolver,
     )
     tr_pol.validate_expected_policy_hash(expected_policy_hash)
     with accounting._without_capture():
@@ -183,6 +209,8 @@ def run(
             expected_nonce=expected_nonce,
             receipt=receipt,
             entry=entry,
+            entry_resolver=entry_resolver,
+            entry_source_authenticated=entry_source_authenticated,
             policy_resolver=policy_resolver,
             expected_policy_hash=expected_policy_hash,
         )
@@ -198,6 +226,8 @@ def _run_levels(
     entry: dict[str, Any] | None = None,
     policy_resolver: Callable[[str], bytes] | None = None,
     expected_policy_hash: str | None = None,
+    entry_resolver: Callable[[str], bytes] | None = None,
+    entry_source_authenticated: bool = False,
 ) -> accounting._Execution:
     """Run one exact contiguous level set and return its atomic accounting value."""
     attempted = tuple(levels)
@@ -207,7 +237,15 @@ def _run_levels(
     ):
         raise ValueError("attempted levels must be exactly (0,), (0, 1), or (0, 1, 2)")
     _validate_runner_inputs(
-        record, fmt, max_age_seconds, expected_nonce, receipt, entry, policy_resolver
+        record,
+        fmt,
+        max_age_seconds,
+        expected_nonce,
+        receipt,
+        entry,
+        entry_resolver,
+        entry_source_authenticated,
+        policy_resolver,
     )
     tr_pol.validate_expected_policy_hash(expected_policy_hash)
 
@@ -248,6 +286,8 @@ def _run_levels(
                 expected_nonce=expected_nonce,
                 receipt=receipt,
                 entry=entry,
+                entry_resolver=entry_resolver,
+                entry_source_authenticated=entry_source_authenticated,
                 policy_resolver=policy_resolver,
                 expected_policy_hash=expected_policy_hash,
             )

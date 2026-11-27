@@ -321,6 +321,8 @@ _ENTRY: dict[str, Any] = {
     "leaf_count": 1,
     "producer": "never-raise/1.0.0",
     "batch_id": "never-raise-1",
+    "log_id": "https://registry.example.org/claim",
+    "entry_id": "1",
 }
 
 

@@ -55,7 +55,7 @@ The IETF's standard roles for proving to someone far away what a machine is runn
 ---
 
 **SCITT: Supply Chain Integrity, Transparency, and Trust**
-A design for public logs that can only be added to, never quietly edited. An IETF draft standard for append-only transparency logs of software and attestation artifacts. TRACE Level 2 records include a SCITT receipt URI in the `transparency` field, anchoring the record to a public or shared log.
+A design for public logs that can only be added to, never quietly edited. An IETF draft standard for append-only transparency logs of software and attestation artifacts. TRACE Level 2 records sign the canonical URI of a pre-reserved registry entry in `transparency`; the inclusion proof is verified separately against the entry resolved through that exact identifier.
 
 ---
 
@@ -75,4 +75,4 @@ The signed receipt TRACE defines: what an agent ran, where, under which policy, 
 ---
 
 **Transparency**
-Publishing a record to a shared log so others can audit it later. In the TRACE context, transparency means that a trust record has been submitted to an append-only log (SCITT) and can be independently audited by any party with access to the log. The `transparency` field holds the receipt URI. Required at Level 2.
+Publishing a record to a shared log so others can audit it later. In the TRACE context, transparency means that a trust record has been submitted to an append-only log (SCITT) and can be independently audited by any party with access to the log. The `transparency` field holds the signed canonical registry-entry URI; the receipt is separate proof. Required at Level 2.

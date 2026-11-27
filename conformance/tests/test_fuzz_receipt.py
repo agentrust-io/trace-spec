@@ -45,7 +45,12 @@ def harness(monkeypatch):
 def test_pass_oracle_accepts_entry_backed_proofs(harness, omitted):
     receipt = {k: v for k, v in harness["_RECEIPT"].items() if k not in omitted}
     claim = harness["_CLAIMS"][harness["_TARGET"]]
-    findings = harness["tr_anc"].check(claim, receipt=receipt, entry=harness["_ENTRY"])
+    findings = harness["tr_anc"].check(
+        claim,
+        receipt=receipt,
+        entry_resolver=lambda _uri: json.dumps(harness["_ENTRY"]).encode("utf-8"),
+        entry_source_authenticated=True,
+    )
     assert any(f.code == "TR-ANC-002" and f.passed() for f in findings)
     harness["TestOneInput"](json.dumps(receipt).encode())
 

@@ -38,13 +38,13 @@ transparency: str | None
 
 `None` means the record is unanchored, which is the honest state for a Level 0 or Level 1 record. An empty string is rejected: `""` is not a URI, and a field that looks populated but resolves to nothing is worse in a trust record than an absent one.
 
-Where present, it identifies the registry entry anchoring the record. At Level 2 and above, a verifier must be able to retrieve that entry and check inclusion without contacting you.
+Where present, it is the canonical entry URI `log_id + "/" + entry_id` from Anchor Format v1 §4. The registry reserves the log-scoped `entry_id` before signing, avoiding a circular dependency on the later Merkle root. At Level 2 and above, a verifier must resolve that exact signed URI through the named log or an authenticated mirror and check inclusion without contacting you.
 
 ---
 
 ## Step 1: Sign the record
 
-Sign the record in its final form first, because the registry stores the exact signed bytes. Leave `transparency` absent if the registry entry URI is not known yet; distribute the receipt separately. If the registry supports reserving an entry URI, set that URI before signing and submit those exact signed bytes. Do not invent a placeholder URI.
+Reserve the registry entry URI, put that exact URI in `transparency`, and then sign the final record, because the registry stores the exact signed bytes. Leave `transparency` absent when the registry cannot reserve a stable `entry_id`; such a record cannot earn Level 2. Distribute the receipt separately, and do not invent a placeholder URI.
 
 ```python
 import time
@@ -106,9 +106,9 @@ trace-verify \
   --batch-id 2026-06-12-001
 ```
 
-Exit code 0 means the record is proven included in that batch **and** its producer's signature verified. Exit code 1 means one of those failed, and there is no partial result between the two.
+Exit code 0 means the record is proven included in that batch **and** its producer's signature verified. Exit code 1 means one of those failed, and there is no partial result between the two. This command performs proof replay; it earns Level 2 only when the entry was obtained by resolving the record's exact signed `transparency` URI and its `log_id`/`entry_id` reconstruct that URI.
 
-You do not need a clone of the registry for this. Swap `--entry` for `--entry-url` and both the entry and the producer key that signed the record are fetched over https, from an allowlisted host only:
+You do not need a clone of the registry for this. Swap `--entry` for `--entry-url` and both the entry and the producer key that signed the record are fetched over https, from an allowlisted host only. For Level 2, `--entry-url` must be byte-for-byte equal to the signed `transparency` value; an arbitrary allowlisted URL is not a substitute:
 
 ```bash
 trace-verify   --claim your-record.json   --proof your-record.proof.json   --entry-url https://raw.githubusercontent.com/agentrust-io/trace-registry/main/registry/2026/06/12.ndjson
@@ -122,7 +122,7 @@ The verifier is standard library only and small enough to read in one sitting. R
 
 ## Step 5: Preserve the anchored record
 
-Store the signed record exactly as it is, together with its proof and registry entry. If you later add `transparency` and sign again, you have a different record, and the old proof no longer covers it. Submit that new record for anchoring if you change any signed field. A Level 2 setup needs a registry that can tell you the entry address before you sign, so the final record can name it.
+Store the signed record exactly as it is, together with its proof and authenticated registry entry. If you later add `transparency` and sign again, you have a different record, and the old proof no longer covers it. Submit that new record for anchoring if you change any signed field. A Level 2 setup needs a registry that reserves the canonical `log_id`/`entry_id` address before signing, so the final record names the entry the verifier resolves.
 
 ---
 

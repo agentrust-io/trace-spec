@@ -68,12 +68,23 @@ def _anchor(obj: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     receipt = {"leaf_index": 0, "leaf_count": 1, "audit_path": [],
                "merkle_root": "sha256:" + root.hex()}
     entry = {"ts": "2026-10-16T00:00:00Z", "merkle_root": receipt["merkle_root"],
-             "leaf_count": 1, "producer": "subject-test/1.0.0", "batch_id": "subject-1"}
+             "leaf_count": 1, "producer": "subject-test/1.0.0", "batch_id": "subject-1",
+             "log_id": "https://log.example.com/entries", "entry_id": "subject-1"}
     return receipt, entry
 
 
 def _anc002(record, receipt, entry):
-    findings = run(record, "cmcp-runtime", 2, receipt=receipt, entry=entry)["TR-ANC"]
+    def resolve_entry_snapshot(_uri):
+        return json.dumps(entry).encode("utf-8")
+
+    findings = run(
+        record,
+        "cmcp-runtime",
+        2,
+        receipt=receipt,
+        entry_resolver=resolve_entry_snapshot,
+        entry_source_authenticated=True,
+    )["TR-ANC"]
     return next(f for f in findings if f.code == "TR-ANC-002")
 
 
@@ -83,6 +94,28 @@ def test_complete_envelope_anchor_passes():
     finding = _anc002(record, receipt, entry)
     assert finding.status is Status.PASS, finding.message
     assert "complete signed claim" in finding.message
+
+
+def test_signed_envelope_with_local_entry_map_is_unverified():
+    record, _ = _envelope()
+    receipt, entry = _anchor(record)
+    def resolve_entry_snapshot(_uri):
+        return json.dumps(entry).encode("utf-8")
+
+    results = run(
+        record,
+        "cmcp-runtime",
+        2,
+        receipt=receipt,
+        entry_resolver=resolve_entry_snapshot,
+    )
+    assert not [finding for finding in results["TR-SIG"] if finding.failed()]
+    anchor = next(
+        finding for finding in results["TR-ANC"]
+        if finding.code == "TR-ANC-002"
+    )
+    assert anchor.status is Status.UNVERIFIED
+    assert "source was not independently authenticated" in anchor.message
 
 
 def test_nested_trace_only_anchor_fails():
@@ -98,7 +131,13 @@ def test_resigned_envelope_with_changed_gateway_fails():
     changed["gateway"]["session_id"] = "someone-else"
     changed["gateway"]["catalog"]["hash"] = "sha256:" + "d" * 64
     _sign(changed, priv)
-    results = run(changed, "cmcp-runtime", 2, receipt=receipt, entry=entry)
+    results = run(
+        changed,
+        "cmcp-runtime",
+        2,
+        receipt=receipt,
+        entry_resolver=lambda _uri: json.dumps(entry).encode(),
+    )
     signature_failures = [f for f in results["TR-SIG"] if f.failed()]
     assert not signature_failures, "the re-signed envelope is validly signed"
     assert _anc002(changed, receipt, entry).status is Status.FAIL

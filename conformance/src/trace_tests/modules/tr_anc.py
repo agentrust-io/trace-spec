@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
 
-from trace_tests.inclusion import InclusionError, parse_entry, parse_proof, verify_inclusion
+from trace_tests.inclusion import (
+    InclusionError,
+    entry_uri,
+    parse_entry,
+    parse_proof,
+    verify_inclusion,
+)
+from trace_tests.loader import LoadError, loads_strict
 from trace_tests.result import Finding, Status
 
 from ._https_uri import valid_https_uri
@@ -16,6 +24,8 @@ def check(
     receipt: dict[str, Any] | None = None,
     entry: dict[str, Any] | None = None,
     subject: dict[str, Any] | None = None,
+    entry_resolver: Callable[[str], bytes] | None = None,
+    entry_source_authenticated: bool = False,
 ) -> list[Finding]:
     """Return TR-ANC findings for the transparency claim.
 
@@ -25,16 +35,19 @@ def check(
     *trace*; the runner passes it. It defaults to *trace*, which is the complete
     claim for a bare TRACE record.
 
-    TR-ANC-001 checks the shape of the ``transparency`` URI. TR-ANC-002 checks
-    that the record is actually anchored: the inclusion proof in *receipt*
+    TR-ANC-001 checks the shape of the ``transparency`` URI. TR-ANC-002 resolves
+    that exact signed URI through a verifier-controlled resolver, checks the
+    resolved entry's ``log_id`` and ``entry_id``, and then checks that the record
+    is actually anchored: the inclusion proof in *receipt*
     (``leaf_index`` and ``audit_path``, registry-anchor-v1 section 5) must replay
     to the ``merkle_root`` and ``leaf_count`` of the registry *entry* (section 4),
     which section 5.1 takes as its third input. A receipt that also carries its
     own ``merkle_root`` or ``leaf_count`` must carry the entry's (section 6).
-    Without a receipt or without the entry, TR-ANC-002 fails: Level 2 means
-    anchored in a named entry, and a URI is a pointer at an anchor rather than
-    evidence of one. Nothing yet ties the URI to the entry (trace-spec#448
-    finding 21), and the TR-ANC-002 message says so.
+    Without a receipt or resolved entry, TR-ANC-002 cannot pass: Level 2 means
+    anchored in the exact signed entry, and a URI or presenter-supplied entry is
+    not evidence that the named log published it. The caller must set
+    *entry_source_authenticated* only after independently authenticating the
+    resolver's source. An arbitrary local URI-to-file map does not do so.
     """
     findings: list[Finding] = []
     transparency = trace.get("transparency")
@@ -78,10 +91,96 @@ def check(
     findings.append(Finding(
         "TR-ANC-001", Status.PASS,
         f"transparency is a well-formed https URI ({transparency[:80]}); "
-        "this checks the pointer, not the anchor (see TR-ANC-002)",
+        "TR-ANC-002 checks entry identity, source authentication, and inclusion",
     ))
-    findings.append(_check_inclusion(trace if subject is None else subject, receipt, entry))
+    resolved_entry, resolution_finding = _resolve_entry(transparency, entry_resolver)
+    if resolution_finding is not None:
+        findings.append(resolution_finding)
+        return findings
+
+    selected_entry = resolved_entry if resolved_entry is not None else entry
+    if resolved_entry is not None:
+        try:
+            _, _, _, _, log_id, entry_id = parse_entry(resolved_entry)
+            named_uri = entry_uri(log_id, entry_id)
+        except InclusionError as exc:
+            findings.append(
+                Finding("TR-ANC-002", Status.FAIL, f"TR-ANC-002: malformed resolved entry: {exc}")
+            )
+            return findings
+        if named_uri != transparency:
+            findings.append(Finding(
+                "TR-ANC-002",
+                Status.FAIL,
+                f"TR-ANC-002: signed transparency URI {transparency!r} does not equal "
+                f"the resolved entry identity {named_uri!r}; the entry is from another "
+                "log or checkpoint",
+            ))
+            return findings
+
+    inclusion = _check_inclusion(
+        trace if subject is None else subject,
+        receipt,
+        selected_entry,
+    )
+    if inclusion.status is Status.PASS:
+        if resolved_entry is None:
+            inclusion = Finding(
+                "TR-ANC-002",
+                Status.UNVERIFIED,
+                "TR-ANC-002: inclusion is valid against the supplied entry, but the exact signed "
+                "transparency URI was not resolved through the named log or an authenticated "
+                "mirror; a presenter-supplied entry cannot earn Level 2",
+            )
+        elif entry_source_authenticated is not True:
+            inclusion = Finding(
+                "TR-ANC-002",
+                Status.UNVERIFIED,
+                "TR-ANC-002: inclusion and signed entry identity match, but the "
+                "resolver's source was not independently authenticated; "
+                "a local entry map alone cannot earn Level 2",
+            )
+        else:
+            inclusion = Finding(
+                "TR-ANC-002",
+                Status.PASS,
+                f"{inclusion.message}; the signed transparency URI resolved to this exact log "
+                "entry",
+            )
+    findings.append(inclusion)
     return findings
+
+
+def _resolve_entry(
+    transparency: str,
+    resolver: Callable[[str], bytes] | None,
+) -> tuple[dict[str, Any] | None, Finding | None]:
+    """Resolve the exact signed entry URI, separating absence from malformed evidence."""
+    if resolver is None:
+        return None, None
+    try:
+        raw = resolver(transparency)
+    except Exception as exc:  # resolver failures are evidence-reachability failures
+        return None, Finding(
+            "TR-ANC-002",
+            Status.UNVERIFIED,
+            f"TR-ANC-002: could not resolve the signed transparency URI through the "
+            f"verifier's entry resolver: {type(exc).__name__}: {exc}",
+        )
+    try:
+        resolved = loads_strict(raw)
+    except LoadError as exc:
+        return None, Finding(
+            "TR-ANC-002", Status.FAIL,
+            f"TR-ANC-002: the signed transparency URI resolved to malformed JSON: {exc}",
+        )
+    if not isinstance(resolved, dict):
+        return None, Finding(
+            "TR-ANC-002", Status.FAIL,
+            "TR-ANC-002: the signed transparency URI must resolve to one registry entry object, "
+            f"got {type(resolved).__name__}",
+        )
+    return resolved, None
 
 
 def _check_inclusion(
@@ -112,7 +211,7 @@ def _check_inclusion(
         )
 
     try:
-        entry_root, entry_count, producer, batch_id = parse_entry(entry)
+        entry_root, entry_count, producer, batch_id, _, _ = parse_entry(entry)
     except InclusionError as exc:
         return Finding("TR-ANC-002", Status.FAIL, f"TR-ANC-002: malformed registry entry: {exc}")
 
@@ -142,9 +241,7 @@ def _check_inclusion(
             "TR-ANC-002", Status.PASS,
             f"inclusion proven against merkle_root {entry_root.hex()[:16]}... "
             f"(leaf {leaf_index} of {entry_count}) of registry entry {producer} {batch_id}, "
-            "over the complete signed claim; the link from the transparency URI to "
-            "this entry is not checked "
-            "(trace-spec#448 finding 21)",
+            "over the complete signed claim",
         )
     return Finding(
         "TR-ANC-002", Status.FAIL,

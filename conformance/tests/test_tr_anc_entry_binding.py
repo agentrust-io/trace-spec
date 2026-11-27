@@ -6,9 +6,10 @@ the four worlds from the original report (trace-tests#92), plus the entry left
 out. The receipt's ``merkle_root`` and ``leaf_count`` must equal the supplied
 entry's; with no entry, Level 2 is not earned.
 
-What is still not checked: that the entry is the one the record's
-``transparency`` URI names. Nothing in the Anchor Format identifies an entry
-from the URI yet (trace-spec#448 item 21), and the PASS message says so.
+The signed URI is resolved through verifier-controlled evidence, and the
+resolved entry's canonical ``log_id``/``entry_id`` identity must match before
+inclusion can pass. A presenter-supplied entry remains useful for diagnostics
+but cannot earn Level 2.
 """
 
 from __future__ import annotations
@@ -68,6 +69,8 @@ def _entry(receipt: dict[str, Any]) -> dict[str, Any]:
         "leaf_count": receipt["leaf_count"],
         "producer": "binding-test/1.0.0",
         "batch_id": "binding-1",
+        "log_id": "https://log.example.com/entries",
+        "entry_id": "binding-1",
     }
 
 
@@ -80,8 +83,18 @@ def _claims() -> list[dict[str, Any]]:
 
 
 def _anc002(trace, receipt, entry):
-    return next(f for f in tr_anc.check(trace, receipt=receipt, entry=entry)
-                if f.code == "TR-ANC-002")
+    resolver = None if entry is None else lambda _uri: json.dumps(entry).encode()
+    return next(
+        f
+        for f in tr_anc.check(
+            trace,
+            receipt=receipt,
+            entry=entry,
+            entry_resolver=resolver,
+            entry_source_authenticated=True,
+        )
+        if f.code == "TR-ANC-002"
+    )
 
 
 _OTHER_ROOT = "sha256:" + "ab" * 32
@@ -124,10 +137,69 @@ def test_each_refusal_names_its_reason() -> None:
     assert "no registry entry supplied" in absent and "Level 2 is not earned" in absent
 
 
-def test_the_pass_states_the_link_it_does_not_check() -> None:
+def test_the_pass_states_the_resolved_entry_binding() -> None:
     message = _anc002(*_world("matching-sealed-entry")).message
     assert "binding-test/1.0.0 binding-1" in message
-    assert "transparency URI to this entry is not checked" in message
+    assert "signed transparency URI resolved to this exact log entry" in message
+
+
+def test_an_unresolved_presenter_entry_cannot_earn_level_2() -> None:
+    trace, receipt, entry = _world("matching-sealed-entry")
+    finding = next(
+        f for f in tr_anc.check(trace, receipt=receipt, entry=entry)
+        if f.code == "TR-ANC-002"
+    )
+    assert finding.status is Status.UNVERIFIED
+    assert "presenter-supplied entry cannot earn Level 2" in finding.message
+
+
+def test_an_unverified_resolver_cannot_earn_level_2() -> None:
+    trace, receipt, entry = _world("matching-sealed-entry")
+    finding = next(
+        finding for finding in tr_anc.check(
+            trace,
+            receipt=receipt,
+            entry_resolver=lambda _uri: json.dumps(entry).encode("utf-8"),
+        ) if finding.code == "TR-ANC-002"
+    )
+    assert finding.status is Status.UNVERIFIED
+    assert "source was not independently authenticated" in finding.message
+
+
+def test_a_truthy_nonboolean_cannot_assert_source_authentication() -> None:
+    trace, receipt, entry = _world("matching-sealed-entry")
+    finding = next(
+        finding for finding in tr_anc.check(
+            trace,
+            receipt=receipt,
+            entry_resolver=lambda _uri: json.dumps(entry).encode("utf-8"),
+            entry_source_authenticated="yes",  # type: ignore[arg-type]
+        ) if finding.code == "TR-ANC-002"
+    )
+    assert finding.status is Status.UNVERIFIED
+
+
+def test_a_valid_proof_from_another_named_log_is_rejected() -> None:
+    trace, receipt, entry = _world("matching-sealed-entry")
+    entry["log_id"] = "https://other-log.example/entries"
+    finding = _anc002(trace, receipt, entry)
+    assert finding.status is Status.FAIL
+    assert "another log or checkpoint" in finding.message
+
+
+def test_an_unmapped_signed_entry_is_unverified_not_a_pass() -> None:
+    trace, receipt, _ = _world("matching-sealed-entry")
+    finding = next(
+        f
+        for f in tr_anc.check(
+            trace,
+            receipt=receipt,
+            entry_resolver=lambda uri: (_ for _ in ()).throw(KeyError(uri)),
+        )
+        if f.code == "TR-ANC-002"
+    )
+    assert finding.status is Status.UNVERIFIED
+    assert "could not resolve the signed transparency URI" in finding.message
 
 
 def test_the_entry_does_not_rescue_a_record_outside_the_tree() -> None:
@@ -141,25 +213,60 @@ def test_the_entry_does_not_rescue_a_record_outside_the_tree() -> None:
     ("mutate", "reason"),
     [
         (lambda e: e.pop("batch_id"), "missing required field(s): batch_id"),
+        (lambda e: e.pop("log_id"), "missing required field(s): log_id"),
+        (lambda e: e.pop("entry_id"), "missing required field(s): entry_id"),
         (lambda e: e.pop("ts"), "missing required field(s): ts"),
         (lambda e: e.update(producer=""), "producer must be a non-empty string"),
+        (
+            lambda e: e.update(log_id="https://LOG.example.com/entries"),
+            "authority is not canonical",
+        ),
+        (
+            lambda e: e.update(log_id="HTTPS://log.example.com/entries"),
+            "canonical HTTPS base URI",
+        ),
+        (lambda e: e.update(entry_id="../other"), "entry_id must contain only"),
+        (
+            lambda e: e.update(log_id="https://log.example.com/entries/./other"),
+            "log_id path is not canonical",
+        ),
+        (
+            lambda e: e.update(log_id="https://log.example.com/entries/../other"),
+            "log_id path is not canonical",
+        ),
+        (
+            lambda e: e.update(log_id="https://log.example.com/entries?"),
+            "canonical HTTPS base URI",
+        ),
+        (
+            lambda e: e.update(log_id="https://log.example.com/entries#"),
+            "canonical HTTPS base URI",
+        ),
         (lambda e: e.update(leaf_count=True), "leaf_count must be an integer"),
         (lambda e: e.update(leaf_count=0), "leaf_count must be an integer"),
         (lambda e: e.update(merkle_root="sha256:XYZ"), "malformed hash value"),
     ],
-    ids=["no-batch-id", "no-ts", "empty-producer", "bool-count", "zero-count", "bad-root"],
+    ids=[
+        "no-batch-id", "no-log-id", "no-entry-id", "no-ts", "empty-producer",
+        "uppercase-host", "uppercase-scheme", "non-canonical-entry-id",
+        "current-directory-segment", "parent-directory-segment",
+        "empty-query", "empty-fragment", "bool-count",
+        "zero-count", "bad-root",
+    ],
 )
 def test_a_malformed_entry_is_reported_as_malformed(mutate, reason: str) -> None:
     trace, receipt, entry = _world("matching-sealed-entry")
     mutate(entry)
     finding = _anc002(trace, receipt, entry)
     assert finding.status is Status.FAIL
-    assert "malformed registry entry" in finding.message and reason in finding.message
+    assert "malformed resolved entry" in finding.message and reason in finding.message
 
 
 def test_a_non_object_entry_is_malformed() -> None:
     trace, receipt, _ = _world("matching-sealed-entry")
-    assert "malformed registry entry" in _anc002(trace, receipt, ["not", "an", "entry"]).message
+    assert "must resolve to one registry entry object" in _anc002(
+        trace, receipt, ["not", "an", "entry"]
+    ).message
 
 
 def test_fields_beyond_section_4_are_ignored() -> None:
@@ -178,7 +285,16 @@ def _anchored_level0(load_vector) -> tuple[dict, dict, dict]:
 
 
 def _runner_anc002(record, receipt, entry) -> Status:
-    results = run(record, "trace", 2, receipt=receipt, entry=entry)
+    resolver = None if entry is None else lambda _uri: json.dumps(entry).encode()
+    results = run(
+        record,
+        "trace",
+        2,
+        receipt=receipt,
+        entry=entry,
+        entry_resolver=resolver,
+        entry_source_authenticated=True,
+    )
     return next(f for f in results["TR-ANC"] if f.code == "TR-ANC-002").status
 
 
@@ -202,12 +318,21 @@ def test_the_cli_reads_entry(load_vector, tmp_path: Path) -> None:
         assert result.exit_code == 0, result.output
         return (tmp_path / "out.json").read_text(encoding="utf-8")
 
-    with_entry = report(["--entry", str(paths["entry"])])
-    assert "transparency URI to this entry is not checked" in with_entry
+    entry_dir = tmp_path / "entry-resolution"
+    entry_dir.mkdir()
+    resolved_entry = entry_dir / "entry.json"
+    resolved_entry.write_text(json.dumps(entry), encoding="utf-8")
+    (entry_dir / "entries.json").write_text(
+        json.dumps({record["transparency"]: "entry.json"}), encoding="utf-8"
+    )
+
+    with_entry = report(["--entry-dir", str(entry_dir)])
+    assert "source was not independently authenticated" in with_entry
+    assert "signed transparency URI resolved to this exact log entry" not in with_entry
     assert "no registry entry supplied" not in with_entry
-    without = report([])
-    assert "no registry entry supplied" in without
-    assert "transparency URI to this entry is not checked" not in without
+    unresolved = report(["--entry", str(paths["entry"])])
+    assert "presenter-supplied entry cannot earn Level 2" in unresolved
+    assert "signed transparency URI resolved to this exact log entry" not in unresolved
 
 
 def _proof_only(receipt: dict[str, Any]) -> dict[str, Any]:

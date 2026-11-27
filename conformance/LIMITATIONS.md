@@ -29,22 +29,23 @@ against AMD, Intel or a TPM manufacturer root. A record can satisfy `TR-RTE` at 
 syntactically perfect measurement that no hardware ever produced. Verifying the quote against the
 silicon vendor is the relying party's job, and `cmcp_verify` is where that happens.
 
-**`TR-ANC-002` proves inclusion relative to the receipt and entry you hand it.**
-In plain terms: it proves the record is in the registry entry you supplied, not that the entry is
-the one the record names, nor that the log is a real public one.
-It requires the receipt's `merkle_root` and `leaf_count` to equal the supplied entry's, and
-replays the audit path against that root. It does not fetch the `transparency` URI. Nothing in
-the Anchor Format yet identifies an entry from that URI, so the check cannot establish that the
-supplied entry is the one the record names; the pass message says so, and closing that link is
-tracked as finding 21 of trace-spec#448. It also does not establish that a public log actually
-published the entry. A self-consistent receipt and entry over a tree the submitter built
-themselves will pass. What the check rules out is a record that has been modified since
-anchoring, a record that was never in the tree, and a receipt whose root or count differs from
-the entry it is presented with. Establishing that the entry is real and is the named one is a
-separate step and is not in scope here.
+**`TR-ANC-002` needs an independently authenticated entry source.**
+The check compares the exact signed `transparency` URI with an entry's canonical `log_id` and
+`entry_id`, then replays the receipt against the entry's root and count. Neither a raw `--entry`
+nor an `entries.json` map supplied with `--entry-dir` proves that the named log published the
+entry. The command-line interface reports a valid proof against either local source as
+unverified, so neither can earn Level 2.
 
-`TR-ANC-001` is explicit that it checks the pointer rather than the anchor. Supplying no receipt
-or no entry fails `TR-ANC-002`, so Level 2 cannot be reached on a well formed URI alone.
+The library API can earn a Level 2 anchor pass only when the caller supplies a resolver and sets
+`entry_source_authenticated=True` after independently authenticating the named log or a trusted
+mirror. This flag records the caller's trust decision; the suite does not verify its provenance
+or the log's append-only history. A caller who makes that assertion without authenticating the
+source can produce a misleading result. Inclusion also does not establish that every event was
+logged or that the record's claims are true.
+
+`TR-ANC-001` checks pointer shape rather than the anchor. Supplying no receipt or no authenticated
+entry resolution prevents TR-ANC-002 from passing, so Level 2 cannot be reached on a well formed
+URI alone.
 
 ## Statuses that are easy to misread
 

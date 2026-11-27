@@ -76,6 +76,8 @@ _ENTRY = {
     "leaf_count": _RECEIPT["leaf_count"],
     "producer": "fuzz/1.0.0",
     "batch_id": "fuzz-1",
+    "log_id": "https://log.example.com/e",
+    "entry_id": "1",
 }
 if not verify_inclusion(_CLAIMS[_TARGET], *parse_receipt(_RECEIPT)):
     raise SystemExit("fuzz_receipt: the genuine receipt does not verify; the harness is wrong")
@@ -120,11 +122,16 @@ def TestOneInput(data: bytes) -> None:
 
     if not isinstance(receipt, dict):
         return
-    findings = tr_anc.check(claim, receipt=receipt, entry=_ENTRY)
+    findings = tr_anc.check(
+        claim,
+        receipt=receipt,
+        entry_resolver=lambda _uri: json.dumps(_ENTRY).encode("utf-8"),
+        entry_source_authenticated=True,
+    )
     if any(f.code == "TR-ANC-002" and f.passed() for f in findings):
         assert claim is _CLAIMS[_TARGET], f"inclusion proven for the wrong claim: {receipt!r}"
         index, path, _, _ = parse_proof(receipt)
-        root, count, _, _ = parse_entry(_ENTRY)
+        root, count, _, _, _, _ = parse_entry(_ENTRY)
         assert root == _ROOT, f"inclusion proven under another root: {receipt!r}"
         assert verify_inclusion(claim, index, path, count, root), (
             f"inclusion not reproduced against the supplied entry: {receipt!r}"
