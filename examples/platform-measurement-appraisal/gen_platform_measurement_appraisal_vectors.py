@@ -363,8 +363,8 @@ def main() -> None:
          "platform_measurement.measurement differs from runtime.measurement in its last "
          "byte.", m[:-2] + ("00" if m[-2:] != "00" else "01")),
     ], start=21):
-        reject(n, name, description + " Held by the reference model only: the schema "
-               "cannot compare two members of the record.",
+        reject(n, name, description + " Enforced by verifier semantic validation and the "
+               "reference model: the schema cannot compare two members of the record.",
                "measurement_mismatch",
                layers={"pcr:0": established()}, result_measurement=other,
                fixed={"result_measurement": None},

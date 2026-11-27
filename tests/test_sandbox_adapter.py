@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
-from pathlib import Path
-
 import hashlib
+import inspect
 import json
+from pathlib import Path
 from typing import Any, get_args
 
 import pytest
@@ -527,3 +527,304 @@ def test_enforcement_mode_reaches_the_record(mode: str) -> None:
 def test_an_invalid_enforcement_mode_is_rejected() -> None:
     with pytest.raises(ValidationError):
         _make_adapter(enforcement_mode="whatever").build_trust_record(_make_session())
+
+
+# ---------------------------------------------------------------------------
+# 10. Issue #615: data_class, enum/SLSA fields, URI format, and UTF-8 validation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "data_class",
+    ["", "\ud800", 123, None, True, False, ["confidential"], {"data_class": "confidential"}],
+    ids=repr,
+)
+def test_data_class_rejects_empty_non_string_and_surrogate_values(data_class: Any) -> None:
+    with pytest.raises(ValueError, match="data_class"):
+        _make_adapter(data_class=data_class)
+
+    adapter = _make_adapter()
+    adapter._data_class = data_class
+    with pytest.raises(ValueError, match="data_class"):
+        adapter.build_trust_record(_make_session())
+
+
+@pytest.mark.parametrize(
+    ("field_name", "attr_name", "bad_value"),
+    [
+        ("enforcement_mode", "_enforcement_mode", "whatever"),
+        ("enforcement_mode", "_enforcement_mode", ""),
+        ("enforcement_mode", "_enforcement_mode", 123),
+        ("enforcement_mode", "_enforcement_mode", None),
+        ("appraisal_status", "_appraisal_status", "whatever"),
+        ("appraisal_status", "_appraisal_status", ""),
+        ("appraisal_status", "_appraisal_status", 123),
+        ("appraisal_status", "_appraisal_status", None),
+        ("build_provenance_slsa_level", "_slsa_level", -1),
+        ("build_provenance_slsa_level", "_slsa_level", 4),
+        ("build_provenance_slsa_level", "_slsa_level", True),
+        ("build_provenance_slsa_level", "_slsa_level", "2"),
+        ("build_provenance_slsa_level", "_slsa_level", 1.5),
+    ],
+    ids=lambda x: f"{x!r}",
+)
+def test_invalid_enum_and_slsa_level_fields_raise_at_init_and_build(
+    field_name: str, attr_name: str, bad_value: Any
+) -> None:
+    with pytest.raises(ValidationError):
+        _make_adapter(**{field_name: bad_value})
+
+    adapter = _make_adapter()
+    setattr(adapter, attr_name, bad_value)
+    with pytest.raises(ValidationError):
+        adapter.build_trust_record(_make_session())
+
+
+@pytest.mark.parametrize(
+    ("field_name", "attr_name"),
+    [
+        ("transparency", "_transparency"),
+        ("appraisal_verifier", "_appraisal_verifier"),
+        ("appraisal_policy_ref", "_appraisal_policy_ref"),
+        ("build_provenance_uri", "_provenance_uri"),
+        ("policy_uri", "_policy_uri"),
+    ],
+    ids=lambda x: x,
+)
+@pytest.mark.parametrize(
+    "bad_uri",
+    [
+        "not a uri",
+        "",
+        "   ",
+        "https://example.org/a\n",
+        "https://example.org/a\r",
+        "https://example.org/a\u2028",
+        "https://example.org/a\u2029",
+        "http://[::1",
+        "https://[::1.2.3.04]/",
+        "https://example.org/\ud800",
+        123,
+        True,
+        ["https://example.org"],
+    ],
+    ids=repr,
+)
+def test_uri_fields_reject_malformed_uris_at_init_and_build(
+    field_name: str, attr_name: str, bad_uri: Any
+) -> None:
+    with pytest.raises(ValueError, match=field_name):
+        _make_adapter(**{field_name: bad_uri})
+
+    adapter = _make_adapter()
+    setattr(adapter, attr_name, bad_uri)
+    with pytest.raises(ValueError, match=field_name):
+        adapter.build_trust_record(_make_session())
+
+
+def test_appraisal_verifier_rejects_none_while_optional_uris_accept_none() -> None:
+    with pytest.raises(ValueError, match="appraisal_verifier"):
+        _make_adapter(appraisal_verifier=None)
+
+    record = _make_adapter(
+        transparency=None,
+        appraisal_policy_ref=None,
+        build_provenance_uri=None,
+        policy_uri=None,
+    ).build_trust_record(_make_session())
+    assert "transparency" not in record
+    assert "policy_ref" not in record["appraisal"]
+    assert "provenance_uri" not in record["build_provenance"]
+    assert "policy_uri" not in record["policy"]
+    validate_json(record)
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    [
+        "transparency",
+        "appraisal_verifier",
+        "appraisal_policy_ref",
+        "build_provenance_uri",
+        "policy_uri",
+    ],
+)
+@pytest.mark.parametrize(
+    "good_uri",
+    [
+        "https://example.org/a",
+        "urn:example:a",
+        "did:web:example.org",
+        "https://[::1.2.3.4]/",
+        "https://[v1.example:future]/",
+        "https://example.org/a%0A",
+    ],
+)
+def test_uri_fields_accept_valid_uris_and_pass_validate_json(
+    field_name: str, good_uri: str
+) -> None:
+    record = _make_adapter(**{field_name: good_uri}).build_trust_record(_make_session())
+    validate_json(record)
+
+
+@pytest.mark.parametrize(
+    "bad_uri",
+    [
+        "not a uri",
+        "",
+        "   ",
+        "https://example.org/a\n",
+        "https://example.org/a\r",
+        "https://example.org/a\u2028",
+        "https://example.org/a\u2029",
+        "http://[::1",
+        "https://[::1.2.3.04]/",
+        "https://example.org/\ud800",
+        123,
+        True,
+        ["https://example.org"],
+    ],
+    ids=repr,
+)
+def test_attestation_rim_uri_rejects_malformed_uris(bad_uri: Any) -> None:
+    with pytest.raises(ValueError, match="SandboxAttestation.rim_uri"):
+        SandboxAttestation(
+            platform="tpm2",
+            measurement=TPM_MEASUREMENT,
+            rim_uri=bad_uri,
+        )
+
+    attestation = SandboxAttestation(platform="tpm2", measurement=TPM_MEASUREMENT)
+    session = _make_session(attestation=attestation)
+    object.__setattr__(attestation, "rim_uri", bad_uri)
+    with pytest.raises(ValueError, match="SandboxAttestation.rim_uri"):
+        _make_adapter().build_trust_record(session)
+
+
+@pytest.mark.parametrize("field_name", ["firmware_version", "nonce"])
+@pytest.mark.parametrize("bad_value", ["", "\ud800", 123, True, ["v"]], ids=repr)
+def test_attestation_optional_strings_reject_empty_non_string_and_surrogates(
+    field_name: str, bad_value: Any
+) -> None:
+    with pytest.raises(ValueError, match=f"SandboxAttestation.{field_name}"):
+        SandboxAttestation(
+            platform="tpm2",
+            measurement=TPM_MEASUREMENT,
+            **{field_name: bad_value},
+        )
+
+    attestation = SandboxAttestation(platform="tpm2", measurement=TPM_MEASUREMENT)
+    session = _make_session(attestation=attestation)
+    object.__setattr__(attestation, field_name, bad_value)
+    with pytest.raises(ValueError, match=f"SandboxAttestation.{field_name}"):
+        _make_adapter().build_trust_record(session)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("model_provider", ""),
+        ("model_provider", "\ud800"),
+        ("model_provider", 123),
+        ("model_provider", None),
+        ("model_provider", True),
+        ("model_id", ""),
+        ("model_id", "\ud800"),
+        ("model_id", 123),
+        ("model_id", None),
+        ("model_id", True),
+        ("model_version", ""),
+        ("model_version", "\ud800"),
+        ("model_version", 123),
+        ("model_version", True),
+        ("policy_version", ""),
+        ("policy_version", "\ud800"),
+        ("policy_version", 123),
+        ("policy_version", True),
+        ("build_provenance_builder", ""),
+        ("build_provenance_builder", "\ud800"),
+        ("build_provenance_builder", 123),
+        ("build_provenance_builder", True),
+    ],
+    ids=lambda x: f"{x!r}",
+)
+def test_sandbox_string_fields_reject_empty_non_string_and_lone_surrogates(
+    field_name: str, bad_value: Any
+) -> None:
+    with pytest.raises(ValueError, match=field_name):
+        _make_adapter(**{field_name: bad_value})
+
+
+@pytest.mark.parametrize(
+    "surrogate_id",
+    ["did:web:\ud800", "spiffe://example.org/\ud800"],
+    ids=repr,
+)
+def test_sandbox_id_rejects_lone_surrogates(surrogate_id: str) -> None:
+    with pytest.raises(ValueError, match="sandbox_id"):
+        _make_session(sandbox_id=surrogate_id)
+
+
+def test_sandbox_build_trust_record_revalidates_mutated_adapter_fields() -> None:
+    session = _make_session()
+
+    adapter = _make_adapter()
+    adapter._model.provider = ""
+    with pytest.raises(ValueError, match="model_provider"):
+        adapter.build_trust_record(session)
+
+
+def test_sandbox_build_trust_record_rejects_non_model_attribute_with_value_error() -> None:
+    session = _make_session()
+
+    adapter = _make_adapter()
+    adapter._model = "not-a-model"  # type: ignore[assignment]
+    with pytest.raises(ValueError, match="model must be a ModelInfo"):
+        adapter.build_trust_record(session)
+
+
+_JUNK_AND_BAD_URIS: tuple[Any, ...] = (
+    "a-string",
+    123,
+    None,
+    [1, 2],
+    True,
+    False,
+    0,
+    {},
+    "",
+    b"bytes",
+    10**20,
+    float("nan"),
+    float("inf"),
+    "\ud800",
+    {"a": 1},
+    [{}],
+    1.5,
+    "not a uri",
+    "   ",
+    "https://example.org/a\n",
+    "https://[::1.2.3.04]/",
+    "http://[::1",
+)
+
+
+@pytest.mark.parametrize(
+    "param",
+    sorted(inspect.signature(TraceSandboxAdapter.__init__).parameters.keys() - {"self"}),
+)
+def test_what_sandbox_adapter_accepts_passes_validate_json_and_verify_record(
+    param: str,
+) -> None:
+    key = generate_key()
+    jwk = key_to_jwk(key)
+    session = _make_session(iat=1785000000)
+    for value in _JUNK_AND_BAD_URIS:
+        try:
+            adapter = _make_adapter(**{param: value})
+            record = adapter.build_trust_record(session)
+        except (ValueError, ValidationError):
+            continue
+        validate_json(record)
+        verify_record(sign_record(record, key), jwk, now=session.iat)
+
+

@@ -129,11 +129,9 @@ def test_the_model_returns_the_expected_verdict(path: pathlib.Path) -> None:
 
 
 def test_the_mismatch_vectors_fail_on_the_mismatch_and_nothing_else() -> None:
-    """The model sees this cross-field rule, which JSON Schema cannot express.
-
-    The same record with the result's measurement set back to runtime.measurement
-    is accepted.
-    """
+    """The schema cannot see this rule, so the model's shared semantic check must:
+    the same record with the result's measurement set back to runtime.measurement is
+    accepted."""
     for path in VECTORS:
         doc = _load(path)
         if doc["expected"]["codes"] != ["measurement_mismatch"]:
@@ -148,39 +146,29 @@ def test_the_mismatch_vectors_fail_on_the_mismatch_and_nothing_else() -> None:
 
 
 @pytest.mark.parametrize(
-    ("mismatch_name", "matching_name"),
+    "path",
     [
-        (
-            "21-result-about-another-measurement.json",
-            "39-result-about-another-measurement-twin.json",
-        ),
-        (
-            "22-result-about-a-measurement-one-byte-off.json",
-            "40-result-about-a-measurement-one-byte-off-twin.json",
-        ),
+        path
+        for path in VECTORS
+        if _load(path)["expected"]["codes"] == ["measurement_mismatch"]
+        or _load(path).get("twin_of") in {"21", "22"}
     ],
+    ids=lambda path: path.stem,
 )
-def test_verify_record_rejects_signed_measurement_mismatch(
-    mismatch_name: str, matching_name: str
-) -> None:
-    """A valid signature cannot make an appraisal about another digest valid."""
-    trusted_jwk = {
-        "kty": "OKP",
-        "crv": "Ed25519",
-        "x": "shaEEVtRR8nWCpp--gRa2Hu4AbHYpKKTdF3EuE5COU8",
+def test_the_public_verifier_enforces_the_measurement_binding(path: pathlib.Path) -> None:
+    """Both signed mismatches are refused, while their matching signed twins verify."""
+    doc = _load(path)
+    record = doc["record"]
+    arguments = {
+        "public_key_or_jwk": record["cnf"]["jwk"],
+        "now": record["iat"],
+        "max_age_seconds": None,
     }
-    mismatch = _load(VECTOR_DIR / mismatch_name)["record"]
-    matching = _load(VECTOR_DIR / matching_name)["record"]
-    assert mismatch["cnf"]["jwk"] == matching["cnf"]["jwk"] == trusted_jwk
-
-    with pytest.raises(
-        ValueError,
-        match=r"appraisal\.platform_measurement\.measurement must equal runtime\.measurement",
-    ):
-        verify_record(mismatch, trusted_jwk, now=mismatch["iat"])
-
-    result = verify_record(matching, trusted_jwk, now=matching["iat"])
-    assert result.profile == matching["eat_profile"]
+    if doc["expected"]["codes"] == ["measurement_mismatch"]:
+        with pytest.raises(ValueError, match="^measurement_mismatch:"):
+            verify_record(record, **arguments)
+        return
+    verify_record(record, **arguments)
 
 
 @pytest.mark.parametrize("path", VECTORS, ids=IDS)

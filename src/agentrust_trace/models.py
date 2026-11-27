@@ -4,6 +4,7 @@ from typing import Annotated, Any, Literal
 from functools import partial
 
 from agentrust_trace._patterns import _PYTHON_PATTERNS, _require_pattern
+from agentrust_trace.semantics import _require_platform_measurement_binding
 
 from pydantic import (
     BaseModel,
@@ -647,12 +648,7 @@ class TrustRecord(_TraceModel):
         pm = self.appraisal.platform_measurement
         if pm is None:
             return self
-        if pm.measurement != self.runtime.measurement:
-            raise ValueError(
-                "appraisal.platform_measurement.measurement must equal "
-                "runtime.measurement: a result about another measurement is not "
-                "about this record"
-            )
+        _require_platform_measurement_binding(self.runtime.measurement, pm.measurement)
         if self.runtime.platform == "tpm2":
             bad = sorted(k for k in pm.layers if not _PYTHON_PATTERNS[_TPM_LAYER_RE].search(k))
             if bad:

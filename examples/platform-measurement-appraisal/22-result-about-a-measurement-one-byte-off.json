@@ -1,6 +1,6 @@
 {
   "name": "result-about-a-measurement-one-byte-off",
-  "description": "platform_measurement.measurement differs from runtime.measurement in its last byte. Held by the reference model only: the schema cannot compare two members of the record.",
+  "description": "platform_measurement.measurement differs from runtime.measurement in its last byte. Enforced by verifier semantic validation and the reference model: the schema cannot compare two members of the record.",
   "spec": "spec/trace-v0.2.md#315-appraisalplatform_measurement-what-a-matching-measurement-covers",
   "synthetic": true,
   "record": {

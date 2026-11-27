@@ -25,6 +25,14 @@ _RECEIPT = {
     "audit_path": [],
     "merkle_root": "sha256:" + "0" * 64,
 }
+# Matches the receipt, so TR-ANC-002 reaches the leaf canonicalization on every record.
+_ENTRY = {
+    "ts": "1970-01-01T00:00:00Z",
+    "merkle_root": _RECEIPT["merkle_root"],
+    "leaf_count": 1,
+    "producer": "fuzz/1.0.0",
+    "batch_id": "fuzz-1",
+}
 
 
 def _resolver(uri: str) -> bytes:
@@ -46,6 +54,7 @@ def TestOneInput(data: bytes) -> None:
             level,
             expected_nonce="fuzz-nonce",
             receipt=_RECEIPT,
+            entry=_ENTRY,
             policy_resolver=_resolver,
         )
 
@@ -55,6 +64,7 @@ def TestOneInput(data: bytes) -> None:
         (0, 1, 2),
         expected_nonce="fuzz-nonce",
         receipt=_RECEIPT,
+        entry=_ENTRY,
         policy_resolver=_resolver,
     )
     built = report._build_from_execution(

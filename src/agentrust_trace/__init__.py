@@ -128,3 +128,7 @@ __all__ = [*__all__, "content_marking"]
 from agentrust_trace import intent_bridge as intent_bridge  # noqa: E402
 
 __all__ = [*__all__, "intent_bridge"]
+from agentrust_trace import delegation as delegation  # noqa: E402
+
+__all__ = [*__all__, "delegation"]
+

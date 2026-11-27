@@ -160,6 +160,7 @@ TRACE does not protect against:
 
 The Trust Record is the unit of evidence. All fields are required unless marked OPTIONAL.
 
+<!-- CHANGED: #593 - align base-record requiredness with the schema and Level 2 checks -->
 | Field | Description | Source primitive |
 |---|---|---|
 | `subject` | Workload identity (agent, tool, model invocation) | SPIFFE SVID or DID URI |
@@ -181,7 +182,6 @@ The Trust Record is the unit of evidence. All fields are required unless marked 
 
 Each field is independently verifiable. Sub-records (e.g., per-tool-call transcripts) compose under one root envelope.
 
-<!-- CHANGED: #591 - align base-record requiredness with the schema and Level 2 checks -->
 Omitting `tool_transcript` makes no transcript commitment; omitting `transparency`
 makes no anchoring claim. A record missing either field cannot satisfy the
 corresponding Level 2 check. The implementation phases in section 5 describe
@@ -518,7 +518,7 @@ Example result, for a reference composite in which one layer holds a separator o
 - **Embedded:** carried in the record's top-level `signature` field (base64url, no padding), computed over the canonical form of the record with the `signature` field absent. The value MUST be the canonical base64url encoding (RFC 4648 section 3.5: unused trailing bits in the final character MUST be zero), and a verifier MUST reject a record whose `signature` is not canonically encoded. <!-- CHANGED: #247 - embedded signature MUST be canonical base64url -->
 - **Enveloping:** carried by a signed wrapper structure, e.g. a JWS (RFC 7515) whose payload is the record, a COSE_Sign1 envelope, or cMCP's RuntimeClaim (signature over the canonical record, key in `trace.cnf.jwk`).
 
-<!-- CHANGED: #591 - name the base embedded-signature algorithm separately from JWT -->
+<!-- CHANGED: #593 - name the base embedded-signature algorithm separately from JWT -->
 The v0.2 base embedded form MUST use Ed25519: `cnf.jwk` identifies an
 `OKP`/`Ed25519` public key and `signature` encodes the 64-byte Ed25519
 signature. A verifier MUST reject a base embedded record signed with another
@@ -592,9 +592,9 @@ check, just as a software-only record cannot pass a hardware-evidence check.
 Absent evidence MUST NOT be reported as a pass for a claim that requires it.
 A conformance result about record structure and self-consistency is not by
 itself an authenticated verification pass under this section.
-<!-- CHANGED: #591 - scope evidence checks to claims and levels; preserve the no-receipt fallback -->
+<!-- CHANGED: #593 - scope evidence checks to claims and levels; preserve the no-receipt fallback -->
 
-<!-- CHANGED: #591 - distinguish key self-consistency from authenticated verification -->
+<!-- CHANGED: #593 - distinguish key self-consistency from authenticated verification -->
 1. Obtain a signing-key trust anchor independently of the incoming record: an issuer key already trusted by the recipient, or a signature chain validated to an accepted root. Verify the record's signature binding (section 3.2.2) against that trusted key and confirm that it matches the key in `cnf`, BEFORE any other field is trusted. A check against only the record's own `cnf` key establishes internal consistency, not authenticated origin; a verifier with no independent trust anchor MUST NOT report authenticated origin or a §3.3 verification pass. A diagnostic signature check against the embedded key alone does not satisfy this step.
 2. The record is fresh: `iat` is neither older than the maximum age (default 24 hours) nor later than the current time plus the allowed clock skew (default 5 minutes), unless the deployment profile specifies different bounds. If the verifier issued a challenge nonce, `runtime.nonce` echoes it.
 3. For a hardware-backed claim, the signature chain resolves to a known silicon root (NVIDIA, Intel, AMD, or equivalent).

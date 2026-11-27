@@ -28,10 +28,30 @@ _TraceValidator = jsonschema.validators.extend(  # type: ignore[no-untyped-call]
 )
 
 
+def _loads_schema(text: str) -> dict[str, Any]:
+    def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError(f"duplicate JSON object key in schema: {key!r}")
+            out[key] = value
+        return out
+
+    def _no_nonfinite(token: str) -> Any:
+        raise ValueError(f"non-finite JSON constant in schema: {token}")
+
+    parsed = json.loads(
+        text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_nonfinite
+    )
+    if not isinstance(parsed, dict):
+        raise ValueError("schema must be a JSON object")
+    return parsed
+
+
 @lru_cache(maxsize=1)
 def _schema() -> dict[str, Any]:
     ref = importlib.resources.files("agentrust_trace") / "schema" / "trace-v0.2.json"
-    return cast(dict[str, Any], json.loads(ref.read_text(encoding="utf-8")))
+    return _loads_schema(ref.read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=1)
@@ -79,7 +99,7 @@ def profiles_with_schema() -> frozenset[str]:
     for entry in (importlib.resources.files("agentrust_trace") / "schema").iterdir():
         if not entry.name.endswith(".json"):
             continue
-        schema = json.loads(entry.read_text(encoding="utf-8"))
+        schema = _loads_schema(entry.read_text(encoding="utf-8"))
         const = schema.get("properties", {}).get("eat_profile", {}).get("const")
         if isinstance(const, str):
             found.add(const)

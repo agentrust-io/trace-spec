@@ -97,3 +97,60 @@ def test_cmcp_runtime_vector_signature_verifies():
 def test_invalid_level_raises():
     with pytest.raises(ValueError, match="Unknown conformance level"):
         run({}, "trace", level=99)
+
+
+@pytest.mark.parametrize("bad_level", [True, False, 1.0, "0", None, -1])
+def test_boolean_or_non_int_level_raises(bad_level):
+    with pytest.raises(ValueError, match="Unknown conformance level"):
+        run({}, "trace", level=bad_level)
+
+
+@pytest.mark.parametrize("bad_record", [None, [], "not-a-dict", 123])
+def test_non_dict_record_raises(bad_record):
+    from trace_tests.runner import _run_levels
+
+    with pytest.raises(ValueError, match="record must be a JSON object"):
+        run(bad_record, "trace", level=0)
+    with pytest.raises(ValueError, match="record must be a JSON object"):
+        _run_levels(bad_record, "trace", (0,))
+
+
+@pytest.mark.parametrize("bad_fmt", ["", "json", "plain", None, 123, [], {}])
+def test_invalid_format_raises(bad_fmt):
+    from trace_tests.runner import _run_levels
+
+    with pytest.raises(ValueError, match="Unknown record format"):
+        run({}, bad_fmt, level=0)
+    with pytest.raises(ValueError, match="Unknown record format"):
+        _run_levels({}, bad_fmt, (0,))
+
+
+@pytest.mark.parametrize("bad_max_age", [True, False, 0, -1, 86400.0, "86400", None])
+def test_invalid_max_age_seconds_raises(bad_max_age):
+    from trace_tests.runner import _run_levels
+
+    with pytest.raises(ValueError, match="max_age_seconds must be a positive integer"):
+        run({}, "trace", level=0, max_age_seconds=bad_max_age)
+    with pytest.raises(ValueError, match="max_age_seconds must be a positive integer"):
+        _run_levels({}, "trace", (0,), max_age_seconds=bad_max_age)
+
+
+def test_invalid_optional_runner_arguments_raise():
+    from trace_tests.runner import _run_levels
+
+    with pytest.raises(ValueError, match="expected_nonce must be a string"):
+        run({}, "trace", level=0, expected_nonce=123)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="expected_nonce must be a string"):
+        _run_levels({}, "trace", (0,), expected_nonce=123)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="receipt must be a JSON object"):
+        run({}, "trace", level=0, receipt=[])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="receipt must be a JSON object"):
+        _run_levels({}, "trace", (0,), receipt=[])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry must be a JSON object"):
+        run({}, "trace", level=0, entry="bad")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="entry must be a JSON object"):
+        _run_levels({}, "trace", (0,), entry="bad")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="policy_resolver must be callable"):
+        run({}, "trace", level=0, policy_resolver="not-callable")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="policy_resolver must be callable"):
+        _run_levels({}, "trace", (0,), policy_resolver=123)  # type: ignore[arg-type]

@@ -180,3 +180,510 @@ def test_negative_verdict_becomes_an_honest_runtime_component():
     )
     assert c.reasons == ["tcb_snp_below_floor"]
     assert c.evidence_refs[0].digest == canonical_digest(milan)
+
+
+def test_der_uint_rejects_negative_non_minimal_and_out_of_range_integers():
+    assert s._der_uint(b"\x02\x01\x00") == 0
+    assert s._der_uint(b"\x02\x01\x7f") == 127
+    assert s._der_uint(b"\x02\x02\x00\x80") == 128
+    assert s._der_uint(b"\x02\x02\x00\xdb") == 219
+    assert s._der_uint(b"\x02\x02\x00\xff") == 255
+
+    for bad in (
+        b"\x02\x01\x80",
+        b"\x02\x01\xff",
+        b"\x02\x02\xff\x00",
+        b"\x02\x02\x00\x00",
+        b"\x02\x02\x00\x05",
+        b"\x02\x02\x00\x7f",
+        b"\x02\x03\x00\x00\x80",
+        b"\x02\x02\x01\x00",
+        b"\x02\x03\x00\x80\x00",
+        None,
+        "020105",
+        bytearray(b"\x02\x01\x05"),
+        b"\x02\x00",
+        b"\x04\x01\x05",
+        b"\x02\x02\x05",
+    ):
+        with pytest.raises(s.CollateralDenied, match="^vcek_extension_encoding$"):
+            s._der_uint(bad)  # type: ignore[arg-type]
+
+
+def test_tcb_floor_rejects_non_string_source_and_non_int_os_mitigation_bit():
+    floor = s.TcbFloor(
+        bootloader=4, tee=0, snp=27, microcode=219, source=SB_3016, os_mitigation_bit=2
+    )
+    assert floor.os_mitigation_bit == 2 and floor.source == SB_3016
+
+    for bad_source in ("", None, [1], 123, {"url": SB_3016}):
+        with pytest.raises(s.CollateralDenied, match="^policy_floor$"):
+            s.TcbFloor(snp=27, source=bad_source)  # type: ignore[arg-type]
+
+    for bad_bit in (True, False, 1.5, "2", -1, 64, [2]):
+        with pytest.raises(s.CollateralDenied, match="^policy_floor$"):
+            s.TcbFloor(snp=27, source=SB_3016, os_mitigation_bit=bad_bit)  # type: ignore[arg-type]
+
+
+def test_collateral_policy_validates_floors_arks_crls_and_limits_types():
+    valid = s.CollateralPolicy(floors={"Milan": FLOOR}, arks={}, crls={}, limits=["note"])
+    assert valid.limits == ["note"]
+
+    for bad_floors in (None, [], "Milan", {1: FLOOR}):
+        with pytest.raises(s.CollateralDenied, match="^policy_products$"):
+            s.CollateralPolicy(floors=bad_floors, arks={}, crls={})  # type: ignore[arg-type]
+
+    for bad_floor_val in (None, {"snp": 27}, "floor", 27):
+        with pytest.raises(s.CollateralDenied, match="^policy_floor$"):
+            s.CollateralPolicy(
+                floors={"Milan": bad_floor_val},  # type: ignore[dict-item]
+                arks={},
+                crls={},
+            )
+
+    for bad_arks in (None, [], {"Milan": "not-a-cert"}, {1: None}):
+        with pytest.raises(s.CollateralDenied, match="^policy_arks$"):
+            s.CollateralPolicy(
+                floors={"Milan": FLOOR},
+                arks=bad_arks,  # type: ignore[arg-type]
+                crls={},
+            )
+
+    for bad_crls in (None, [], {"Milan": "not-bytes"}, {"Milan": bytearray(b"x")}, {1: b"x"}):
+        with pytest.raises(s.CollateralDenied, match="^policy_crls$"):
+            s.CollateralPolicy(
+                floors={"Milan": FLOOR},
+                arks={},
+                crls=bad_crls,  # type: ignore[arg-type]
+            )
+
+    for bad_limits in (None, ("note",), "note", [1], ["ok", None]):
+        with pytest.raises(s.CollateralDenied, match="^policy_limits$"):
+            s.CollateralPolicy(
+                floors={"Milan": FLOOR},
+                arks={},
+                crls={},
+                limits=bad_limits,  # type: ignore[arg-type]
+            )
+
+
+def test_appraise_collateral_validates_packet_policy_and_timezone_aware_now(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+    from types import ModuleType
+
+    wcm_mod = ModuleType("wcm")
+    certs_mod = ModuleType("wcm._certificates")
+    snp_mod = ModuleType("wcm.snp")
+    certs_mod.load_pem_certificate = (  # type: ignore[attr-defined]
+        lambda pem, **kw: x509.load_pem_x509_certificate(pem)
+    )
+    snp_mod.extract_snp_report_from_hcl = (  # type: ignore[attr-defined]
+        lambda hcl: hcl[32 : 32 + 1184]
+    )
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm._certificates", certs_mod)
+    monkeypatch.setitem(sys.modules, "wcm.snp", snp_mod)
+
+    milan, _ = packets()
+    valid_policy = s.CollateralPolicy(floors={"Milan": FLOOR}, arks={}, crls={})
+
+    for bad_policy in (None, {}, "policy"):
+        with pytest.raises(s.CollateralDenied, match="^policy_inputs$"):
+            s.appraise_collateral(milan, bad_policy, now=NOW)  # type: ignore[arg-type]
+
+    for bad_now in (None, 1790683200, "2026-09-30T05:00:00Z", datetime(2026, 9, 30, 5, 0)):
+        with pytest.raises(s.CollateralDenied, match="^clock_or_age$"):
+            s.appraise_collateral(milan, valid_policy, now=bad_now)  # type: ignore[arg-type]
+
+    for bad_packet in (
+        None,
+        [],
+        "packet",
+        {},
+        {**milan, "hcl_b64": b"bytes"},
+        {**milan, "vcek_pem": b"bytes"},
+        {**milan, "intermediates_pem": "not-a-list"},
+        {**milan, "intermediates_pem": [b"bytes"]},
+        {**milan, "intermediates_pem": [None]},
+    ):
+        with pytest.raises(s.CollateralDenied, match="^platform_evidence_format$"):
+            s.appraise_collateral(bad_packet, valid_policy, now=NOW)  # type: ignore[arg-type]
+
+
+def test_appraise_collateral_rejects_vcek_with_negative_or_non_minimal_der_tcb(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+    from types import ModuleType
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID, ObjectIdentifier
+
+    milan, _ = packets()
+    hcl_raw = base64.b64decode(milan["hcl_b64"])
+    report_raw = bytearray(hcl_raw[32 : 32 + 1184])
+    hwid = bytes(report_raw[s._CHIP_ID : s._CHIP_ID + 64])
+
+    wcm_mod = ModuleType("wcm")
+    certs_mod = ModuleType("wcm._certificates")
+    snp_mod = ModuleType("wcm.snp")
+    certs_mod.load_pem_certificate = (  # type: ignore[attr-defined]
+        lambda pem, **kw: x509.load_pem_x509_certificate(pem)
+    )
+    snp_mod.extract_snp_report_from_hcl = (  # type: ignore[attr-defined]
+        lambda hcl: hcl[32 : 32 + 1184]
+    )
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm._certificates", certs_mod)
+    monkeypatch.setitem(sys.modules, "wcm.snp", snp_mod)
+
+    ark_key = ec.generate_private_key(ec.SECP384R1())
+    ask_key = ec.generate_private_key(ec.SECP384R1())
+    vcek_key = ec.generate_private_key(ec.SECP384R1())
+    ark_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Milan")])
+    ask_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-Milan")])
+    vcek_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-VCEK")])
+
+    ark_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ark_name)
+        .issuer_name(ark_name)
+        .public_key(ark_key.public_key())
+        .serial_number(1)
+        .not_valid_before(NOW - timedelta(days=1))
+        .not_valid_after(NOW + timedelta(days=30))
+        .sign(ark_key, hashes.SHA384())
+    )
+    ask_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ask_name)
+        .issuer_name(ark_name)
+        .public_key(ask_key.public_key())
+        .serial_number(2)
+        .not_valid_before(NOW - timedelta(days=1))
+        .not_valid_after(NOW + timedelta(days=30))
+        .sign(ark_key, hashes.SHA384())
+    )
+    crl_der = (
+        x509.CertificateRevocationListBuilder()
+        .issuer_name(ark_name)
+        .last_update(NOW - timedelta(hours=1))
+        .next_update(NOW + timedelta(days=7))
+        .sign(ark_key, hashes.SHA384())
+        .public_bytes(serialization.Encoding.DER)
+    )
+    ask_pem = ask_cert.public_bytes(serialization.Encoding.PEM).decode("ascii")
+    pol = s.CollateralPolicy(
+        floors={"Milan": FLOOR},
+        arks={"Milan": ark_cert},
+        crls={"Milan": crl_der},
+    )
+
+    def _pkt(snp_der: bytes, snp_report_byte: int = 24) -> dict[str, object]:
+        mut_hcl = bytearray(hcl_raw)
+        mut_hcl[32 + s._REPORTED_TCB + 6] = snp_report_byte
+        builder = (
+            x509.CertificateBuilder()
+            .subject_name(vcek_name)
+            .issuer_name(ask_name)
+            .public_key(vcek_key.public_key())
+            .serial_number(3)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+            .add_extension(
+                x509.UnrecognizedExtension(
+                    ObjectIdentifier(s._VCEK_OIDS["bootloader"]), b"\x02\x01\x04"
+                ),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._VCEK_OIDS["tee"]), b"\x02\x01\x00"),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._VCEK_OIDS["snp"]), snp_der),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(
+                    ObjectIdentifier(s._VCEK_OIDS["microcode"]), b"\x02\x02\x00\xdb"
+                ),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._HWID_OID), hwid),
+                critical=False,
+            )
+        )
+        vcek_pem = (
+            builder.sign(ask_key, hashes.SHA384())
+            .public_bytes(serialization.Encoding.PEM)
+            .decode("ascii")
+        )
+        return {
+            "hcl_b64": base64.b64encode(bytes(mut_hcl)).decode("ascii"),
+            "vcek_pem": vcek_pem,
+            "intermediates_pem": [ask_pem],
+        }
+
+    ok = s.appraise_collateral(_pkt(b"\x02\x01\x18", 24), pol, now=NOW)
+    assert ok["reported_tcb"]["snp"] == 24
+
+    # Non-minimal leading zero for 24 (0x00 0x18) must be rejected.
+    with pytest.raises(s.CollateralDenied, match="^vcek_extension_encoding$"):
+        s.appraise_collateral(_pkt(b"\x02\x02\x00\x18", 24), pol, now=NOW)
+
+    # Negative DER integer -128 (0x80) must not be accepted as +128.
+    with pytest.raises(s.CollateralDenied, match="^vcek_extension_encoding$"):
+        s.appraise_collateral(_pkt(b"\x02\x01\x80", 128), pol, now=NOW)
+
+
+def test_tcb_component_validates_appraisal_packet_and_identifiers():
+    milan, _ = packets()
+    valid_appraisal = {
+        "profile": s.PROFILE,
+        "status": "contraindicated",
+        "reasons": ["tcb_snp_below_floor"],
+    }
+    now = int(NOW.timestamp())
+    comp = s.tcb_component(
+        valid_appraisal,
+        milan,
+        instance="azure-vm/test",
+        authority="https://verifier.example.test",
+        now=now,
+    )
+    assert comp.status == "contraindicated"
+
+    for bad_appraisal in (
+        None,
+        [],
+        {},
+        {"status": "affirming", "reasons": []},
+        {"profile": s.PROFILE, "status": 123, "reasons": []},
+        {"profile": s.PROFILE, "status": "affirming", "reasons": "not-a-list"},
+        {"profile": s.PROFILE, "status": "affirming", "reasons": [123]},
+        {"profile": s.PROFILE, "status": "not-a-valid-status", "reasons": []},
+    ):
+        with pytest.raises(s.CollateralDenied, match="^component_inputs$"):
+            s.tcb_component(
+                bad_appraisal,  # type: ignore[arg-type]
+                milan,
+                instance="azure-vm/test",
+                authority="https://verifier.example.test",
+                now=now,
+            )
+
+    for bad_packet in (None, [], "packet"):
+        with pytest.raises(s.CollateralDenied, match="^component_inputs$"):
+            s.tcb_component(
+                valid_appraisal,
+                bad_packet,  # type: ignore[arg-type]
+                instance="azure-vm/test",
+                authority="https://verifier.example.test",
+                now=now,
+            )
+
+    for bad_id in ("", None, 123):
+        with pytest.raises(s.CollateralDenied, match="^component_inputs$"):
+            s.tcb_component(
+                valid_appraisal,
+                milan,
+                instance=bad_id,  # type: ignore[arg-type]
+                authority="https://verifier.example.test",
+                now=now,
+            )
+        with pytest.raises(s.CollateralDenied, match="^component_inputs$"):
+            s.tcb_component(
+                valid_appraisal,
+                milan,
+                instance="azure-vm/test",
+                authority=bad_id,  # type: ignore[arg-type]
+                now=now,
+            )
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_reason"),
+    [
+        ("wrong_signer", "product_chain"),
+        ("extra_issuer_rdn", "product_chain"),
+        ("non_canonical_hcl_b64", "platform_evidence_format"),
+        ("version_1", "platform_evidence_format"),
+    ],
+)
+def test_appraise_collateral_verifies_vcek_issuer_and_signature_and_report_bounds(
+    monkeypatch: pytest.MonkeyPatch, case: str, expected_reason: str
+) -> None:
+    import sys
+    from types import ModuleType
+
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID, ObjectIdentifier
+
+    milan, _ = packets()
+    hcl_raw = base64.b64decode(milan["hcl_b64"])
+    report_raw = bytearray(hcl_raw[32 : 32 + 1184])
+    hwid = bytes(report_raw[s._CHIP_ID : s._CHIP_ID + 64])
+
+    wcm_mod = ModuleType("wcm")
+    certs_mod = ModuleType("wcm._certificates")
+    snp_mod = ModuleType("wcm.snp")
+    certs_mod.load_pem_certificate = (  # type: ignore[attr-defined]
+        lambda pem, **kw: x509.load_pem_x509_certificate(pem)
+    )
+    snp_mod.extract_snp_report_from_hcl = (  # type: ignore[attr-defined]
+        lambda hcl: hcl[32 : 32 + 1184]
+    )
+    monkeypatch.setitem(sys.modules, "wcm", wcm_mod)
+    monkeypatch.setitem(sys.modules, "wcm._certificates", certs_mod)
+    monkeypatch.setitem(sys.modules, "wcm.snp", snp_mod)
+
+    ark_key = ec.generate_private_key(ec.SECP384R1())
+    ask_key = ec.generate_private_key(ec.SECP384R1())
+    wrong_ask_key = ec.generate_private_key(ec.SECP384R1())
+    vcek_key = ec.generate_private_key(ec.SECP384R1())
+    ark_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ARK-Milan")])
+    ask_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-Milan")])
+    extra_issuer_name = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "SEV-Milan"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Other"),
+        ]
+    )
+    vcek_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "SEV-VCEK")])
+
+    ark_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ark_name)
+        .issuer_name(ark_name)
+        .public_key(ark_key.public_key())
+        .serial_number(1)
+        .not_valid_before(NOW - timedelta(days=1))
+        .not_valid_after(NOW + timedelta(days=30))
+        .sign(ark_key, hashes.SHA384())
+    )
+    ask_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ask_name)
+        .issuer_name(ark_name)
+        .public_key(ask_key.public_key())
+        .serial_number(2)
+        .not_valid_before(NOW - timedelta(days=1))
+        .not_valid_after(NOW + timedelta(days=30))
+        .sign(ark_key, hashes.SHA384())
+    )
+    crl_der = (
+        x509.CertificateRevocationListBuilder()
+        .issuer_name(ark_name)
+        .last_update(NOW - timedelta(hours=1))
+        .next_update(NOW + timedelta(days=7))
+        .sign(ark_key, hashes.SHA384())
+        .public_bytes(serialization.Encoding.DER)
+    )
+    ask_pem = ask_cert.public_bytes(serialization.Encoding.PEM).decode("ascii")
+    pol = s.CollateralPolicy(
+        floors={"Milan": FLOOR},
+        arks={"Milan": ark_cert},
+        crls={"Milan": crl_der},
+    )
+
+    def _build_vcek(issuer: x509.Name, signer: ec.EllipticCurvePrivateKey) -> str:
+        return (
+            x509.CertificateBuilder()
+            .subject_name(vcek_name)
+            .issuer_name(issuer)
+            .public_key(vcek_key.public_key())
+            .serial_number(3)
+            .not_valid_before(NOW - timedelta(days=1))
+            .not_valid_after(NOW + timedelta(days=30))
+            .add_extension(
+                x509.UnrecognizedExtension(
+                    ObjectIdentifier(s._VCEK_OIDS["bootloader"]), b"\x02\x01\x04"
+                ),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._VCEK_OIDS["tee"]), b"\x02\x01\x00"),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._VCEK_OIDS["snp"]), b"\x02\x01\x18"),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(
+                    ObjectIdentifier(s._VCEK_OIDS["microcode"]), b"\x02\x02\x00\xdb"
+                ),
+                critical=False,
+            )
+            .add_extension(
+                x509.UnrecognizedExtension(ObjectIdentifier(s._HWID_OID), hwid),
+                critical=False,
+            )
+            .sign(signer, hashes.SHA384())
+            .public_bytes(serialization.Encoding.PEM)
+            .decode("ascii")
+        )
+
+    valid_pkt = {
+        "hcl_b64": milan["hcl_b64"],
+        "vcek_pem": _build_vcek(ask_name, ask_key),
+        "intermediates_pem": [ask_pem],
+    }
+    assert s.appraise_collateral(valid_pkt, pol, now=NOW)["product"] == "Milan"
+
+    if case == "wrong_signer":
+        bad_pkt = {**valid_pkt, "vcek_pem": _build_vcek(ask_name, wrong_ask_key)}
+    elif case == "extra_issuer_rdn":
+        bad_pkt = {**valid_pkt, "vcek_pem": _build_vcek(extra_issuer_name, ask_key)}
+    elif case == "non_canonical_hcl_b64":
+        bad_pkt = {**valid_pkt, "hcl_b64": milan["hcl_b64"][:-2] + "B="}
+    else:
+        v1_hcl = bytearray(hcl_raw)
+        v1_hcl[32 + s._VERSION : 32 + s._VERSION + 4] = (1).to_bytes(4, "little")
+        bad_pkt = {
+            **valid_pkt,
+            "hcl_b64": base64.b64encode(bytes(v1_hcl)).decode("ascii"),
+        }
+    with pytest.raises(s.CollateralDenied, match=f"^{expected_reason}$"):
+        s.appraise_collateral(bad_pkt, pol, now=NOW)
+
+
+@pytest.mark.parametrize(
+    ("bad_now", "bad_appraisal", "expected_reason"),
+    [
+        (0, {"profile": s.PROFILE, "status": "affirming", "reasons": []}, "clock_or_age"),
+        (
+            9_007_199_254_740_991,
+            {"profile": s.PROFILE, "status": "affirming", "reasons": []},
+            "clock_or_age",
+        ),
+        (
+            1790683200,
+            {"status": "affirming", "reasons": []},
+            "component_inputs",
+        ),
+        (
+            1790683200,
+            {"profile": "other-profile", "status": "affirming", "reasons": []},
+            "component_inputs",
+        ),
+    ],
+)
+def test_tcb_component_rejects_zero_or_overflow_now_and_wrong_profile(
+    bad_now: int, bad_appraisal: dict[str, object], expected_reason: str
+) -> None:
+    milan, _ = packets()
+    with pytest.raises(s.CollateralDenied, match=f"^{expected_reason}$"):
+        s.tcb_component(
+            bad_appraisal,
+            milan,
+            instance="azure-vm/test",
+            authority="https://verifier.example.test",
+            now=bad_now,
+        )

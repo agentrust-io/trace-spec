@@ -329,19 +329,41 @@ def verify_assertion(
             )
     if _has_surrogate(assertion):
         raise ContentMarkingError("assertion contains an unpaired UTF-16 surrogate")
+    unknown_top = sorted(set(assertion) - {"label", "data"}, key=repr)
+    if unknown_top:
+        raise ContentMarkingError(
+            f"assertion contains unknown fields: {unknown_top}"
+        )
+    unknown_data = sorted(
+        set(data) - {"version", "record", "subject", "eat_profile", "anchor"},
+        key=repr,
+    )
+    if unknown_data:
+        raise ContentMarkingError(
+            f"assertion data contains unknown fields: {unknown_data}"
+        )
 
     ref = data.get("record")
     if not isinstance(ref, dict):
         raise ContentMarkingError("assertion carries no record reference")
+    unknown_ref = sorted(set(ref) - {"url", "hash", "alg"}, key=repr)
+    if unknown_ref:
+        raise ContentMarkingError(
+            f"assertion record reference contains unknown fields: {unknown_ref}"
+        )
     url = _record_url(ref.get("url"))
     alg = ref.get("alg")
-    if not isinstance(alg, str):
+    if not isinstance(alg, str) or alg not in _ALGS:
         raise ContentMarkingError(
             f"unsupported digest algorithm {alg!r}; use sha256 or sha384"
         )
     expected = ref.get("hash")
-    if not _DIGEST_RE.match(str(expected or "")):
+    if not isinstance(expected, str) or not _DIGEST_RE.match(expected):
         raise ContentMarkingError(f"record.hash {expected!r} is not a sha256:/sha384: digest")
+    if not expected.startswith(f"{alg}:"):
+        raise ContentMarkingError(
+            f"record.hash {expected!r} does not use declared record.alg {alg!r}"
+        )
 
     if not isinstance(record_bytes, bytes | bytearray) or not record_bytes:
         raise ContentMarkingError(

@@ -59,6 +59,8 @@ BOUNDED_SCHEMAS = (
     "schema/trace-requirements-experimental-v1.json",
     "schema/trace-holder-proof-experimental-v1.json",
     "schema/trace-decision-receipt-experimental-v1.json",
+    # Blocks are signed over their RFC 8785 form, like the token above.
+    "schema/behavior-trace-block-experimental-v1.json",
     "schema/pic-trace-bridge-v1.json",
     "schema/pic-trace-successor-v1.json",
     "schema/trace-claim.json",

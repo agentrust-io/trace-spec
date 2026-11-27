@@ -17,6 +17,19 @@
 
 ### Changed
 
+- **Breaking: TR-ANC-002 requires the registry entry (trace-spec#464).** `--entry`
+  takes one Anchor Format §4 line, and `run()` and `tr_anc.check()` take `entry`.
+  The receipt's `merkle_root` and `leaf_count` must equal the entry's; with no entry,
+  TR-ANC-002 fails as it does with no receipt. The pass message names the entry and
+  says the link from the `transparency` URI to it is not checked (trace-spec#448
+  finding 21). Tests cover the four worlds from trace-tests#92 and the absent entry.
+- **Breaking: TR-ANC-002 proves inclusion of the complete signed claim.** For
+  `cmcp-runtime` the runner now gives TR-ANC the whole envelope, signature included,
+  as Anchor Format §1 and the reference registry already define the leaf; before, it
+  proved the nested `trace`, so a registry-valid anchor failed and a re-signed
+  envelope with changed gateway fields still passed. `tr_anc.check()` takes
+  `subject`. The entry `ts` must be an ISO-8601 UTC timestamp ending in `Z`.
+  Reported on trace-spec#533 by solloek369-arch and reproduced by dinakarjs.
 - Vendor-neutral placeholders (`example-provider`, `example-model`) in the unsigned
   vectors and the policy-resolution generator; the policy-resolution set is regenerated
   and every verdict is unchanged. Signed vectors are untouched.

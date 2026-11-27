@@ -11,6 +11,25 @@
 
 export { decodeBase64url, encodeBase64url } from "./base64url.js";
 export {
+  BEHAVIOR_BLOCK_CODES,
+  BEHAVIOR_EDGES,
+  BEHAVIOR_MAX_BLOCKS,
+  BEHAVIOR_RUN_CODES,
+  blockDigest,
+  verifyRun,
+  type BehaviorCode,
+  type RunResult,
+  type VerifyRunOptions,
+} from "./behavior.js";
+export {
+  checkCitations,
+  SURFACES,
+  type CitationCause,
+  type CitationCheck,
+  type CitationOutcome,
+  type CitationResolver,
+} from "./citation.js";
+export {
   DELEGATION_DIGEST_ALGORITHMS,
   parentRecordHash,
   verifyDelegationLink,
@@ -21,6 +40,19 @@ export {
 export { FAILURE_CODES, TraceVerificationError, type FailureCode } from "./errors.js";
 export { canonicalize, canonicalJson, JCS_SAFE_INTEGER } from "./jcs.js";
 export { jwkThumbprint, keyIdentifiers } from "./jwk.js";
+export {
+  checkPlatformMeasurement,
+  LAYER_STATUSES,
+  NOT_ATTEMPTED,
+  type LayerCause,
+  type LayerCheck,
+  type LayerOutcome,
+  type LayerStatus,
+  type PlatformAppraiser,
+  type PlatformCause,
+  type PlatformMeasurementCheck,
+  type PlatformOutcome,
+} from "./platform.js";
 export {
   bundleDigest,
   checkRevocationBundle,

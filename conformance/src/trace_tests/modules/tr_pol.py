@@ -250,7 +250,8 @@ def _resolution_finding(
     read from the record, and a record that declares a different policy is
     reported without a resolver, whether or not it carries a policy_uri.
     """
-    bundle_hash = str(policy.get("bundle_hash", ""))
+    raw_bundle_hash = policy.get("bundle_hash")
+    bundle_hash = raw_bundle_hash if isinstance(raw_bundle_hash, str) else ""
     if "policy_uri" not in policy:
         mismatch = _expected_mismatch(bundle_hash, expected_policy_hash)
         if mismatch is not None:
@@ -453,7 +454,11 @@ def check(
 
     if policy is None:
         _observe("TR-POL", "policy_missing")
-        return [Finding("TR-POL-001", Status.FAIL, "TR-POL-001: policy field is missing or not an object")]
+        return [
+            Finding(
+                "TR-POL-001", Status.FAIL, "TR-POL-001: policy field is missing or not an object"
+            )
+        ]
     if not isinstance(policy, dict):
         _observe("TR-POL", "policy_not_object")
         return [
@@ -464,21 +469,29 @@ def check(
         ]
 
     bundle_hash = policy.get("bundle_hash", "")
-    if _DIGEST_RE.fullmatch(str(bundle_hash)):
-        findings.append(Finding("TR-POL-001", Status.PASS, "policy.bundle_hash has valid digest format"))
+    if isinstance(bundle_hash, str) and _DIGEST_RE.fullmatch(bundle_hash):
+        findings.append(
+            Finding("TR-POL-001", Status.PASS, "policy.bundle_hash has valid digest format")
+        )
     else:
         findings.append(Finding(
             "TR-POL-001", Status.FAIL,
-            f"TR-POL-001: policy.bundle_hash must match sha256:<64hex> or sha384:<96hex>, got {bundle_hash!r}",
+            "TR-POL-001: policy.bundle_hash must match sha256:<64hex> or sha384:<96hex>, "
+            f"got {bundle_hash!r}",
         ))
 
     enforcement = policy.get("enforcement_mode")
     if isinstance(enforcement, str) and enforcement in _VALID_ENFORCEMENT:
-        findings.append(Finding("TR-POL-002", Status.PASS, f"policy.enforcement_mode is valid ({enforcement!r})"))
+        findings.append(
+            Finding(
+                "TR-POL-002", Status.PASS, f"policy.enforcement_mode is valid ({enforcement!r})"
+            )
+        )
     else:
         findings.append(Finding(
             "TR-POL-002", Status.FAIL,
-            f"TR-POL-002: policy.enforcement_mode must be one of {sorted(_VALID_ENFORCEMENT)}, got {enforcement!r}",
+            f"TR-POL-002: policy.enforcement_mode must be one of {sorted(_VALID_ENFORCEMENT)}, "
+            f"got {enforcement!r}",
         ))
 
     findings.append(_resolution_finding(policy, policy_resolver, expected_policy_hash))

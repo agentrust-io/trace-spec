@@ -18,32 +18,41 @@
  *       in the standard alphabet is reported as the encoding fault it is. The
  *       empty string decodes, to no bytes, and is left to the schema's pattern.
  *    5. The record conforms to the schema: `schema_invalid`, with the location.
- *    6. A trusted key: the caller's, or `cnf.jwk` only when `allowEmbeddedKey` is
+ *    6. Cross-field semantics the schema cannot express: `measurement_mismatch`
+ *       when a platform appraisal names a different runtime measurement (section 3.1.5).
+ *    7. A trusted key: the caller's, or `cnf.jwk` only when `allowEmbeddedKey` is
  *       set, and it is an Ed25519 key: `trusted_key_missing`,
  *       `trusted_key_unsupported`, `trusted_key_malformed`.
- *    7. Revocation (section 3.2.3), keyed on the trusted key and never on the
+ *    8. Revocation (section 3.2.3), keyed on the trusted key and never on the
  *       record's own `cnf.jwk`: a caller-supplied store, then a bundle.
  *       `key_revoked`, `revocation_unavailable`; any other bundle defect is
  *       reported in the result, not thrown.
- *    8. The confirmation key: `cnf.jwk` is an Ed25519 key with the same RFC 7638
+ *    9. The confirmation key: `cnf.jwk` is an Ed25519 key with the same RFC 7638
  *       thumbprint as the trusted key, because the binding is a signature made
  *       by the key in `cnf` (section 3.2.2): `cnf_key_unsupported`,
  *       `cnf_key_malformed`, `cnf_key_mismatch`.
- *    9. Freshness (section 3.2.2): `iat_invalid`, `record_in_future` past the
+ *   10. Freshness (section 3.2.2): `iat_invalid`, `record_in_future` past the
  *       allowed skew, `record_stale` past the maximum age, `nonce_mismatch` when a
  *       challenge nonce was issued.
- *   10. The signature verifies over the RFC 8785 form of the record with
+ *   11. The signature verifies over the RFC 8785 form of the record with
  *       `signature` absent (section 3.2.2): `canonicalization_failed`,
  *       `signature_invalid`.
  */
 
 import { decodeBase64url } from "./base64url.js";
+import { checkCitations, type CitationCheck, type CitationResolver } from "./citation.js";
 import { importEd25519, verifyEd25519 } from "./crypto.js";
 import { fail, TraceVerificationError } from "./errors.js";
 import { canonicalize } from "./jcs.js";
 import { keyIdentifiers } from "./jwk.js";
+import {
+  checkPlatformMeasurement,
+  type PlatformAppraiser,
+  type PlatformMeasurementCheck,
+} from "./platform.js";
 import { checkRevocationBundle, NO_CHECK, type RevocationCheck } from "./revocation.js";
 import { recordSchemaViolations } from "./schema.js";
+import { recordSemanticViolations } from "./semantics.js";
 import { isPlainObject, isSet, own, timingSafeEqual } from "./text.js";
 
 /** The profile URI this build implements, and the only one `verifyRecord` accepts. */
@@ -72,7 +81,8 @@ export interface VerifyOptions {
   /**
    * Verify against the record's own `cnf.jwk` when no trusted key is given. That
    * proves the record is internally consistent, not who produced it, and the
-   * result reports it as `trustedKeySource: "record"`.
+   * result reports it as `trustedKeySource: "record"`. This diagnostic result
+   * is not an authenticated verification pass under spec section 3.3.
    */
   readonly allowEmbeddedKey?: boolean;
   /** Verification moment in Unix seconds. Defaults to the clock. */
@@ -96,6 +106,16 @@ export interface VerifyOptions {
   readonly trustedBundleKeys?: readonly unknown[];
   /** Maximum bundle age in seconds, measured from `issued_at`. Default 86400. */
   readonly maxBundleAgeSeconds?: number;
+  /**
+   * Caller-supplied citation resolver (section 3.1.2). Called after signature
+   * verification for `appraisal.policy_ref`, `runtime.rim_uri`, and `model.aibom_uri`.
+   */
+  readonly citationResolver?: CitationResolver | null;
+  /**
+   * Caller-supplied platform measurement appraiser. Called after signature
+   * verification with a deep copy of `record.runtime`.
+   */
+  readonly platformAppraiser?: PlatformAppraiser | null;
 }
 
 export interface VerificationResult {
@@ -109,6 +129,10 @@ export interface VerificationResult {
   readonly trustedKeyThumbprint: string;
   /** `caller` for a pinned key, `record` when `allowEmbeddedKey` trusted `cnf.jwk`. */
   readonly trustedKeySource: "caller" | "record";
+  /** Per-surface citation resolution outcomes (section 3.1.2). */
+  readonly citations: Readonly<Record<string, CitationCheck>>;
+  /** What the platform measurement appraiser reported about `runtime.measurement`. */
+  readonly platformMeasurement: PlatformMeasurementCheck;
 }
 
 const DEFAULT_MAX_AGE_SECONDS = 86400;
@@ -136,6 +160,8 @@ interface Settings {
   revocationBundle: unknown;
   trustedBundleKeys: readonly unknown[];
   maxBundleAgeSeconds: number;
+  citationResolver: CitationResolver | null;
+  platformAppraiser: PlatformAppraiser | null;
 }
 
 function settings(options: unknown): Settings {
@@ -172,6 +198,22 @@ function settings(options: unknown): Settings {
   if (bundleKeys !== undefined && bundleKeys !== null && !Array.isArray(bundleKeys)) {
     fail("invalid_argument", "trustedBundleKeys must be an array of JWK objects");
   }
+  const citationResolver = own(o as Record<string, unknown>, "citationResolver");
+  if (
+    citationResolver !== undefined &&
+    citationResolver !== null &&
+    typeof citationResolver !== "function"
+  ) {
+    fail("invalid_argument", "citationResolver must be a function or null");
+  }
+  const platformAppraiser = own(o as Record<string, unknown>, "platformAppraiser");
+  if (
+    platformAppraiser !== undefined &&
+    platformAppraiser !== null &&
+    typeof platformAppraiser !== "function"
+  ) {
+    fail("invalid_argument", "platformAppraiser must be a function or null");
+  }
   const bundle = own(o as Record<string, unknown>, "revocationBundle");
   return {
     trustedKey: own(o as Record<string, unknown>, "trustedKey"),
@@ -192,6 +234,8 @@ function settings(options: unknown): Settings {
       own(o as Record<string, unknown>, "maxBundleAgeSeconds"),
       DEFAULT_MAX_BUNDLE_AGE_SECONDS,
     ),
+    citationResolver: (citationResolver ?? null) as CitationResolver | null,
+    platformAppraiser: (platformAppraiser ?? null) as PlatformAppraiser | null,
   };
 }
 
@@ -286,10 +330,14 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     });
   }
 
-  // From here the schema holds for the members it saw. A schema validator reads
-  // through the prototype chain; the signature pre-image is built from own
-  // members only, so every member read from here on is own, and an inherited
-  // `cnf` or `iat` stands for nothing.
+  const [first] = recordSemanticViolations(record);
+  if (first !== undefined) {
+    fail(first.code, `the record violates TRACE v0.2 semantics at ${first.path}: ${first.message}`);
+  }
+
+  // From here the schema and cross-field semantics hold for the record's own
+  // members. Keep later reads on that same own-member set: the signature pre-image
+  // excludes inherited values, so an inherited `cnf` or `iat` stands for nothing.
   const cnf = own(record, "cnf");
   if (!isPlainObject(cnf)) {
     fail("schema_invalid", "the record does not conform to the TRACE v0.2 schema at cnf: not a plain object of the record's own", {
@@ -380,11 +428,16 @@ export async function verifyRecord(record: unknown, options?: VerifyOptions): Pr
     fail("signature_invalid", "the signature does not verify over the record's RFC 8785 form");
   }
 
+  const citations = await checkCitations(record, s.citationResolver);
+  const platformMeasurement = await checkPlatformMeasurement(record, s.platformAppraiser);
+
   return {
     profile,
     acceptedProfiles: ACCEPTED_PROFILES,
     revocation,
     trustedKeyThumbprint: trustedIds[0] as string,
     trustedKeySource,
+    citations,
+    platformMeasurement,
   };
 }

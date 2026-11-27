@@ -43,19 +43,21 @@ from pathlib import Path
 import pytest
 import rfc8785
 
-from tests.test_delegation_vectors import (
+from agentrust_trace.delegation import (
     CLASSIFICATIONS,
-    VECTOR_PATHS,
+    RULES,
     Hop,
     Rule,
-    RULES,
     _jwk_key,
     _signature_invalid,
+)
+from tests.test_delegation_vectors import (
+    VECTOR_PATHS,
     verify_chain,
 )
 
 TESTS_DIR = Path(__file__).parent
-WALK_MODULE = TESTS_DIR / "test_delegation_vectors.py"
+WALK_MODULE = TESTS_DIR.parent / "src" / "agentrust_trace" / "delegation.py"
 MARGINS_FILE = TESTS_DIR / "delegation_margins.json"
 
 RULE_CODES = tuple(rule.code for rule in RULES)
@@ -152,6 +154,12 @@ def _expiry_only(hop: Hop) -> bool:
     return hop.record["iat"] > credential["not_after"]
 
 
+def _child_data_class_only(hop: Hop) -> bool:
+    """Check only the child's data_class against the lattice and assume the parent's is."""
+    assert hop.parent is not None
+    return hop.record["data_class"] not in hop.context["data_class_lattice"]
+
+
 def _narrowing_checked_at_the_first_hop_only(hop: Hop) -> bool:
     """Compare the leaf against its parent and call the chain narrowed."""
     if hop.depth != 1:
@@ -177,6 +185,7 @@ DEFECTS: dict[str, dict[str, Check]] = {
         "holder_compared_to_the_parent": _holder_compared_to_the_parent
     },
     "credential_window": {"expiry_only": _expiry_only},
+    "data_class_unknown": {"child_class_only": _child_data_class_only},
     "data_class_widened": {"first_hop_only": _narrowing_checked_at_the_first_hop_only},
 }
 

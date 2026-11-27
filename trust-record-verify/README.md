@@ -27,7 +27,10 @@ const result = await verifyRecord(record, {
 result.profile;                   // the record's eat_profile, accepted by this verifier
 result.acceptedProfiles;          // every profile this verifier accepts, in full (section 3.3)
 result.trustedKeyThumbprint;      // RFC 7638 thumbprint of the verifying key
+result.trustedKeySource;          // "caller" for the independently trusted key
 result.revocation.outcome;        // "verified" | "unverified_for_revocation" | "no_check_performed"
+result.citations;                 // per-surface citation resolution outcomes (section 3.1.2)
+result.platformMeasurement;       // platform measurement appraisal outcome
 ```
 
 A rejection is a `TraceVerificationError` carrying a stable `code`. A resolved result still
@@ -35,12 +38,18 @@ has to be read: `revocation.outcome` is the verifier's appraisal input, and sect
 states that `unverified_for_revocation` and `no_check_performed` MUST NOT be reported as an
 affirming appraisal.
 
+`allowEmbeddedKey: true` is an explicit diagnostic mode when the caller has no
+independently trusted key. It checks the signature against the record's own
+`cnf.jwk` and returns `trustedKeySource: "record"`; that establishes internal
+consistency, not authenticated origin or a section 3.3 verification pass.
+
 ## What it checks, and where each rule comes from
 
 | Check | Source |
 |---|---|
 | `eat_profile` is `tag:agentrust-io.com,2026:trace-v0.2`, and the v0.1 identifier is rejected rather than accepted | spec section 2, "the cutover is cutover, not coexistence" |
 | The record conforms to `schema/trace-claim.json`, Draft 2020-12, with `pattern` read as ECMA-262 and `format: uri` asserted | schema, and JSON Schema 2020-12 section 7 |
+| `appraisal.platform_measurement.measurement` exactly equals `runtime.measurement` | spec section 3.1.5 |
 | The signature is Ed25519 over the RFC 8785 form of the record with `signature` absent | spec section 3.2.2 |
 | The signature is canonical unpadded base64url: no padding, unused trailing bits zero | RFC 4648 sections 5 and 3.5 |
 | An integer outside the JCS safe range MUST be rejected rather than canonicalised | spec section 3.2.2, RFC 8785 Appendix B |
@@ -55,6 +64,23 @@ affirming appraisal.
 The check order inside `verifyRecord` is the Python implementation's, so both report the
 same first failure for the same record. It is documented beside the function.
 
+## Behavior-trace runs (experimental)
+
+`verifyRun(blocks, pinnedKeys)` checks the blocks of one agent run against the keys
+pinned for each edge, as [`docs/rfcs/behavior-trace.md`](../docs/rfcs/behavior-trace.md)
+describes. It returns `verified`, `truncated` (genuine blocks, no `run_end`) or `rejected`
+with codes. A bad `pinnedKeys` throws; bad blocks only ever become codes.
+
+`verified` means every block is authentic and correctly linked and the run is closed by a
+`run_end`. It does not mean the record is complete.
+
+Runs over 100,000 blocks throw unless you pass `{ maxBlocks }`; `null` lifts the limit.
+Bound the input's size in bytes before parsing it.
+
+It implements the same rules as `prototype/behavior_trace.py`. Section 6 of the RFC says
+how the two are held to each other: the vectors in
+[`examples/behavior-trace/`](../examples/behavior-trace/) and a randomized comparison.
+
 ## What it does not do
 
 - No chain walk. The `delegation` block is normative in v0.2 and what a verifier does with a
@@ -62,8 +88,6 @@ same first failure for the same record. It is documented beside the function.
   the policy to its caller. See [`docs/rfcs/a2a-delegation-profile.md`](../docs/rfcs/a2a-delegation-profile.md).
 - No signing. A verifier that can sign is a verifier that can be made to sign.
 - No key or bundle fetching. Both are passed in, which is what keeps the package offline.
-- No ES256 or ES384 bundle signatures. The bundle schema admits them; a signature nobody
-  checked grounds nothing, so they are reported as `bundle_signature_unsupported`.
 - No statement-level signatures. Section 3.2.3 authenticates a revocation statement with
   the signature of the bundle that carries it, and that is the signature this package
   checks. A statement's own signature against the section 3.2.1 key hierarchy is not
@@ -106,7 +130,7 @@ python differential/compare.py --expect-external 12
 
 `--external` is a checkout of the published conformance vectors; CI pins one and passes
 `--expect-external` with the number of cases it must yield, so a checkout that did not
-happen fails the run rather than shrinking the corpus. Without it the corpus is 1632 cases
+happen fails the run rather than shrinking the corpus. Without it the corpus is 1634 cases
 and the published-vector row below is absent. `generate_cases.py` writes the SHA-256 of
 every vector file it read to `build/manifest.json`, and `compare.py` prints the count and
 the manifest digest.
@@ -135,9 +159,9 @@ Latest run, against this repository's implementation at the commit under test (i
 | RFC 8785 canonicalization corpus | 34 | 33 |
 | RFC 7638 thumbprints | 14 | 14 |
 | Chain digests over the delegation corpus | 134 | 134 |
-| This repository's conformance vectors | 34 | 34 |
+| This repository's conformance vectors | 36 | 36 |
 | Published conformance vectors | 12 | 12 |
-| **Total** | **1644** | **1643** |
+| **Total** | **1646** | **1645** |
 
 Every published vector agrees. The 1 remaining case is the ledger's 1 entry, pinned to
 the number of cases that land on it: the JSON number model, which the two languages hold
@@ -190,4 +214,4 @@ The differential compares verdicts, so it is silent on anything that does not ch
 verdict. Whether `timingSafeEqual` is constant-time is not observable in a verdict at all,
 and `codePointLength` cannot disagree with `value.length` on anything the current schema
 constrains (no `maxLength`; every `minLength` is 1). Those rest on the unit tests and on
-reading the code, not on the 1644.
+reading the code, not on the 1646.

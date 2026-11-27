@@ -64,6 +64,17 @@ def _receipt(claims: list[dict], index: int) -> dict:
     }
 
 
+def _entry(receipt: dict) -> dict:
+    """The registry entry a receipt commits to, as registry-anchor-v1 section 4 lays it out."""
+    return {
+        "ts": "2026-10-15T00:00:00Z",
+        "merkle_root": receipt["merkle_root"],
+        "leaf_count": receipt["leaf_count"],
+        "producer": "inclusion-test/1.0.0",
+        "batch_id": "inclusion-1",
+    }
+
+
 def _trace(n: int = 0) -> dict:
     return {"transparency": "https://log.example.com/entries/1", "iat": 1000 + n, "subject": f"agent-{n}"}
 
@@ -93,13 +104,15 @@ def test_the_pass_message_no_longer_overstates_what_was_checked():
 @pytest.mark.parametrize("count,index", [(1, 0), (2, 0), (2, 1), (3, 2), (5, 3), (8, 7), (9, 8)])
 def test_a_genuine_inclusion_proof_passes(count, index):
     claims = [_trace(i) for i in range(count)]
-    codes = _codes(tr_anc.check(claims[index], receipt=_receipt(claims, index)))
+    receipt = _receipt(claims, index)
+    codes = _codes(tr_anc.check(claims[index], receipt=receipt, entry=_entry(receipt)))
     assert codes["TR-ANC-002"] is Status.PASS
 
 
 def test_a_proof_for_a_different_record_fails():
     claims = [_trace(i) for i in range(4)]
-    codes = _codes(tr_anc.check(claims[0], receipt=_receipt(claims, 1)))
+    receipt = _receipt(claims, 1)
+    codes = _codes(tr_anc.check(claims[0], receipt=receipt, entry=_entry(receipt)))
     assert codes["TR-ANC-002"] is Status.FAIL
 
 
@@ -108,19 +121,23 @@ def test_a_record_modified_after_anchoring_fails():
     receipt = _receipt(claims, 2)
     tampered = dict(claims[2])
     tampered["subject"] = "agent-elsewhere"
-    assert _codes(tr_anc.check(tampered, receipt=receipt))["TR-ANC-002"] is Status.FAIL
+    findings = tr_anc.check(tampered, receipt=receipt, entry=_entry(receipt))
+    assert _codes(findings)["TR-ANC-002"] is Status.FAIL
 
 
 def test_a_forged_root_fails():
     claims = [_trace(i) for i in range(4)]
     receipt = _receipt(claims, 1)
     receipt["merkle_root"] = "sha256:" + "00" * 32
-    assert _codes(tr_anc.check(claims[1], receipt=receipt))["TR-ANC-002"] is Status.FAIL
+    findings = tr_anc.check(claims[1], receipt=receipt, entry=_entry(receipt))
+    assert _codes(findings)["TR-ANC-002"] is Status.FAIL
 
 
 # --- malformed receipts are reported as malformed, not as "not included" ----
 
-@pytest.mark.parametrize("field", ["leaf_index", "audit_path", "leaf_count", "merkle_root"])
+# Only the section 5 proof is the receipt's own; merkle_root and leaf_count come from the
+# entry (section 5.1), so a receipt that leaves them out is not malformed.
+@pytest.mark.parametrize("field", ["leaf_index", "audit_path"])
 def test_a_receipt_missing_a_field_says_which(field):
     claims = [_trace(i) for i in range(4)]
     receipt = _receipt(claims, 1)
@@ -134,7 +151,8 @@ def test_an_out_of_range_leaf_index_fails_rather_than_raising():
     claims = [_trace(i) for i in range(4)]
     receipt = _receipt(claims, 1)
     receipt["leaf_index"] = 99
-    assert _codes(tr_anc.check(claims[1], receipt=receipt))["TR-ANC-002"] is Status.FAIL
+    findings = tr_anc.check(claims[1], receipt=receipt, entry=_entry(receipt))
+    assert _codes(findings)["TR-ANC-002"] is Status.FAIL
 
 
 def test_a_boolean_is_not_an_integer_leaf_index():
